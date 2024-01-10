@@ -10,7 +10,7 @@ from tcsfw.har_scan import HARScan
 from tcsfw.selector import RequirementSelector
 from tcsfw.main_basic import SubLoader, SystemInterface, NodeInterface, SoftwareInterface, HostInterface
 from tcsfw.mitm_log_reader import MITMLogReader
-from tcsfw.model import HostType
+from tcsfw.model import EvidenceNetworkSource, HostType
 from tcsfw.nmap_scan import NMAPScan
 from tcsfw.pcap_reader import PCAPReader
 from tcsfw.property import PropertyKey
@@ -20,7 +20,7 @@ from tcsfw.spdx_reader import SPDXReader
 from tcsfw.ssh_audit_scan import SSHAuditScan
 from tcsfw.testsslsh_scan import TestSSLScan
 from tcsfw.tools import CheckTool
-from tcsfw.traffic import Tool
+from tcsfw.traffic import Evidence, EvidenceSource, Flow, Tool
 from tcsfw.tshark_reader import TSharkReader
 from tcsfw.vulnerability_reader import VulnerabilityReader
 from tcsfw.web_checker import WebChecker
@@ -135,6 +135,12 @@ class EvidenceLoader(SubLoader):
         """Check web links"""
         tool = WebChecker(self.builder.system)
         sl = ToolLoader(tool, source_label=label)
+        self.subs.append(sl)
+        return sl
+
+    def fabricate(self, label: str) -> 'FabricationLoader':
+        """Fabricate evidence for testing or visualization"""
+        sl = FabricationLoader(label)
         self.subs.append(sl)
         return sl
 
@@ -265,3 +271,21 @@ class ToolLoader(SubLoader):
         tl = ToolLoader(tool, tool.tool_label)
         tool.run_tool(registry, tl.get_source(), arguments=arg)
         tool.coverage(coverage.tool_coverage)
+
+
+class FabricationLoader(SubLoader):
+    """Fabricate evidence for testing or visualization"""
+    def __init__(self, source_label: str):
+        super().__init__(source_label)
+        self.flows: List[Flow] = []
+
+    def connection(self, flow: Flow) -> Self:
+        """Add a connection"""
+        self.flows.append(flow)
+        return self
+
+    def load(self, registry: Registry, coverage: RequirementClaimMapper):
+        evi = Evidence(self.get_source())
+        for f in self.flows:
+            f.evidence = evi  # override evidence
+            registry.connection(f)
