@@ -6,7 +6,7 @@ from tcsfw.traffic import IPFlow
 
 
 def test_pcap():
-    pcap = PCAPReader.inspect(pathlib.Path("samples/deltaco-socket/socket-setup.pcap"))
+    pcap = PCAPReader.inspect(pathlib.Path("tests/samples/deltaco-setup.pcap"))
     m = SystemMatcher(pcap.system)
     cs = m.system.collect_flows()
 
