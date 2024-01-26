@@ -1,3 +1,4 @@
+from io import BytesIO
 import json
 import pathlib
 from datetime import datetime
@@ -16,23 +17,21 @@ from tcsfw.verdict import Verdict
 class SPDXReader(ComponentCheckTool):
     """Read SPDX component description for a software"""
     def __init__(self, system: IoTSystem):
-        super().__init__("spdx", system)
+        super().__init__("spdx", ".json", system)
         self.tool.name = "SPDX SBOM"
-        self.data_file_suffix = ".json"
 
     def _filter_component(self, component: NodeComponent) -> bool:
         return isinstance(component, Software)
 
-    def _check_entity(self, component: NodeComponent, data_file: pathlib.Path, interface: EventInterface,
-                      source: EvidenceSource):
+    def process_stream(self, component: NodeComponent, data_file: BytesIO, interface: EventInterface,
+                       source: EvidenceSource):
         software = cast(Software, component)
 
         evidence = Evidence(source)
 
         properties = set()
 
-        with data_file.open() as f:
-            raw_file = json.load(f)
+        raw_file = json.load(data_file)
 
         cr_info = raw_file["creationInfo"]
         source.timestamp = datetime.strptime(cr_info["created"], "%Y-%m-%dT%H:%M:%SZ")
@@ -55,7 +54,7 @@ class SPDXReader(ComponentCheckTool):
                 # component in baseline
                 software.components[name] = SoftwareComponent(name, version=version)
             elif not old_sc:
-                verdict = Verdict.UNEXPECTED  # unexpected claim not in baseline
+                verdict = Verdict.FAIL  # claim not in baseline
             if self.send_events:
                 ev = PropertyEvent(evidence, software, key.value(verdict, explanation=f"{name} {version}"))
                 interface.property_update(ev)

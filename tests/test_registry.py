@@ -4,7 +4,7 @@ from tcsfw.inspector import Inspector
 from tcsfw.main import SystemBuilder, DHCP
 from tcsfw.registry import Registry
 from tcsfw.traffic import IPFlow, NO_EVIDENCE
-from tcsfw.verdict import Verdict
+from tcsfw.verdict import Status, Verdict
 
 
 def test_reset():
@@ -30,56 +30,56 @@ def test_reset():
 
     # unknown hosts / connections added
     assert len(s.children) == 4
-    assert s.children[3].status.verdict == Verdict.UNEXPECTED
+    assert s.children[3].status == Status.UNEXPECTED
     assert len(dev1.connections) == 2
-    assert dev1.connections[1].status.verdict == Verdict.UNEXPECTED
+    assert dev1.connections[1].status == Status.UNEXPECTED
 
     # disable all sources
     r.reset({NO_EVIDENCE.source: False}).do_all_tasks()
 
     # unknown hosts / connections remains as UNDEFINED
     assert len(s.children) == 4
-    assert s.children[3].status.verdict == Verdict.UNDEFINED
+    assert s.children[3].status == Status.PLACEHOLDER
     assert len(dev1.connections) == 2
-    assert dev1.connections[1].status.verdict == Verdict.UNDEFINED
+    assert dev1.connections[1].status == Status.PLACEHOLDER
 
     # enable sources again
     r.reset().do_all_tasks()
 
     assert len(s.children) == 4
-    assert s.children[3].status.verdict == Verdict.UNEXPECTED
+    assert s.children[3].status == Status.UNEXPECTED
     assert len(dev1.connections) == 2
-    assert dev1.connections[1].status.verdict == Verdict.UNEXPECTED
+    assert dev1.connections[1].status == Status.UNEXPECTED
 
 
 def test_reset_2():
     sb = simple_setup_1(external=True)
     r = Registry(Inspector(sb.system))
 
-    flows = sb.system.collect_flows()
+    flows = r.logging.collect_flows()
     assert len(flows) == 1
 
     c1 = r.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1100) >> ("1:0:0:0:0:2", "192.168.0.2", 1234))
-    assert c1.status.verdict == Verdict.PASS
+    assert c1.status == Status.EXPECTED
     c2 = r.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1100) >> ("1:0:0:0:0:3", "1.0.0.3", 1234))
-    assert c2.status.verdict == Verdict.UNEXPECTED
+    assert c2.status == Status.UNEXPECTED
     c3 = r.connection(IPFlow.UDP("1:0:0:1:0:4", "192.168.0.3", 1100) >> ("1:0:0:0:0:4", "1.0.0.4", 1234))
-    assert c3.status.verdict == Verdict.EXTERNAL
-    flows = sb.system.collect_flows()
+    assert c3.status == Status.EXTERNAL
+    flows = r.logging.collect_flows()
     assert len(flows) == 3
 
     r.reset(evidence_filter={NO_EVIDENCE.source: False}).do_all_tasks()
-    assert c1.status.verdict == Verdict.NOT_SEEN
-    assert c2.status.verdict == Verdict.UNDEFINED
-    assert c3.status.verdict == Verdict.UNDEFINED
-    flows = sb.system.collect_flows()
+    assert c1.status == Status.EXPECTED
+    assert c2.status == Status.PLACEHOLDER
+    assert c3.status == Status.PLACEHOLDER
+    flows = r.logging.collect_flows()
     assert len(flows) == 1
 
     r.reset().do_all_tasks()
-    assert c1.status.verdict == Verdict.PASS
-    assert c2.status.verdict == Verdict.UNEXPECTED
-    assert c3.status.verdict == Verdict.EXTERNAL
-    flows = sb.system.collect_flows()
+    assert c1.status == Status.EXPECTED
+    assert c2.status == Status.UNEXPECTED
+    assert c3.status == Status.EXTERNAL
+    flows = r.logging.collect_flows()
     assert len(flows) == 3
 
 
@@ -98,18 +98,21 @@ def test_reset_dhcp():
 
     assert len(cli.children) == 1
     assert len(cli.connections) == 1
-    assert cli.children[0].status.verdict == Verdict.PASS
+    assert cli.children[0].status == Status.EXPECTED
+    assert cli.children[0].get_expected_verdict() == Verdict.PASS
 
     # disable all sources
     r.reset({NO_EVIDENCE.source: False}).do_all_tasks()
 
     assert len(cli.children) == 1
     assert len(cli.connections) == 1
-    assert cli.children[0].status.verdict == Verdict.NOT_SEEN
+    assert cli.children[0].status == Status.EXPECTED
+    assert cli.children[0].get_expected_verdict() == Verdict.INCON
 
     # enable sources again
     r.reset().do_all_tasks()
 
     assert len(cli.children) == 1
     assert len(cli.connections) == 1
-    assert cli.children[0].status.verdict == Verdict.PASS
+    assert cli.children[0].status == Status.EXPECTED
+    assert cli.children[0].get_expected_verdict() == Verdict.PASS

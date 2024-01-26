@@ -2,11 +2,10 @@ import json
 import logging
 import urllib
 from typing import Dict, List, Tuple, Any, Iterable, BinaryIO, Optional
-from urllib.parse import urlparse
 
 from framing.raw_data import Raw
 
-from tcsfw.address import HWAddress, HWAddresses, IPAddresses, Protocol, IPAddress
+from tcsfw.address import AnyAddress, HWAddress, HWAddresses, IPAddresses, Protocol, IPAddress
 from tcsfw.claim_coverage import RequirementClaimMapper
 from tcsfw.coverage_result import CoverageReport
 from tcsfw.entity import Entity
@@ -16,7 +15,7 @@ from tcsfw.property import PropertyKey, PropertyVerdict, PropertySet
 from tcsfw.registry import Registry
 from tcsfw.result import Report
 from tcsfw.traffic import Evidence, NO_EVIDENCE, Flow, IPFlow
-from tcsfw.verdict import Verdict, FlowEvent, Verdictable
+from tcsfw.verdict import Status, Verdict, Verdictable
 
 # format strings
 FORMAT_YEAR_MONTH_DAY = "%Y-%m-%d"
@@ -77,10 +76,10 @@ class RequestContext:
         self.flows = None
         self.verdict_cache: Dict[Entity, Verdict] = {}
 
-    def get_flows(self) -> Dict[Connection, List[Tuple[NetworkNode, NetworkNode, FlowEvent]]]:
+    def get_flows(self) -> Dict[Connection, List[Tuple[AnyAddress, AnyAddress, Flow]]]:
         """Get flows, resolve and cache as required"""
         if self.flows is None:
-            self.flows = self.api.registry.system.collect_flows()
+            self.flows = self.api.registry.logging.collect_flows()
         return self.flows
 
     def change_path(self, path: str) -> 'RequestContext':
@@ -196,8 +195,8 @@ class ClientAPI(ModelListener):
             }
             if key:
                 ls["property"] = f"{key}"
-            lo_v = ev.get_verdict() if isinstance(ev, Verdictable) else Verdict.UNDEFINED
-            if lo_v != Verdict.UNDEFINED:
+            lo_v = ev.get_verdict() if isinstance(ev, Verdictable) else Verdict.INCON
+            if lo_v != Verdict.INCON:
                 ls["verdict"] = ev.get_verdict().value
             lr.append(ls)
         return rs
@@ -247,8 +246,6 @@ class ClientAPI(ModelListener):
                 "verdict": component.get_verdict(context.verdict_cache).value,
                 "properties": self.get_properties(component.properties)
             }
-            if component.simple_value is not None:
-                com_cs["value"] = component.simple_value
             if component.sub_components:
                 com_cs["sub_components"] = [sub(c) for c in component.sub_components]
             return com_cs
@@ -298,14 +295,14 @@ class ClientAPI(ModelListener):
             r["parent_id"] = self.get_id(entity.parent)
         if entity.children:
             r["services"] = [self.get_entity(c, context)[1]
-                             for c in entity.children if c.status.verdict != Verdict.UNDEFINED]
+                             for c in entity.children if c.status != Status.PLACEHOLDER]
         if entity.components:
             r["components"] = self.get_components(entity, context)
         if isinstance(entity, Host):
             if context.request.get_connections:
                 cj: List[Dict] = r.setdefault("connections", [])
                 for c in entity.connections:
-                    if c.status.verdict != Verdict.UNDEFINED:
+                    if c.status != Status.PLACEHOLDER:
                         cj.append(self.get_connection(c, context))
                         if context.request.get_flows:
                             fs = self.get_flows(c, context)
@@ -340,18 +337,19 @@ class ClientAPI(ModelListener):
     def get_flows(self, connection: Connection, context: RequestContext) -> List:
         """GET all flows from a connection"""
         fs = []
-        for _, _, flow in context.get_flows().get(connection, []):
-            ff = self.get_flow(flow, connection, context)
+        for s, t, flow in context.get_flows().get(connection, []):
+            ff = self.get_flow(s, t, flow, connection, context)
             fs.append(ff)
         return fs
 
-    def get_flow(self, flow: FlowEvent, connection: Connection, context: RequestContext) -> Dict:
+    def get_flow(self, source: AnyAddress, target: AnyAddress, flow: Flow, connection: Connection,
+                 context: RequestContext) -> Dict:
         """GET flow entry"""
         ff = {
             "conn_id": self.get_id(connection),
-            "ends": [f"{flow.endpoints[0]}", f"{flow.endpoints[1]}"],
+            "ends": [f"{source}", f"{target}"],
             "dir": "down" if flow.reply else "up",
-            "ref": flow.event.evidence.get_reference(),
+            "ref": flow.evidence.get_reference(),
         }
         return ff
 
@@ -374,13 +372,13 @@ class ClientAPI(ModelListener):
         }
         hj = root.setdefault("hosts", [])
         for h in system.get_hosts():
-            if h.status.verdict != Verdict.UNDEFINED:
+            if h.status != Status.PLACEHOLDER:
                 _, hr = self.get_entity(h, context)
                 hj.append(hr)
         cj = root.setdefault("connections", [])
         cf = root.setdefault("flows", [])
         for c in context.get_flows().keys():
-            if c.status.verdict != Verdict.UNDEFINED:
+            if c.status != Status.PLACEHOLDER:
                 cr = self.get_connection(c, context)
                 cj.append(cr)
                 cr = self.get_flows(c, context)
@@ -422,11 +420,11 @@ class ClientAPI(ModelListener):
         ]
         # ... as we list it here then
         for h in system.get_hosts():
-            if h.status.verdict != Verdict.UNDEFINED:
+            if h.status != Status.PLACEHOLDER:
                 _, hr = self.get_entity(h, context)
                 its.append({"host": hr})
         for c in context.get_flows().keys():
-            if c.status.verdict != Verdict.UNDEFINED:
+            if c.status != Status.PLACEHOLDER:
                 cr = self.get_connection(c, context)
                 its.append({"connection": cr})
                 for cf in self.get_flows(c, context):
@@ -467,10 +465,10 @@ class ClientAPI(ModelListener):
             d = self.get_connection(connection, context)
             ln.connectionChange({"connection": d}, connection)
 
-    def newFlow(self, flow: FlowEvent, connection: Connection):
+    def newFlow(self, source: AnyAddress, target: AnyAddress, flow: Flow, connection: Connection):
         for ln, req in self.api_listener:
             context = RequestContext(req, self)
-            d = self.get_flow(flow, connection, context)
+            d = self.get_flow(source, target, flow.event, connection, context)
             ln.connectionChange({"flow": d}, connection)
 
     def hostChange(self, host: Host):

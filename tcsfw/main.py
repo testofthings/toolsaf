@@ -4,11 +4,13 @@ import ipaddress
 import itertools
 import json
 import logging
+import pathlib
 import sys
 from typing import Tuple, Dict, Callable, Optional, Union, Self, List, Type
 
 from tcsfw.address import AnyAddress, HWAddress, IPAddress, EndpointAddress, Protocol, Addresses, \
     DNSName, IPAddresses, HWAddresses
+from tcsfw.batch_import import BatchImporter, LabelFilter
 from tcsfw.claim import Claim
 from tcsfw.claim_coverage import RequirementClaimMapper
 from tcsfw.client_api import APIRequest
@@ -22,16 +24,15 @@ from tcsfw.inspector import Inspector
 from tcsfw.latex_output import LaTeXGenerator
 from tcsfw.main_basic import SubLoader, BuilderInterface, NodeInterface, SystemInterface, SoftwareInterface, \
     HostInterface
-from tcsfw.main_tools import EvidenceLoader, ToolLoader
+from tcsfw.main_tools import EvidenceLoader
 from tcsfw.model import Host, Service, Connection, Addressable, ConnectionType, HostType, \
     ExternalActivity, PieceOfData
 from tcsfw.property import PropertyKey, PropertyVerdict, Properties
 from tcsfw.registry import Registry
 from tcsfw.result import Report
 from tcsfw.services import DHCPService, DNSService
-from tcsfw.tools import CustomFlowTool
 from tcsfw.traffic import EvidenceSource, Evidence
-from tcsfw.verdict import Verdict
+from tcsfw.verdict import Status, Verdict
 from tcsfw.visualizer import Visualizer, VisualizerAPI
 
 
@@ -160,7 +161,7 @@ class SystemBuilder(SystemInterface):
                     hb.use_data(DataPieceBuilder(self, [auth]))
                     # property to link from service to authentication
                     exp = f"Authentication by {auth.name} (implicit)"
-                    prop_v = Properties.AUTHENTICATION_DATA.value(verdict=Verdict.NOT_SEEN, explanation=exp)
+                    prop_v = Properties.AUTHENTICATION_DATA.value(explanation=exp)
                     prop_v[0].set(s.properties, prop_v[1])
 
 
@@ -185,10 +186,9 @@ class Builder(SystemBuilder):
     def __init__(self, name="Unnamed system"):
         super().__init__(name)
         parser = argparse.ArgumentParser()
+        parser.add_argument("--read", "-r", action="append", help="Read tool output from files or directories")
         parser.add_argument("--def-loads", "-L", type=str, help="Comma-separated list of tools to load")
-        parser.add_argument("--tool", action="append", help="Run tool by name, arguments after 'name::'")
         parser.add_argument("--set-ip", action="append", help="Set DNS-name for entity, format 'name=ip, ...'")
-        parser.add_argument("--ip-packet", action="append", help="Add fake IP packet (JSON)")
         parser.add_argument("--output", "-o", help="Output format")
         parser.add_argument("--dhcp", action="store_true", help="Add default DHCP server handling")
         parser.add_argument("--dns", action="store_true", help="Add default DNS server handling")
@@ -203,6 +203,7 @@ class Builder(SystemBuilder):
         parser.add_argument("--test-post", nargs=2, help="Test API POST")
 
         parser.add_argument("--help-tools", action="store_true", help="List available tools")
+        parser.add_argument("--print-events", action="store_true", help="Print events and exit")
 
         self.parser = parser
         self.args = parser.parse_args()
@@ -223,33 +224,36 @@ class Builder(SystemBuilder):
         for set_ip in self.args.set_ip or []:
             name, _, ips = set_ip.partition("=")
             h = self.system.get_entity(name) or self.system.get_endpoint(DNSName.name_or_ip(name))
-            if not isinstance(h, Host) or h.status.verdict != Verdict.NOT_SEEN:
+            if not isinstance(h, Host) or not h.is_relevant():
                 raise ValueError(f"No such host '{name}'")
             for ip in ips.split(","):
                 self.system.learn_ip_address(h, IPAddress.new(ip))
 
-        for tool_cmd in self.args.tool or []:
-            ToolLoader.load_by_command(registry, cc, tool_cmd)
+        batch_import = BatchImporter(registry, filter=LabelFilter(self.args.def_loads or ""))
+        for in_file in self.args.read or []:
+            batch_import.import_batch(pathlib.Path(in_file))
 
-        if self.args.ip_packet:
-            # custom IP flows
-            ft = CustomFlowTool(self.system).parse_flows(self.args.ip_packet)
-            self.load().other_tool(ft, as_first=True)
+        if self.args.help_tools:
+            # print help and exit
+            for label, sl in sorted(batch_import.evidence.items()):
+                sl_s = ", ".join(sorted(set([s.name for s in sl])))
+                print(f"{label:<20} {sl_s}")
+            return
 
-        all_loaders = {}
-        for sub in self.claimSet.finish():
+        all_loaders = {}  # loaders by labels
+        for sub in self.claimSet.finish_loaders():
             sub.pre_load(registry, all_loaders, cc)
         for ln in self.loaders:
             for sub in ln.subs:
                 sub.pre_load(registry, all_loaders, cc)
-        if self.args.help_tools:
-            for label, sl in sorted(all_loaders.items()):
-                sl_s = ", ".join(sorted(set([s.loader_name for s in sl])))
-                print(f"{label:<20} {sl_s}")
+        for ln_list in all_loaders.values():
+            for ln in ln_list:
+                ln.load(registry, cc)
+
+        if self.args.print_events:
+            print(f"== Event print ==")
+            registry.logging.print_events(sys.stdout)
             return
-        loaders = EvidenceLoader.load_selected(self.args.def_loads, all_loaders)
-        for ln in loaders:  # only selected tools are loaded
-            ln.load(registry, cc)
 
         api = VisualizerAPI(registry, cc, self.visualizer)
         dump_report = True
@@ -277,8 +281,8 @@ class Builder(SystemBuilder):
             report = LaTeXGenerator(self.system, spec, cc)
             report.generate(sys.stdout, cmd.strip(" -"))
         elif dump_report or out_form:
-            report = Report(self.system, details=out_form == 'details')
-            if out_form in {'text', 'details', '', None}:
+            report = Report(registry)
+            if out_form in {'text', '', None}:
                 report.print_report(sys.stdout)
             elif out_form == 'table-csv':
                 report.tabular(sys.stdout)
@@ -418,10 +422,10 @@ class ServiceBuilder(NodeBuilder):
                 # referring existing connection
                 return ConnectionBuilder(c, (s, self))
         c = Connection(s.entity, self.entity)
-        c.status.verdict = Verdict.NOT_SEEN
+        c.status = Status.EXPECTED
         c.con_type = self.entity.con_type
         for e in [s.entity, self.entity]:
-            e.update_verdict(Verdict.NOT_SEEN)
+            e.status = Status.EXPECTED
         s.entity.get_parent_host().connections.append(c)
         self.entity.get_parent_host().connections.append(c)
         return ConnectionBuilder(c, (s, self))
@@ -452,7 +456,7 @@ class HostBuilder(HostInterface, NodeBuilder):
         super().__init__(entity, system)
         self.entity = entity
         system.system.children.append(entity)
-        entity.status.verdict = Verdict.NOT_SEEN  # tolerate hosts which have no interaction
+        entity.status = Status.EXPECTED
         system.hosts_by_name[entity.name] = self
         if DNSName.looks_like(entity.name):
             self.name(entity.name)
@@ -460,7 +464,7 @@ class HostBuilder(HostInterface, NodeBuilder):
 
     def hw(self, address: str) -> 'HostBuilder':
         """Add HW address"""
-        add = self.new_address_(HWAddress(address))
+        add = self.new_address_(HWAddress.new(address))
         return self
 
     def ip(self, address: str) -> 'HostBuilder':
@@ -517,7 +521,7 @@ class DataPieceBuilder:
             for d in self.data:
                 d.authenticator_for.append(s.entity)
                 # property to link from service to authentication
-                prop_v = Properties.AUTHENTICATION_DATA.value(verdict=Verdict.NOT_SEEN, explanation=d.name)
+                prop_v = Properties.AUTHENTICATION_DATA.value(explanation=d.name)
                 prop_v[0].set(s.entity.properties, prop_v[1])
         return self
 
@@ -655,7 +659,7 @@ class ProtocolConfigurer:
             return old
         b = self._create_service(parent)
         parent.service_builders[(self.transport, self.service_port)] = b
-        b.entity.status.verdict = Verdict.NOT_SEEN
+        b.entity.status = Status.EXPECTED
         assert b.entity.parent == parent.entity
         parent.entity.children.append(b.entity)
         if not b.entity.addresses:
@@ -695,37 +699,46 @@ class ARP(ProtocolConfigurer):
         super().__init__(Protocol.ARP, name="ARP")
         self.host_type = HostType.ADMINISTRATIVE
         self.con_type = ConnectionType.ADMINISTRATIVE
-        # ARP is replied
+        # ARP make requests and replies
         self.external_activity = ExternalActivity.UNLIMITED
 
     def get_service_(self, parent: HostBuilder) -> ServiceBuilder:
-        s = super().get_service_(parent)
+        host_s = super().get_service_(parent)
         # ARP can be broadcast, get or create the broadcast host and service
-        bc = parent.system.get_host_(f"{HWAddresses.BROADCAST}", description="Broadcast")
-        s2 = bc.service_builders.get((self.transport, self.service_port))
-        if not s2:
-            bc.new_address_(HWAddresses.BROADCAST)
-            s.entity.external_activity = ExternalActivity.PASSIVE
-            bc.entity.host_type = HostType.ADMINISTRATIVE
-            s2 = bc / ProtocolConfigurer(transport=Protocol.ARP, name="ARP")
-            s2.entity.host_type = HostType.ADMINISTRATIVE
-            s2.entity.con_type = ConnectionType.ADMINISTRATIVE
-            s.entity.external_activity = self.external_activity
-        c_ok = any([c.source == s.entity for c in s.entity.get_parent_host().connections])
+        bc_node = parent.system.get_host_(f"{HWAddresses.BROADCAST}", description="Broadcast")
+        bc_s = bc_node.service_builders.get((self.transport, self.service_port))
+        # Three entities:
+        # host_s: ARP service at host
+        # bc_node: Broadcast logical node
+        # bc_s: ARP service a the broadcast node
+        if not bc_s:
+            # create ARP service
+            bc_node.new_address_(HWAddresses.BROADCAST)
+            bc_node.entity.external_activity = ExternalActivity.OPEN   # anyone can make broadcasts (it does not reply)
+            bc_node.entity.host_type = HostType.ADMINISTRATIVE
+            bc_s = bc_node / ProtocolConfigurer(transport=Protocol.ARP, name="ARP")
+            bc_s.entity.host_type = HostType.ADMINISTRATIVE
+            bc_s.entity.con_type = ConnectionType.ADMINISTRATIVE
+            bc_s.entity.external_activity = bc_node.entity.external_activity
+            host_s.entity.external_activity = self.external_activity
+        c_ok = any([c.source == host_s.entity for c in host_s.entity.get_parent_host().connections])
         if not c_ok:
-            s >> s2
-        return s2  # NOTE: the broadcast
+            host_s >> bc_s
+        return bc_s  # NOTE: the broadcast
 
 
 class DHCP(ProtocolConfigurer):
     def __init__(self, port=67):
         super().__init__(Protocol.UDP, port=port, name="DHCP")
-        self.external_activity = ExternalActivity.OPEN
+        # DHCP requests go to broadcast, thus the reply looks like request
+        self.external_activity = ExternalActivity.UNLIMITED
 
     def _create_service(self, parent: HostBuilder) -> ServiceBuilder:
-        s = ServiceBuilder(parent, DHCPService(parent.entity))
+        host_s = ServiceBuilder(parent, DHCPService(parent.entity))
+        host_s.entity.external_activity = self.external_activity
 
         def create_source(host: HostBuilder):
+            # DHCP client uses specific port 68 for requests
             src = UDP(port=68, name="DHCP")
             src.port_to_name = False
             cs = host / src
@@ -733,8 +746,8 @@ class DHCP(ProtocolConfigurer):
             cs.entity.con_type = ConnectionType.ADMINISTRATIVE
             cs.entity.client_side = True
             return cs
-        s.source_fixer = create_source
-        return s
+        host_s.source_fixer = create_source
+        return host_s
 
 
 class DNS(ProtocolConfigurer):
@@ -921,8 +934,8 @@ class ClaimBuilder:
             self._keys.append(PropertyKey("vulnz", com, cve.lower()))
         return self
 
-    def finish(self) -> SubLoader:
-        """Finish by returning loader to use"""
+    def finish_loaders(self) -> SubLoader:
+        """Finish by returning the loader to use"""
         this = self
         locations = self._locations
         keys = self._keys
@@ -961,9 +974,9 @@ class ClaimSetBuilder(BuilderInterface):
         """Ignore claims or requirements"""
         return ClaimBuilder(self, explanation, Verdict.IGNORE)
 
-    def finish(self) -> List[SubLoader]:
+    def finish_loaders(self) -> List[SubLoader]:
         """Finish"""
-        return [cb.finish() for cb in self.claim_builders]
+        return [cb.finish_loaders() for cb in self.claim_builders]
 
 
 class CookieBuilder(BuilderInterface):

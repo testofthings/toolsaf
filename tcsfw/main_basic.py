@@ -53,7 +53,7 @@ class SubLoader:
 
     def hw(self, entity: NodeInterface, *hw_address: str) -> Self:
         for a in hw_address:
-            self.mappings[HWAddress(a)] = entity
+            self.mappings[HWAddress.new(a)] = entity
         return self
 
     def ip(self, entity: NodeInterface, *ip_address: str) -> Self:

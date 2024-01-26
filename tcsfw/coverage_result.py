@@ -88,7 +88,7 @@ class CoverageReport:
     def _print_statistics(self, writer: TextIO, specification: Specification):
         mapping = self._get_mappings(specification)
 
-        columns = {Verdict.PASS: 0, Verdict.FAIL: 1, Verdict.NOT_SEEN: 2, Verdict.UNDEFINED: 3, Verdict.IGNORE: 4}
+        columns = {Verdict.PASS: 0, Verdict.FAIL: 1, Verdict.INCON: 2, Verdict.IGNORE: 3}
         verdicts: Dict[str, Dict[str, List[Set[int]]]] = {
             "ui+": {},
             "def": {},
@@ -223,10 +223,8 @@ class CoverageReport:
     def _status_marker(cls, status: Optional[ClaimStatus]) -> str:
         if status is None:
             return "."
-        if status.verdict == Verdict.UNDEFINED:
+        if status.verdict == Verdict.INCON:
             return "?"
-        if status.verdict == Verdict.NOT_SEEN:
-            return "-"
         if status.verdict != Verdict.PASS:
             return "!"
         if status.authority in {ClaimAuthority.MODEL, ClaimAuthority.TOOL}:
@@ -236,7 +234,7 @@ class CoverageReport:
     @classmethod
     def _light(self, verdict: Verdict) -> str:
         """Verdict traffic light"""
-        if verdict in {Verdict.IGNORE, Verdict.NOT_SEEN}:
+        if verdict in {Verdict.IGNORE, Verdict.INCON}:
             return "yellow"
         if verdict == Verdict.PASS:
             return "green"
@@ -247,10 +245,8 @@ class CoverageReport:
         """Update aggregate verdict"""
         if verdict is None:
             return base
-        if base == Verdict.UNDEFINED or verdict == Verdict.UNDEFINED:
-            return Verdict.UNDEFINED
-        elif {base, verdict} == {Verdict.PASS, Verdict.NOT_SEEN}:
-            return Verdict.NOT_SEEN  # Override pass
+        if base == Verdict.INCON or verdict == Verdict.INCON:
+            return Verdict.INCON
         else:
             return Verdict.aggregate(base, verdict)
 
@@ -294,10 +290,9 @@ class CoverageReport:
             f"Tool {Verdict.PASS.value}": "Verification pass",
             f"Tool {Verdict.FAIL.value}": "Verification fail",
             ignore_len_name: "Not relevant",
-            f"Tool {Verdict.NOT_SEEN.value}": "Not verified",
+            f"Tool {Verdict.INCON.value}": "Not verified",
             f"Manual {Verdict.PASS.value}": "Explained pass",
             f"Manual {Verdict.IGNORE.value}": "Explained not relevant",
-            f"Model {Verdict.UNDEFINED.value}": "Inconclusive",
         }
         legend_c = {n: 0 for n in legend.keys()}
 
@@ -316,7 +311,7 @@ class CoverageReport:
                     aut = status.authority.value
                     if status.verdict != Verdict.FAIL and status.authority == ClaimAuthority.MODEL:
                         # Model can only FAIL or be inconclusive
-                        verdict = Verdict.UNDEFINED
+                        verdict = Verdict.INCON
                     else:
                         verdict = Verdict.FAIL if status.verdict in {Verdict.UNEXPECTED, Verdict.MISSING} else \
                             status.verdict

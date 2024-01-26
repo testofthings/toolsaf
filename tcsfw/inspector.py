@@ -6,10 +6,11 @@ from tcsfw.address import DNSName, AnyAddress
 from tcsfw.entity import Entity
 from tcsfw.event_interface import EventInterface, PropertyAddressEvent, PropertyEvent
 from tcsfw.matcher import SystemMatcher
-from tcsfw.model import IoTSystem, Connection, Service, Host, Session, Addressable, NodeComponent
+from tcsfw.model import IoTSystem, Connection, Service, Host, Addressable, NodeComponent
+from tcsfw.property import Properties
 from tcsfw.services import NameEvent
 from tcsfw.traffic import ServiceScan, HostScan, Flow, IPFlow
-from tcsfw.verdict import Verdict, VerdictEvent, FlowEvent
+from tcsfw.verdict import Status, Verdict
 
 
 class Inspector(EventInterface):
@@ -19,7 +20,7 @@ class Inspector(EventInterface):
         self.system = system
         self.logger = logging.getLogger("inspector")
         self.connection_count: Dict[Connection, int] = {}
-        self.sessions: Dict[Flow, Tuple[Session, bool]] = {}
+        self.sessions: Dict[Flow, bool] = {}
         self.dns_names: Dict[str, Host] = {}
 
     def reset(self):
@@ -39,49 +40,48 @@ class Inspector(EventInterface):
         key = self.matcher.connection_w_ends(flow)
         conn, s, t, reply = key
 
-        assert conn.status.verdict != Verdict.UNDEFINED, f"Received connection with verdict undefined: {conn}"
-        # Note: hosts and services _can_ be Undefined???
+        flow.reply = reply  # bit ugly to fix, but now available for logger
+
+        assert conn.status != Status.PLACEHOLDER, f"Received placeholder connection: {conn}"
 
         c_count = self.connection_count.get(conn, 0) + 1
         self.connection_count[conn] = c_count
 
-        # FIXME: Shouldn't model add sessions, why inspector?
-        session, _ = self.sessions.get(flow, (None, None))
-        new_session = not session
+        # detect new sessions
+        session = self.sessions.get(flow)
+        new_session = session is None
         if new_session:
-            session, _ = self.sessions.get(flow.reverse(), (None, None))
-            if not session:
-                # truly new session
-                session = Session(flow.timestamp or datetime.datetime.now())
-                conn.sessions.append(session)
-                self.sessions[flow] = session, reply
-            else:
-                # old session in reverse direction
-                self.sessions[flow] = session, reply
+            # new session or direction
+            self.sessions[flow] = reply
 
         send = set()  # connection, flow, source and/or target
 
-        def update_verdict(entity: Addressable, new_verdict: Verdict):
-            old_v = entity.status.verdict
-            new_v = entity.update_verdict(new_verdict)
-            if old_v != new_v:
+        def update_seen_status(entity: Addressable):
+            mod_s = entity.set_seen_now()
+            if mod_s is not None:
                 send.add(entity)  # verdict change, must send the entity
 
+        # if we have a connection, the endpoints cannot be placeholders
         source, target = conn.source, conn.target
-        external = conn.status.verdict == Verdict.EXTERNAL
+        if source.status == Status.PLACEHOLDER:
+            source.status = conn.status
+        if target.status == Status.PLACEHOLDER:
+            target.status = conn.status
+
+        external = conn.status == Status.EXTERNAL
         if c_count == 1:
-            # new connection
-            send.add(conn)
-            if conn.status.verdict == Verdict.NOT_SEEN:
-                # connection is seen now
-                conn.status.verdict = Verdict.PASS
-            elif external:
-                # External connection, maybe some endpoints are too..?
-                for h in [source, target]:
-                    if h.status.verdict == Verdict.UNDEFINED:
-                        update_verdict(h, Verdict.EXTERNAL)
-                    elif h.status.verdict == Verdict.NOT_SEEN:
-                        update_verdict(h, Verdict.PASS)  # well, we have seen it now - FIXME: not good?
+            # new connection is seen
+            conn.set_seen_now()
+            send.add(conn) # send with or without v
+
+            # FIXME: What is this doing?
+            # if external:
+            #     # External connection, maybe some endpoints are too..?
+            #     for h in [source, target]:
+            #         if h.status.verdict == Verdict.UNDEFINED:
+            #             update_verdict(h, Verdict.EXTERNAL)
+            #        elif h.status.verdict == Verdict.NOT_SEEN:
+            #             update_verdict(h, Verdict.PASS)  # well, we have seen it now - FIXME: not good?
 
             # what about learning local IP/HW address pairs
             if isinstance(flow, IPFlow):
@@ -93,29 +93,27 @@ class Inspector(EventInterface):
                 if learn:
                     send.add(ends[1])
 
-        ev = None
         if new_session:
-            # Flow event for each new session
-            verdict = conn.status.verdict
-            assert verdict != Verdict.UNDEFINED
-            ev = FlowEvent((s, t), reply, flow, verdict=verdict)
-            session.status.add_result(ev)
-            send.add(ev)
+            # flow event for each new session
+            send.add(flow)
             # new direction, update sender
             if not reply:
-                source.update_verdict(conn.status.verdict)
-                send.add(source)
-                if conn.target.is_relevant() and conn.target.is_multicast() and conn.target.status.is_expected():
+                update_seen_status(source)
+                if target.status == Status.UNEXPECTED:
+                    # unexpected target fails instantly
+                    update_seen_status(target)
+                elif conn.target.is_relevant() and conn.target.is_multicast():
                     # multicast updated when sent to
-                    update_verdict(target, conn.status.verdict)
-            elif target.is_relevant():
-                update_verdict(target, conn.status.verdict)
-
-        # if we have a connection, the endpoints cannot be undefined
-        if source.status.verdict == Verdict.UNDEFINED:
-            update_verdict(source, Verdict.EXTERNAL if external else Verdict.UNEXPECTED)
-        if target.status.verdict == Verdict.UNDEFINED:
-            update_verdict(target, Verdict.EXTERNAL if external else Verdict.UNEXPECTED)
+                    update_seen_status(target)
+                elif target.status == Status.EXTERNAL:
+                    # external target, send update even that verdict remains inconclusve
+                    exp = conn.target.get_expected_verdict(default=None)
+                    if exp is None:
+                        target.set_property(Properties.EXPECTED.value(Verdict.INCON))
+                        send.add(target)
+            else:
+                # a reply
+                update_seen_status(target)
 
         if self.system.model_listeners and send:
             if source in send:
@@ -124,8 +122,8 @@ class Inspector(EventInterface):
                 self.system.call_listeners(lambda ln: ln.hostChange(target.get_parent_host()))
             if conn in send:
                 self.system.call_listeners(lambda ln: ln.connectionChange(conn))
-            if ev in send:
-                self.system.call_listeners(lambda ln: ln.newFlow(ev, conn))
+            if flow in send:
+                self.system.call_listeners(lambda ln: ln.newFlow(s, t, flow, conn))
         return conn
 
     def name(self, event: NameEvent) -> Host:
@@ -151,7 +149,7 @@ class Inspector(EventInterface):
         key, val = update.key_value
         if key.model and key not in s.properties:
             self.logger.debug("Value for model property %s ignored, as it is not in model", key)
-            return e
+            return None
         key.update(s.properties, val)
         if isinstance(s, Addressable):
             self.system.call_listeners(lambda ln: ln.hostChange(s.get_parent_host()))
@@ -183,7 +181,6 @@ class Inspector(EventInterface):
         """The given address has a service"""
         s = self._get_seen_entity(scan.endpoint)
         assert isinstance(s, Service)
-        s.status.add_result(VerdictEvent(scan, s.status.verdict))
         self.system.call_listeners(lambda ln: ln.hostChange(s.get_parent_host()))
         return s
 
@@ -194,7 +191,7 @@ class Inspector(EventInterface):
             if isinstance(c, Service):
                 if c.client_side or not c.is_tcp_service():
                     continue  # only server TCP services are scannable
-            if c.status.verdict not in {Verdict.NOT_SEEN, Verdict.PASS}:
+            if not c.is_relevant():
                 continue  # verdict does not need checking
             for a in c.addresses:
                 if a in scan.endpoints:
@@ -203,41 +200,14 @@ class Inspector(EventInterface):
                     break
             else:
                 # child address not in scan results
-                c.update_verdict(Verdict.MISSING)
-                c.status.add_result(VerdictEvent(scan, c.status.verdict))
+                c.set_property(Properties.EXPECTED.value(Verdict.FAIL))
         self.system.call_listeners(lambda ln: ln.hostChange(host))
         return host
 
-    # FIXME: Move to Claim!
-    # def release_info(self, info: ReleaseInfo) -> Optional[Software]:
-    #     sw = Software.get_software(self.system, info.sw_name)
-    #     if sw:
-    #         sw.info = info  # just take the latest data
-    #
-    #         claims = Claim.identifier_map(sw.claims)
-    #         first_release = FirstRelease.find(claims)
-    #         release_interval = ReleaseInterval.find(claims)
-    #         support_end = EndOfSupport.find(claims)
-    #
-    #         if release_interval is not None and info.interval_days is not None:
-    #             v = Verdict.FAIL if release_interval.days > info.interval_days else Verdict.PASS
-    #             sw.claims[release_interval] = ClaimStatus(
-    #                 release_interval, verdict=v, explanation=f"{info.interval_days} <= {release_interval.days} days")
-    #             sw.status.verdict = resolve_verdict([sw.status.verdict, v])
-    #             sw.status.add_result(VerdictEvent(info, v))
-    #     else:
-    #         self.logger.warning("Info for unknown SW %s", info.sw_name)
-    #     entity = sw.entity
-    #     if isinstance(entity, Addressable):
-    #         self.system.call_listeners(lambda ln: ln.hostChange(entity.get_parent_host()))
-    #     return sw
-
     def _get_seen_entity(self, endpoint: AnyAddress) -> Addressable:
+        """Get entity by address, mark it seen"""
         ent = self.system.get_endpoint(endpoint)
-        if ent.status.verdict == Verdict.NOT_SEEN:
-            ent.update_verdict(Verdict.PASS)
-        if ent.status.verdict == Verdict.UNDEFINED:
-            ent.update_verdict(Verdict.UNEXPECTED)
+        ent.set_seen_now()
         return ent
 
     def __repr__(self):

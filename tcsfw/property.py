@@ -58,13 +58,18 @@ class PropertyKey(Generic[V]):
         v = properties.get(self)
         return v
 
+    def get_explanation(self, value: V) -> str:
+        """Get explanation for value, if any"""
+        return ""
+
+    def get_value_string(self, value: V) -> str:
+        """Get value as string"""
+        value_s = f"{value}"
+        return f"{self.get_name()}={value_s}" if value_s else self.get_name()
+
     def update(self, properties: 'PropertyDict', value: V):
         """Update existing property dictionary with new value"""
         properties[self] = value
-
-    def to_string(self, value: V) -> str:
-        """Value to string, do not repeat key if there is an explanation"""
-        return f"{value}" or self.get_name()
 
     def __hash__(self):
         return self.segments.__hash__()
@@ -116,10 +121,10 @@ class PropertyVerdict(PropertyKey[PropertyVerdictValue]):
 
     def reset(self, value: PropertyVerdictValue) -> Optional[PropertyVerdictValue]:
         if self.model:
-            return PropertyVerdictValue(Verdict.NOT_SEEN, value.explanation)
+            return PropertyVerdictValue(Verdict.INCON, value.explanation)
         return None
 
-    def value(self, verdict=Verdict.NOT_SEEN, explanation="") -> Tuple['PropertyVerdict', PropertyVerdictValue]:
+    def value(self, verdict=Verdict.INCON, explanation="") -> Tuple['PropertyVerdict', PropertyVerdictValue]:
         """New property value"""
         return self, PropertyVerdictValue(verdict, explanation)
 
@@ -129,17 +134,28 @@ class PropertyVerdict(PropertyKey[PropertyVerdictValue]):
         old = self.get(properties)
         if old:
             if old.verdict == Verdict.IGNORE:
-                use_old = True
+                use_new = False  # ignore is sticky
+            elif old.verdict == Verdict.INCON:
+                use_new = True  # maybe we have a conclusion
             else:
-                # pick the worst verdict
-                nv = Verdict.aggregate(old.verdict, value.verdict)
-                use_old = nv == old.verdict
-            if use_old:
-                value = PropertyVerdictValue(old.verdict, old.explanation or value.explanation)
-            else:
+                use_new = value.verdict in {Verdict.IGNORE, Verdict.FAIL}
+            if use_new:
                 value = PropertyVerdictValue(value.verdict, value.explanation or old.explanation)
+            else:
+                value = PropertyVerdictValue(old.verdict, old.explanation or value.explanation)
         # use 'this' key even with old value, as old may have wrong key type
         properties[self] = value
+
+    def get_value_string(self, value: PropertyVerdictValue) -> str:
+        return f"{self.get_name()}={value.verdict.value}"
+
+    def get_verdict(self, properties: PropertyDict) -> Optional[Verdict]:
+        """Get the verdict, if any, not verdict value objects"""
+        v = properties.get(self)
+        return v.get_verdict() if v is not None else None
+
+    def get_explanation(self, value: PropertyVerdictValue) -> str:
+        return value.explanation
 
     @classmethod
     def cast(cls, key_value: Tuple[PropertyKey, Any]) -> Optional[PropertyVerdictValue]:
@@ -149,9 +165,6 @@ class PropertyVerdict(PropertyKey[PropertyVerdictValue]):
         value = key_value[1]
         assert isinstance(value, PropertyVerdictValue)
         return value
-
-    def to_string(self, value: PropertyVerdictValue) -> str:
-        return value.explanation or self.get_name()
 
 
 @dataclass
@@ -208,11 +221,15 @@ class PropertySet(PropertyKey):
         v = None
         p_set = self.get(properties)
         if p_set is None:
-            return Verdict.NOT_SEEN  # not seen
+            return Verdict.INCON  # not seen
         return p_set.get_overall_verdict(properties)
 
-    def to_string(self, value: PropertySetValue) -> str:
-        return value.explanation or self.get_name()
+    def get_value_string(self, value: PropertySetValue) -> str:
+        v = f"{value.get_overall_verdict({})}" if not value.sub_keys else f"{value.sub_keys}"
+        return f"{self.get_name()}={v}"
+
+    def get_explanation(self, value: PropertySetValue) -> str:
+        return value.explanation
 
     @classmethod
     def cast(cls, key_value: Tuple[PropertyKey, Any]) -> Optional[PropertySetValue]:
@@ -235,6 +252,7 @@ class Properties:
     PROTOCOL = PropertySet("check", "protocol")      # Protocol-specific check, augment with protocol name
     WEB_BEST = PropertySet("check", "web")           # Web best practices, HTTP/TLS covered by PROTOCOL
     ENCRYPTION = PropertySet("check", "encryption")  # Encryption best practices
+    EXPECTED = PropertyVerdict("check", "expected")  # Entry is expected (True) or unexpected (False)
     COOKIES = PropertySet("check", "cookies")        # Cookies checks
     COMPONENTS = PropertySet("check", "components")  # Software component check
     VULNERABILITIES = PropertySet("check", "vulnz")  # Component vulnerability check

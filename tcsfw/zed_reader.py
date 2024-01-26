@@ -1,3 +1,4 @@
+from io import BytesIO
 import json
 import pathlib
 from datetime import datetime
@@ -14,17 +15,16 @@ from tcsfw.verdict import Verdict
 
 
 class ZEDReader(BaseFileCheckTool):
-    """Read ZED scanning results for a software"""
+    """Read ZED attack proxy scanning results for a software"""
     def __init__(self, system: IoTSystem):
         super().__init__("zed", system)
         self.tool.name = "ZED Attack Proxy"
         self.data_file_suffix = ".json"
 
-    def _check_file(self, data_file: pathlib.Path, interface: EventInterface, source: EvidenceSource):
-        evidence = Evidence(source)
+    def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource) -> bool:
+        raw_file = json.load(data)
 
-        with data_file.open() as f:
-            raw_file = json.load(f)
+        evidence = Evidence(source)
 
         source.timestamp = datetime.strptime(raw_file["@generated"], "%a, %d %b %Y %H:%M:%S")
 
@@ -36,6 +36,8 @@ class ZEDReader(BaseFileCheckTool):
             exp = f"{self.tool.name} scan completed"
             ev = PropertyAddressEvent(evidence, ep, Properties.WEB_BEST.value(ps, explanation=exp))
             interface.property_address_update(ev)
+
+        return True
 
     def _read_alerts(self, interface: EventInterface, evidence: Evidence, endpoint: EndpointAddress, raw: List) \
             -> Set[PropertyVerdict]:

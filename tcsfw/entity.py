@@ -2,21 +2,22 @@ import enum
 from typing import Dict, Optional, Self, List, Any, Tuple, Iterable, Callable, Iterator, TypeVar
 
 from tcsfw.claim import Claim
-from tcsfw.property import PropertyKey
-from tcsfw.verdict import Verdict, Verdictable
+from tcsfw.property import Properties, PropertyKey
+from tcsfw.verdict import Status, Verdict, Verdictable
 
 
 class Entity:
     """An entity, network node or connection"""
     def __init__(self):
         self.concept_name = "other"
+        self.status = Status.UNEXPECTED
         self.properties: Dict[PropertyKey, Any] = {}
 
     def long_name(self) -> str:
-        return self.__repr__()
+        return self.concept_name
 
     def reset(self):
-        """Reset, at least properties"""
+        """Reset entity and at least properties"""
         new_p: Dict[PropertyKey, Any] = {}
         for k, v in self.properties.items():
             nv = k.reset(v)
@@ -28,6 +29,26 @@ class Entity:
         """Set a property"""
         self.properties[key_value[0]] = key_value[1]
         return self
+
+    def set_seen_now(self) -> Optional[Verdict]:
+        """The entity is seen now, update and return new verdict IF changed"""
+        v = Properties.EXPECTED.get_verdict(self.properties)
+        if self.status == Status.EXPECTED: 
+            if v == Verdict.PASS:
+                return None  # already ok
+            v = Verdict.PASS
+        elif self.status == Status.UNEXPECTED:
+            if v == Verdict.FAIL:
+                return None  # already not ok
+            v = Verdict.FAIL
+        else:
+            return None  # does not matter if seen or not
+        self.set_property(Properties.EXPECTED.value(v))
+        return v
+
+    def get_expected_verdict(self, default: Optional[Verdict] = Verdict.INCON) -> Verdict:
+        """Get the expected verdict or undefined"""
+        return Properties.EXPECTED.get_verdict(self.properties) or default
 
     def get_children(self) -> Iterable['Entity']:
         """Get child entities, if any"""
@@ -41,7 +62,7 @@ class Entity:
                 v = Verdict.resolve(v, c.get_verdict(cache))
             for p in self.properties.values():
                 v = Verdict.resolve(v, p.get_verdict()) if isinstance(p, Verdictable) else v
-            cache[self] = v = v or Verdict.UNDEFINED
+            cache[self] = v = v or Verdict.INCON
         return v
 
     def is_relevant(self) -> bool:
@@ -63,6 +84,21 @@ class Entity:
         for c in self.get_children():
             yield from c.iterate(relevant_only)
 
+    def status_verdict(self) -> Tuple[Status, Verdict]:
+        """Get status and expected verdict"""
+        return self.status, self.get_expected_verdict()
+
+    def status_string(self) -> str:
+        """Get a status string"""
+        st = self.status.value
+        v = Properties.EXPECTED.get(self.properties)
+        if v is not None:
+            st = f"{st}/{v.get_verdict().value}"
+        return st
+
+    def __repr__(self):
+        s = f"{self.status_string()} {self.long_name()}"
+        return s
 
 class ClaimAuthority(enum.Enum):
     """Claim or claim status authority"""
@@ -72,7 +108,7 @@ class ClaimAuthority(enum.Enum):
 
 
 class ClaimStatus:
-    def __init__(self, claim: Claim, explanation="", verdict=Verdict.UNDEFINED, authority=ClaimAuthority.MODEL):
+    def __init__(self, claim: Claim, explanation="", verdict=Verdict.INCON, authority=ClaimAuthority.MODEL):
         assert claim is not None and verdict is not None
         self.claim = claim
         self.verdict = verdict

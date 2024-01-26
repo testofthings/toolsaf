@@ -137,7 +137,7 @@ class RequirementClaimMapper:
             cs = ctx.check(claim, e)
             if cs is None:
                 # location defined, but no claim -> inconclusive
-                cs = ClaimStatus(claim, verdict=Verdict.UNDEFINED, authority=ClaimAuthority.MODEL)
+                cs = ClaimStatus(claim, verdict=Verdict.INCON, authority=ClaimAuthority.MODEL)
             assert not (cs.verdict == Verdict.IGNORE and cs.authority == ClaimAuthority.TOOL), \
                 f"Tool assigned ignore not wanted from claim (should de-select): {cs}"
             rs = RequirementStatus(requirement, ctx, cs)

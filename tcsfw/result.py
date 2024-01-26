@@ -4,7 +4,9 @@ from typing import TextIO, List, Dict, Optional, Self, Set
 from tcsfw.address import Protocol
 from tcsfw.entity import Entity
 from tcsfw.model import IoTSystem, Host, HostType, ConnectionType, Service, NetworkNode
-from tcsfw.verdict import Verdict
+from tcsfw.property import Properties
+from tcsfw.registry import Registry
+from tcsfw.verdict import Status, Verdict
 
 # Keywords for verdicts
 FAIL = "fail"
@@ -14,15 +16,19 @@ INCONCLUSIVE = "-"
 
 class Report:
     """Report of the system status"""
-    def __init__(self, system: IoTSystem, details=True):
-        self.system = system
-        self.details = details
+    def __init__(self, registry: Registry):
+        self.registry = registry
+        self.system = registry.system
         self.logger = logging.getLogger("reporter")
 
     def print_properties(self, entity: NetworkNode, indent: str, writer: TextIO):
         """Print properties from entity"""
         for k, v in entity.properties.items():
-            writer.write(f"{indent}{k} {k.to_string(v)}\n")
+            if k == Properties.EXPECTED:
+                continue  # encoded into status string
+            com = k.get_explanation(v)
+            com = f" # {com}" if com else ""
+            writer.write(f"{indent}{k.get_value_string(v)}{com}\n")
 
     def print_report(self, writer: TextIO):
         """Print textual report"""
@@ -36,37 +42,34 @@ class Report:
             if not h.is_relevant():
                 continue
             h_name = f"{h.name}"
-            writer.write(f"[{h.status}] {h_name}\n")
-            for sw in h.components:
-                writer.write(f"  {sw.name} [{sw.status.verdict.value}]\n")
-                sw_info = sw.info_string()
-                if sw_info:
-                    writer.write("    " + sw_info.replace("\n", "\n    ") + "\n")
+            writer.write(f"{h_name} [{h.status_string()}]\n")
             ads = [f"{a}" for a in sorted(h.addresses)]
             for a in ads:
                 rev_map.setdefault(a, []).append(h)
             ads = [a for a in ads if a != h_name]
             if ads:
-                writer.write(f"  " + ", ".join(ads) + "\n")
-            if self.details:
-                for ev in h.status.events:
-                    writer.write(f"  " + ", ".join(ads) + "\n")
+                writer.write(f"  Addresses: " + " ".join(ads) + "\n")
+
+            for comp in h.components:
+                writer.write(f"  {comp.name} [Component]\n")
+                sw_info = comp.info_string()
+                if sw_info:
+                    writer.write("    " + sw_info.replace("\n", "\n    ") + "\n")
+                self.print_properties(comp, "    ", writer)
+
             self.print_properties(h, "  ", writer)
             for s in h.children:
                 auth = f" auth={s.authentication}" if isinstance(s, Service) else ""
-                writer.write(f"  {s.name} {s.status}{auth}\n")
-                self.print_properties(s, "  ", writer)
-                if self.details:
-                    for ev in s.status.events:
-                        writer.write(f"    {ev}\n")
+                writer.write(f"  {s.name} [{s.status_string()}]{auth}\n")
+                self.print_properties(s, "    ", writer)
         for ad, hs in sorted(rev_map.items()):
             if len(hs) > 1:
                 self.logger.warning(f"DOUBLE mapped {ad}: " + ", ".join([f"{h}" for h in hs]))
 
         writer.write("== Connections ==\n")
-        connections = self.system.collect_flows()
+        connections = self.registry.logging.collect_flows()
         for conn, _ in connections.items():
-            stat = conn.con_type.value if conn.con_type == ConnectionType.LOGICAL else conn.status.verdict.value
+            stat = conn.con_type.value if conn.con_type == ConnectionType.LOGICAL else conn.status_string()
             writer.write(f"{conn.source.long_name():>30} ==> {conn.target.long_name()} [{stat}]\n")
 
     def _create_report(self) -> 'TabularReport':
@@ -103,14 +106,14 @@ class Report:
         for h in hosts:
             if not h.is_relevant():
                 continue
-            claimed = 1 if h.status.verdict in {Verdict.NOT_SEEN, Verdict.MISSING, Verdict.PASS} else 0
-            verified = 1 if h.status.verdict in {Verdict.PASS, Verdict.UNEXPECTED} else 0
+            claimed = 1 if h.status == Status.EXPECTED else 0
+            verified = 1 if Properties.EXPECTED.get_verdict(h.properties) == Verdict.PASS else 0
             if claimed == verified == 0:
                 continue
             admin = h.host_type == HostType.ADMINISTRATIVE
             is_local = not h.is_global()
             self.logger.info("Host %s claim=%s verify=%s local=%s admin=%s ver=%s", h.name, claimed, verified,
-                             is_local, admin, h.status.verdict.value)
+                             is_local, admin, h.status_string())
             if not claimed:
                 un_n.verified += verified
                 un_n.entities.add(h)
@@ -140,14 +143,14 @@ class Report:
             for s in h.children:
                 if not s.is_relevant():
                     continue
-                claimed = 1 if s.status.verdict in {Verdict.NOT_SEEN, Verdict.MISSING, Verdict.PASS} else 0
-                verified = 1 if s.status.verdict in {Verdict.PASS, Verdict.UNEXPECTED} else 0
+                claimed = 1 if h.status == Status.EXPECTED else 0
+                verified = 1 if Properties.EXPECTED.get_verdict(h.properties) == Verdict.PASS else 0
                 if claimed == verified == 0:
                     continue
                 admin = s.host_type == HostType.ADMINISTRATIVE
                 is_local = not s.is_global()
                 self.logger.info("Service %s %s claim=%s verify=%s local=%s admin=%s ver=%s", h.name, s.name,
-                                 claimed, verified, is_local, admin, s.status.verdict.value)
+                                 claimed, verified, is_local, admin, s.status_string())
                 if not claimed:
                     un_n.verified += verified
                     un_n.entities.add(s)
@@ -179,15 +182,15 @@ class Report:
                 if c in conns or not c.is_relevant() or c.con_type == ConnectionType.LOGICAL:
                     continue
                 conns.add(c)
-                claimed = 1 if c.status.verdict in {Verdict.NOT_SEEN, Verdict.MISSING, Verdict.PASS} else 0
-                verified = 1 if c.status.verdict in {Verdict.PASS, Verdict.UNEXPECTED} else 0
+                claimed = 1 if h.status == Status.EXPECTED else 0
+                verified = 1 if Properties.EXPECTED.get_verdict(h.properties) == Verdict.PASS else 0
                 if claimed == verified == 0:
                     continue
                 encrypt = c.con_type == ConnectionType.ENCRYPTED
                 admin = c.con_type == ConnectionType.ADMINISTRATIVE
                 self.logger.info("Conn %s => %s claim=%s verify=%s local=%s admin=%s ver=%s",
                                  c.source.long_name(), c.target.long_name(),
-                                 claimed, verified, encrypt, admin, c.status.verdict.value)
+                                 claimed, verified, encrypt, admin, c.status_string())
                 if not claimed:
                     un_n.verified += verified
                     un_n.entities.add(c)
@@ -217,14 +220,14 @@ class Report:
                 if not s.is_relevant() or not isinstance(s, Service):
                     continue
                 pro = s.protocol
-                claimed = 1 if s.status.verdict in {Verdict.NOT_SEEN, Verdict.MISSING, Verdict.PASS} else 0
-                verified = 1 if s.status.verdict in {Verdict.PASS, Verdict.UNEXPECTED} else 0
+                claimed = 1 if h.status == Status.EXPECTED else 0
+                verified = 1 if Properties.EXPECTED.get_verdict(h.properties) == Verdict.PASS else 0
                 if claimed == verified == 0:
                     continue
                 admin = s.host_type == HostType.ADMINISTRATIVE
                 self.logger.info("Protocol %s %s %s claim=%s verify=%s admin=%s ver=%s",
                                  h.name, s.name, pro.value if pro else "???",
-                                 claimed, verified, admin, s.status.verdict.value)
+                                 claimed, verified, admin, s.status_string())
                 if not claimed:
                     un_n.verified += verified
                     un_n.entities.add(s)
@@ -270,17 +273,15 @@ class Report:
                     for c, v in s.claims.items():
                         if v.verdict == Verdict.PASS:
                             checked = 1  # checked ok
-                        elif v.verdict not in {Verdict.NOT_SEEN, Verdict.IGNORE}:
+                        elif v.verdict not in {Verdict.INCON, Verdict.IGNORE}:
                             failed = 1  # at least one claim failed
                 else:
                     # no special claims
-                    if s.status.verdict == Verdict.PASS:
+                    if Properties.EXPECTED.get_verdict(s.properties) == Verdict.PASS:
                         checked = 1
-                    # if s.status.verdict == Verdict.NOT_SEEN:
-                    #     claimed = 1
                 admin = s.host_type == HostType.ADMINISTRATIVE
                 self.logger.info("Checked %s %s claim=%s fail=%s check=%s admin=%s ver=%s", h.name, s.name,
-                                 claimed, failed, checked, admin, s.status.verdict.value)
+                                 claimed, failed, checked, admin, s.status_string())
                 if failed:
                     fail_n.verified += checked
                     fail_n.entities.add(s)

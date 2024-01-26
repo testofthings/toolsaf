@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 from tcsfw.address import AnyAddress, Addresses, EndpointAddress, Protocol, IPAddress, HWAddress, DNSName
 from tcsfw.entity import Entity
 from tcsfw.traffic import Flow, EvidenceSource
-from tcsfw.verdict import Status, Verdict, FlowEvent
+from tcsfw.verdict import Status, Verdict
 
 
 class HostType(enum.Enum):
@@ -38,13 +38,6 @@ class ExternalActivity(enum.IntEnum):
     UNLIMITED = 3              # unlimited activity, including client connections
 
 
-class Session:
-    """A connection session"""
-    def __init__(self, start_time: datetime.datetime):
-        self.start_time = start_time
-        self.status = Status()
-
-
 class Connection(Entity):
     """A connection from source to target"""
     def __init__(self, source: 'Addressable', target: 'Addressable') -> None:
@@ -53,14 +46,6 @@ class Connection(Entity):
         self.source = source
         self.target = target
         self.con_type = ConnectionType.UNKNOWN
-        self.status = Status()
-        self.sessions: List[Session] = []
-
-    def get_verdict(self, cache: Dict['Entity', Verdict]) -> Verdict:
-        v = super().get_verdict(cache)
-        v = Verdict.resolve(self.status.verdict, v)
-        cache[self] = v
-        return v
 
     def is_original(self) -> bool:
         """Is this entity originally defined in the model?"""
@@ -69,26 +54,20 @@ class Connection(Entity):
 
     def is_relevant(self, or_relevant_end=False) -> bool:
         """Is this connection relevant, i.e. not undefined or external?"""
-        v = self.status.verdict
-        if v == Verdict.UNDEFINED:
-            return False  # this does not exist
-        if v == Verdict.EXTERNAL:
-            if not or_relevant_end or not (self.source.status.is_expected() or self.target.status.is_expected()):
-                return False  # external connection (not with expected ends)
-        return True
-        # return self.status.verdict not in {Verdict.UNDEFINED, Verdict.EXTERNAL}
+        if self.status == Status.EXPECTED:
+            return True
+        if or_relevant_end:
+            return False
+        return self.source.is_relevant() or self.target.is_relevant()
+
+    def is_expected(self) -> bool:
+        """Is the connection expected?"""
+        return self.status == Status.EXPECTED
 
     def is_encrypted(self) -> bool:
         """Is an encrypted connection?"""
         t = self.target
         return isinstance(t, Service) and t.is_encrypted()
-
-    def update_verdict(self, new_verdict: Verdict) -> Verdict:
-        """Update local verdict and endpoint verdicts"""
-        # NOTE: Once connection is created, it's status should only be updated by inspector.
-        # This is for consistency, but also to avoid excessive events due status changes!
-        self.status.verdict = Verdict.resolve(self.status.verdict, new_verdict)
-        return self.status.verdict
 
     def is_end(self, entity: 'NetworkNode') -> bool:
         """Is given entity either end of the connection?"""
@@ -97,18 +76,12 @@ class Connection(Entity):
     def reset_connection(self, system: 'IoTSystem'):
         """Reset this connection"""
         self.reset()
-        self.status.reset(Verdict.NOT_SEEN if self in system.originals else Verdict.UNDEFINED)
-        self.sessions.clear()
+        if self not in system.originals:
+            self.status = Status.PLACEHOLDER
 
     def long_name(self) -> str:
         """A long name for human consumption"""
         return f"{self.source.long_name()} => {self.target.long_name()}"
-
-    def __repr__(self):
-        s = f"{self.status.verdict.value} {self.source.name} => {self.target.name}"
-        for p in self.sessions:
-            s += f"\nSessions:  {p}"
-        return s
 
 
 T = TypeVar("T")
@@ -134,18 +107,11 @@ class NodeComponent(Entity):
         super().__init__()
         self.entity = entity
         self.name = name
-        self.simple_value: Optional[str] = None  # some components can use this
-        self.status = Status(Verdict.NOT_SEEN)
         self.sub_components: List[NodeComponent] = []
+        self.status = Status.EXPECTED
 
     def get_children(self) -> Iterable['Entity']:
         return self.sub_components
-
-    def get_verdict(self, cache: Dict['Entity', Verdict]) -> Verdict:
-        v = super().get_verdict(cache)
-        v = Verdict.resolve(v, self.status.verdict)
-        cache[self] = v
-        return v
 
     def long_name(self) -> str:
         return self.name
@@ -162,7 +128,6 @@ class NodeComponent(Entity):
     def reset(self):
         """Reset model"""
         super().reset()
-        self.status.reset(Verdict.NOT_SEEN)  # NOTE: What to put here?
         for s in self.sub_components:
             s.reset()
 
@@ -179,19 +144,12 @@ class NetworkNode(Entity):
         self.description = ""
         self.match_priority = 0
         self.visual = False  # show visual image?
-        self.status = Status()
         self.children: List[Addressable] = []
         self.components: List[NodeComponent] = []
         self.external_activity = ExternalActivity.BANNED
 
     def get_children(self) -> Iterable['Entity']:
         return itertools.chain(self.children, self.components)
-
-    def get_verdict(self, cache: Dict['Entity', Verdict]) -> Verdict:
-        v = super().get_verdict(cache)
-        v = Verdict.resolve(v, self.status.verdict)
-        cache[self] = v
-        return v
 
     def long_name(self):
         """Get longer name, or at least the name"""
@@ -214,7 +172,8 @@ class NetworkNode(Entity):
         return False
 
     def is_relevant(self) -> bool:
-        return self.status.verdict not in {Verdict.UNDEFINED, Verdict.EXTERNAL}
+        """Is relevant entity?"""
+        return self.status == Status.EXPECTED
 
     def get_connections(self) -> List[Connection]:
         """Get connections excluding external and undefined"""
@@ -301,15 +260,13 @@ class NetworkNode(Entity):
     def reset(self):
         """Reset model"""
         super().reset()
-        self.status.reset(Verdict.NOT_SEEN if self.is_original() else Verdict.UNDEFINED)
+        if not self.is_original():
+            self.status = Status.PLACEHOLDER
         for c in self.children:
             c.reset()
         for s in self.components:
             s.reset()
-        # NOTE: Addressable or does not override, thus addresses remain to that the Entities are reused
-
-    def __repr__(self):
-        return f"{self.status} {self.name}"
+        # NOTE: Addressable does not override, thus addresses remain to that the Entities are reused
 
 
 class Addressable(NetworkNode):
@@ -319,25 +276,12 @@ class Addressable(NetworkNode):
         self.parent: Optional[NetworkNode] = None
         self.addresses: Set[AnyAddress] = set()
 
-    def update_verdict(self, new_verdict: Verdict) -> Verdict:
-        """Update local verdict and parent verdicts"""
-        # NOTE: Once entity is created, it's status should only be updated by inspector.
-        # This is for consistency, but also to avoid excessive events due status changes!
-        if self.status.verdict == Verdict.EXTERNAL:
-            # external remains such
-            return self.status.verdict
-        nv = Verdict.resolve(self.status.verdict, new_verdict)
-        if nv != self.status.verdict:
-            self.status.verdict = nv
-            if isinstance(self.parent, Addressable):
-                self.parent.update_verdict(nv)
-        return nv
-
     def create_service(self, address: EndpointAddress) -> 'Service':
         s = Service(Service.make_name(f"{address.protocol.value.upper()}", address.port), self)
         s.addresses.add(address.change_host(Addresses.ANY))
-        if self.status.verdict in {Verdict.UNEXPECTED, Verdict.EXTERNAL}:
-            s.status.verdict = self.status.verdict
+        if self.status == Status.EXTERNAL:
+            s.status = Status.EXTERNAL  # only external propagates, otherwise unexpected
+        s.external_activity = self.external_activity
         self.children.append(s)
         return s
 
@@ -381,6 +325,13 @@ class Addressable(NetworkNode):
     def new_connection(self, connection: Connection, flow: Flow, target: bool):
         """New connection with this entity either as source or target"""
         pass
+
+    def set_seen_now(self) -> Optional[Verdict]:
+        v = super().set_seen_now()
+        if self.parent and v is not None:
+            # propagate to parent, it is also seen now
+            self.parent.set_seen_now()
+        return v
 
     def get_system(self) -> 'IoTSystem':
         return self.parent.get_system()
@@ -469,7 +420,7 @@ class Service(Addressable):
         return self.protocol in {Protocol.TLS, Protocol.SSH}
 
     def __repr__(self):
-        return f"{self.parent} {self.name}"
+        return f"{self.status_string()} {self.parent.long_name()} {self.name}"
 
 
 # Source and target, optional
@@ -481,7 +432,7 @@ class IoTSystem(NetworkNode):
     def __init__(self, name="IoT system"):
         super().__init__(name)
         self.concept_name = "system"
-        self.status.verdict = Verdict.PASS  # I pass
+        self.status = Status.EXPECTED
         # network mask(s)
         self.ip_networks = [ipaddress.ip_network("192.168.0.0/16")]  # reasonable default
         # online resources
@@ -560,7 +511,11 @@ class IoTSystem(NetworkNode):
                     add.name = self.free_child_name(nn)
             return add
 
-        named = named or self.get_endpoint(name)
+        if named is None:
+            named = self.get_endpoint(name)
+            # FIXME: If we would know who is asking, then could check its external_actvitity
+            if named.status == Status.UNEXPECTED:
+                named.status = Status.EXTERNAL
 
         if not add:
             # just use the named
@@ -607,6 +562,7 @@ class IoTSystem(NetworkNode):
                     e = e.get_endpoint(address) or e
                 break
         else:
+            # create new host and possibly service
             e = Host(self, f"{h_add}")
             if h_add.is_multicast():
                 e.host_type = HostType.ADMINISTRATIVE
@@ -614,6 +570,7 @@ class IoTSystem(NetworkNode):
                 e.host_type = HostType.REMOTE if self.is_external(h_add) else HostType.GENERIC
             e.description = "Unexpected host"
             e.addresses.add(h_add)
+            e.external_activity = ExternalActivity.UNLIMITED  # we know nothing about its behavior
             self.children.append(e)
         if isinstance(address, EndpointAddress) and e.is_host():
             e = e.create_service(address)
@@ -632,24 +589,6 @@ class IoTSystem(NetworkNode):
         self.connections[source[1], target[1]] = c
         return c
 
-    def collect_flows(self) -> Dict[Connection, List[Tuple[NetworkNode, NetworkNode, FlowEvent]]]:
-        """Collect relevant connection flows"""
-        # connections, the same order even when observing them
-        cs = {}
-        for c in self.get_connections():
-            if c in cs or c.status.verdict == Verdict.UNDEFINED:
-                continue
-            ca = cs.setdefault(c, [])
-            for s in c.sessions:
-                for i in s.status.events:
-                    if not isinstance(i, FlowEvent):
-                        continue
-                    if not i.reply:
-                        ca.append((c.source, c.target, i))
-                    else:
-                        ca.append((c.target, c.source, i))
-        return cs
-
     def get_addresses(self) -> Set[AnyAddress]:
         """Get all addresses"""
         ads = set()
@@ -659,7 +598,6 @@ class IoTSystem(NetworkNode):
 
     def reset(self):
         super().reset()
-        self.status.verdict = Verdict.NOT_SEEN
         for h in self.get_hosts():
             for c in h.connections:
                 c.reset_connection(self)
@@ -694,14 +632,8 @@ class IoTSystem(NetworkNode):
         s = []
         for h in self.get_hosts():
             s.append(f"{h.status} {h.name} {sorted(h.addresses)}")
-        connections = self.collect_flows()
-        for conn, obs in connections.items():
+        for conn in self.connections.values():
             s.append(f"{conn.status} {conn}")
-            for o in obs:
-                if o[1] == conn.source:
-                    s.append(f"  {o[1]} <- {o[0]}")
-                else:
-                    s.append(f"  {o[0]} -> {o[1]}")
         return "\n".join(s)
 
 
@@ -715,7 +647,7 @@ class ModelListener:
         """Connection created or changed"""
         pass
 
-    def newFlow(self, flow: FlowEvent, connection: Connection):
+    def newFlow(self, source: AnyAddress, target: AnyAddress, flow: Flow, connection: Connection):
         """New flow event"""
         pass
 
@@ -733,6 +665,10 @@ class EvidenceNetworkSource(EvidenceSource):
         self.address_map = address_map or {}
         self.activity_map = activity_map or {}
 
-    def rename(self, name: str) -> Self:
-        return EvidenceNetworkSource(name, self.base_ref, self.label,
-                                     self.address_map, self.activity_map)
+    def rename(self, name: Optional[str] = None, base_ref: Optional[str] = None,
+               label: Optional[str] = None) -> Self:
+        return EvidenceNetworkSource(
+            self.name if name is None else name,
+            self.base_ref if base_ref is None else base_ref,
+            self.label if label is None else label,
+            self.address_map, self.activity_map)

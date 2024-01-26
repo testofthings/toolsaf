@@ -127,19 +127,36 @@ class Addresses:
                 add = a
         return add or IPAddresses.NULL
 
+    @classmethod
+    def parse_address(cls, address: str) -> AnyAddress:
+        """Parse any address type from string, type given as 'type/address'"""
+        v, _, t = address.rpartition("|")
+        if v == "":
+            t, v = "ip", t  # default is IP
+        if t == "ip":
+            return IPAddress.new(v)
+        if t == "hw":
+            return HWAddress.new(v)
+        if t == "name":
+            return DNSName(v)
+        raise Exception(f"Unknown address type '{t}', allowed are 'ip', 'hw', and 'name'")
 
 class HWAddress(AnyAddress):
     """Hardware address, e.g. Ethernet"""
     def __init__(self, data: str):
         self.data = data.lower()
+        assert len(self.data) == 17, f"Expecting HW address syntax dd:dd:dd:dd:dd:dd, got {data}"
 
     @classmethod
     def new(cls, data: str) -> 'HWAddress':
         """New address, check something about the format"""
-        p = data.split(":")
+        p = list(data.split(":"))
         if len(p) != 6:
             raise Exception(f"Bad HW address '{data}'")
-        return HWAddress(data)
+        for i in range(6):
+            if len(p[i]) != 2:
+                p[i] = f"0{p[i]}"  # zero-prefix
+        return HWAddress(":".join(p))
 
     @classmethod
     def from_ip(cls, address: 'IPAddress') -> 'HWAddress':
@@ -294,7 +311,7 @@ class EndpointAddress(AnyAddress):
     @classmethod
     def hw(cls, hw_address: str, protocol: Protocol, port: int) -> 'EndpointAddress':
         """Shortcut to create HW-address endpoint"""
-        return EndpointAddress(HWAddress(hw_address), protocol, port)
+        return EndpointAddress(HWAddress.new(hw_address), protocol, port)
 
     def get_ip_address(self) -> Optional[IPAddress]:
         return self.host.get_ip_address()

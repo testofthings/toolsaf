@@ -1,3 +1,4 @@
+from io import BytesIO, TextIOWrapper
 import pathlib
 import re
 from typing import List
@@ -20,9 +21,9 @@ class MITMLogReader(BaseFileCheckTool):
         self.tool.name = "MITM tool"
         self.data_file_suffix = ".log"
 
-    def _check_file(self, data_file: pathlib.Path, interface: EventInterface, source: EvidenceSource):
+    def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource) -> bool:
         """Read a log file"""
-        evidence = Evidence(source, tail_ref=data_file.as_posix())
+        evidence = Evidence(source)
         names = set()
 
         # Format:
@@ -30,7 +31,7 @@ class MITMLogReader(BaseFileCheckTool):
 
         matcher = re.compile(r"\[[^]]+] ([^,]+),([^,]+),([^,]+),([^,]+),([^,]+),([^,]+),.*")
 
-        with data_file.open() as f:
+        with TextIOWrapper(data) as f:
             while True:
                 raw_line = f.readline()
                 if not raw_line:
@@ -44,6 +45,7 @@ class MITMLogReader(BaseFileCheckTool):
                 if ev not in {"tls_established", "tls_failed"}:
                     continue
                 flow = IPFlow.tcp_flow(
+                    # we do not know HW addresses from the log
                     HWAddresses.NULL.data, s_add, int(s_port),
                     HWAddresses.NULL.data, d_add, int(d_port))
                 flow.evidence = evidence
@@ -54,11 +56,13 @@ class MITMLogReader(BaseFileCheckTool):
                         interface.name(name)
                         names.add(name)
                 c = interface.connection(flow)
-                if not c.status.is_expected():
+                if not c.is_expected():
                     continue  # Non-expected connection, who cares...
                 v = Verdict.PASS if ev == "tls_failed" else Verdict.FAIL
                 ev = PropertyEvent(evidence, c, Properties.MITM.value(v))
                 interface.property_update(ev)
+
+        return True
 
     def _entity_coverage(self, entity: Entity) -> List[PropertyKey]:
         if isinstance(entity, Connection):

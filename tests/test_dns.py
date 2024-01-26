@@ -1,6 +1,7 @@
 import pathlib
 
 from tcsfw.address import IPAddress, DNSName, Protocol
+from tcsfw.inspector import Inspector
 from tcsfw.main import SystemBuilder, DNS
 from tcsfw.matcher import SystemMatcher
 from tcsfw.pcap_reader import PCAPReader
@@ -28,10 +29,10 @@ def test_dns_pcap():
     dev1 = sb.device().ip("192.168.20.132")
     dns = sb.backend().ip("155.198.142.7") / DNS
     c1 = dev1 >> dns
-    m = SystemMatcher(sb.system)
+    m = Inspector(sb.system)
 
     s = sb.system
-    PCAPReader.inspect(pathlib.Path("tests/samples/dns.pcap"), s)
+    PCAPReader.inspect(pathlib.Path("tests/samples/pcap/dns.pcap"), m)
     hosts = s.get_hosts()
     assert len(hosts) == 10
 
@@ -44,15 +45,15 @@ def test_dns_pcap():
     assert host.name == "ns-923.amazon.com"
 
     c = m.connection(IPFlow.udp_flow(source_ip="192.168.20.132", target_ip="155.198.142.7", target_port=53))
-    assert c.status.verdict == Verdict.PASS
+    assert c.get_expected_verdict() == Verdict.PASS
 
 
 def test_dns_large_pcap():
     sb = SystemBuilder()
     sb.any() / DNS
-    m = SystemMatcher(sb.system)
+    m = Inspector(sb.system)
     s = sb.system
-    PCAPReader.inspect(pathlib.Path("tests/samples/dns-large-set.pcap"), s)
+    PCAPReader.inspect(pathlib.Path("tests/samples/pcap/dns-large-set.pcap"), m)
     hosts = sorted(s.get_hosts(), key=lambda h: -len(h.addresses))
     assert len(hosts) == 85
     h = hosts[0]
@@ -65,9 +66,9 @@ def test_dns_large_pcap():
 def test_dns_large_pcap2():
     sb = SystemBuilder()
     sb.any() / DNS
-    m = SystemMatcher(sb.system)
+    m = Inspector(sb.system)
     s = sb.system
-    PCAPReader.inspect(pathlib.Path("tests/samples/dns-large-set2.pcap"), s)
+    PCAPReader.inspect(pathlib.Path("tests/samples/pcap/dns-large-set2.pcap"), m)
     hosts = sorted(s.get_hosts(), key=lambda h: -len(h.addresses))
     assert len(hosts) == 18
     hs = set([h.name for h in hosts])

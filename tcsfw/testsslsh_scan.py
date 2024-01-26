@@ -1,3 +1,4 @@
+from io import BytesIO
 import json
 import pathlib
 from typing import Dict, List, Optional
@@ -15,18 +16,16 @@ from tcsfw.verdict import Verdict
 
 class TestSSLScan(EndpointCheckTool):
     def __init__(self, system: IoTSystem):
-        super().__init__("testssl", system)
+        super().__init__("testssl", ".json", system)
         self.tool.name = "Testssl.sh"
-        self.data_file_suffix = ".json"
         self.property_key = Properties.PROTOCOL.append_key("tls")
 
     def _filter_node(self, node: NetworkNode) -> bool:
         return isinstance(node, Service)
 
-    def _check_entity(self,  endpoint: AnyAddress, data_file: pathlib.Path, interface: EventInterface,
-                      source: EvidenceSource):
-        with data_file.open() as f:
-            raw = json.load(f)
+    def process_stream(self,  endpoint: AnyAddress, data_file: BytesIO, interface: EventInterface,
+                       source: EvidenceSource):
+        raw = json.load(data_file)
         evi = Evidence(source)
         self.do_scan(interface, endpoint, raw, evi)
 

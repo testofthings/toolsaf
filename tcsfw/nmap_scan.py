@@ -1,4 +1,5 @@
 import datetime
+from io import BytesIO
 import pathlib
 from typing import Dict, Set, List
 from xml.etree import ElementTree
@@ -19,11 +20,10 @@ class NMAPScan(BaseFileCheckTool):
         self.tool.name = "Nmap scan"
         self.data_file_suffix = ".xml"
 
-    def _check_file(self, data_file: pathlib.Path, interface: EventInterface, source: EvidenceSource):
-        system = self.system
+    def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource) -> bool:
+        tree = ElementTree.parse(data)
 
-        with data_file.open() as file:
-            tree = ElementTree.parse(file)
+        system = self.system
 
         run_stat = tree.getroot().find('runstats')
         finished_x = run_stat.find('finished')
@@ -44,7 +44,7 @@ class NMAPScan(BaseFileCheckTool):
                     if addr_type == 'ipv4':
                         ip_addr = IPAddress.new(raw_addr)
                     elif addr_type == 'mac':
-                        hw_addr = HWAddress(raw_addr)
+                        hw_addr = HWAddress.new(raw_addr)
                     else:
                         self.logger.warning("Ignoring scanned address: %s", raw_addr)
                         continue
@@ -79,6 +79,8 @@ class NMAPScan(BaseFileCheckTool):
 
             # summarize the seen ports
             interface.host_scan(HostScan(evidence, ip_addr or hw_addr, host_services))
+
+        return True
 
     def _entity_coverage(self, entity: Entity) -> List[PropertyKey]:
         if isinstance(entity, IoTSystem):

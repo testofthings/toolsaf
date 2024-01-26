@@ -1,4 +1,5 @@
 import datetime
+from io import BytesIO
 import json
 import logging
 import pathlib
@@ -8,7 +9,7 @@ from typing import Tuple, List, cast
 from tcsfw.components import Software
 from tcsfw.entity import Entity
 from tcsfw.event_interface import EventInterface, PropertyEvent
-from tcsfw.model import IoTSystem, NetworkNode
+from tcsfw.model import IoTSystem, NetworkNode, NodeComponent
 from tcsfw.property import PropertyKey
 from tcsfw.tools import ComponentCheckTool
 from tcsfw.traffic import EvidenceSource, Evidence
@@ -18,20 +19,19 @@ from tcsfw.events import ReleaseInfo
 class ReleaseReader(ComponentCheckTool):
     """Read release data"""
     def __init__(self, system: IoTSystem):
-        super().__init__("gitlab-releases", system)
+        super().__init__("gitlab-releases", ".json", system)
         self.tool.name = "GitLab releases"
-        self.data_file_suffix = ".json"
 
     def _filter_component(self, node: NetworkNode) -> bool:
         """Filter checked entities"""
-        return isinstance(None, Software)
+        return isinstance(node, Software)
 
-    def _check_entity(self, node: NetworkNode, data_file: pathlib.Path, interface: EventInterface,
-                      source: EvidenceSource):
-        software = cast(Software, node)
+    def process_stream(self, component: NodeComponent, data_file: BytesIO, interface: EventInterface,
+                       source: EvidenceSource):
+        software = cast(Software, component)
 
-        with data_file.open() as f:
-            root = json.load(f)
+        root = json.load(data_file)
+
         releases: List[Tuple[datetime.datetime, str]] = []
         for rel in root:
             ts = ReleaseInfo.parse_time(rel['published_at'][:10])

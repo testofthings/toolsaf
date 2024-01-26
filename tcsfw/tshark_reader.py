@@ -1,8 +1,9 @@
 import argparse
 import datetime
+from io import BytesIO
 import json
 import pathlib
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Self
 
 from tcsfw.address import HWAddress, Protocol
 from tcsfw.components import Software
@@ -24,17 +25,17 @@ class TSharkReader(BaseFileCheckTool):
         # current frame
         self.source: Optional[EvidenceSource] = None
 
-    def _check_file(self, data_file: pathlib.Path, interface: EventInterface, source: EvidenceSource):
-        self.read(data_file, interface, source)
+    def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource) -> Self:
+        # not for large files, very Python-style
+        raw = json.load(data)
+        self.source = source
+        self.parse(raw, interface)
+        return self
 
     def read(self, data_file: pathlib.Path, interface: EventInterface, source: EvidenceSource):
         """Read PCAP file"""
         with data_file.open("r") as f:
-            # not for large files, very Python-style
-            raw = json.load(f)
-        self.source = source
-        self.parse(raw, interface)
-        return self
+            return self.read_stream(f, data_file.name, interface, source)
 
     def parse(self, raw: Dict, interface: EventInterface):
         """Parse JSON"""
@@ -52,7 +53,7 @@ class TSharkReader(BaseFileCheckTool):
     def parse_hvc_event(self, raw: Dict, interface: EventInterface, evidence: Evidence) -> HWAddress:
         bd_addr = raw['bthci_evt.bd_addr']
         ev_code = int(raw['bthci_evt.le_advts_event_type'], 16)
-        add = HWAddress(bd_addr)  # FIXME: We need different HW address space for BL and Eth!
+        add = HWAddress.new(bd_addr)  # FIXME: We need different HW address space for BL and Eth!
         flow = BLEAdvertisementFlow(evidence, add, ev_code)
         interface.connection(flow)
         return add

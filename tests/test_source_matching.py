@@ -1,4 +1,4 @@
-from tcsfw.main import SystemBuilder, UDP
+from tcsfw.main import HTTP, SystemBuilder, UDP
 from tcsfw.matcher import SystemMatcher
 from tcsfw.traffic import IPFlow, Evidence
 
@@ -23,3 +23,21 @@ def test_source_matching():
     assert c1.source == dev1.entity
     assert c2.source != dev1.entity
     assert c3.source == dev1.entity
+
+
+def test_null_address_matching():
+    sb = SystemBuilder()
+    dev1 = sb.device().ip("192.168.11.1")
+    ser2 = sb.device().ip("10.10.10.12") / HTTP
+    dev1 >> ser2
+    m = SystemMatcher(sb.system)
+
+    c1 = m.connection(
+        (IPFlow.TCP("00:00:00:00:00:00", "192.168.11.1", 10000) >> ("00:00:00:00:00:00", "10.10.10.12", 80)))
+    assert c1.source == dev1.entity
+    assert c1.target == ser2.entity
+
+    c2 = m.connection(
+        (IPFlow.TCP("00:00:00:00:00:00", "192.168.11.2", 10000) >> ("00:00:00:00:00:00", "10.10.10.12", 80)))
+    assert c2.source.long_name() == "192.168.11.2"  # Null address is not real
+    assert c2.target == ser2.entity

@@ -1,3 +1,4 @@
+from io import BytesIO
 import pathlib
 from typing import cast, List
 from xml.etree import ElementTree
@@ -14,14 +15,14 @@ from tcsfw.verdict import Verdict
 
 class AndroidManifestScan(ComponentCheckTool):
     def __init__(self, system: IoTSystem):
-        super().__init__("android", system)
+        super().__init__("android", ".xml", system)
         self.tool.name = "Android Manifest"
 
     def _filter_component(self, component: NodeComponent) -> bool:
         return isinstance(component, Software)
 
-    def _check_entity(self, component: NodeComponent, data_file: pathlib.Path, interface: EventInterface,
-                      source: EvidenceSource):
+    def process_stream(self, component: NodeComponent, data_file: BytesIO, interface: EventInterface,
+                       source: EvidenceSource):
         software = cast(Software, component)
 
         evidence = Evidence(source)
@@ -43,7 +44,7 @@ class AndroidManifestScan(ComponentCheckTool):
                 software.permissions.add(name)
                 ver = Verdict.PASS
             else:
-                ver = Verdict.PASS if val else Verdict.UNEXPECTED
+                ver = Verdict.PASS if val else Verdict.FAIL
 
             if self.send_events:
                 ev = PropertyEvent(evidence, software, key.value(ver))

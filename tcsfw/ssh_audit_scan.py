@@ -1,3 +1,4 @@
+from io import BytesIO
 import json
 import pathlib
 from typing import Dict, List
@@ -14,9 +15,8 @@ from tcsfw.verdict import Verdict
 
 class SSHAuditScan(EndpointCheckTool):
     def __init__(self, system: IoTSystem):
-        super().__init__("ssh-audit", system)
+        super().__init__("ssh-audit", ".json", system)
         self.tool.name = "SSH audit"
-        self.data_file_suffix = ".json"
         self.property_key = Properties.PROTOCOL.append_key("ssh")
 
     def _filter_node(self, node: NetworkNode) -> bool:
@@ -24,11 +24,10 @@ class SSHAuditScan(EndpointCheckTool):
             return False
         return node.protocol == Protocol.SSH
 
-    def _check_entity(self, endpoint: AnyAddress, data_file: pathlib.Path, interface: EventInterface,
-                      source: EvidenceSource):
+    def process_stream(self, endpoint: AnyAddress, data_file: BytesIO, interface: EventInterface,
+                       source: EvidenceSource):
         """Scan network node"""
-        with data_file.open() as f:
-            raw = json.load(f)
+        raw = json.load(data_file)
 
         evidence = Evidence(source)
 

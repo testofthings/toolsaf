@@ -10,7 +10,6 @@ class DHCPService(Service):
     def __init__(self, parent: Addressable, name="DHCP"):
         super().__init__(name, parent)
         # match any traffic with UDP port 67
-        # self.addresses.add(EndpointAddress(IPAddresses.BROADCAST, Protocol.UDP, 67))
         self.addresses.add(EndpointAddress.any(Protocol.UDP, 67))
         self.description = "DHCP service"
         self.clients: Set[Host] = set()
@@ -47,6 +46,9 @@ class NameEvent(Event):
         self.service = service
         self.name = name
         self.address = address
+
+    def get_value_string(self) -> str:
+        return f"{self.name}={self.address}" if self.address else self.name
 
     def __eq__(self, other):
         if not isinstance(other, NameEvent):

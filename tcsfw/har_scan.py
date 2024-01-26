@@ -1,3 +1,4 @@
+from io import BytesIO
 import json
 import pathlib
 import urllib.parse
@@ -16,32 +17,32 @@ from tcsfw.verdict import Verdict
 
 class HARScan(NodeCheckTool):
     def __init__(self, system: IoTSystem):
-        super().__init__("har", system)
+        super().__init__("har", ".json", system)
         self.tool.name = "HAR"
 
     def _filter_component(self, node: NetworkNode) -> bool:
         return isinstance(node, Host)
 
-    def _check_entity(self, node: NetworkNode, data_file: pathlib.Path, interface: EventInterface,
-                      source: EvidenceSource):
+    def process_stream(self, node: NetworkNode, data_file: BytesIO, interface: EventInterface, source: EvidenceSource):
         host = cast(Host, node)
 
         component = Cookies.cookies_for(host)
         evidence = Evidence(source)
 
+        unseen = set(component.cookies.keys())  # cookies not seen in HAR
         wildcards = {}  # cookie wildcards
         for n, c in component.cookies.items():
             if "*" in n:
                 pf = n[:n.rindex("*")]
                 wildcards[pf] = c
+                unseen.discard(n)
 
         def decode(s: str) -> str:
             return urllib.parse.unquote(s)
 
         properties = set()
 
-        with data_file.open() as f:
-            raw_log = json.load(f)["log"]
+        raw_log = json.load(data_file)["log"]
 
         raw_entries = raw_log["entries"]
         for raw in raw_entries:
@@ -63,14 +64,17 @@ class HARScan(NodeCheckTool):
                 if self.load_baseline:
                     # loading baseline values
                     if cookie is not None:
-                        raise Exception("Double definition for cookie: " + name)
+                        self.logger.warning("Double definition for cookie: %s", name)
+                        # raise Exception("Double definition for cookie: " + name)
                     component.cookies[name] = n_cookie
+                    unseen.discard(name)
                 elif cookie:
                     # old exists, verify match
+                    unseen.discard(name)
                     if cookie.path != n_cookie.path or cookie.domain != n_cookie.domain:
                         verdict = Verdict.FAIL
                 else:
-                    verdict = Verdict.UNEXPECTED  # unexpected, not in baseline
+                    verdict = Verdict.FAIL  # unexpected, not in baseline
                 if self.send_events:
                     ev = PropertyEvent(evidence, component, p_key.value(verdict))
                     interface.property_update(ev)
@@ -83,6 +87,15 @@ class HARScan(NodeCheckTool):
                 txt = f"{response.get('status', '?')} {response.get('statusText', '?')}"
                 ev = PropertyAddressEvent(evidence, ep, Properties.HTTP_REDIRECT.value(Verdict.PASS, txt))
                 interface.property_address_update(ev)
+
+        for n, cookie in component.cookies.items():
+            if n in unseen:
+                # cookie not seen in HAR
+                p_key = PropertyVerdict("cookie", n)
+                properties.add(p_key)
+                if self.send_events:
+                    ev = PropertyEvent(evidence, component, p_key.value(Verdict.FAIL, "Not seen in HAR"))
+                    interface.property_update(ev)
 
         # cookie scan event
         if self.send_events:

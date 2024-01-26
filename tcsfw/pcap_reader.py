@@ -1,6 +1,7 @@
 import datetime
+from io import BytesIO
 import pathlib
-from typing import Optional, Dict, Tuple, List
+from typing import Optional, Dict, Self, Tuple, List
 
 from framing.backends import RawFrame
 from framing.frame_types import dns_frames
@@ -20,13 +21,14 @@ from tcsfw.event_interface import EventInterface
 from tcsfw.inspector import Inspector
 from tcsfw.model import Connection, IoTSystem, Addressable
 from tcsfw.property import PropertyKey, Properties
+from tcsfw.registry import Registry
 from tcsfw.services import NameEvent, DNSService
 from tcsfw.tools import BaseFileCheckTool
 from tcsfw.traffic import IPFlow, EvidenceSource, Evidence, EthernetFlow, Flow, Tool
 
 
 class PCAPReader(BaseFileCheckTool):
-    def __init__(self, system: IoTSystem, name=""):
+    def __init__(self, system: IoTSystem, name="PCAP reader"):
         super().__init__("pcap", system)
         self.data_file_suffix = ".pcap"
         if name:
@@ -41,16 +43,16 @@ class PCAPReader(BaseFileCheckTool):
         self.flows: Dict[Tuple, Flow] = {}
 
     @classmethod
-    def inspect(cls, pcap_file: pathlib.Path, system=IoTSystem()) -> 'PCAPReader':
-        """Inspect the given system with given pcap"""
-        r = PCAPReader(system)
-        r._check_file(pcap_file, Inspector(system), EvidenceSource(r.tool_label))
+    def inspect(cls, pcap_file: pathlib.Path, interface: EventInterface) -> 'PCAPReader':
+        r = PCAPReader(interface.get_system())
+        with pcap_file.open("rb") as f:
+            r.process_file(f, pcap_file.name, interface, EvidenceSource(pcap_file.name))
         return r
 
-    def _check_file(self, data_file: pathlib.Path, interface: EventInterface, source: EvidenceSource):
+    def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource) -> Self:
         self.source = source
         self.interface = interface
-        raw_data = Raw.file(data_file)
+        raw_data = Raw.stream(data, request_size=1024 * 1024)
         try:
             self.parse(raw_data)
         finally:
@@ -99,8 +101,8 @@ class PCAPReader(BaseFileCheckTool):
             pl_type = -1
         ev = Evidence(self.source, f":{self.frame_number}")
         fl = EthernetFlow(ev,
-                          source=HWAddress(EthernetII.source[frame].as_hw_address()),
-                          target=HWAddress(EthernetII.destination[frame].as_hw_address()),
+                          source=HWAddress.new(EthernetII.source[frame].as_hw_address()),
+                          target=HWAddress.new(EthernetII.destination[frame].as_hw_address()),
                           payload=pl_type,
                           protocol=protocol)
         fl.timestamp = self.timestamp
@@ -125,10 +127,10 @@ class PCAPReader(BaseFileCheckTool):
     def ip_flow_ends(cls, ethernet: EthernetII, ip: IPv4, source_port: int, destination_port: int):
         """Resolve ends for IP flow object"""
         return (
-            HWAddress(EthernetII.source[ethernet].as_hw_address()),
+            HWAddress.new(EthernetII.source[ethernet].as_hw_address()),
             IPAddress(IPv4.Source_IP[ip].as_ip_address()),
             source_port), (
-            HWAddress(EthernetII.destination[ethernet].as_hw_address()),
+            HWAddress.new(EthernetII.destination[ethernet].as_hw_address()),
             IPAddress(IPv4.Destination_IP[ip].as_ip_address()),
             destination_port
         )

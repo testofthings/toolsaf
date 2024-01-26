@@ -6,6 +6,7 @@ from tcsfw.components import Software, DataUsage, DataReference
 from tcsfw.entity import Entity
 from tcsfw.model import Host, HostType, IoTSystem, Service, Connection
 from tcsfw.requirement import Requirement, EntitySelector, SelectorContext
+from tcsfw.verdict import Status
 
 S = TypeVar("S", bound='EntitySelector')
 
@@ -63,7 +64,7 @@ class HostSelector(RequirementSelector):
         if isinstance(entity, Host):
             if context.include_host(entity):
                 yield entity
-            elif self.include_unexpected and entity.is_relevant() and not entity.status.is_expected():
+            elif self.include_unexpected and entity.is_relevant() and entity.status == Status.UNEXPECTED:
                 yield entity
         elif entity.is_host_reachable():
             for c in entity.get_children():
@@ -93,7 +94,7 @@ class ServiceSelector(RequirementSelector):
         if isinstance(entity, Service):
             if context.include_service(entity):
                 yield entity
-            elif self.include_unexpected and entity.is_relevant() and not entity.status.is_expected():
+            elif self.include_unexpected and entity.is_relevant() and entity.status == Status.UNEXPECTED:
                 yield entity
         elif entity.is_host_reachable():
             for c in entity.get_children():
@@ -131,7 +132,7 @@ class ConnectionSelector(RequirementSelector):
         if isinstance(entity, Connection):
             if context.include_connection(entity):
                 yield entity
-            elif self.include_unexpected and entity.is_relevant() and not entity.status.is_expected():
+            elif self.include_unexpected and entity.is_relevant() and entity.status == Status.UNEXPECTED:
                 yield entity
         elif isinstance(entity, IoTSystem):
             dupes = set()

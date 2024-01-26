@@ -1,4 +1,5 @@
 import argparse
+from io import BytesIO
 import json
 import logging
 import pathlib
@@ -18,17 +19,14 @@ from tcsfw.verdict import Verdict
 
 class CensysScan(EndpointCheckTool):
     def __init__(self, system: IoTSystem):
-        super().__init__("censys", system)
+        super().__init__("censys", ".json", system)
         self.tool.name = "Censys"
-        self.data_file_suffix = ".json"
 
     def _filter_node(self, node: NetworkNode) -> bool:
         return isinstance(node, Host)
 
-    def _check_entity(self,  address: AnyAddress, data_file: pathlib.Path, interface: EventInterface,
-                      source: EvidenceSource):
-        with data_file.open() as f:
-            raw = json.load(f)
+    def process_stream(self, address: AnyAddress, stream: BytesIO, interface: EventInterface, source: EvidenceSource):
+        raw = json.load(stream)
 
         evidence = Evidence(source)
 
