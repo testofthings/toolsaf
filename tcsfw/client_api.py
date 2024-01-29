@@ -23,10 +23,9 @@ FORMAT_YEAR_MONTH_DAY = "%Y-%m-%d"
 
 class APIRequest:
     """API request details"""
-    def __init__(self, path: str, get_flows=True):
+    def __init__(self, path: str):
         self.path = path
         self.parameters: Dict[str, str] = {}
-        self.get_flows = get_flows
         self.get_connections = False
         self.get_visual = False
 
@@ -44,7 +43,7 @@ class APIRequest:
 
     def change_path(self, path: str) -> 'APIRequest':
         """Change the path"""
-        r = APIRequest(path, self.get_flows)
+        r = APIRequest(path)
         r.get_connections = self.get_connections
         r.get_visual = self.get_visual
         return r
@@ -61,9 +60,6 @@ class APIListener:
     def connectionChange(self, data: Dict, connection: Connection):
         pass
 
-    def newFlow(self, data: Dict, connection: Connection):
-        pass
-
     def hostChange(self, data: Dict, host: Host):
         pass
 
@@ -72,20 +68,12 @@ class RequestContext:
     def __init__(self, request: APIRequest, api: 'ClientAPI'):
         self.request = request
         self.api = api
-        # resolve flows and verdicts just once per request
-        self.flows = None
-        self.verdict_cache: Dict[Entity, Verdict] = {}
 
-    def get_flows(self) -> Dict[Connection, List[Tuple[AnyAddress, AnyAddress, Flow]]]:
-        """Get flows, resolve and cache as required"""
-        if self.flows is None:
-            self.flows = self.api.registry.logging.collect_flows()
-        return self.flows
+        self.verdict_cache: Dict[Entity, Verdict] = {}
 
     def change_path(self, path: str) -> 'RequestContext':
         """Change the path"""
         c = RequestContext(self.request.change_path(path), self.api)
-        c.flows = self.flows
         c.verdict_cache = self.verdict_cache
         return c
 
@@ -179,14 +167,15 @@ class ClientAPI(ModelListener):
             k = PropertyKey.parse(key) if key else None
             if k:
                 rs["property"] = f"{k}"
-            logs = self.registry.get_log(e, k)
+            logs = self.registry.logging.get_log(e, k)
         else:
-            logs = self.registry.get_log()
+            logs = self.registry.logging.get_log()
         if key:
             rs["property"] = key
         rs["logs"] = lr = []
         for lo in reversed(logs):
-            ev, en, key = lo
+            ev = lo.event
+            en, key = lo.key
             ls = {
                 "source": ev.evidence.source.name,
                 "info": ev.get_info(),
@@ -200,6 +189,10 @@ class ClientAPI(ModelListener):
                 ls["verdict"] = ev.get_verdict().value
             lr.append(ls)
         return rs
+
+    def get_status_verdict(self, status: Status, verdict: Verdict) -> Dict:
+        """Get status and verdict for an entity"""
+        return f"{status.value}/{verdict.value}"
 
     def get_properties(self, properties: Dict[PropertyKey, Any]) -> Dict:
         """Get properties"""
@@ -243,7 +236,7 @@ class ClientAPI(ModelListener):
             com_cs = {
                 "name": component.name,
                 "id": self.get_id(component),
-                "verdict": component.get_verdict(context.verdict_cache).value,
+                "status": self.get_status_verdict(component.status, component.get_verdict(context.verdict_cache)),
                 "properties": self.get_properties(component.properties)
             }
             if component.sub_components:
@@ -277,7 +270,7 @@ class ClientAPI(ModelListener):
             "id": self.get_id(entity),
             "description": entity.description,
             "addresses": sorted([f"{a}" for a in entity.addresses]),
-            "verdict": entity.get_verdict(context.verdict_cache).value,
+            "status": self.get_status_verdict(entity.status, entity.get_verdict(context.verdict_cache)),
         }
         if entity.is_multicast():
             r["type"] = "Broadcast"  # special type
@@ -304,9 +297,6 @@ class ClientAPI(ModelListener):
                 for c in entity.connections:
                     if c.status != Status.PLACEHOLDER:
                         cj.append(self.get_connection(c, context))
-                        if context.request.get_flows:
-                            fs = self.get_flows(c, context)
-                            r.setdefault("flows", []).extend(fs)
         r["properties"] = self.get_properties(entity.properties)
         return entity, r
 
@@ -328,30 +318,11 @@ class ClientAPI(ModelListener):
             "target": location(t),
             "target_id": self.get_id(t),
             "target_host_id": self.get_id(t.get_parent_host()),
-            "verdict": connection.get_verdict(context.verdict_cache).value,
+            "status": self.get_status_verdict(connection.status, connection.get_verdict(context.verdict_cache)),
             "type": connection.con_type.value,
             "properties": self.get_properties(connection.properties),
         }
         return cr
-
-    def get_flows(self, connection: Connection, context: RequestContext) -> List:
-        """GET all flows from a connection"""
-        fs = []
-        for s, t, flow in context.get_flows().get(connection, []):
-            ff = self.get_flow(s, t, flow, connection, context)
-            fs.append(ff)
-        return fs
-
-    def get_flow(self, source: AnyAddress, target: AnyAddress, flow: Flow, connection: Connection,
-                 context: RequestContext) -> Dict:
-        """GET flow entry"""
-        ff = {
-            "conn_id": self.get_id(connection),
-            "ends": [f"{source}", f"{target}"],
-            "dir": "down" if flow.reply else "up",
-            "ref": flow.evidence.get_reference(),
-        }
-        return ff
 
     def get_system_info(self, context: RequestContext) -> Dict:
         """Get system information"""
@@ -376,13 +347,9 @@ class ClientAPI(ModelListener):
                 _, hr = self.get_entity(h, context)
                 hj.append(hr)
         cj = root.setdefault("connections", [])
-        cf = root.setdefault("flows", [])
-        for c in context.get_flows().keys():
-            if c.status != Status.PLACEHOLDER:
-                cr = self.get_connection(c, context)
-                cj.append(cr)
-                cr = self.get_flows(c, context)
-                cf.extend(cr)
+        for c in self.registry.system.get_connections():
+            cr = self.get_connection(c, context)
+            cj.append(cr)
         root["evidence"] = self.get_evidence_filter()
         return root
 
@@ -423,12 +390,9 @@ class ClientAPI(ModelListener):
             if h.status != Status.PLACEHOLDER:
                 _, hr = self.get_entity(h, context)
                 its.append({"host": hr})
-        for c in context.get_flows().keys():
-            if c.status != Status.PLACEHOLDER:
-                cr = self.get_connection(c, context)
-                its.append({"connection": cr})
-                for cf in self.get_flows(c, context):
-                    its.append({"flow": cf})
+        for c in self.registry.system.get_connections():
+            cr = self.get_connection(c, context)
+            its.append({"connection": cr})
         its.append({"evidence": self.get_evidence_filter()})
         return its
 
@@ -464,12 +428,6 @@ class ClientAPI(ModelListener):
             context = RequestContext(req, self)
             d = self.get_connection(connection, context)
             ln.connectionChange({"connection": d}, connection)
-
-    def newFlow(self, source: AnyAddress, target: AnyAddress, flow: Flow, connection: Connection):
-        for ln, req in self.api_listener:
-            context = RequestContext(req, self)
-            d = self.get_flow(source, target, flow.event, connection, context)
-            ln.connectionChange({"flow": d}, connection)
 
     def hostChange(self, host: Host):
         for ln, req in self.api_listener:

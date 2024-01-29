@@ -72,17 +72,7 @@ class Inspector(EventInterface):
         if c_count == 1:
             # new connection is seen
             conn.set_seen_now()
-            send.add(conn) # send with or without v
-
-            # FIXME: What is this doing?
-            # if external:
-            #     # External connection, maybe some endpoints are too..?
-            #     for h in [source, target]:
-            #         if h.status.verdict == Verdict.UNDEFINED:
-            #             update_verdict(h, Verdict.EXTERNAL)
-            #        elif h.status.verdict == Verdict.NOT_SEEN:
-            #             update_verdict(h, Verdict.PASS)  # well, we have seen it now - FIXME: not good?
-
+            send.add(conn)
             # what about learning local IP/HW address pairs
             if isinstance(flow, IPFlow):
                 ends = (conn.target, conn.source) if reply else (conn.source, conn.target)

@@ -73,11 +73,6 @@ class Registry(EventInterface):
             self.logger.info("filter: " + " ".join([f"{e.name}={v}" for e, v in evidence_filter.items()]))
         return self
 
-    def get_log(self, entity: Optional[Entity] = None, key: Optional[PropertyKey] = None) \
-            -> List[Tuple[Event, Entity, Optional[PropertyKey]]]:
-        """Get log for entity and optionally key"""
-        return self.logging.get_log(entity, key)
-
     def get_system(self) -> IoTSystem:
         return self.system
 

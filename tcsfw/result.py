@@ -67,8 +67,7 @@ class Report:
                 self.logger.warning(f"DOUBLE mapped {ad}: " + ", ".join([f"{h}" for h in hs]))
 
         writer.write("== Connections ==\n")
-        connections = self.registry.logging.collect_flows()
-        for conn, _ in connections.items():
+        for conn in self.system.get_connections(relevant_only=False):
             stat = conn.con_type.value if conn.con_type == ConnectionType.LOGICAL else conn.status_string()
             writer.write(f"{conn.source.long_name():>30} ==> {conn.target.long_name()} [{stat}]\n")
 

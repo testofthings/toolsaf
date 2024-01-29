@@ -418,6 +418,9 @@ class MatchEngine:
                 # source can make replies
                 c.status = Status.EXTERNAL
                 set_external(c.source)
+            if c.status == Status.EXTERNAL and target_act >= ExternalActivity.PASSIVE:
+                # target is free receive connections
+                set_external(c.target)
         return c
 
     def __repr__(self):

@@ -292,7 +292,7 @@ class AggregateClaim(EntityClaim):
                     continue
                 return None
             if self.one_pass:
-                ver = Verdict.resolve(r.verdict, ver)
+                ver = Verdict.update(r.verdict, ver)
             else:
                 ver = Verdict.aggregate(r.verdict, ver)
             if r.authority == ClaimAuthority.MODEL:

@@ -30,10 +30,6 @@ class Session(APIListener):
         if self.subscribed:
             self.server.send_queue.put_nowait((self, data))
 
-    def newFlow(self, data: Dict, connection: Connection):
-        if self.subscribed:
-            self.server.send_queue.put_nowait((self, data))
-
     def hostChange(self, data: Dict, host: Host):
         if self.subscribed:
             self.server.send_queue.put_nowait((self, data))

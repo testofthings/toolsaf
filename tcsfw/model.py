@@ -53,8 +53,8 @@ class Connection(Entity):
         return self in system.originals
 
     def is_relevant(self, or_relevant_end=False) -> bool:
-        """Is this connection relevant, i.e. not undefined or external?"""
-        if self.status == Status.EXPECTED:
+        """Is this connection relevant, i.e. not placeholder or external?"""
+        if self.status == Status.EXPECTED or self.status == Status.UNEXPECTED:
             return True
         if or_relevant_end:
             return False
@@ -172,14 +172,13 @@ class NetworkNode(Entity):
         return False
 
     def is_relevant(self) -> bool:
-        """Is relevant entity?"""
-        return self.status == Status.EXPECTED
+        return self.status == Status.EXPECTED or self.status == Status.UNEXPECTED
 
-    def get_connections(self) -> List[Connection]:
-        """Get connections excluding external and undefined"""
+    def get_connections(self, relevant_only=True) -> List[Connection]:
+        """Get relevant conneciions"""
         cs = []
         for c in self.children:
-            cs.extend(c.get_connections())
+            cs.extend(c.get_connections(relevant_only))
         return cs
 
     def get_system(self) -> 'IoTSystem':
@@ -351,12 +350,13 @@ class Host(Addressable):
         self.connections: List[Connection] = []  # connections initiated here
         self.any_host = False  # can be one or many hosts
 
-    def get_connections(self) -> List[Connection]:
+    def get_connections(self, relevant_only=True) -> List[Connection]:
+        """Get relevant connections"""
         cs = []
         for c in self.connections:
-            if c.is_relevant(or_relevant_end=True):
+            if not relevant_only or c.is_relevant(or_relevant_end=True):
                 cs.append(c)
-        cs.extend(super().get_connections())
+        cs.extend(super().get_connections(relevant_only))
         return cs
 
     def get_parent_host(self) -> 'Host':

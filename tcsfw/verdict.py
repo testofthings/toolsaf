@@ -12,23 +12,28 @@ class Verdict(enum.Enum):
     IGNORE = "Ignore"              # Ignore
 
     @classmethod
-    def resolve(cls, *verdicts: Optional['Verdict']) -> 'Verdict':
-        """Resolve verdict when new information accumulates during inspection"""
-        vs = [v for v in verdicts if v]
-        if not vs:
+    def update(cls, *verdicts: 'Verdict') -> 'Verdict':
+        """Update verdict for property, etc. Ignore overrides all others."""
+        if not verdicts:
             return Verdict.INCON
-        if len(vs) == 1:
-            return vs[0]
-        v_set = set(vs)
-        for s in (Verdict.FAIL, Verdict.PASS, Verdict.IGNORE, Verdict.INCON):
+        if len(verdicts) == 1:
+            return verdicts[0]
+        v_set = set(verdicts)
+        for s in {Verdict.IGNORE, Verdict.FAIL, Verdict.PASS, Verdict.INCON}:
             if s in v_set:
                 return s
-        raise NotImplementedError(f"Merging of {verdicts}")
+        raise NotImplementedError(f"Cannot update {verdicts}")
 
     @classmethod
-    def aggregate(cls, *verdicts: Optional['Verdict']) -> 'Verdict':
-        """Resolve verdict aggregating sub-verdicts"""
-        return cls.resolve(*verdicts)
+    def aggregate(cls, *verdicts: 'Verdict') -> 'Verdict':
+        """Resolve aggregate verdict for entity from child verdicts, never return ignore."""
+        if not verdicts:
+            return Verdict.INCON
+        v_set = set(verdicts)
+        for s in {Verdict.FAIL, Verdict.PASS}:
+            if s in v_set:
+                return s
+        return Verdict.INCON
 
 class Verdictable:
     """Base class for objects with verdict"""

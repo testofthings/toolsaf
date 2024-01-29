@@ -62,6 +62,10 @@ def test_connection_match():
     assert cs.source.name == "1.0.0.6"
     assert cs.target.name == "UDP:1234"
 
+    c_list = m.system.get_connections()
+    c_sts = [c.status for c in c_list]
+    assert c_sts == [Status.EXPECTED, Status.UNEXPECTED, Status.EXPECTED, Status.UNEXPECTED]
+
 
 def test_match_mix_unknown():
     sb = simple_setup_1()
@@ -261,28 +265,38 @@ def test_unknown_ip_protocol():
     assert cs2.target.name == "UDP:1"
 
 
-def test_foreign_connection():
+def test_external_connection():
     sb = simple_setup_1()
     dev2 = sb.system.get_endpoint(IPAddress.new("192.168.0.2"))
     dev2.set_external_activity(ExternalActivity.UNLIMITED)
     m = SystemMatcher(sb.system)
 
+    # unknown source to known port
     cs1 = m.connection(IPFlow.UDP(
         "20:0:0:0:0:1", "192.168.10.1", 2000) >> ("1:0:0:0:0:2", "192.168.0.2", 1234))
     cs2 = m.connection(IPFlow.UDP(
         "20:0:0:0:0:1", "192.168.10.1", 2000) << ("1:0:0:0:0:2", "192.168.0.2", 1234))
     assert cs1 == cs2
     assert cs1.get_expected_verdict() == Verdict.INCON
-    assert cs1.source.get_expected_verdict() == Verdict.INCON  # no inspector to update
-    assert cs1.target.get_expected_verdict() == Verdict.INCON
+    assert cs1.source.status_verdict() == (Status.EXTERNAL, Verdict.INCON)  # no inspector to update
+    assert cs1.target.status_verdict() == (Status.EXPECTED, Verdict.INCON)
 
+    # unknown source to unknown port
     cs3 = m.connection(IPFlow.UDP(
         "20:0:0:0:0:1", "192.168.10.1", 2000) >> ("1:0:0:0:0:2", "192.168.0.2", 2001))
     cs4 = m.connection(IPFlow.UDP(
         "20:0:0:0:0:1", "192.168.10.1", 2000) << ("1:0:0:0:0:2", "192.168.0.2", 2001))
     assert cs3 == cs4
     assert cs4.get_expected_verdict() == Verdict.INCON
-    assert cs4.source.get_expected_verdict() == Verdict.INCON
+    assert cs4.source.status_verdict() == (Status.EXTERNAL, Verdict.INCON)  # no inspector to update
+    assert cs4.target.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
+
+    # known host to unknown host
+    cs5 = m.connection(IPFlow.UDP(
+        "1:0:0:0:0:2", "192.168.10.2", 8000) >> ("30:0:0:0:0:4", "192.168.0.4", 2001))
+    assert cs5.get_expected_verdict() == Verdict.INCON
+    assert cs5.source.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
+    assert cs5.target.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
 
 
 def test_wildcard_source():
