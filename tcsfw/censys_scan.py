@@ -52,7 +52,7 @@ class CensysScan(EndpointCheckTool):
                 if status_code == 301:
                     # 301 Permanently Moved
                     txt = f"{status_code} Permanently Moved"
-                    ev = PropertyAddressEvent(evidence, addr, Properties.HTTP_REDIRECT.value(Verdict.PASS, txt))
+                    ev = PropertyAddressEvent(evidence, addr, Properties.HTTP_REDIRECT.verdict(Verdict.PASS, txt))
                     interface.property_address_update(ev)
             host_services.add(addr)
         # other services were not seen

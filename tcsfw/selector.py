@@ -2,9 +2,10 @@ from typing import List, TypeVar, Generic, Iterator
 
 from tcsfw.address import Protocol
 from tcsfw.claim import Claim
-from tcsfw.components import Software, DataUsage, DataReference
+from tcsfw.components import DataStorages, Software, DataReference
 from tcsfw.entity import Entity
-from tcsfw.model import Host, HostType, IoTSystem, Service, Connection
+from tcsfw.model import Addressable, Host, HostType, IoTSystem, NetworkNode, Service, Connection
+from tcsfw.property import Properties, PropertyKey
 from tcsfw.requirement import Requirement, EntitySelector, SelectorContext
 from tcsfw.verdict import Status
 
@@ -52,19 +53,15 @@ class SystemSelector(RequirementSelector):
 
 class HostSelector(RequirementSelector):
     """Select hosts"""
-    def __init__(self, include_unexpected=False):
-        self.include_unexpected = include_unexpected
-
-    def unexpected(self, include=True) -> 'HostSelector':
-        """Include unexpected entities, too?"""
-        return HostSelector(include_unexpected=include)
+    def __init__(self, with_unexpected=False):
+        self.with_unexpected = with_unexpected
 
     def select(self, entity: Entity, context: SelectorContext) -> Iterator[Host]:
         """Select child entities which are hosts"""
         if isinstance(entity, Host):
             if context.include_host(entity):
                 yield entity
-            elif self.include_unexpected and entity.is_relevant() and entity.status == Status.UNEXPECTED:
+            elif self.with_unexpected and entity.is_relevant() and entity.status == Status.UNEXPECTED:
                 yield entity
         elif entity.is_host_reachable():
             for c in entity.get_children():
@@ -80,21 +77,27 @@ class HostSelector(RequirementSelector):
                 return (c for c in parent.select(entity, context) if c.host_type in types)
         return Selector()
 
+    def with_property(self, key: PropertyKey) -> 'HostSelector':
+        """Select hosts with a property"""
+        parent = self
+
+        class Selector(HostSelector):
+            def select(self, entity: Entity, context: SelectorContext) -> Iterator[Entity]:
+                return (c for c in parent.select(entity, context) if key in c.properties)
+        return Selector()
+
 
 class ServiceSelector(RequirementSelector):
     """Select services"""
-    def __init__(self, include_unexpected=False):
-        self.include_unexpected = include_unexpected
-
-    def unexpected(self, include=True) -> 'ServiceSelector':
-        """Include unexpected entities, too?"""
-        return ServiceSelector(include_unexpected=include)
+    def __init__(self, with_unexpected=False):
+        self.with_unexpected = with_unexpected
 
     def select(self, entity: Entity, context: SelectorContext) -> Iterator[Service]:
         if isinstance(entity, Service):
             if context.include_service(entity):
                 yield entity
-            elif self.include_unexpected and entity.is_relevant() and entity.status == Status.UNEXPECTED:
+            elif self.with_unexpected and entity.is_relevant() and entity.status == Status.UNEXPECTED:
+                # NOTE: all unexpected are included, even administrative
                 yield entity
         elif entity.is_host_reachable():
             for c in entity.get_children():
@@ -118,21 +121,29 @@ class ServiceSelector(RequirementSelector):
                 return (c for c in parent.select(entity, context) if c.protocol in {Protocol.HTTP, Protocol.TLS})
         return Selector()
 
+    def direct(self) -> 'ServiceSelector':
+        """Select direct services"""
+        parent = self
+
+        class Selector(ServiceSelector):
+            def select(self, entity: Entity, context: SelectorContext) -> Iterator[Connection]:
+                for c in parent.select(entity, context):
+                    if not c.is_multicast() and Properties.HTTP_REDIRECT.get(c.properties) is None:
+                        yield c
+        return Selector()
+
 
 class ConnectionSelector(RequirementSelector):
-    def __init__(self, include_unexpected=False):
-        self.include_unexpected = include_unexpected
-
-    def unexpected(self, include=True) -> 'ConnectionSelector':
-        """Include unexpected entities, too?"""
-        return ConnectionSelector(include_unexpected=include)
-
     """Select connections"""
+    def __init__(self, with_unexpected=False):
+        self.with_unexpected = with_unexpected
+
     def select(self, entity: Entity, context: SelectorContext) -> Iterator[Connection]:
         if isinstance(entity, Connection):
             if context.include_connection(entity):
                 yield entity
-            elif self.include_unexpected and entity.is_relevant() and entity.status == Status.UNEXPECTED:
+            elif self.with_unexpected and entity.is_relevant() and entity.status == Status.UNEXPECTED:
+                # NOTE: all unexpected are included, even administrative
                 yield entity
         elif isinstance(entity, IoTSystem):
             dupes = set()
@@ -146,20 +157,22 @@ class ConnectionSelector(RequirementSelector):
                 yield from self.select(c, context)
 
     def encrypted(self) -> 'ConnectionSelector':
+        """Select encrypted connections"""
         parent = self
 
         class Selector(ConnectionSelector):
-            def select(self, entity: Entity, context: SelectorContext) -> List[Connection]:
+            def select(self, entity: Entity, context: SelectorContext) -> Iterator[Connection]:
                 for c in parent.select(entity, context):
                     if c.is_encrypted():
                         yield c
         return Selector()
 
     def authenticated(self) -> 'ConnectionSelector':
+        """Select authenticated connections"""
         parent = self
 
         class Selector(ConnectionSelector):
-            def select(self, entity: Entity, context: SelectorContext) -> List[Connection]:
+            def select(self, entity: Entity, context: SelectorContext) -> Iterator[Connection]:
                 for c in parent.select(entity, context):
                     target = c.target
                     if isinstance(target, Service) and target.authentication:
@@ -167,20 +180,34 @@ class ConnectionSelector(RequirementSelector):
         return Selector()
 
     def protocol(self, name: str) -> 'ConnectionSelector':
+        """Select connections by protocol"""
         parent = self
 
         class Selector(ConnectionSelector):
-            def select(self, entity: Entity, context: SelectorContext) -> List[Connection]:
+            def select(self, entity: Entity, context: SelectorContext) -> Iterator[Connection]:
                 for c in parent.select(entity, context):
                     target = c.target
                     if isinstance(target, Service) and target.protocol and target.protocol.value == name:
                         yield c
         return Selector()
 
+    def endpoint(self, endpoint: RequirementSelector) -> 'ConnectionSelector':
+        """Select connections by endpoint"""
+        parent = self
+
+        class Selector(ConnectionSelector):
+            def select(self, entity: Entity, context: SelectorContext) -> Iterator[Connection]:
+                for c in parent.select(entity, context):
+                    s = endpoint.select(c.source, context)
+                    yield from s
+                    t = endpoint.select(c.target, context)
+                    yield from t
+        return Selector()
+
 
 class UpdateConnectionSelector(ConnectionSelector):
     """Select update connections of a software"""
-    def select(self, entity: Entity, context: SelectorContext) -> List[Connection]:
+    def select(self, entity: Entity, context: SelectorContext) -> Iterator[Connection]:
         for sw in SoftwareSelector().select(entity, context):
             for c in sw.update_connections:
                 yield c
@@ -190,18 +217,20 @@ class SoftwareSelector(RequirementSelector):
     """Select software entities"""
     def select(self, entity: Entity, context: SelectorContext) -> Iterator[Software]:
         for h in HostSelector().select(entity, context):
-            for s in Software.list_software(h):
-                yield s
+            if not h.is_multicast():  # Multicast node does not contain software
+                for s in Software.list_software(h):
+                    yield s
 
 
 class DataSelector(RequirementSelector):
-    """Select use of critical data"""
+    """Select data components"""
     def select(self, entity: Entity, context: SelectorContext) -> Iterator[DataReference]:
-        for h in HostSelector().select(entity, context):
-            for c in h.components:
-                if isinstance(c, DataUsage):
-                    for r in c.sub_components:
-                        yield r
+        if not isinstance(entity, NetworkNode):
+            return None
+        for c in entity.components:
+            if isinstance(c, DataStorages):
+                for r in c.sub_components:
+                    yield r
 
     def personal(self, value=True) -> 'DataSelector':
         """Select personal data"""
@@ -264,7 +293,7 @@ class AlternativeSelectors(RequirementSelector):
     def __add__(self, other: RequirementSelector) -> 'AlternativeSelectors':
         return AlternativeSelectors(self.sub + [other])
 
-    def select(self, entity: Entity, context: SelectorContext) -> List[Entity]:
+    def select(self, entity: Entity, context: SelectorContext) -> Iterator[Entity]:
         for s in self.sub:
             yield from s.select(entity, context)
 

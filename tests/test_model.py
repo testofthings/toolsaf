@@ -341,10 +341,10 @@ def test_any_host():
     assert cs3.source == dev1.entity
     assert cs3.target.parent == any1.entity
 
-    # Fail mode: 'ANY' should not match target, as source is unknown
+    # Fail mode: ANY now tolerates connections from unknown parties
     cs4 = m.connection(IPFlow.UDP(
         "1:0:0:0:0:5", "192.168.10.5", 2002) >> ("1:0:0:0:0:2", "192.168.20.10", 1003))
-    assert cs4.status == Status.UNEXPECTED
+    assert cs4.status == Status.EXTERNAL
     assert cs4.source.name == "01:00:00:00:00:05"
     assert cs4.target.name == "UDP:1003"
 

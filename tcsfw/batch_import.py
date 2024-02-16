@@ -11,7 +11,7 @@ from tcsfw.censys_scan import CensysScan
 from tcsfw.event_interface import EventInterface
 from tcsfw.har_scan import HARScan
 from tcsfw.mitm_log_reader import MITMLogReader
-from tcsfw.model import EvidenceNetworkSource, IoTSystem
+from tcsfw.model import EvidenceNetworkSource, ExternalActivity, IoTSystem
 from tcsfw.nmap_scan import NMAPScan
 from tcsfw.pcap_reader import PCAPReader
 from tcsfw.releases import ReleaseReader
@@ -249,12 +249,22 @@ class FileMetaInfo:
         r.load_baseline = bool(json.get("load_baseline", False))
         r.file_load_order = json.get("file_order", [])
         r.default_include = bool(json.get("include", True))
+
+        # read batch-specific addresses
         for add, ent in json.get("addresses", {}).items():
             address = Addresses.parse_address(add)
             entity = system.get_entity(ent)
             if not entity:
                 raise ValueError(f"Unknown entity {ent}")
             r.source.address_map[address] = entity
+
+        # read batch-specific external activity policies
+        for n, policy_n in json.get("external_activity", {}).items():
+            node = system.get_entity(n)
+            if not node:
+                raise ValueError(f"Unknown entity '{n}'")
+            policy = ExternalActivity[policy_n]
+            r.source.activity_map[node] = policy
         return r
 
     def __repr__(self) -> str:

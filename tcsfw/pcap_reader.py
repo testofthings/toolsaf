@@ -14,7 +14,7 @@ from framing.frame_types.udp_frames import UDP
 from framing.frames import Frames
 from framing.raw_data import Raw, RawData
 
-from tcsfw.address import HWAddress, Protocol, IPAddress
+from tcsfw.address import EndpointAddress, HWAddress, Protocol, IPAddress
 from tcsfw.components import Software
 from tcsfw.entity import Entity
 from tcsfw.event_interface import EventInterface
@@ -144,7 +144,7 @@ class PCAPReader(BaseFileCheckTool):
         proto = self.system.message_listeners.get(conn.target) if conn else None
         if proto:
             proc = {
-                Protocol.DNS: lambda: self._dns_message(frame, conn)
+                Protocol.DNS: lambda: self._dns_message((conn.source, conn.target), frame, conn)
             }[proto]
             proc()
 
@@ -154,7 +154,7 @@ class PCAPReader(BaseFileCheckTool):
         # ts = int(delta.total_seconds() * 1000)
         # self.interface.flow_data_update(flow, [ts, le])
 
-    def _dns_message(self, udp: UDP, connection: Connection):
+    def _dns_message(self, peers: Tuple[IPAddress], udp: UDP, connection: Connection):
         """Parse DNS message"""
         rd = UDP.Data[udp]
         frame = dns_frames.DNSMessage(Frames.dissect(rd))
@@ -165,7 +165,7 @@ class PCAPReader(BaseFileCheckTool):
         events = []
         for rd in dns_frames.DNSMessage.Question.iterate(frame):
             name = dns_frames.DNSName.string(rd, dns_frames.DNSQuestion.QNAME)
-            events.append(NameEvent(evidence, service, name))
+            events.append(NameEvent(evidence, service, name, peers=peers))
 
         rd_frames = []
         rd_frames.extend(dns_frames.DNSMessage.Answer.iterate(frame))
@@ -175,9 +175,9 @@ class PCAPReader(BaseFileCheckTool):
             name = dns_frames.DNSName.string(rd, dns_frames.DNSResource.NAME)
             proc_rd = {
                 dns_frames.RDATA.A: lambda r: events.append(
-                    NameEvent(evidence, service, name, IPAddress(r.as_ip_address()))),
+                    NameEvent(evidence, service, name, IPAddress(r.as_ip_address()), peers=peers)),
                 dns_frames.RDATA.AAAA: lambda r: events.append(
-                    NameEvent(evidence, service, name, IPAddress(r.as_ip_address()))),
+                    NameEvent(evidence, service, name, IPAddress(r.as_ip_address()), peers=peers)),
             }
             dns_frames.DNSResource.RDATA.process_frame(rd, proc_rd)
 

@@ -16,7 +16,7 @@ from tcsfw.model import HostType, IoTSystem, Host, Service, Connection
 from tcsfw.property import Properties, PropertyKey
 from tcsfw.requirement import Specification, Requirement, SelectorContext, SpecificationSelectorContext, \
     EntitySelector
-from tcsfw.selector import Locations, UpdateConnectionSelector, RequirementSelector, NamedSelector
+from tcsfw.selector import ConnectionSelector, HostSelector, Locations, ServiceSelector, UpdateConnectionSelector, RequirementSelector
 
 
 class IXIT_Section:
@@ -25,7 +25,7 @@ class IXIT_Section:
     def __init__(self, name: str, number: int, location: Optional[RequirementSelector] = None):
         self.name = name
         self.number = number
-        self.location = NamedSelector(name, location or EntitySelector())
+        self.location = location or EntitySelector()
         self.SectionList.append(self)
 
     def __repr__(self):
@@ -33,10 +33,10 @@ class IXIT_Section:
 
 
 DEVICE = Locations.HOST.type_of(HostType.DEVICE)
-
+DEVICE_UNEXPECTED = HostSelector(with_unexpected=True).type_of(HostType.DEVICE)
 
 class IXIT:
-    AuthMech = IXIT_Section("AuthMech", 1, Locations.SERVICE.authenticated())
+    AuthMech = IXIT_Section("AuthMech", 1, DEVICE / Locations.SERVICE.authenticated())
     UserInfo = IXIT_Section("UserInfo", 2, Locations.SYSTEM)
     VulnTypes = IXIT_Section("VulnTypes", 3)
     Conf = IXIT_Section("Conf", 4)
@@ -45,26 +45,25 @@ class IXIT:
     UpdMech = IXIT_Section("UpdMech", 7, UpdateConnectionSelector())
     UpdProc = IXIT_Section("UpdProc", 8)
     ReplSup = IXIT_Section("ReplSup", 9, DEVICE)
-    SecParam = IXIT_Section("SecParam", 10, DEVICE / Locations.DATA.parameters())
-    # NOTE: ComMech in principle for all communication, but all claims about encryption
-    ComMech = IXIT_Section("ComMech", 11, Locations.CONNECTION.encrypted())
-    NetSecImpl = IXIT_Section("NetSecImpl", 12, Locations.SOFTWARE)
-    SoftServ = IXIT_Section("SoftServ", 13, Locations.SERVICE.authenticated())
+    SecParam = IXIT_Section("SecParam", 10, Locations.DATA)  # FIXME: Not that great
+    ComMech = IXIT_Section("ComMech", 11, Locations.CONNECTION)
+    NetSecImpl = IXIT_Section("NetSecImpl", 12, DEVICE / Locations.SOFTWARE)
+    SoftServ = IXIT_Section("SoftServ", 13, DEVICE / Locations.SERVICE.authenticated())
     SecMgmt = IXIT_Section("SecMgmt", 14)
-    Intf = IXIT_Section("Intf", 15, DEVICE)
+    Intf = IXIT_Section("Intf", 15, DEVICE_UNEXPECTED)
     CodeMin = IXIT_Section("CodeMin", 16)
     PrivlCtrl = IXIT_Section("PrivlCtrl", 17)
     AccCtrl = IXIT_Section("AccCtrl", 18)
     SecDev = IXIT_Section("SecDev", 19)
     SecBoot = IXIT_Section("SecBoot", 20, DEVICE / Locations.SOFTWARE)
     PersData = IXIT_Section("PersData", 21, Locations.DATA.personal())
-    ExtSens = IXIT_Section("ExtSens", 22, DEVICE)
+    ExtSens = IXIT_Section("ExtSens", 22, DEVICE.with_property(Properties.SENSORS))
     ResMech = IXIT_Section("ResMech", 23, Locations.SYSTEM)
     TelData = IXIT_Section("TelData", 24, Locations.SYSTEM)
     DelFunc = IXIT_Section("DelFunc", 25, Locations.SYSTEM)
     UserDec = IXIT_Section("UserDec", 26, Locations.SYSTEM)
     UserIntf = IXIT_Section("UserIntf", 27, Locations.SYSTEM)
-    ExtAPI = IXIT_Section("ExtAPI", 28, DEVICE / Locations.SERVICE.unexpected())
+    ExtAPI = IXIT_Section("ExtAPI", 28, DEVICE / ServiceSelector(with_unexpected=True))
     InpVal = IXIT_Section("InpVal", 29, DEVICE / Locations.SERVICE)
 
     # Not from ETSI
@@ -76,34 +75,33 @@ def check(key: str | PropertyKey, description: str) -> PropertyClaim:
 
 
 # Special locators
-# Services which use passwords that are not defined by the user
-AuthMech_NotUserDefined = NamedSelector("AuthMech", Locations.SERVICE.authenticated())
-# Unexpected authentication mechanism
-AuthMech_Unexpected = NamedSelector("AuthMech", Locations.SERVICE.unexpected().authenticated())
-# Unexpected update connections
-UpdMech_Unexpected = NamedSelector("UpdMech",
-                                   Locations.HOST.type_of(HostType.DEVICE) / Locations.CONNECTION.unexpected())
-# Unexpected communication mechanisms
-ComMech_Unexpected = NamedSelector("ComMech", Locations.CONNECTION.unexpected())
+# Services which use passwords, which are not defined by the user (not detectable)
+AuthMech_NotUserDefined = DEVICE / Locations.SERVICE.authenticated()
+# All authentication mechanism, including unexpected
+AuthMech_All = DEVICE / ServiceSelector(with_unexpected=True).authenticated()
+# All update connections, including unexpected
+UpdMech_All = ConnectionSelector(with_unexpected=True).endpoint(DEVICE)
+# All communication mechanisms, including unexpected
+ComMech_All = ConnectionSelector(with_unexpected=True)
 # Unexpected communication mechanisms after secure boot failure
-SecBoot_Unexpected = NamedSelector("SecBoot", Locations.HOST.type_of(HostType.DEVICE)
-                                   / Locations.CONNECTION.unexpected())
-# A physical interface - FIXME: no filter for them!
-Intf_Physical = NamedSelector("Intf", Locations.HOST.type_of(HostType.DEVICE))
+SecBoot_Unexpected = Locations.HOST.type_of(HostType.DEVICE) / ConnectionSelector(with_unexpected=True)
+# A physical interface (same as Intf now))
+Intf_Physical = DEVICE_UNEXPECTED
+# All hosts which can have ExtAPI
+ExtAPI_Hosts_All = DEVICE
+
 # Personal data (items)
-UserInfo_Personal = NamedSelector("UserInfo", Locations.DATA.personal())
-# No selector
-NO_SELECTOR = NamedSelector("None", Locations.SYSTEM)
+UserInfo_Personal = Locations.DATA.personal()
 
 # Claims
 UI = UserInterfaceClaim() % "UI"
 PHYSICAL_MANIPULATION = PhysicalManipulationClaim() % "Physical manipulation"
 CONTENT = ContentClaim() % "Document content review"
 
-EXPECTED = StatusClaim("Expected network nodes")
-EXPECTED_CONNECTIONS = StatusClaim("Expected connections")
-EXPECTED_SERVICES = NoUnexpectedServices() % "Network nodes and connections"
-EXPECTED_AUTH = StatusClaim("Network nodes and connections")
+DEFINED_HOSTS_ONLY = NamedClaim("Defined hosts only", Claims.EXPECTED)
+HOST_DEFINED_SERVICES = NoUnexpectedServices() % "Defined services only"
+CONNECTIONS_DEFINED_ONLY = NamedClaim("Defined connections only", Claims.EXPECTED)
+DEFINED_AUTH_ONLY = StatusClaim("Defined authentication mechanisms only")
 SERVICE_BEST_PRACTICES = (Claims.WEB_BEST_PRACTICE + ProtocolClaim()
                           + Claims.HTTP_REDIRECT) % "Protocol checks"
 CONNECTION = ProtocolClaim(encrypted=True) % "Defined connection mechanism"
@@ -187,14 +185,14 @@ class EtsiTs103701(Specification):
 
         # Test units for functional test cases (109)
 
-        self.make("5.1-1-2a", IXIT.AuthMech, AuthMech_Unexpected, EXPECTED_AUTH)  # UI junior partner
+        self.make("5.1-1-2a", IXIT.AuthMech, AuthMech_All, DEFINED_AUTH_ONLY)  # UI junior partner
         self.make("5.1-1-2b", IXIT.AuthMech, claim=UI)
         self.make("5.1-1-2c", IXIT.AuthMech, AuthMech_NotUserDefined, PASSWORDS_VALID)
         self.make("5.1-2-2a", IXIT.AuthMech, AuthMech_NotUserDefined, PASSWORDS_VALID)
         self.make("5.1-3-2a", IXIT.AuthMech, claim=AUTHENTICATION)
         self.make("5.1-4-2a", IXIT.AuthMech, claim=UI)
         self.make("5.1-4-2b", IXIT.AuthMech, claim=UI)
-        self.make("5.1-5-2a", IXIT.AuthMech, AuthMech_Unexpected, EXPECTED_AUTH)
+        self.make("5.1-5-2a", IXIT.AuthMech, AuthMech_All, DEFINED_AUTH_ONLY)
         self.make("5.1-5-2b", IXIT.AuthMech, claim=AUTH_BRUTE_FORCE)
         self.make("5.2-1-2a", IXIT.UserInfo, claim=AVAILABILITY.resource("vulnerability-disclosure-policy"))
         self.make("5.2-1-2b", IXIT.UserInfo, claim=CONTENT.resource("vulnerability-disclosure-policy"))
@@ -202,12 +200,12 @@ class EtsiTs103701(Specification):
         self.make("5.3-1-2a", IXIT.SoftComp, reference="5.3-2-2")  # to UpdMech tests
         self.make("5.3-2-2a", IXIT.UpdMech, claim=UPDATE_MISUSE_DESIGN)
         self.make("5.3-2-2b", IXIT.UpdMech, claim=UPDATE_MISUSE_ATTEMPT)
-        self.make("5.3-6-2a", IXIT.UpdMech, claim=EXPECTED_CONNECTIONS)
+        self.make("5.3-6-2a", IXIT.UpdMech, claim=CONNECTIONS_DEFINED_ONLY)
         self.make("5.3-6-2b", IXIT.UpdMech, claim=UI)
         self.make("5.3-6-2c", IXIT.UpdMech, claim=UI)
         self.make("5.3-6-2d", IXIT.UpdMech, claim=UI)
         # 5.3.10.1 Test case 5.3-10-1 (conceptual/functional)
-        self.make("5.3-10-1c", IXIT.UpdMech, UpdMech_Unexpected, EXPECTED_CONNECTIONS)
+        self.make("5.3-10-1c", IXIT.UpdMech, UpdMech_All, CONNECTIONS_DEFINED_ONLY)
         self.make("5.3-13-2a", IXIT.UserInfo, claim=AVAILABILITY.resource("published-support-period"))
         self.make("5.3-13-2b", IXIT.UserInfo, claim=AVAILABILITY.resource("published-support-period"))
         self.make("5.3-13-2c", IXIT.UserInfo, claim=CONTENT.resource("published-support-period"))
@@ -237,21 +235,21 @@ class EtsiTs103701(Specification):
         self.make("5.5-4-2b", IXIT.SoftServ, claim=ACCESS_CONTROL)  # grant
         self.make("5.5-4-2c", IXIT.SoftServ, claim=AUTHENTICATION)  # dupe
         self.make("5.5-5-2a", IXIT.SoftServ, reference="5.5-4-2")  # to SoftServ tests
-        self.make("5.5-5-2b", IXIT.ComMech, ComMech_Unexpected, EXPECTED_CONNECTIONS)
+        self.make("5.5-5-2b", IXIT.ComMech, ComMech_All, CONNECTIONS_DEFINED_ONLY)
         self.make("5.5-6-2a", IXIT.SecParam, reference="5.5-1-2")  # to CommMech tests
         self.make("5.5-7-2a", IXIT.SecParam, reference="5.5-1-2")  # to ComMech tests, remote only
-        self.make("5.6-1-2a", IXIT.Intf, claim=EXPECTED)  # also physical interfaces
-        self.make("5.6-1-2b", IXIT.Intf, claim=EXPECTED)
-        self.make("5.6-2-2a", IXIT.Intf, claim=EXPECTED)  # could also scan service best practices
+        self.make("5.6-1-2a", IXIT.Intf, claim=HOST_DEFINED_SERVICES)  # also physical interfaces
+        self.make("5.6-1-2b", IXIT.Intf, claim=HOST_DEFINED_SERVICES)
+        self.make("5.6-2-2a", IXIT.Intf, claim=HOST_DEFINED_SERVICES)  # could also scan service best practices
         self.make("5.6-3-2a", IXIT.Intf, Intf_Physical, PHYSICAL_MANIPULATION)
         self.make("5.6-3-2b", IXIT.Intf, Intf_Physical, PHYSICAL_MANIPULATION)
-        self.make("5.6-3-2c", IXIT.Intf, claim=EXPECTED)  # only air interfaces
-        self.make("5.6-3-2d", IXIT.Intf, Intf_Physical, EXPECTED_SERVICES)
-        self.make("5.6-4-2a", IXIT.Intf, Intf_Physical, EXPECTED_SERVICES)
-        self.make("5.6-4-2b", IXIT.Intf, Intf_Physical, EXPECTED_SERVICES)
+        self.make("5.6-3-2c", IXIT.Intf, claim=HOST_DEFINED_SERVICES)  # only air interfaces
+        self.make("5.6-3-2d", IXIT.Intf, Intf_Physical, HOST_DEFINED_SERVICES)
+        self.make("5.6-4-2a", IXIT.Intf, Intf_Physical, HOST_DEFINED_SERVICES)
+        self.make("5.6-4-2b", IXIT.Intf, Intf_Physical, HOST_DEFINED_SERVICES)
         self.make("5.7-1-2a", IXIT.SecBoot, claim=SOFTWARE_CHANGE_DETECTED)
         self.make("5.7-2-2a", IXIT.SecBoot, claim=UI)
-        self.make("5.7-2-2b", IXIT.SecBoot, SecBoot_Unexpected, EXPECTED)
+        self.make("5.7-2-2b", IXIT.SecBoot, SecBoot_Unexpected, DEFINED_HOSTS_ONLY)
         self.make("5.8-1-2a", IXIT.PersData, reference="5.5-1-2")  # to ComMech tests
         self.make("5.8-2-2a", IXIT.PersData, reference="5.5-1-2")  # to ComMech tests
         # ExtSens more accurate than UserInfo
@@ -287,7 +285,7 @@ class EtsiTs103701(Specification):
         self.make("5.12-3-1c", IXIT.UserInfo, claim=CONTENT.resource("setup-check"))
         self.make("5.13-1-2a", IXIT.InpVal, claim=VALIDATE_INPUT)
         self.make("5.13-1-2b", IXIT.UserIntf, claim=CONTENT.resource("user-manual"))
-        self.make("5.13-1-2c", IXIT.ExtAPI, claim=EXPECTED_SERVICES)
+        self.make("5.13-1-2c", IXIT.ExtAPI, ExtAPI_Hosts_All, claim=HOST_DEFINED_SERVICES)
         self.make("6-1-2a", IXIT.UserInfo, UserInfo_Personal, CONTENT.resource(
             "personal-data", "processing of the data"))
         self.make("6-1-2b", IXIT.UserInfo, UserInfo_Personal, CONTENT.resource(
@@ -448,10 +446,12 @@ class EtsiTs103701(Specification):
         self.requirement_map = new_r
 
     def make(self, identifier: str, ixit: IXIT_Section,
-             location: Optional[RequirementSelector] = None,  claim=EntityClaim(),
+             select: Optional[RequirementSelector] = None,  claim=EntityClaim(),
              reference="") -> Requirement:
         """Make a requirement"""
         assert identifier not in self.requirement_map, f"Double {identifier}"
+        assert isinstance(select, RequirementSelector) or select is None, f"Bad selector for {identifier}"
+        assert isinstance(claim, EntityClaim), f"Bad claim for {identifier}"
         # if claim == UI:
         #     ixit = IXIT.UserIntf  # NOTE: Forcing all UI claims into same target
         props = {}
@@ -459,7 +459,8 @@ class EtsiTs103701(Specification):
             claim = CROSS_REFERENCE
             self.references[identifier] = reference
 
-        if claim in {REVIEW, CROSS_REFERENCE}:
+        if claim in {REVIEW, CROSS_REFERENCE, UI, PHYSICAL_MANIPULATION} or isinstance(claim, ContentClaim):
+            # these are not added to the requirements
             priority = 0
             props[Properties.REVIEW] = True
         else:
@@ -471,10 +472,10 @@ class EtsiTs103701(Specification):
         unit = self.test_units[identifier]
         if unit.functional:
             props[Properties.FUNCTIONAL] = True
-        if ixit.location:
+        if select:
+            selector = select
+        elif ixit.location:
             selector = ixit.location
-        elif location:
-            selector = location
         else:
             assert False, f"No selector for {identifier}"
         r = Requirement((self.specification_id, identifier), unit.purpose, selector, claim)
@@ -483,23 +484,17 @@ class EtsiTs103701(Specification):
         i_split = identifier.split("-")
         sid = i_split[0]
         r.section_name = f"{sid} {self.section_names[sid]}"
+        r.target_name = ixit.name
         self.requirement_map[identifier] = r
         return r
 
     def create_aliases(self, selected: Iterable[Tuple[Requirement, Entity, Claim]]) \
             -> Dict[Tuple[Requirement, Entity, Claim], str]:
-        # r = {}
-        # Just convert to location name
-        # for req, ent, claim in selected:
-        #     sel = req.selector
-        #     assert isinstance(sel, NamedSelector)
-        #     r[req, ent, claim] = sel.name
-        # Number each location to have unique aliases...
+        """ Create aliases by test targets"""
         bases: Dict[str, Set[Entity]] = {}
         for req, ent, claim in selected:
-            sel = req.selector
-            assert isinstance(sel, NamedSelector)
-            bases.setdefault(sel.name, set()).add(ent)
+            assert req.target_name, f"Requirement {req.identifier_string()} has no target"
+            bases.setdefault(req.target_name, set()).add(ent)
         aliases: Dict[str, Dict[Entity, str]] = {}
         for base, es in bases.items():
             b_d = aliases[base] = {}
@@ -510,9 +505,7 @@ class EtsiTs103701(Specification):
                 b_d[e] = f"{base}-{i}"
         r = {}
         for req, ent, claim in selected:
-            sel = req.selector
-            assert isinstance(sel, NamedSelector)
-            b_d = aliases[sel.name]
+            b_d = aliases[req.target_name]
             r[req, ent, claim] = b_d[ent]
         return r
 
@@ -694,7 +687,7 @@ def verify_ixit_data(specification: EtsiTs103701, path=pathlib.Path("etsi/ixit_t
 
 
 # ETSI TS 103 701 test specification
-ETSI_TS_103_701 = EtsiTs103701("etsi_ts_103_701", "ETSI TS 103 701")
+ETSI_TS_103_701 = EtsiTs103701("etsi_ts_103_701", "ETSI TS 103 701 Security perimeter")
 # ...and subset with tests from Finnish Cybersecurity label
 ETSI_TS_103_701_FIN = ETSI_TS_103_701.get_finnish_label_tests()
 

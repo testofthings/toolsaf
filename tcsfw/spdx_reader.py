@@ -8,7 +8,7 @@ from tcsfw.components import Software, SoftwareComponent
 from tcsfw.entity import Entity
 from tcsfw.event_interface import PropertyEvent, EventInterface
 from tcsfw.model import IoTSystem, NodeComponent
-from tcsfw.property import PropertyVerdict, Properties, PropertyKey
+from tcsfw.property import Properties, PropertyKey
 from tcsfw.tools import ComponentCheckTool
 from tcsfw.traffic import EvidenceSource, Evidence
 from tcsfw.verdict import Verdict
@@ -43,7 +43,7 @@ class SPDXReader(ComponentCheckTool):
             version = raw.get("versionInfo", "")
             if "property 'version'" in version:
                 version = ""  # NOTE: Kludging a bug in BlackDuck
-            key = PropertyVerdict("component", name)
+            key = PropertyKey("component", name)
             properties.add(key)
             old_sc = software.components.get(name)
             verdict = Verdict.PASS
@@ -56,11 +56,11 @@ class SPDXReader(ComponentCheckTool):
             elif not old_sc:
                 verdict = Verdict.FAIL  # claim not in baseline
             if self.send_events:
-                ev = PropertyEvent(evidence, software, key.value(verdict, explanation=f"{name} {version}"))
+                ev = PropertyEvent(evidence, software, key.verdict(verdict, explanation=f"{name} {version}"))
                 interface.property_update(ev)
 
         if self.send_events:
-            ev = PropertyEvent(evidence, software, Properties.COMPONENTS.value(properties))
+            ev = PropertyEvent(evidence, software, Properties.COMPONENTS.value_set(properties))
             interface.property_update(ev)
 
     def _entity_coverage(self, entity: Entity) -> List[PropertyKey]:

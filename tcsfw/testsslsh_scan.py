@@ -7,7 +7,7 @@ from tcsfw.address import AnyAddress, Protocol
 from tcsfw.entity import Entity
 from tcsfw.event_interface import EventInterface, PropertyAddressEvent
 from tcsfw.model import Service, IoTSystem, NetworkNode
-from tcsfw.property import PropertyVerdict, Properties, PropertyKey, PropertySet
+from tcsfw.property import PropertyKey, Properties, PropertyKey
 from tcsfw.registry import Registry
 from tcsfw.tools import EndpointCheckTool
 from tcsfw.traffic import Evidence, EvidenceSource
@@ -45,7 +45,7 @@ class TestSSLScan(EndpointCheckTool):
             self.logger.info("Issue %s: %s", f_id, finding)
 
             exp = f"{self.tool.name} ({f_id}): {finding}"
-            kv = PropertyVerdict(self.tool_label, f_id).value(Verdict.FAIL, exp)
+            kv = PropertyKey(self.tool_label, f_id).verdict(Verdict.FAIL, exp)
             ev = PropertyAddressEvent(evidence, endpoint, kv)
             p_keys.add(kv[0])
             event_sink.property_address_update(ev)
@@ -55,12 +55,12 @@ class TestSSLScan(EndpointCheckTool):
 
         keys = self._get_keys()
 
-        kv = keys[0].value(p_keys, explanation=exp)
+        kv = keys[0].value_set(p_keys, explanation=exp)
         ev = PropertyAddressEvent(evidence, endpoint, kv)
         event_sink.property_address_update(ev)
         # do not know how to differentiate these... all go hand-in-hand
         for key in keys[1:]:
-            ev = PropertyAddressEvent(evidence, endpoint, key.value({keys[0]}, explanation=exp))
+            ev = PropertyAddressEvent(evidence, endpoint, key.value_set({keys[0]}, explanation=exp))
             event_sink.property_address_update(ev)
 
     def _entity_coverage(self, entity: Entity) -> List[PropertyKey]:
@@ -68,7 +68,7 @@ class TestSSLScan(EndpointCheckTool):
             return self._get_keys()
         return []
 
-    def _get_keys(self) -> List[PropertySet]:
+    def _get_keys(self) -> List[PropertyKey]:
         """Get covered keys"""
         key = self.property_key
         return [key, key.append_key("best-practices"), key.append_key("no-vulnz"), Properties.ENCRYPTION]

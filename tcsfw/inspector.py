@@ -1,12 +1,12 @@
 import datetime
 import logging
-from typing import Dict, Tuple
+from typing import Dict, Set, Tuple
 
 from tcsfw.address import DNSName, AnyAddress
 from tcsfw.entity import Entity
 from tcsfw.event_interface import EventInterface, PropertyAddressEvent, PropertyEvent
 from tcsfw.matcher import SystemMatcher
-from tcsfw.model import IoTSystem, Connection, Service, Host, Addressable, NodeComponent
+from tcsfw.model import ExternalActivity, IoTSystem, Connection, Service, Host, Addressable, NodeComponent
 from tcsfw.property import Properties
 from tcsfw.services import NameEvent
 from tcsfw.traffic import ServiceScan, HostScan, Flow, IPFlow
@@ -21,16 +21,22 @@ class Inspector(EventInterface):
         self.logger = logging.getLogger("inspector")
         self.connection_count: Dict[Connection, int] = {}
         self.sessions: Dict[Flow, bool] = {}
-        self.dns_names: Dict[str, Host] = {}
+        self.known_hosts: Set[Host] = set()
+        self._list_hosts()
 
     def reset(self):
         """Reset the system clearing all evidence"""
         self.matcher.reset()
         self.connection_count.clear()
         self.sessions.clear()
-        self.dns_names.clear()
+        self._list_hosts()
         # Ask clients to reload NOW - hosts and connection are not sent
         self.system.call_listeners(lambda ln: ln.systemReset(self.system))
+
+    def _list_hosts(self):
+        """List all hosts"""
+        self.known_hosts.clear()
+        self.known_hosts.update(self.system.get_hosts())
 
     def get_system(self) -> IoTSystem:
         return self.system
@@ -57,9 +63,14 @@ class Inspector(EventInterface):
         send = set()  # connection, flow, source and/or target
 
         def update_seen_status(entity: Addressable):
-            mod_s = entity.set_seen_now()
-            if mod_s is not None:
-                send.add(entity)  # verdict change, must send the entity
+            changed = []
+            entity.set_seen_now(changed)
+            for ent in changed:
+                # verdict change, send event
+                send.add(entity)  # NOTE: Event sent after property event - not good
+                prop = Properties.EXPECTED.verdict(ent.get_expected_verdict())
+                self.system.call_listeners(lambda ln: ln.propertyChange(entity, prop))
+
 
         # if we have a connection, the endpoints cannot be placeholders
         source, target = conn.source, conn.target
@@ -67,6 +78,9 @@ class Inspector(EventInterface):
             source.status = conn.status
         if target.status == Status.PLACEHOLDER:
             target.status = conn.status
+
+        self.known_hosts.add(source.get_parent_host())
+        self.known_hosts.add(target.get_parent_host())
 
         external = conn.status == Status.EXTERNAL
         if c_count == 1:
@@ -99,7 +113,7 @@ class Inspector(EventInterface):
                     # external target, send update even that verdict remains inconclusve
                     exp = conn.target.get_expected_verdict(default=None)
                     if exp is None:
-                        target.set_property(Properties.EXPECTED.value(Verdict.INCON))
+                        target.set_property(Properties.EXPECTED.verdict(Verdict.INCON))
                         send.add(target)
             else:
                 # a reply
@@ -120,18 +134,25 @@ class Inspector(EventInterface):
         address = event.address
         if event.service and event.service.captive_portal and event.address in event.service.parent.addresses:
             address = None  # it is just redirecting to itself
-        h = self.system.learn_named_address(DNSName(event.name), address)
+        name = DNSName(event.name)
+        h = self.system.learn_named_address(name, address)
+        if h not in self.known_hosts:
+            # new host
+            if h.status == Status.UNEXPECTED:
+                # unexpected host, check if it can be external
+                for pe in event.peers:
+                    if name in pe.get_parent_host().ignore_name_requests:
+                        # this name is explicitly ok
+                        continue
+                    if pe.external_activity < ExternalActivity.OPEN:
+                        # should not ask or reply with unknown names
+                        h.set_seen_now()
+                        break
+                else:
+                    # either unknown DNS requester or peers can be externally active
+                    h.status = Status.EXTERNAL
+            self.known_hosts.add(h)
         self.system.call_listeners(lambda ln: ln.hostChange(h))
-        if event.address:
-            self.dns_names[event.name] = h
-            # FIXME: This should be a claim and verification!
-            # s_host = event.service.get_parent_host()
-            # to_self = 0
-            # for s in self.dns_names.values():
-            #     to_self += 1 if s == s_host else 0
-            # self.logger.info("%s self-responses=%d/%d", event.service.long_name(), to_self, len(self.dns_names))
-            # if to_self > 1 and to_self > len(self.dns_names) * .5:
-            #     pass
         return h
 
     def property_update(self, update: PropertyEvent) -> Entity:
@@ -145,6 +166,9 @@ class Inspector(EventInterface):
             self.system.call_listeners(lambda ln: ln.hostChange(s.get_parent_host()))
             return s
         if isinstance(s, NodeComponent):
+            entity = s.entity
+            if isinstance(entity, IoTSystem):
+                return s  # no event
             self.system.call_listeners(lambda ln: ln.hostChange(s.entity.get_parent_host()))
             return s
         if isinstance(s, Connection):
@@ -190,7 +214,8 @@ class Inspector(EventInterface):
                     break
             else:
                 # child address not in scan results
-                c.set_property(Properties.EXPECTED.value(Verdict.FAIL))
+                c.set_property(Properties.EXPECTED.verdict(Verdict.FAIL))
+        self.known_hosts.add(host)
         self.system.call_listeners(lambda ln: ln.hostChange(host))
         return host
 

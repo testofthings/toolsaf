@@ -98,17 +98,6 @@ class RequirementClaimMapper:
         # max. coverage by introduced tools
         self.tool_coverage: Dict[Entity, Dict[PropertyKey, Set[Tool]]] = {}
 
-    def introduce_tool_plans(self, plan: Dict[RequirementSelector, List[Tuple[Tool, PropertyKey]]]):
-        """Introduce tool plans"""
-        if not plan:
-            return
-        for sel, tps in plan.items():
-            sel_es = sel.select(self.system, SelectorContext())
-            for s in sel_es:
-                s_prop = self.tool_coverage.setdefault(s, {})
-                for tool, key in tps:
-                    s_prop.setdefault(key, set()).add(tool)
-
     def map_claims(self, specification: Specification) -> ClaimMapping:
         """Map claims and verdicts"""
         mapping = ClaimMapping(specification)
@@ -137,7 +126,7 @@ class RequirementClaimMapper:
             cs = ctx.check(claim, e)
             if cs is None:
                 # location defined, but no claim -> inconclusive
-                cs = ClaimStatus(claim, verdict=Verdict.INCON, authority=ClaimAuthority.MODEL)
+                cs = ClaimStatus(claim)
             assert not (cs.verdict == Verdict.IGNORE and cs.authority == ClaimAuthority.TOOL), \
                 f"Tool assigned ignore not wanted from claim (should de-select): {cs}"
             rs = RequirementStatus(requirement, ctx, cs)

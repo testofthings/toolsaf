@@ -1,4 +1,4 @@
-from typing import Set, Optional
+from typing import List, Set, Optional
 
 from tcsfw.address import IPAddresses, EndpointAddress, Protocol, HWAddress, IPAddress
 from tcsfw.model import Service, NetworkNode, Connection, Host, ConnectionType, HostType, Addressable, ExternalActivity
@@ -41,11 +41,12 @@ class DNSService(Service):
 class NameEvent(Event):
     """DNS name event"""
     def __init__(self, evidence: Evidence, service: Optional[DNSService], name: str,
-                 address: Optional[IPAddress] = None):
+                 address: Optional[IPAddress] = None, peers: List[NetworkNode] = None):
         super().__init__(evidence)
         self.service = service
         self.name = name
         self.address = address
+        self.peers = [] if peers is None else peers
 
     def get_value_string(self) -> str:
         return f"{self.name}={self.address}" if self.address else self.name

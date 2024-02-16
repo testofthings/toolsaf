@@ -4,7 +4,7 @@ from tcsfw.claim_set import Claims, EncryptionClaim, UpdateClaim, ReleaseClaim, 
     NoVulnerabilitiesClaim, ProtocolClaim, StatusClaim
 from tcsfw.model import HostType
 from tcsfw.requirement import Specification
-from tcsfw.selector import Locations
+from tcsfw.selector import ConnectionSelector, HostSelector, Locations, ServiceSelector
 
 
 def req(text: str, extends: Claim):
@@ -23,15 +23,15 @@ class DefaultSpecification(Specification):
         # [x] Network nodes are defined
         self.no_unexpected_nodes = self._req(
             "no-unexp-nodes",
-            Locations.HOST.unexpected() ^ StatusClaim("Network nodes are defined"))
+            HostSelector(with_unexpected=True) ^ Claims.name("Network nodes are defined", Claims.EXPECTED))
         # [x] Network services are defined
         self.no_unexpected_services = self._req(
             "no-unexp-services",
-            Locations.SERVICE.unexpected() ^ StatusClaim("Network services are defined"))
+            ServiceSelector(with_unexpected=True) ^ Claims.name("Network services are defined", Claims.EXPECTED))
         # [ ] Network connections are defined
         self.no_unexpected_connections = self._req(
             "no-unexp-connections",
-            Locations.CONNECTION.unexpected() ^ StatusClaim("Network connections are defined"))
+            ConnectionSelector(with_unexpected=True) ^ Claims.name("Network connections are defined", Claims.EXPECTED))
         # Interface security
         # [ ] Protocol best practises are used
         self.protocol_best = self._req(
@@ -50,25 +50,24 @@ class DefaultSpecification(Specification):
         # [x] Services are authenticated
         self.service_authenticate = self._req(
             "service-auth",
-            Locations.SERVICE ^ Claims.name("Services are authenticated",
-                                            AuthenticationClaim() | Claims.HTTP_REDIRECT))
+            Locations.SERVICE.direct() ^ Claims.name("Services are authenticated",
+                                                     AuthenticationClaim() | Claims.HTTP_REDIRECT))
         # Data protection
         # [x] Connections are encrypted
         self.connection_encrypt = self._req(
             "conn-encrypt",
             Locations.CONNECTION ^ Claims.name("Connections are encrypted",
                                                EncryptionClaim() | Claims.HTTP_REDIRECT))
-        self.service_encrypt = self._req(
-            "service-encrypt",
-            Locations.SERVICE ^ Claims.name("Connections are encrypted",
-                                            EncryptionClaim() | Claims.HTTP_REDIRECT))
+        # NOTE: Covered by protocol best practises
+        # self.service_encrypt = self._req(
+        #     "service-encrypt",
+        #     Locations.SERVICE ^ Claims.name("Connections are encrypted",
+        #                                        EncryptionClaim() | Claims.HTTP_REDIRECT))
         # [ ] Private data is defined
         self.private_data = self._req(
             "private-data",
-            Locations.DATA.personal() ^ Claims.name("Private data is defined", Claims.DATA_CONFIRMED))
-        self.auth_credentials = self._req(
-            "auth-credentials",
-            Locations.DATA.parameters() ^ Claims.name("Authentication credentials", Claims.DATA_CONFIRMED))
+            Locations.DATA ^ Claims.name("Private data is defined", Claims.SENSITIVE_DATA))
+
         # [x] Privacy policy is defined
         self.privacy_policy = self._req(
             "privacy-policy",

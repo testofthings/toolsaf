@@ -7,7 +7,7 @@ from tcsfw.components import Software
 from tcsfw.entity import Entity
 from tcsfw.event_interface import PropertyEvent, EventInterface
 from tcsfw.model import IoTSystem, HostType, NodeComponent
-from tcsfw.property import PropertyVerdict, Properties, PropertyKey
+from tcsfw.property import Properties, PropertyKey
 from tcsfw.tools import ComponentCheckTool
 from tcsfw.traffic import EvidenceSource, Evidence
 from tcsfw.verdict import Verdict
@@ -36,7 +36,7 @@ class AndroidManifestScan(ComponentCheckTool):
                 name = name[name.rindex(".") + 1:]
             perm_set.add(name)
 
-            key = PropertyVerdict("permission", name)
+            key = PropertyKey("permission", name)
             val = key.get(software.properties)
             key_set.add(key)
 
@@ -47,20 +47,20 @@ class AndroidManifestScan(ComponentCheckTool):
                 ver = Verdict.PASS if val else Verdict.FAIL
 
             if self.send_events:
-                ev = PropertyEvent(evidence, software, key.value(ver))
+                ev = PropertyEvent(evidence, software, key.verdict(ver))
                 interface.property_update(ev)
 
         unseen = software.permissions - perm_set
         for name in sorted(unseen):
             # unseen permissions are failures
             if self.send_events:
-                key = PropertyVerdict("permission", name)
+                key = PropertyKey("permission", name)
                 key_set.add(key)
-                ev = PropertyEvent(evidence, software, key.value(Verdict.FAIL))
+                ev = PropertyEvent(evidence, software, key.verdict(Verdict.FAIL))
                 interface.property_update(ev)
 
         if self.send_events:
-            ev = PropertyEvent(evidence, software, Properties.PERMISSIONS.value(key_set, self.tool.name))
+            ev = PropertyEvent(evidence, software, Properties.PERMISSIONS.value_set(key_set, self.tool.name))
             interface.property_update(ev)
 
     def _entity_coverage(self, entity: Entity) -> List[PropertyKey]:

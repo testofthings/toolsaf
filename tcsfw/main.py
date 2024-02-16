@@ -6,32 +6,35 @@ import json
 import logging
 import pathlib
 import sys
-from typing import Tuple, Dict, Callable, Optional, Union, Self, List, Type
+from typing import Callable, Dict, List, Optional, Self, Tuple, Type, Union
 
-from tcsfw.address import AnyAddress, HWAddress, IPAddress, EndpointAddress, Protocol, Addresses, \
-    DNSName, IPAddresses, HWAddresses
+from tcsfw.address import (Addresses, AnyAddress, DNSName, EndpointAddress,
+                           HWAddress, HWAddresses, IPAddress, IPAddresses,
+                           Protocol)
 from tcsfw.batch_import import BatchImporter, LabelFilter
 from tcsfw.claim import Claim
 from tcsfw.claim_coverage import RequirementClaimMapper
 from tcsfw.client_api import APIRequest
-from tcsfw.components import Software, Cookies, CookieData, DataUsage, DataReference
+from tcsfw.components import (CookieData, Cookies, DataReference, DataStorages,
+                              Software)
 from tcsfw.coverage_result import CoverageReport
-from tcsfw.entity import Entity, ClaimAuthority
+from tcsfw.entity import ClaimAuthority, Entity
 from tcsfw.event_interface import PropertyEvent
 from tcsfw.events import ReleaseInfo
 from tcsfw.http_server import HTTPServerRunner
 from tcsfw.inspector import Inspector
 from tcsfw.latex_output import LaTeXGenerator
-from tcsfw.main_basic import SubLoader, BuilderInterface, NodeInterface, SystemInterface, SoftwareInterface, \
-    HostInterface
+from tcsfw.main_basic import (BuilderInterface, HostInterface, NodeInterface,
+                              SoftwareInterface, SubLoader, SystemInterface)
 from tcsfw.main_tools import EvidenceLoader
-from tcsfw.model import Host, Service, Connection, Addressable, ConnectionType, HostType, \
-    ExternalActivity, PieceOfData
-from tcsfw.property import PropertyKey, PropertyVerdict, Properties
+from tcsfw.model import (Addressable, Connection, ConnectionType,
+                         ExternalActivity, Host, HostType, SensitiveData,
+                         Service)
+from tcsfw.property import Properties, PropertyKey
 from tcsfw.registry import Registry
 from tcsfw.result import Report
 from tcsfw.services import DHCPService, DNSService
-from tcsfw.traffic import EvidenceSource, Evidence
+from tcsfw.traffic import Evidence, EvidenceSource
 from tcsfw.verdict import Status, Verdict
 from tcsfw.visualizer import Visualizer, VisualizerAPI
 
@@ -88,6 +91,8 @@ class SystemBuilder(SystemInterface):
         b = self.get_host_(name, "Any host")
         b.entity.any_host = True
         b.entity.host_type = HostType.ADMINISTRATIVE if node_type is None else node_type
+        # might serve other network nodes
+        b.entity.external_activity = ExternalActivity.UNLIMITED
         return b
 
     def infra(self, name="") -> 'HostBuilder':
@@ -110,10 +115,10 @@ class SystemBuilder(SystemInterface):
         add = f"{IPAddresses.BROADCAST}" if conf.transport == Protocol.UDP else f"{HWAddresses.BROADCAST}"
         return self.multicast(add, conf)
 
-    def data(self, names: List[str], personal=False, password=False) -> 'DataPieceBuilder':
+    def data(self, names: List[str], personal=False, password=False) -> 'SensitiveDataBuilder':
         """Declare pieces of security-relevant data"""
-        d = [PieceOfData(n, personal=personal, password=password) for n in names]
-        return DataPieceBuilder(self, d)
+        d = [SensitiveData(n, personal=personal, password=password) for n in names]
+        return SensitiveDataBuilder(self, d)
 
     def online_resource(self, key: str, url: str) -> Self:
         """Document online resource"""
@@ -128,7 +133,8 @@ class SystemBuilder(SystemInterface):
         self.loaders.append(el)
         return el
 
-    def claims(self) -> 'ClaimSetBuilder':
+    def claims(self, base_label="explain") -> 'ClaimSetBuilder':
+        self.claimSet.base_label = base_label
         return self.claimSet
 
     def get_host_(self, name: str, description: str) -> 'HostBuilder':
@@ -151,18 +157,20 @@ class SystemBuilder(SystemInterface):
     def finish_(self):
         """Finish the model"""
         # We want to have a authenticator related to each authenticated service
-        auth_map = DataUsage.map_authenticators(self.system, {})
-        for hb in self.hosts_by_name.values():
-            for sb in hb.service_builders.values():
-                s = sb.entity
-                if s not in auth_map and s.authentication:
-                    auth = PieceOfData(f"Auth-{s.name}")  # default authenticator
-                    auth.authenticator_for.append(s)
-                    hb.use_data(DataPieceBuilder(self, [auth]))
-                    # property to link from service to authentication
-                    exp = f"Authentication by {auth.name} (implicit)"
-                    prop_v = Properties.AUTHENTICATION_DATA.value(explanation=exp)
-                    prop_v[0].set(s.properties, prop_v[1])
+        return
+        # NOTE: Not ready to go into this level now...
+        # auth_map = DataUsage.map_authenticators(self.system, {})
+        # for hb in self.hosts_by_name.values():
+        #     for sb in hb.service_builders.values():
+        #         s = sb.entity
+        #         if s not in auth_map and s.authentication:
+        #             auth = PieceOfData(f"Auth-{s.name}")  # default authenticator
+        #             auth.authenticator_for.append(s)
+        #             hb.use_data(DataPieceBuilder(self, [auth]))
+        #             # property to link from service to authentication
+        #             exp = f"Authentication by {auth.name} (implicit)"
+        #             prop_v = Properties.AUTHENTICATION_DATA.value(explanation=exp)
+        #             prop_v[0].set(s.properties, prop_v[1])
 
 
 # Host types
@@ -203,7 +211,7 @@ class Builder(SystemBuilder):
         parser.add_argument("--test-post", nargs=2, help="Test API POST")
 
         parser.add_argument("--help-tools", action="store_true", help="List available tools")
-        parser.add_argument("--print-events", action="store_true", help="Print events and exit")
+        parser.add_argument("--log-events", action="store_true", help="Log events")
 
         self.parser = parser
         self.args = parser.parse_args()
@@ -221,6 +229,10 @@ class Builder(SystemBuilder):
         registry = Registry(Inspector(self.system))
         cc = RequirementClaimMapper(self.system)
 
+        if self.args.log_events:
+            # print events
+            registry.logging.event_logger = registry.logger
+
         for set_ip in self.args.set_ip or []:
             name, _, ips = set_ip.partition("=")
             h = self.system.get_entity(name) or self.system.get_endpoint(DNSName.name_or_ip(name))
@@ -229,7 +241,8 @@ class Builder(SystemBuilder):
             for ip in ips.split(","):
                 self.system.learn_ip_address(h, IPAddress.new(ip))
 
-        batch_import = BatchImporter(registry, filter=LabelFilter(self.args.def_loads or ""))
+        label_filter = LabelFilter(self.args.def_loads or "")
+        batch_import = BatchImporter(registry, filter=label_filter)
         for in_file in self.args.read or []:
             batch_import.import_batch(pathlib.Path(in_file))
 
@@ -240,20 +253,12 @@ class Builder(SystemBuilder):
                 print(f"{label:<20} {sl_s}")
             return
 
-        all_loaders = {}  # loaders by labels
+        # product claims, then explicit loaders (if any)
         for sub in self.claimSet.finish_loaders():
-            sub.pre_load(registry, all_loaders, cc)
+            sub.load(registry, cc, filter=label_filter)
         for ln in self.loaders:
             for sub in ln.subs:
-                sub.pre_load(registry, all_loaders, cc)
-        for ln_list in all_loaders.values():
-            for ln in ln_list:
-                ln.load(registry, cc)
-
-        if self.args.print_events:
-            print(f"== Event print ==")
-            registry.logging.print_events(sys.stdout)
-            return
+                sub.load(registry, cc, filter=label_filter)
 
         api = VisualizerAPI(registry, cc, self.visualizer)
         dump_report = True
@@ -271,7 +276,7 @@ class Builder(SystemBuilder):
         if out_form and out_form.startswith("coverage"):
             cmd, _, spec_id = out_form.partition(":")
             cmd = cmd[8:]
-            report = CoverageReport(self.system, cc)
+            report = CoverageReport(registry.logging, cc)
             spec = report.load_specification(spec_id)
             report.print_summary(sys.stdout, spec, cmd.strip("- "))
         elif out_form and out_form.startswith("latex"):
@@ -482,19 +487,21 @@ class HostBuilder(HostInterface, NodeBuilder):
         """Receive broadcast or multicast"""
         mc = multicast.entity
         assert mc.is_multicast(), "Can only receive multicast"
-        s = multicast.configurer.get_service_(self)
-        c = multicast >> s
+        # no service created, just connection from this to the multicast node
+        c = self >> multicast
+        c.logical_only()
         return c
 
     def cookies(self) -> 'CookieBuilder':
         """Configure cookies in a browser"""
         return CookieBuilder(self)
 
-    def use_data(self, *data: 'DataPieceBuilder') -> Self:
-        """This host uses some security-relevant data"""
-        usage = DataUsage.get_data_usage(self.entity)
+    def use_data(self, *data: 'SensitiveDataBuilder') -> Self:
+        """This host uses some sensitive data"""
+        usage = DataStorages.get_storages(self.entity, add=True)
         for db in data:
-            usage.sub_components.extend([DataReference(usage, d) for d in db.data])
+            for d in db.data:
+                usage.sub_components.append(DataReference(usage, d))
         return self
 
     def __truediv__(self, protocol: ProtocolType) -> ServiceBuilder:
@@ -502,11 +509,26 @@ class HostBuilder(HostInterface, NodeBuilder):
         conf = ProtocolConfigurer.as_configurer(protocol)
         return conf.get_service_(self)
 
+    def ignore_name_requests(self, *name: str) -> Self:
+        """Ignore DNS name requests for these names"""
+        self.entity.ignore_name_requests.update([DNSName(n) for n in name])
+        return self
 
-class DataPieceBuilder:
-    def __init__(self, parent: SystemBuilder, data: List[PieceOfData]):
+    def set_property(self, *key: str):
+        """Set a model property"""
+        p = PropertyKey.create(key).persistent()
+        self.entity.set_property(p.verdict())  # inconclusive
+        return self
+
+
+class SensitiveDataBuilder:
+    def __init__(self, parent: SystemBuilder, data: List[SensitiveData]):
         self.parent = parent
         self.data = data
+        # all sensitive data lives at least in system
+        usage = DataStorages.get_storages(parent.system, add=True)
+        for d in data:
+            usage.sub_components.append(DataReference(usage, d))
 
     def used_by(self, *host: HostBuilder) -> Self:
         """This data used/stored in a host"""
@@ -637,7 +659,7 @@ class ProtocolConfigurer:
         self.con_type = ConnectionType.UNKNOWN
         self.authentication = False
         self.external_activity: Optional[ExternalActivity.BANNED] = None
-        self.critical_parameter: List[PieceOfData] = []
+        self.critical_parameter: List[SensitiveData] = []
 
     def name(self, value: str) -> Self:
         """Name the service"""
@@ -666,7 +688,7 @@ class ProtocolConfigurer:
             # E.g. DHCP service fills this oneself
             b.entity.addresses.add(EndpointAddress(Addresses.ANY, self.transport, self.service_port))
         if self.critical_parameter:
-            parent.use_data(DataPieceBuilder(parent.system, self.critical_parameter))  # critical protocol parameters
+            parent.use_data(SensitiveDataBuilder(parent.system, self.critical_parameter))  # critical protocol parameters
         return b
 
     def _create_service(self, parent: HostBuilder) -> ServiceBuilder:
@@ -789,7 +811,7 @@ class HTTP(ProtocolConfigurer):
         s = super().get_service_(parent)
         if self.redirect_only:
             # persistent property
-            s.entity.set_property(Properties.HTTP_REDIRECT.value(explanation="HTTP redirect to TLS"))
+            s.entity.set_property(Properties.HTTP_REDIRECT.verdict(explanation="HTTP redirect to TLS"))
         return s
 
 
@@ -804,6 +826,8 @@ class ICMP(ProtocolConfigurer):
         s.entity.name = "ICMP"  # a bit of hack...
         s.entity.host_type = HostType.ADMINISTRATIVE
         s.entity.con_type = ConnectionType.ADMINISTRATIVE
+        # ICMP can be a service for other hosts
+        s.entity.external_activity = max(self.external_activity, parent.entity.external_activity)
         return s
 
 
@@ -821,7 +845,7 @@ class TLS(ProtocolConfigurer):
         if auth is not None:
             self.authentication = auth
         self.con_type = ConnectionType.ENCRYPTED
-        self.critical_parameter.append(PieceOfData("TLS-creds"))
+        # self.critical_parameter.append(PieceOfData("TLS-creds"))
 
 
 class NTP(ProtocolConfigurer):
@@ -837,7 +861,7 @@ class SSH(ProtocolConfigurer):
         super().__init__(Protocol.TCP, port=port, protocol=Protocol.SSH, name="SSH")
         self.authentication = True
         self.con_type = ConnectionType.ENCRYPTED
-        self.critical_parameter.append(PieceOfData("SSH-creds"))
+        # self.critical_parameter.append(PieceOfData("SSH-creds"))
 
 
 class TCP(ProtocolConfigurer):
@@ -857,7 +881,8 @@ class UDP(ProtocolConfigurer):
 
     def as_multicast_(self, address: str, system: SystemBuilder) -> 'ServiceBuilder':
         b = system.get_host_(address, description="Multicast")
-        b.entity.host_type = HostType.ADMINISTRATIVE
+        # Explicitly configured multicast nodes, at least are not administrative
+        # b.entity.host_type = HostType.ADMINISTRATIVE
         addr = IPAddress.new(address)
         if addr not in b.entity.addresses:
             b.new_address_(addr)
@@ -877,9 +902,11 @@ class BLEAdvertisement(ProtocolConfigurer):
 
 class ClaimBuilder:
     """Claim builder"""
-    def __init__(self, builder: 'ClaimSetBuilder', explanation: str, verdict: Verdict, authority=ClaimAuthority.MODEL):
+    def __init__(self, builder: 'ClaimSetBuilder', explanation: str, verdict: Verdict, label: str,
+                 authority=ClaimAuthority.MODEL):
         self.builder = builder
         self.authority = authority
+        self.source = EvidenceSource("Statement explanations", label=label)
         self._explanation = explanation
         self._keys: List[PropertyKey] = []
         self._locations: List[Entity] = []
@@ -888,13 +915,30 @@ class ClaimBuilder:
 
     def key(self, *segments: str) -> Self:
         """Add key to touch"""
-        self._keys.append(PropertyKey.create(segments))
+        key = PropertyKey.create(segments)
+        if key.is_protected():
+            key = key.prefix_key(Properties.PREFIX_MANUAL)
+        self._keys.append(key)
         return self
 
     def keys(self, *key: Tuple[str, ...]) -> Self:
         """Add keys to touch"""
-        for k in key:
-            self._keys.append(PropertyKey.create(k))
+        for seg in key:
+            assert isinstance(seg, tuple), f"Bad key {seg}"
+            k = PropertyKey.create(seg)
+            if k.is_protected():
+                k = k.prefix_key(Properties.PREFIX_MANUAL)
+            self._keys.append(k)
+        return self
+
+    def verdict_ignore(self) -> Self:
+        """Override verdict to ignore"""
+        self._verdict = Verdict.IGNORE
+        return self
+
+    def verdict_pass(self) -> Self:
+        """Override verdict to pass"""
+        self._verdict = Verdict.PASS
         return self
 
     def at(self, *locations: Union[SystemBuilder, NodeBuilder, ConnectionBuilder]) -> 'Self':
@@ -943,13 +987,15 @@ class ClaimBuilder:
         class ClaimLoader(SubLoader):
             def __init__(self):
                 super().__init__("Manual checks")
-                self.source_label = "manual"
+                self.source_label = this.source.label
 
-            def load(self, registry: Registry, coverage: RequirementClaimMapper):
-                evidence = Evidence(this.builder.source)
+            def load(self, registry: Registry, coverage: RequirementClaimMapper, filter: LabelFilter):
+                if not filter.filter(self.source_label):
+                    return
+                evidence = Evidence(this.source)
                 for loc in locations:
                     for key in keys:
-                        kv = PropertyVerdict.create(key.segments).value(this._verdict, explanation=this._explanation)
+                        kv = PropertyKey.create(key.segments).verdict(this._verdict, explanation=this._explanation)
                         ev = PropertyEvent(evidence, loc, kv)
                         registry.property_update(ev)
         return ClaimLoader()
@@ -960,19 +1006,24 @@ class ClaimSetBuilder(BuilderInterface):
     def __init__(self, builder: SystemBuilder):
         self.builder = builder
         self.claim_builders: List[ClaimBuilder] = []
-        self.source = EvidenceSource("Statement explanations", label="explain")
+        self.base_label = "explain"
 
     def claim(self, explanation: str, verdict=Verdict.PASS) -> ClaimBuilder:
         """Self-made claims"""
-        return ClaimBuilder(self, explanation, verdict)
+        return ClaimBuilder(self, explanation, verdict, self.base_label)
 
     def reviewed(self, explanation="", verdict=Verdict.PASS) -> ClaimBuilder:
         """Make reviewed claims"""
-        return ClaimBuilder(self, explanation, verdict, ClaimAuthority.MANUAL)
+        return ClaimBuilder(self, explanation, verdict, self.base_label, ClaimAuthority.MANUAL)
 
     def ignore(self, explanation="") -> ClaimBuilder:
         """Ignore claims or requirements"""
-        return ClaimBuilder(self, explanation, Verdict.IGNORE)
+        return ClaimBuilder(self, explanation, Verdict.IGNORE, self.base_label)
+
+    def set_base_label(self, base_label: str) -> Self:
+        """Set label for the claims"""
+        self.base_label = base_label
+        return self
 
     def finish_loaders(self) -> List[SubLoader]:
         """Finish"""

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import List, Optional, Dict, Set
 
 from tcsfw.events import ReleaseInfo
-from tcsfw.model import NodeComponent, Connection, NetworkNode, Host, PieceOfData, Service, Addressable
+from tcsfw.model import NodeComponent, Connection, NetworkNode, Host, SensitiveData, Service, Addressable
 
 
 class Software(NodeComponent):
@@ -104,36 +104,28 @@ class SoftwareComponent:
     version: str = ""
 
 
-class DataUsage(NodeComponent):
-    """Data usage"""
-    def __init__(self, entity: NetworkNode, name="Critical data", data: List[PieceOfData] = None):
+class DataStorages(NodeComponent):
+    """Data storages in IoT system or network node"""
+    def __init__(self, entity: NetworkNode, name="Sensitive data", data: List[SensitiveData] = None):
         super().__init__(entity, name)
         self.concept_name = "data"
         self.sub_components: List[DataReference] = [DataReference(self, d) for d in (data or [])]
 
     @classmethod
-    def get_data_usage(cls, entity: NetworkNode) -> 'DataUsage':
-        """Get data usage for an entity, created if needed"""
+    def get_storages(cls, entity: NetworkNode, add=False) -> 'DataStorages':
+        """Get data storages for an entity, created and even added if needed"""
         for c in entity.components:
-            if isinstance(c, DataUsage):
+            if isinstance(c, DataStorages):
                 return c
-        c = DataUsage(entity)
-        entity.components.append(c)
+        c = DataStorages(entity)
+        if add:
+            entity.components.append(c)
         return c
-
-    @classmethod
-    def map_authenticators(cls, system: NetworkNode, mapping: Dict[Service, List[PieceOfData]])\
-            -> Dict[Service, List[PieceOfData]]:
-        """Map authentication data from services using them"""
-        for c in system.iterate(relevant_only=True):
-            if isinstance(c, DataReference):
-                for s in c.data.authenticator_for:
-                    mapping.setdefault(s, []).append(c.data)
-        return mapping
 
 
 class DataReference(NodeComponent):
-    def __init__(self, usage: DataUsage, data: PieceOfData):
-        super().__init__(usage.entity, f"{data.name} @ {usage.entity.name}")
+    """Sensitive data reference"""
+    def __init__(self, usage: DataStorages, data: SensitiveData):
+        super().__init__(usage.entity, data.name)
         self.concept_name = "data"
         self.data = data

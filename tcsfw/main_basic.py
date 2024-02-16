@@ -1,6 +1,7 @@
 from typing import Dict, Optional, Self, List
 
 from tcsfw.address import AnyAddress, HWAddress, IPAddress
+from tcsfw.batch_import import LabelFilter
 from tcsfw.claim_coverage import RequirementClaimMapper
 from tcsfw.components import Software
 from tcsfw.model import ExternalActivity, EvidenceNetworkSource, Addressable, IoTSystem, Host
@@ -77,10 +78,6 @@ class SubLoader:
         return EvidenceNetworkSource(self.loader_name, self.base_ref, self.source_label, address_map=add_map,
                                      activity_map=ext_map)
 
-    def pre_load(self, registry: Registry, labels: Dict[str, List['SubLoader']], coverage: RequirementClaimMapper):
-        """Pre-load run, even for excluded"""
-        labels.setdefault(self.source_label, []).append(self)
-
-    def load(self, registry: Registry, coverage: RequirementClaimMapper):
+    def load(self, registry: Registry, coverage: RequirementClaimMapper, filter: LabelFilter):
         """Load evidence"""
         pass

@@ -7,7 +7,7 @@ from tcsfw.address import AnyAddress, Protocol
 from tcsfw.entity import Entity
 from tcsfw.event_interface import PropertyAddressEvent, EventInterface
 from tcsfw.model import Service, IoTSystem, NetworkNode
-from tcsfw.property import PropertyVerdict, Properties, PropertyKey
+from tcsfw.property import Properties, PropertyKey
 from tcsfw.tools import EndpointCheckTool
 from tcsfw.traffic import Evidence, EvidenceSource
 from tcsfw.verdict import Verdict
@@ -36,7 +36,7 @@ class SSHAuditScan(EndpointCheckTool):
 
         def make_issue(op: str, kind: str, item: Dict):
             op_s = "Change" if op == "chg" else "Delete"
-            key = PropertyVerdict(self.tool_label, op, kind, item['name'])
+            key = PropertyKey(self.tool_label, op, kind, item['name'])
             issues[key] = f"{op_s} {kind} {item['name']}"
 
         rec = raw.get("recommendations", {}).get("critical", {})
@@ -48,24 +48,24 @@ class SSHAuditScan(EndpointCheckTool):
         p_keys = set()
         for key, exp in issues.items():
             self.logger.info("SSH issue %s: %s", key, exp)
-            ev = PropertyAddressEvent(evidence, endpoint, key.value(Verdict.FAIL, f"{self.tool.name}: {exp}"))
+            ev = PropertyAddressEvent(evidence, endpoint, key.verdict(Verdict.FAIL, f"{self.tool.name}: {exp}"))
             p_keys.add(key)
             interface.property_address_update(ev)
 
         # scan summary at the end
         exp = f"{self.tool.name} scan completed"
-        kv = self.property_key.value(p_keys, explanation=exp)
+        kv = self.property_key.value_set(p_keys, explanation=exp)
         ev = PropertyAddressEvent(evidence, endpoint, kv)
         interface.property_address_update(ev)
 
         # SSH is encryption
         ev = PropertyAddressEvent(evidence, endpoint,
-                                  Properties.ENCRYPTION.value({kv[0]}, explanation="SSH for encryption"))
+                                  Properties.ENCRYPTION.value_set({kv[0]}, explanation="SSH for encryption"))
         interface.property_address_update(ev)
 
         # SSH is assumed to be good for authentication
         ev = PropertyAddressEvent(evidence, endpoint,
-                                  Properties.AUTHENTICATION.value({kv[0]}, explanation="SSH for authentication"))
+                                  Properties.AUTHENTICATION.value_set({kv[0]}, explanation="SSH for authentication"))
         interface.property_address_update(ev)
 
     def _entity_coverage(self, entity: Entity) -> List[PropertyKey]:

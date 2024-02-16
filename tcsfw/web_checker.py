@@ -38,7 +38,7 @@ class WebChecker(BaseFileCheckTool):
             if f_url != url:
                 continue
             self.logger.info("web link %s: %s", url, status_text)
-            kv = Properties.DOCUMENT_AVAILABILITY.append_key(key).value(Verdict.PASS if ok else Verdict.FAIL, status_text)
+            kv = Properties.DOCUMENT_AVAILABILITY.append_key(key).verdict(Verdict.PASS if ok else Verdict.FAIL, status_text)
             source.timestamp = datetime.now()  # FIXME: get timestamp from the file
             evidence = Evidence(source, url)
             ev = PropertyEvent(evidence, self.system, kv)

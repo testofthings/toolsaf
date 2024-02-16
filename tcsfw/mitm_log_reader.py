@@ -7,7 +7,7 @@ from tcsfw.address import HWAddresses, Protocol
 from tcsfw.entity import Entity
 from tcsfw.event_interface import PropertyEvent, EventInterface
 from tcsfw.model import IoTSystem, Connection, Service
-from tcsfw.property import Properties, PropertyVerdict, PropertyKey
+from tcsfw.property import Properties, PropertyKey
 from tcsfw.services import NameEvent
 from tcsfw.tools import BaseFileCheckTool
 from tcsfw.traffic import EvidenceSource, Evidence, IPFlow
@@ -50,7 +50,7 @@ class MITMLogReader(BaseFileCheckTool):
                     HWAddresses.NULL.data, d_add, int(d_port))
                 flow.evidence = evidence
                 if d:
-                    # learn SNI
+                    # learn SNI, no peers in event, the connection will be UNEXPECTED if it is not expected
                     name = NameEvent(evidence, None, d, flow.target[1])
                     if name not in names:
                         interface.name(name)
@@ -59,7 +59,7 @@ class MITMLogReader(BaseFileCheckTool):
                 if not c.is_expected():
                     continue  # Non-expected connection, who cares...
                 v = Verdict.PASS if ev == "tls_failed" else Verdict.FAIL
-                ev = PropertyEvent(evidence, c, Properties.MITM.value(v))
+                ev = PropertyEvent(evidence, c, Properties.MITM.verdict(v))
                 interface.property_update(ev)
 
         return True

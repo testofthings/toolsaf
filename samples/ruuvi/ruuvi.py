@@ -3,7 +3,7 @@
 # The product is by Ruuvi, Ltd.
 
 from ruuvi_claims import make_claims
-from tcsfw.main import Builder, ARP, ICMP, EAPOL, HTTP, BLEAdvertisement, TLS, SSH, DHCP, NTP, DNS, BROWSER, OPEN
+from tcsfw.main import Builder, ARP, ICMP, EAPOL, HTTP, BLEAdvertisement, TLS, SSH, DHCP, NTP, DNS
 
 system = Builder("Ruuvi Gateway & Tags")
 
@@ -38,6 +38,9 @@ mobile >> backend_2 / TLS
 
 any_host = system.any("Service")
 gateway >> any_host / DHCP / DNS / NTP / ICMP
+gateway / ICMP
+
+tags.set_property("default", "sensors")  # ETSI TS 103 701 requires this info
 
 fw_esp32 = gateway.software("ESP32 Firmware").updates_from(backend_2)
 fw_nRF52811 = gateway.software("nRF52811 Firmware").updates_from(backend_2)
@@ -45,22 +48,18 @@ fw_nRF52811 = gateway.software("nRF52811 Firmware").updates_from(backend_2)
 system.online_resource("privacy-policy", url="https://ruuvi.com/privacy/")
 system.online_resource("security-policy", url="https://ruuvi.com/terms/vulnerability-policy/")
 
-# security-relevant data and parameters
-user_email = system.data(["User e-mail"], personal=True)
-user_email.used_by(web_1, backend_1)
-device_password = system.data(["Password"], password=True)
-device_password.used_by(tags, gateway)  # FIXME: How is the password used?
-auth_token = system.data(["Auth. token"])
-auth_token.authorize(gateway / HTTP, web_1 / TLS, web_2 / TLS, web_3 / TLS)
-
-(gateway >> ble_ad).logical_only()
-(mobile >> ble_ad).logical_only()
+# sensitive data
+user_email = system.data(["User e-mail"])
+measurements = system.data(["Measurements"])
+billing_info = system.data(["Billing info"])
 
 # Mobile application
 # https://play.google.com/store/apps/details?id=com.ruuvi.station
 
 # More DNS names (why?)
 backend_2.dns("api.github.com").dns("objects.githubusercontent.com")
+# Gateway NTP servers
+gateway.ignore_name_requests("time.google.com", "time.nist.gov", "pool.ntp.org", "ntp1.glb.nist.gov")
 
 # Cookies
 cookies = user.cookies()

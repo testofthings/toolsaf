@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 
 from tcsfw.address import AnyAddress, Addresses, EndpointAddress, Protocol, IPAddress, HWAddress, DNSName
 from tcsfw.entity import Entity
+from tcsfw.property import PropertyKey
 from tcsfw.traffic import Flow, EvidenceSource
 from tcsfw.verdict import Status, Verdict
 
@@ -87,14 +88,14 @@ class Connection(Entity):
 T = TypeVar("T")
 
 
-class PieceOfData:
-    """Piece of security-relevant data"""
+class SensitiveData:
+    """Piece of sensitive, security-relevant, data"""
     def __init__(self, name: str, personal=False, password=False):
         assert not (personal and password), "Data cannot be both 'personal' and 'password'"
         self.name = name
         self.personal = personal
         self.password = password
-        # list of services the data is authenticator for
+        # FIXME: Nuke - list of services the data is authenticator for
         self.authenticator_for: List[Service] = []
 
     def __repr__(self):
@@ -274,6 +275,7 @@ class Addressable(NetworkNode):
         super().__init__(name)
         self.parent: Optional[NetworkNode] = None
         self.addresses: Set[AnyAddress] = set()
+        self.any_host = False  # can be one or many hosts
 
     def create_service(self, address: EndpointAddress) -> 'Service':
         s = Service(Service.make_name(f"{address.protocol.value.upper()}", address.port), self)
@@ -325,12 +327,12 @@ class Addressable(NetworkNode):
         """New connection with this entity either as source or target"""
         pass
 
-    def set_seen_now(self) -> Optional[Verdict]:
-        v = super().set_seen_now()
-        if self.parent and v is not None:
+    def set_seen_now(self, changes: List[Entity] = None) -> bool:
+        r = super().set_seen_now(changes)
+        if r and self.parent and not isinstance(self.parent, IoTSystem):
             # propagate to parent, it is also seen now
-            self.parent.set_seen_now()
-        return v
+            self.parent.set_seen_now(changes)
+        return r
 
     def get_system(self) -> 'IoTSystem':
         return self.parent.get_system()
@@ -347,8 +349,8 @@ class Host(Addressable):
         self.concept_name = "node"
         self.parent = parent
         self.visual = True
+        self.ignore_name_requests: Set[DNSName] = set()
         self.connections: List[Connection] = []  # connections initiated here
-        self.any_host = False  # can be one or many hosts
 
     def get_connections(self, relevant_only=True) -> List[Connection]:
         """Get relevant connections"""
@@ -375,6 +377,17 @@ class Host(Addressable):
                 self.addresses.add(hw)
                 return True
         return False
+
+    def get_verdict(self, cache: Dict[Entity, Verdict]) -> Verdict:
+        if self in cache:
+            return cache[self]
+        v = [super().get_verdict(cache)]
+        for c in self.connections:
+            if c.is_relevant():
+                v.append(c.get_verdict(cache))
+        rv = Verdict.aggregate(*v)
+        cache[self] = rv
+        return rv
 
 
 class Service(Addressable):
@@ -513,9 +526,6 @@ class IoTSystem(NetworkNode):
 
         if named is None:
             named = self.get_endpoint(name)
-            # FIXME: If we would know who is asking, then could check its external_actvitity
-            if named.status == Status.UNEXPECTED:
-                named.status = Status.EXTERNAL
 
         if not add:
             # just use the named
@@ -631,7 +641,7 @@ class IoTSystem(NetworkNode):
     def __repr__(self):
         s = []
         for h in self.get_hosts():
-            s.append(f"{h.status} {h.name} {sorted(h.addresses)}")
+            s.append(f"{h.status.value} {h.name} {sorted(h.addresses)}")
         for conn in self.connections.values():
             s.append(f"{conn.status} {conn}")
         return "\n".join(s)
@@ -653,6 +663,10 @@ class ModelListener:
 
     def hostChange(self, host: Host):
         """Host created or changed"""
+        pass
+
+    def propertyChange(self, entity: Entity, value: Tuple[PropertyKey, Any]):
+        """Property changed. Not all changes create events, just the 'important' ones"""
         pass
 
 

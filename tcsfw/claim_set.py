@@ -2,33 +2,34 @@ from typing import List, Optional, Tuple, Self, Dict, Set, Callable, Iterable, U
 
 from tcsfw.address import Protocol
 from tcsfw.claim import Claim
-from tcsfw.components import Software
+from tcsfw.components import DataReference, DataStorages, Software
 from tcsfw.entity import Entity, ClaimStatus, ExplainableClaim, ClaimAuthority
 from tcsfw.events import ReleaseInfo
 from tcsfw.model import IoTSystem, Connection, Host, Service, HostType, NetworkNode
-from tcsfw.property import Properties, PropertyKey, PropertyVerdictValue, PropertyVerdict, \
+from tcsfw.property import Properties, PropertyKey, PropertyVerdictValue, \
     PropertySetValue
 from tcsfw.traffic import Tool
 from tcsfw.verdict import Verdict, Verdictable
 
 
 class ClaimContext:
-    """The context where claim is resolved"""
+    """The context where a claim is resolved"""
     def __init__(self):
-        # Property keys which tools are reported they cover
-        self.tool_coverage: Dict[Entity, Dict[PropertyKey, Set[Tool]]] = {}
         # Properties read by the claims, with their values (converted to bool, when possible)
         self.properties: Dict[Tuple[Entity, Claim], Dict[PropertyKey, Any]] = {}
 
     def check(self, claim: 'EntityClaim', entity: Entity) -> Optional[ClaimStatus]:
         """Resolve claim results"""
         base_cs = claim.check(entity, self)  # always run the check for collecting data
-        property_key = claim.get_override_key(entity)
-        override = entity.properties.get(property_key)
-        is_override = isinstance(override, PropertyVerdictValue)
-        if is_override:
-            self.properties.setdefault((entity, claim), {})[property_key] = True
-            cs = ClaimStatus(claim, verdict=override.verdict, explanation=override.explanation,
+        manual_key = claim.get_override_key(entity)
+        manual_val = entity.properties.get(manual_key) # the value may not match the PropertyKey expectations
+        if manual_key:
+            self.mark_coverage(entity, claim, manual_key, value=manual_val)
+        is_manual = isinstance(manual_val, PropertyVerdictValue)
+        if is_manual and manual_val.verdict != Verdict.INCON:
+            # manual override for the value
+            self.properties.setdefault((entity, claim), {})[manual_key] = True
+            cs = ClaimStatus(claim, verdict=manual_val.verdict, explanation=manual_val.explanation,
                              authority=ClaimAuthority.MANUAL)
         else:
             cs = base_cs
@@ -94,7 +95,9 @@ class EntityClaim(ExplainableClaim):
 
     def get_override_key(self, entity: Entity) -> Optional[PropertyKey]:
         """Get override key for this property / entity"""
-        return self.property_key
+        if self.property_key is None:
+            return None
+        return self.property_key.prefix_key(Properties.PREFIX_MANUAL)
 
     def check(self, entity: Entity, context: ClaimContext) -> Optional[ClaimStatus]:
         """Check a claim for target entity"""
@@ -118,7 +121,17 @@ class EntityClaim(ExplainableClaim):
         unpack(claim)
         return s
 
+    def assert_system(self, entity: Entity, condition: Callable[[Host], bool] = None, message="") -> IoTSystem:
+        """Assert entity is the IoT system and get it or give custom message if not"""
+        assert isinstance(entity, IoTSystem), \
+            message or f"Claim '{self.description}' applies only to system, not: {entity}"
+        if condition:
+            assert condition(entity), \
+                message or f"Claim '{self.description}' condition not met for {entity}"
+        return entity
+
     def assert_host(self, entity: Entity, condition: Callable[[Host], bool] = None, message="") -> Host:
+        """Assert entity is a host and get it or give custom message if not"""
         assert isinstance(entity, Host), \
             message or f"Claim '{self.description}' applies only to host, not: {entity}"
         if condition:
@@ -126,7 +139,17 @@ class EntityClaim(ExplainableClaim):
                 message or f"Claim '{self.description}' condition not met for {entity}"
         return entity
 
+    def assert_node(self, entity: Entity, condition: Callable[[Host], bool] = None, message="") -> NetworkNode:
+        """Assert entity is a network node and get it or give custom message if not"""
+        assert isinstance(entity, NetworkNode), \
+            message or f"Claim '{self.description}' applies only to network nodes, not: {entity}"
+        if condition:
+            assert condition(entity), \
+                message or f"Claim '{self.description}' condition not met for {entity}"
+        return entity
+
     def assert_software(self, entity: Entity, condition: Callable[[Software], bool] = None, message="") -> Software:
+        """Assert entity is software and get it or give custom message if not"""
         assert isinstance(entity, Software), \
             message or f"Claim '{self.description}' applies only to SW, not: {entity}"
         if condition:
@@ -143,6 +166,9 @@ class NamedClaim(EntityClaim):
 
     def check(self, entity: Entity, context: ClaimContext) -> Optional[ClaimStatus]:
         return context.check(self.named_claim, entity)
+
+    def get_override_key(self, entity: Entity) -> Optional[PropertyKey]:
+        return self.named_claim.get_override_key(entity)
 
     def __repr__(self):
         return f"{self.description}"
@@ -204,7 +230,7 @@ class PropertyClaim(EntityClaim):
         """Create custom property claim"""
         if isinstance(key, PropertyKey):
             return PropertyClaim(description, key)
-        return PropertyClaim(description, key=PropertyVerdict.create(key))
+        return PropertyClaim(description, key=PropertyKey.create(key))
 
     def pre_filter(self, entity: Entity, context: ClaimContext) -> bool:
         """Filter before property check"""
@@ -222,11 +248,7 @@ class PropertyClaim(EntityClaim):
         """Do the check for any key"""
         ver = context.get_property_verdict(entity, self, key, entity.properties)
         if ver is None:
-            tools = context.tool_coverage.get(entity, {}).get(key)
-            if not tools:
-                return None  # no tool to set the value
-            # Value not set
-            return ClaimStatus(self, authority=ClaimAuthority.TOOL)
+            return None
         val = entity.properties.get(key)
         return ClaimStatus(self, verdict=ver, authority=ClaimAuthority.TOOL, explanation=key.get_value_string(val))
 
@@ -252,9 +274,9 @@ class AlternativeClaim(EntityClaim):
             if r is None:
                 continue
             if best is None or (best.verdict == Verdict.INCON and r.verdict != Verdict.INCON):
-                best = r
+                best = r  # improve from inconclusive
             if best.verdict != Verdict.INCON:
-                break
+                break  # verdict is set now
         return best
 
     def get_sub_claims(self) -> Tuple[EntityClaim, ...]:
@@ -272,7 +294,7 @@ class AlternativeClaim(EntityClaim):
 
 
 class AggregateClaim(EntityClaim):
-    """Aggregate claim made up ofsub claims"""
+    """Aggregate claim made up of sub claims"""
     def __init__(self, claims: Tuple[EntityClaim, ...], description="", one_pass=False):
         super().__init__(description or ((" + " if one_pass else " * ") .join([f"{s}" for s in claims])))
         self.sequence = claims
@@ -283,6 +305,8 @@ class AggregateClaim(EntityClaim):
         for c in self.sequence:
             # visit all to collect data
             r = context.check(c, entity)
+            if r is None:
+                r = ClaimStatus(c)  # inconclusive
             sub.append(r)
         ver = None
         auth = ClaimAuthority.TOOL
@@ -349,19 +373,17 @@ class ConnectionAsServiceClaim(EntityClaim):
         return (self.sub, )
 
 
-class InformationClaim(HostClaim):
-    """Information claim, possible filtering by private info"""
+class SensitiveDataClaim(PropertyClaim):
+    """Sensitive data claim, possible filtering by private info"""
     def __init__(self, private: Optional[bool] = None, pass_no_data=False, description="Information"):
-        super().__init__(description)
+        super().__init__(description, Properties.DATA_CONFIRMED)
         self.private = private
         self.pass_no_data = pass_no_data
 
     def check(self, entity: Entity, context: ClaimContext) -> Optional[ClaimStatus]:
         # we assume that they are listed, but not checked
-        entity = self.assert_host(entity)
-        info = ", ".join([i.name for i in entity.information])
-        exp = "Stored sensitive data: " + info if info else "No sensitive data stored"
-        return ClaimStatus(self, verdict=Verdict.PASS, authority=ClaimAuthority.MANUAL, explanation=exp)
+        assert isinstance(entity, DataReference), f"Sensitive data check cannot process: {entity}"
+        return super().check(entity, context)
 
 
 class NoUnexpectedConnections(HostClaim):
@@ -373,7 +395,7 @@ class NoUnexpectedConnections(HostClaim):
         entity = self.assert_host(entity)
         exp_c, see_c, un_c = 0, 0, 0
         for c in entity.connections:
-            if c.is_expected():
+            if c.get_expected_verdict() == Verdict.PASS:
                 exp_c += 1
                 see_c += 1 if Properties.EXPECTED.get_verdict(c.properties) == Verdict.PASS else 0
             elif c.is_relevant():
@@ -457,7 +479,7 @@ class ContentClaim(AvailabilityClaim):
 
 
 class NoUnexpectedServices(EntityClaim):
-    """No unexpected services"""
+    """No unexpected services, covers also administrative services"""
     def __init__(self, description="No unexpected services found"):
         super().__init__(description)
 
@@ -470,24 +492,36 @@ class NoUnexpectedServices(EntityClaim):
             return ClaimStatus(self, verdict=Verdict.PASS, explanation="Browser cannot open services",
                                authority=ClaimAuthority.TOOL)
         services = [c for c in entity.children if c.is_relevant()]
-        exp_c, see_c, un_c = 0, 0, 0
+        un_exp = []
+        exp_c, see_c, = 0, 0
+        exp_non_admin, see_non_admin = 0, 0
         for c in services:
-            if c.is_expected():
+            non_admin = c.host_type != HostType.ADMINISTRATIVE
+            if non_admin:
+                exp_non_admin += 1
+            c_ver = context.get_property_verdict(c, self, Properties.EXPECTED, c.properties) or Verdict.INCON
+            if c_ver == Verdict.PASS:
                 exp_c += 1
-                see_c += 1 if Properties.EXPECTED.get_verdict(c.properties) == Verdict.PASS else 0
+                see_c += 1
+                if non_admin:
+                    see_non_admin += 1
+            elif c_ver == Verdict.INCON:
+                exp_c += 1
             else:
-                un_c += 1
-        if exp_c == 0 and un_c == 0:
-            exp = "No expected services"
+                un_exp.append(c.name)
+        exp = f"{see_non_admin}/{exp_non_admin} expected services"
+        if exp_c > exp_non_admin:
+            exp += f" ({see_c - see_non_admin}/{exp_c - exp_non_admin} admin services)"
+        if len(un_exp) > 0:
+            exp += ", unexpected: " + ", ".join(un_exp)
+        if len(un_exp) > 0:
+            ver = Verdict.FAIL
+        if see_non_admin < exp_non_admin:
+            ver = Verdict.INCON  # not all non-admin services seen
         else:
-            exp = f"{see_c}/{exp_c} expected services"
-        if un_c > 0:
-            exp += f", but {un_c} unexpected ones"
-        if see_c == 0 and exp_c > 0 and un_c == 0:
-            ver = Verdict.INCON
-        else:
-            ver = Verdict.PASS if un_c == 0 else Verdict.FAIL
-        context.mark_coverage(entity, self, Properties.EXPECTED_SERVICES, value=ver == Verdict.PASS)
+            ver = Verdict.PASS
+        # FIXME: Nuke the property?
+        # context.mark_coverage(entity, self, Properties.EXPECTED_SERVICES, value=ver == Verdict.PASS)
         return ClaimStatus(self, verdict=ver, authority=ClaimAuthority.TOOL, explanation=exp)
 
 
@@ -598,7 +632,8 @@ class ProtocolClaim(ServiceClaim):
             return target
         return None
 
-    def get_override_key(self, entity: Entity) -> Optional[PropertyKey]:
+    def _get_protocol_key(self, entity: Entity) -> Optional[PropertyKey]:
+        """Get the property key to use"""
         s = entity
         if isinstance(entity, Connection):
             s = entity.target
@@ -610,8 +645,12 @@ class ProtocolClaim(ServiceClaim):
             key = key.append_key(self.property_tail)
         return key
 
+    def get_override_key(self, entity: Entity) -> Optional[PropertyKey]:
+        key = self._get_protocol_key(entity)
+        return None if key is None else key.prefix_key(Properties.PREFIX_MANUAL)
+
     def check(self, entity: Entity, context: ClaimContext) -> Optional[ClaimStatus]:
-        key = self.get_override_key(entity)
+        key = self._get_protocol_key(entity)
         if key is None:
             return None  # unknown protocol
         ver = context.get_property_verdict(entity, self, key, entity.properties)
@@ -621,11 +660,6 @@ class ProtocolClaim(ServiceClaim):
             return None
         # no verdict for connection - try the service
         res = self.check(entity.target, context)
-        # fix also tool coverage references
-        tool_cov = context.tool_coverage
-        for ent, kvs in tool_cov.copy().items():
-            if ent == entity.target:
-                tool_cov.setdefault(entity, {}).update(kvs)
         return res
 
 
@@ -732,14 +766,14 @@ class Claims:
         """Enough to met any of the claims"""
         return AlternativeClaim(list(claim))
 
+    EXPECTED = PropertyClaim("Expected", Properties.EXPECTED) # expected entity confirmed
     AUTOMATIC_UPDATES = UpdateClaim()                         # automatic software updates
     COOKIES_LISTED = HostClaim("Cookies are listed")          # Browser cookies listed
     WEB_BEST_PRACTICE = PropertyClaim("Web best practises", Properties.WEB_BEST)
     HTTP_REDIRECT = HTTPRedirectClaim()
     NO_UNEXPECTED_SERVICES = NoUnexpectedServices()           # no unexpected services
-    PRIVATE = InformationClaim(private=True)                  # private user data or PII
     PERMISSIONS_LISTED = HostClaim("Permissions are listed")  # (Mobile) permissions listed
-    DATA_CONFIRMED = PropertyClaim("Data confirmed", Properties.DATA_CONFIRMED)
+    SENSITIVE_DATA = SensitiveDataClaim()                     # claims of sensitive data
 
 
 PropertyLocation = Tuple[Entity, PropertyKey]

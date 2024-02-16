@@ -9,7 +9,7 @@ from tcsfw.address import EndpointAddress, DNSName, Protocol
 from tcsfw.components import Cookies, CookieData
 from tcsfw.event_interface import PropertyAddressEvent, PropertyEvent, EventInterface
 from tcsfw.model import Host, IoTSystem, NetworkNode
-from tcsfw.property import PropertyVerdict, Properties
+from tcsfw.property import PropertyKey, Properties
 from tcsfw.tools import NodeCheckTool
 from tcsfw.traffic import EvidenceSource, Evidence
 from tcsfw.verdict import Verdict
@@ -52,7 +52,7 @@ class HARScan(NodeCheckTool):
             req_url = request["url"]
             for raw_c in request.get("cookies"):
                 name = decode(raw_c["name"])
-                p_key = PropertyVerdict("cookie", name)
+                p_key = PropertyKey("cookie", name)
                 properties.add(p_key)
                 for w, cookie in wildcards.items():
                     if name.startswith(w):
@@ -76,7 +76,7 @@ class HARScan(NodeCheckTool):
                 else:
                     verdict = Verdict.FAIL  # unexpected, not in baseline
                 if self.send_events:
-                    ev = PropertyEvent(evidence, component, p_key.value(verdict))
+                    ev = PropertyEvent(evidence, component, p_key.verdict(verdict))
                     interface.property_update(ev)
             response = raw["response"]
             red_url = response.get("redirectURL", "")
@@ -85,19 +85,19 @@ class HARScan(NodeCheckTool):
                 ru = urllib.parse.urlparse(req_url)
                 ep = EndpointAddress(DNSName.name_or_ip(str(ru.hostname)), Protocol.TCP, ru.port or 80)
                 txt = f"{response.get('status', '?')} {response.get('statusText', '?')}"
-                ev = PropertyAddressEvent(evidence, ep, Properties.HTTP_REDIRECT.value(Verdict.PASS, txt))
+                ev = PropertyAddressEvent(evidence, ep, Properties.HTTP_REDIRECT.verdict(Verdict.PASS, txt))
                 interface.property_address_update(ev)
 
         for n, cookie in component.cookies.items():
             if n in unseen:
                 # cookie not seen in HAR
-                p_key = PropertyVerdict("cookie", n)
+                p_key = PropertyKey("cookie", n)
                 properties.add(p_key)
                 if self.send_events:
-                    ev = PropertyEvent(evidence, component, p_key.value(Verdict.FAIL, "Not seen in HAR"))
+                    ev = PropertyEvent(evidence, component, p_key.verdict(Verdict.FAIL, "Not seen in HAR"))
                     interface.property_update(ev)
 
         # cookie scan event
         if self.send_events:
-            ev = PropertyEvent(evidence, component, Properties.COOKIES.value(properties))
+            ev = PropertyEvent(evidence, component, Properties.COOKIES.value_set(properties))
             interface.property_update(ev)
