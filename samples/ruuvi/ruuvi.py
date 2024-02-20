@@ -7,7 +7,7 @@ from tcsfw.main import Builder, ARP, ICMP, EAPOL, HTTP, BLEAdvertisement, TLS, S
 
 system = Builder("Ruuvi Gateway & Tags")
 
-gateway = system.device("Ruuvi Gateway").serve(EAPOL, ARP, ICMP, DNS(captive=True))
+gateway = system.device("Ruuvi Gateway").serve(EAPOL, DHCP, ARP, ICMP, DNS(captive=True))
 setup_http = gateway / HTTP(auth=True)
 
 tags = system.device("Ruuvi Tags")

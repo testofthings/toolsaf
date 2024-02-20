@@ -50,9 +50,9 @@ class HTTPServerRunner:
         self.sample_path = base_directory / "sample"
         self.host = "127.0.0.1"
         self.port = port
-        self.auth_token = os.environ.get("TT_SERVER_API_KEY", "")
+        self.auth_token = os.environ.get("TCSFW_SERVER_API_KEY", "")
         if not self.auth_token and not no_auth_ok:
-            raise Exception("No environment variable TT_SERVER_API_KEY (use --no-auth-ok to skip check)")
+            raise Exception("No environment variable TCSFW_SERVER_API_KEY (use --no-auth-ok to skip check)")
         self.component_delay = 0
         self.sessions: List[Session] = []
         self.loop = asyncio.get_event_loop()

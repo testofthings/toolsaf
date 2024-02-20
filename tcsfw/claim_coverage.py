@@ -19,7 +19,7 @@ class RequirementStatus:
         self.context = context
         self.result = result
 
-    def __str__(self):
+    def __repr__(self):
         return f"{self.requirement.identifier_string()} {self.result}"
 
 

@@ -194,7 +194,8 @@ class Builder(SystemBuilder):
     def __init__(self, name="Unnamed system"):
         super().__init__(name)
         parser = argparse.ArgumentParser()
-        parser.add_argument("--read", "-r", action="append", help="Read tool output from files or directories")
+        parser.add_argument("--read", "-r", action="append", help="Read tool output from batch directories")
+        parser.add_argument("--help-tools", action="store_true", help="List tools read from batch")
         parser.add_argument("--def-loads", "-L", type=str, help="Comma-separated list of tools to load")
         parser.add_argument("--set-ip", action="append", help="Set DNS-name for entity, format 'name=ip, ...'")
         parser.add_argument("--output", "-o", help="Output format")
@@ -205,12 +206,11 @@ class Builder(SystemBuilder):
 
         parser.add_argument("--http-server", type=int, help="Listen HTTP requests at port")
         parser.add_argument("--test-delay", type=int, help="HTTP request artificial test delay, ms")
-        parser.add_argument("--no-auth-ok", action="store_true", help="Skip check for auth token in TT_SERVER_API_KEY")
+        parser.add_argument("--no-auth-ok", action="store_true", help="Skip check for auth token in TCSFW_SERVER_API_KEY")
 
         parser.add_argument("--test-get", action="append", help="Test API GET, repeat for many")
         parser.add_argument("--test-post", nargs=2, help="Test API POST")
 
-        parser.add_argument("--help-tools", action="store_true", help="List available tools")
         parser.add_argument("--log-events", action="store_true", help="Log events")
 
         self.parser = parser
@@ -229,8 +229,9 @@ class Builder(SystemBuilder):
         registry = Registry(Inspector(self.system))
         cc = RequirementClaimMapper(self.system)
 
-        if self.args.log_events:
-            # print events
+        log_events = self.args.log_events
+        if log_events:
+            # print event log
             registry.logging.event_logger = registry.logger
 
         for set_ip in self.args.set_ip or []:
@@ -259,6 +260,9 @@ class Builder(SystemBuilder):
         for ln in self.loaders:
             for sub in ln.subs:
                 sub.load(registry, cc, filter=label_filter)
+
+        if log_events:
+            return  # stop after load
 
         api = VisualizerAPI(registry, cc, self.visualizer)
         dump_report = True

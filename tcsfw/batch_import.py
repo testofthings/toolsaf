@@ -112,10 +112,13 @@ class BatchImporter:
             if as_batch:
                 self._do_process_files(proc_list, info, skip_processing)
 
+            if not info.label:
+                self.logger.info(f"skipping all files as no 00meta.json")
+
             # recursively scan the directory
             for child in proc_list:
                 if info and child.is_file():
-                    if as_batch:
+                    if as_batch or not info.label:
                         continue
                     # process the files individually
                     if not info.default_include and info.label not in self.filter.included:
@@ -149,8 +152,8 @@ class BatchImporter:
             elif file_ext == ".xml" and info.file_type == BatchFileType.NMAP:
                 # read NMAP from xml
                 reader = NMAPScan(self.interface.get_system())
-            elif file_ext == ".http" and info.file_type == BatchFileType.WEB_LINK:
-                # read web links from http content file
+            elif file_ext == ".http" and info.file_type == BatchFileType.HTTP_MESSAGE:
+                # read messages from http content file
                 reader = WebChecker(self.interface.get_system())
             elif file_ext == ".json" and info.file_type == BatchFileType.ZAP:
                 # read ZAP from json
@@ -206,12 +209,12 @@ class BatchFileType(StrEnum):
     HAR = "har"
     MITMPROXY = "mitmproxy"
     NMAP = "nmap"
-    RELEASES = "releases"  # Github format
+    RELEASES = "github-releases"  # Github format
     SPDX = "spdx"
     SSH_AUDIT = "ssh-audit"
     TESTSSL = "testssl"
-    VULNERABILITIES = "vulnerabilities"  # BlackDuck csv output
-    WEB_LINK = "web-link"
+    VULNERABILITIES = "blackduck-vulnerabilities"  # BlackDuck csv output
+    HTTP_MESSAGE = "http"
     ZAP = "zap"  # ZED Attack Proxy
 
     @classmethod
