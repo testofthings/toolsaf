@@ -44,6 +44,7 @@ class APIRequest:
     def change_path(self, path: str) -> 'APIRequest':
         """Change the path"""
         r = APIRequest(path)
+        r.parameters.update(self.parameters)
         r.get_connections = self.get_connections
         r.get_visual = self.get_visual
         return r
@@ -129,7 +130,7 @@ class ClientAPI(ModelListener):
         r = {}
         if path == "reset":
             param = json.load(data) if data else {}
-            self.post_evidence_filter(param.get("evidence", {}))
+            self.post_evidence_filter(param.get("evidence", {}), include_all=param.get("include_all", False))
         elif path == "flow":
             flow, ref = self.parse_flow(NO_EVIDENCE, json.load(data))
             self.registry.connection(flow)
@@ -146,15 +147,15 @@ class ClientAPI(ModelListener):
             raise NotImplementedError("Bad API request")
         return r
 
-    def post_evidence_filter(self, filter_list: Dict):
+    def post_evidence_filter(self, filter_list: Dict, include_all: bool = False):
         """Post new evidence filter and reset the model"""
-        fs = {ev.label: ev for ev in self.registry.trail_filter.keys()}
+        fs = {ev.label: ev for ev in self.registry.all_evidence}
         e_filter = {}
         for fn, sel in filter_list.items():
             ev = fs.get(f"{fn}")
             if ev:
                 e_filter[ev] = sel
-        self.registry.reset(e_filter)
+        self.registry.reset(e_filter, include_all)
 
     def get_log(self, entity="", key="") -> Dict:
         """Get log"""
@@ -209,6 +210,7 @@ class ClientAPI(ModelListener):
                 vs["info"] = p.explanation or key.get_name()
                 vs["checks"] = sorted([f"{k}" for k in p.sub_keys])
             else:
+                vs["verdict"] = ""  # no verdict
                 vs["info"] = f"{p}"
             cs[key.get_name()] = vs
         return cs
@@ -290,7 +292,7 @@ class ClientAPI(ModelListener):
             if context.request.get_connections:
                 cj: List[Dict] = r.setdefault("connections", [])
                 for c in entity.connections:
-                    if c.status != Status.PLACEHOLDER:
+                    if c.is_relevant(ignore_ends=True):
                         cj.append(self.get_connection(c, context))
         r["properties"] = self.get_properties(entity.properties)
         return entity, r
@@ -351,13 +353,14 @@ class ClientAPI(ModelListener):
     def get_evidence_filter(self) -> Dict:
         """Get evidence filter"""
         r = {}
-        for s, v in self.registry.trail_filter.items():
-            sr = r[s.label] = {
-                "name": s.name,
-                "selected": v
+        for ev in sorted(self.registry.all_evidence, key=lambda x: x.label):
+            filter_v = self.registry.trail_filter.get(ev.label, False)
+            sr = r[ev.label] = {
+                "name": ev.name,
+                "selected": filter_v
             }
-            if s.timestamp is not None:
-                sr["time_s"] = s.timestamp.strftime(FORMAT_YEAR_MONTH_DAY)
+            if ev.timestamp is not None:
+                sr["time_s"] = ev.timestamp.strftime(FORMAT_YEAR_MONTH_DAY)
         return r
 
     def get_coverage(self, context: RequestContext) -> Dict:
@@ -419,6 +422,8 @@ class ClientAPI(ModelListener):
             ln.systemReset({"system": d}, system)
 
     def connectionChange(self, connection: Connection):
+        if not connection.is_relevant(ignore_ends=True):
+            return
         for ln, req in self.api_listener:
             context = RequestContext(req, self)
             d = self.get_connection(connection, context)

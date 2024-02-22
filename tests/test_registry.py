@@ -18,6 +18,9 @@ def test_reset():
     assert len(s.children) == 3
     assert len(dev1.connections) == 1
 
+    cache = {}
+    assert dev1.get_verdict(cache) == Verdict.INCON
+
     # expected connections
     cs1 = r.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1100) >> ("1:0:0:0:0:2", "192.168.0.2", 1234))
     cs2 = r.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1100) << ("1:0:0:0:0:2", "192.168.0.2", 1234))
@@ -28,6 +31,9 @@ def test_reset():
     # unexpected service in known host
     cs5 = r.connection(IPFlow.UDP("1:0:0:0:0:3", "192.168.0.3", 1100) << ("1:0:0:0:0:2", "192.168.0.2", 1234))
 
+    cache = {}
+    assert dev1.get_verdict(cache) == Verdict.FAIL
+
     # unknown hosts / connections added
     assert len(s.children) == 4
     assert s.children[3].status == Status.UNEXPECTED
@@ -35,7 +41,10 @@ def test_reset():
     assert dev1.connections[1].status == Status.UNEXPECTED
 
     # disable all sources
-    r.reset({NO_EVIDENCE.source: False}).do_all_tasks()
+    r.reset().do_all_tasks()
+
+    cache = {}
+    assert dev1.get_verdict(cache) == Verdict.INCON
 
     # unknown hosts / connections remains as UNDEFINED
     assert len(s.children) == 4
@@ -44,7 +53,10 @@ def test_reset():
     assert dev1.connections[1].status == Status.PLACEHOLDER
 
     # enable sources again
-    r.reset().do_all_tasks()
+    r.reset(enable_all=True).do_all_tasks()
+
+    cache = {}
+    assert dev1.get_verdict(cache) == Verdict.FAIL
 
     assert len(s.children) == 4
     assert s.children[3].status == Status.UNEXPECTED
@@ -61,24 +73,33 @@ def test_reset_2():
 
     c1 = r.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1100) >> ("1:0:0:0:0:2", "192.168.0.2", 1234))
     assert c1.status == Status.EXPECTED
+    assert c1.is_relevant(ignore_ends=True)
     c2 = r.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1100) >> ("1:0:0:0:0:3", "1.0.0.3", 1234))
     assert c2.status == Status.UNEXPECTED
+    assert c2.is_relevant(ignore_ends=True)
     c3 = r.connection(IPFlow.UDP("1:0:0:1:0:4", "192.168.0.3", 1100) >> ("1:0:0:0:0:4", "1.0.0.4", 1234))
     assert c3.status == Status.EXTERNAL
+    assert not c3.is_relevant(ignore_ends=True)
     flows = r.logging.collect_flows()
     assert len(flows) == 3
 
-    r.reset(evidence_filter={NO_EVIDENCE.source: False}).do_all_tasks()
+    r.reset().do_all_tasks()
     assert c1.status == Status.EXPECTED
+    assert c1.is_relevant(ignore_ends=True)
     assert c2.status == Status.PLACEHOLDER
+    assert not c2.is_relevant(ignore_ends=True)
     assert c3.status == Status.PLACEHOLDER
+    assert not c3.is_relevant(ignore_ends=True)
     flows = r.logging.collect_flows()
     assert len(flows) == 1
 
-    r.reset().do_all_tasks()
+    r.reset(enable_all=True).do_all_tasks()
     assert c1.status == Status.EXPECTED
+    assert c1.is_relevant(ignore_ends=True)
     assert c2.status == Status.UNEXPECTED
+    assert c2.is_relevant(ignore_ends=True)
     assert c3.status == Status.EXTERNAL
+    assert not c3.is_relevant(ignore_ends=True)
     flows = r.logging.collect_flows()
     assert len(flows) == 3
 
@@ -102,7 +123,7 @@ def test_reset_dhcp():
     assert cli.children[0].get_expected_verdict() == Verdict.PASS
 
     # disable all sources
-    r.reset({NO_EVIDENCE.source: False}).do_all_tasks()
+    r.reset().do_all_tasks()
 
     assert len(cli.children) == 1
     assert len(cli.connections) == 1
@@ -110,7 +131,7 @@ def test_reset_dhcp():
     assert cli.children[0].get_expected_verdict() == Verdict.INCON
 
     # enable sources again
-    r.reset().do_all_tasks()
+    r.reset(enable_all=True).do_all_tasks()
 
     assert len(cli.children) == 1
     assert len(cli.connections) == 1

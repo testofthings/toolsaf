@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional, Dict, Self, Any, Tuple
+from typing import List, Optional, Dict, Self, Any, Set, Tuple
 
 from tcsfw.entity import Entity
 from tcsfw.event_interface import EventInterface, PropertyAddressEvent, PropertyEvent
@@ -18,8 +18,9 @@ class Registry(EventInterface):
         self.logging = EventLogger(inspector)
         self.system = inspector.system
         self.fallthrough = True
+        self.all_evidence: Set[EvidenceSource] = set()
         self.trail: List[Event] = []
-        self.trail_filter: Dict[EvidenceSource, bool] = {}  # not present == True
+        self.trail_filter: Dict[str, bool] = {}  # key is label, not present == False
         self.cursor = 0
         # local ID integers for entities and connections, usable for persistent DB
         self.ids: Dict[Any, int] = {}
@@ -42,8 +43,9 @@ class Registry(EventInterface):
         if self.cursor >= len(self.trail):
             return False
         e = self.trail[self.cursor]
-        if self.trail_filter.get(e.evidence.source, True):
-            self.logger.info("process #%d %s", self.cursor, e)
+        source = e.evidence.source
+        if self.trail_filter.get(source.label, False):
+            self.logger.debug("process #%d %s", self.cursor, e)
             self.logging.consume(e)
         else:
             self.logger.debug("filtered #%d %s", self.cursor, e)
@@ -62,11 +64,16 @@ class Registry(EventInterface):
         if self.fallthrough and self.cursor == len(self.trail):
             self.cursor += 1
         self.trail.append(event)
-        self.trail_filter.setdefault(event.evidence.source, True)  # update filter as we go
+        source = event.evidence.source  # update filter as we go
+        self.all_evidence.add(source)
+        self.trail_filter.setdefault(source.label, True)
 
-    def reset(self, evidence_filter: Dict[EvidenceSource, bool] = None) -> Self:
+    def reset(self, evidence_filter: Dict[EvidenceSource, bool] = None, enable_all=False) -> Self:
         """Reset the model by applying the evidence again, potentially filtered"""
-        self.trail_filter = {} if evidence_filter is None else evidence_filter
+        if enable_all:
+            self.trail_filter = {e.label: True for e in sorted(self.all_evidence, key=lambda x: x.name)}
+        else:
+            self.trail_filter = {e.label: v for e, v in (evidence_filter.items() if evidence_filter else [])}
         self.logging.reset()
         self.cursor = 0  # start from first event
         if evidence_filter is not None:

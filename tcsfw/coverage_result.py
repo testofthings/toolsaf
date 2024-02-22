@@ -12,6 +12,7 @@ from tcsfw.event_logger import EventLogger
 from tcsfw.model import IoTSystem
 from tcsfw.property import PropertyKey, Properties
 from tcsfw.requirement import Specification, Requirement
+from tcsfw.traffic import EvidenceSource
 from tcsfw.verdict import Verdict
 
 
@@ -59,10 +60,40 @@ class CoverageReport:
             self._print_coverage(writer, specification, by_targets=True)
         elif name == "reqs":
             self._print_coverage(writer, specification, by_requirements=True)
+        elif name == "tools":
+            self._print_source_coverage(writer, specification)
         elif not name:
             self._print_coverage(writer, specification)
         else:
             raise Exception(f"No such coverage info '{name}'")
+
+    def _print_source_coverage(self, writer: TextIO, specification: Specification):
+        mapping = self._get_mappings(specification)
+        sources = self.logging.get_all_property_sources()
+
+        rs: Dict[EvidenceSource, Dict[Requirement, Dict[Entity, Tuple[PropertyKey, RequirementStatus]]]] = {}
+        for prop, src_ents in sources.items():
+            for src, ents in src_ents.items():
+                source_rs = rs.setdefault(src, {})
+                for ent in ents:
+                    for req, stat in mapping.results.get(ent, {}).items():
+                        for stat_props in stat.context.properties.values():
+                            if prop in stat_props:
+                                source_rs.setdefault(req, {}).setdefault(ent, []).append((prop, stat))
+
+        # NOTE: Properties not read by Claims are not collected now.
+        # E.g. ignore property
+
+        for source, reqs in rs.items():
+            writer.write(f"== {source} ==\n")
+            for req, erp_dict in reqs.items():
+                name = specification.get_short_info(req) or req.identifier_string(tail_only=True)
+                writer.write(f"  {name}\n")
+                for ent, props in erp_dict.items():
+                    writer.write(f"    {ent.long_name()}\n")
+                    for prop, stat in props:
+                        mark = self._status_marker(stat.result)
+                        writer.write(f"      [{mark}] {stat.result.get_explanation()}\n")
 
     def _print_coverage(self, writer: TextIO, specification: Specification, by_targets=False,
                         by_requirements=False):

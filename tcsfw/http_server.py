@@ -1,4 +1,5 @@
 import asyncio
+import hmac
 import json
 import logging
 import os
@@ -120,8 +121,11 @@ class HTTPServerRunner:
             if self.auth_token:
                 raise PermissionError("No authentication token provided")
         else:
-            if auth_t != self.auth_token:
-                raise PermissionError("Invalid API key")
+            # compare token constant time to avoid timing attacks
+            token_1 = auth_t.encode("utf-8")
+            token_2 = self.auth_token.encode("utf-8")
+            if not hmac.compare_digest(token_1, token_2):
+                 raise PermissionError("Invalid API key")
 
     async def handle_http(self, request):
         """Handle normal HTTP GET or POST request"""
@@ -185,7 +189,8 @@ class HTTPServerRunner:
         # initial model
         # do not async so that no updates between getting model and putting it to the queue
         session.subscribed = True
-        self.dump_model(session)
+        if req.parameters.get("load_all", "").lower() != "false":  # can avoid JSON dump for debugging
+            self.dump_model(session)
         self.sessions.append(session)
 
         async def receive_loop():

@@ -53,11 +53,13 @@ class Connection(Entity):
         system = self.source.get_system()
         return self in system.originals
 
-    def is_relevant(self, or_relevant_end=False) -> bool:
+    def is_relevant(self, ignore_ends=False) -> bool:
         """Is this connection relevant, i.e. not placeholder or external?"""
         if self.status == Status.EXPECTED or self.status == Status.UNEXPECTED:
             return True
-        if or_relevant_end:
+        if self.status == Status.PLACEHOLDER:
+            return False  # placeholder is never relevant
+        if ignore_ends:
             return False
         return self.source.is_relevant() or self.target.is_relevant()
 
@@ -356,7 +358,7 @@ class Host(Addressable):
         """Get relevant connections"""
         cs = []
         for c in self.connections:
-            if not relevant_only or c.is_relevant(or_relevant_end=True):
+            if not relevant_only or c.is_relevant(ignore_ends=True):
                 cs.append(c)
         cs.extend(super().get_connections(relevant_only))
         return cs
@@ -451,7 +453,7 @@ class IoTSystem(NetworkNode):
         # online resources
         self.online_resources: Dict[str, str] = {}
         # original entities and connections
-        self.originals: Set[Entity] = set()
+        self.originals: Set[Entity] = {self}
         # consumer for specific message types
         self.message_listeners: Dict[Addressable, Protocol] = {}
         # change listener

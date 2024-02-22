@@ -33,10 +33,9 @@ class PCAPReader(BaseFileCheckTool):
         self.data_file_suffix = ".pcap"
         if name:
             self.tool.name = name
-        self.one_tool = Tool("PCAP capture")  # use this for coverage info
         # current frame
         self.source: Optional[EvidenceSource] = None
-        self.interface: [EventInterface] = None
+        self.interface: Optional[EventInterface] = None
         self.frame_number = 0
         self.timestamp = datetime.datetime.fromtimestamp(0)
         self.ip_reassembler = IPReassembler()
@@ -218,20 +217,6 @@ class PCAPReader(BaseFileCheckTool):
         # delta = self.timestamp - flow.timestamp
         # ts = int(delta.total_seconds() * 1000)
         # self.interface.flow_data_update(flow, [ts, le])
-
-    def _entity_coverage(self, entity: Entity) -> List[PropertyKey]:
-        if isinstance(entity, IoTSystem):
-            return [Properties.EXPECTED_HOSTS]
-        if isinstance(entity, Addressable):
-            return [Properties.EXPECTED_SERVICES]
-        if isinstance(entity, Software) and entity.update_connections:
-            return [Properties.UPDATE_SEEN]
-        if isinstance(entity, Connection):
-            return [Properties.EXPECTED_CONNECTIONS]
-        return []
-
-    def _coverage_tool(self) -> Tool:
-        return self.one_tool
 
     def __repr__(self):
         return f"{self.source}:{self.frame_number}"

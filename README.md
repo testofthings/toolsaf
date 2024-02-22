@@ -12,6 +12,8 @@ The idea behind the framework is published in two research papers:
 
 The functionality of the framework is now reading output of several different "security" tools, mapping them into _security statement_ and _claims_, and given verdicts for the claims. Security statement describes relevant portions of a system, e.g. attack surface and security controls. Claim (requirement, test) is security-relevant assertion which can be verified. The verification is done by running [supported tools](Tools.md), which output is them used to pass verdict for the claim.
 
+Before use, you must [install](Install.md) the framework from _Github_.
+
 The project contains security statement for _Ruuvi gateway and tags_ (https://ruuvi.com/) which is used in the research. The statement is in directory `samples/ruuvi/`. The data for verifying the security statement is available for academic research, please request it from Rauli. Remember to tell the goals of the research and the organization performing it. Right to refuse requests is reserved.
 
 Security statements are described by Python-based DSLs. A description is executable Python script. The security statement for Ruuvi is executed like this, assuming working directory is the project root:

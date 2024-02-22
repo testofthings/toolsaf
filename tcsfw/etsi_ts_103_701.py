@@ -10,7 +10,7 @@ from tcsfw.claim import Claim
 from tcsfw.claim_set import EntityClaim, AuthenticationClaim, NoUnexpectedServices, \
     AvailabilityClaim, Claims, UserInterfaceClaim, ContentClaim, \
     MITMClaim, ProtocolClaim, FuzzingClaim, PropertyClaim, \
-    StatusClaim, PhysicalManipulationClaim, NamedClaim
+    PhysicalManipulationClaim, NamedClaim
 from tcsfw.entity import Entity
 from tcsfw.model import HostType, IoTSystem, Host, Service, Connection
 from tcsfw.property import Properties, PropertyKey
@@ -101,7 +101,7 @@ CONTENT = ContentClaim() % "Document content review"
 DEFINED_HOSTS_ONLY = NamedClaim("Defined hosts only", Claims.EXPECTED)
 HOST_DEFINED_SERVICES = NoUnexpectedServices() % "Defined services only"
 CONNECTIONS_DEFINED_ONLY = NamedClaim("Defined connections only", Claims.EXPECTED)
-DEFINED_AUTH_ONLY = StatusClaim("Defined authentication mechanisms only")
+DEFINED_AUTH_ONLY = Claims.name("Defined authentication mechanisms only", Claims.EXPECTED)
 SERVICE_BEST_PRACTICES = (Claims.WEB_BEST_PRACTICE + ProtocolClaim()
                           + Claims.HTTP_REDIRECT) % "Protocol checks"
 CONNECTION = ProtocolClaim(encrypted=True) % "Defined connection mechanism"

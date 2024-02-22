@@ -63,10 +63,3 @@ class MITMLogReader(BaseFileCheckTool):
                 interface.property_update(ev)
 
         return True
-
-    def _entity_coverage(self, entity: Entity) -> List[PropertyKey]:
-        if isinstance(entity, Connection):
-            t = entity.target
-            if isinstance(t, Service) and t.protocol == Protocol.TLS:
-                return [Properties.MITM]  # TLS can MITM
-        return []

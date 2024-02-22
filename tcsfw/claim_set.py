@@ -177,27 +177,6 @@ class NamedClaim(EntityClaim):
         return [self.named_claim]
 
 
-class StatusClaim(EntityClaim):
-    """Return entity status verdict as the verdict"""
-    def __init__(self, description: str):
-        super().__init__(description)
-
-    def check(self, entity: Entity, context: ClaimContext) -> Optional[ClaimStatus]:
-        if not isinstance(entity, NetworkNode) and not isinstance(entity, Connection):
-            return None
-        if isinstance(entity, Host):
-            p = Properties.EXPECTED_HOSTS
-        elif isinstance(entity, Service):
-            p = Properties.EXPECTED_SERVICES
-        elif isinstance(entity, Connection):
-            p = Properties.EXPECTED_CONNECTIONS
-        else:
-            assert False, f"Unexpected entity for status claim {entity}"
-        v = Properties.EXPECTED.get_verdict(entity.properties) or Verdict.INCON
-        context.mark_coverage(entity, self, p, value=v == Verdict.PASS)
-        return ClaimStatus(self, verdict=v, authority=ClaimAuthority.TOOL)
-
-
 class ConnectionClaim(EntityClaim):
     """Base class to for connection claims"""
     def __init__(self, description="Connection"):
@@ -407,7 +386,6 @@ class NoUnexpectedConnections(HostClaim):
             ver = Verdict.INCON
         else:
             ver = Verdict.PASS if un_c == 0 else Verdict.FAIL
-        context.mark_coverage(entity, self, Properties.EXPECTED_CONNECTIONS, value=ver == Verdict.PASS)
         return ClaimStatus(self, verdict=ver, authority=ClaimAuthority.TOOL, explanation=exp)
 
 
@@ -488,7 +466,6 @@ class NoUnexpectedServices(EntityClaim):
         if entity.host_type == HostType.BROWSER:
             assert not entity.children
             # NOTE: Selector may be used to exclude
-            context.mark_coverage(entity, self, Properties.EXPECTED_SERVICES, value=True)
             return ClaimStatus(self, verdict=Verdict.PASS, explanation="Browser cannot open services",
                                authority=ClaimAuthority.TOOL)
         services = [c for c in entity.children if c.is_relevant()]
@@ -671,6 +648,10 @@ class EncryptionClaim(PropertyClaim):
     def pre_filter(self, entity: Entity, context: ClaimContext) -> bool:
         return (isinstance(entity, NetworkNode) or isinstance(entity, Connection)) and entity.is_encrypted()
 
+    def do_check(self, key: PropertyKey, entity: Entity, context: ClaimContext) -> Optional[ClaimStatus]:
+        if isinstance(entity, Connection):
+            entity = entity.target  # lacking connection check tools now, we check the target
+        return super().do_check(key, entity, context)
 
 class HTTPRedirectClaim(PropertyClaim):
     """Is a service a HTTP redirection to HTTPS?"""

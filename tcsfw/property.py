@@ -40,7 +40,9 @@ class PropertyKey:
 
     def reset(self, value: Any) -> Optional[Any]:
         """Reset the value, return None to remove"""
-        return value if self.model else None
+        if self.model:
+            return PropertyVerdictValue(Verdict.INCON) if isinstance(value, PropertyVerdictValue) else value
+        return None
 
     def get_name(self, short=False) -> str:
         """Name string"""
@@ -169,7 +171,7 @@ PropertyDict = Dict[PropertyKey, Any]
 class PropertyVerdictValue(Verdictable):
     """Property verdict value"""
     verdict: Verdict
-    explanation: str
+    explanation: str = ""
 
     def get_verdict(self) -> Verdict:
         return self.verdict
@@ -230,9 +232,6 @@ class Properties:
     HTTP_REDIRECT = PropertyKey("default", "http-redirect").persistent()  # HTTP redirect detected
     SENSORS = PropertyKey("default", "sensors").persistent()  # Has sensors
     MITM = PropertyKey("check", "mitm")              # MITM successful?
-    EXPECTED_HOSTS = PropertyKey("check", "hosts")   # Expected entity is observed
-    EXPECTED_SERVICES = PropertyKey("check", "services")  # Expected entity is observed
-    EXPECTED_CONNECTIONS = PropertyKey("check", "connections")  # Expected entity is observed
     UPDATE_SEEN = PropertyKey("check", "update-seen")  # Update is seen
     REVIEW = PropertyKey("check", "review")          # IXIT etc. review
     FUNCTIONAL = PropertyKey("other", "functional")

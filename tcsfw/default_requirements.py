@@ -1,7 +1,7 @@
 from tcsfw.claim import Claim
 from tcsfw.claim_set import Claims, EncryptionClaim, UpdateClaim, ReleaseClaim, BOMClaim, \
     AuthenticationClaim, AvailabilityClaim, PermissionClaim, \
-    NoVulnerabilitiesClaim, ProtocolClaim, StatusClaim
+    NoVulnerabilitiesClaim, ProtocolClaim
 from tcsfw.model import HostType
 from tcsfw.requirement import Specification
 from tcsfw.selector import ConnectionSelector, HostSelector, Locations, ServiceSelector
@@ -23,6 +23,7 @@ class DefaultSpecification(Specification):
         # [x] Network nodes are defined
         self.no_unexpected_nodes = self._req(
             "no-unexp-nodes",
+            # NOTE: HostSelector picks also the unexpected nodes, which will have expected=False
             HostSelector(with_unexpected=True) ^ Claims.name("Network nodes are defined", Claims.EXPECTED))
         # [x] Network services are defined
         self.no_unexpected_services = self._req(

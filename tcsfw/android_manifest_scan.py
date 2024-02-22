@@ -62,8 +62,3 @@ class AndroidManifestScan(ComponentCheckTool):
         if self.send_events:
             ev = PropertyEvent(evidence, software, Properties.PERMISSIONS.value_set(key_set, self.tool.name))
             interface.property_update(ev)
-
-    def _entity_coverage(self, entity: Entity) -> List[PropertyKey]:
-        if isinstance(entity, Software) and entity.get_host().host_type == HostType.MOBILE:
-            return [Properties.PERMISSIONS]
-        return []

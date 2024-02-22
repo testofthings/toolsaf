@@ -19,7 +19,7 @@ class Verdict(enum.Enum):
         if len(verdicts) == 1:
             return verdicts[0]
         v_set = set(verdicts)
-        for s in {Verdict.IGNORE, Verdict.FAIL, Verdict.PASS, Verdict.INCON}:
+        for s in [Verdict.IGNORE, Verdict.FAIL, Verdict.PASS, Verdict.INCON]:
             if s in v_set:
                 return s
         raise NotImplementedError(f"Cannot update {verdicts}")
@@ -30,7 +30,7 @@ class Verdict(enum.Enum):
         if not verdicts:
             return Verdict.INCON
         v_set = set(verdicts)
-        for s in {Verdict.FAIL, Verdict.PASS}:
+        for s in [Verdict.FAIL, Verdict.PASS]:
             if s in v_set:
                 return s
         return Verdict.INCON

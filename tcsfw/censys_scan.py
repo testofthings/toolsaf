@@ -58,16 +58,6 @@ class CensysScan(EndpointCheckTool):
         # other services were not seen
         interface.host_scan(HostScan(evidence, address, host_services))
 
-    def _entity_coverage(self, entity: Entity) -> List[PropertyKey]:
-        # only Internet-facing scan
-        if isinstance(entity, IoTSystem):
-            return [Properties.EXPECTED_HOSTS]
-        if isinstance(entity, Host) and entity.is_global():
-            return [Properties.EXPECTED_SERVICES]
-        if isinstance(entity, Service) and entity.get_parent_host().is_global() and entity.protocol == Protocol.HTTP:
-            return [Properties.HTTP_REDIRECT]
-        return []
-
 
 if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser()

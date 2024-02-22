@@ -26,13 +26,14 @@ from tcsfw.inspector import Inspector
 from tcsfw.latex_output import LaTeXGenerator
 from tcsfw.main_basic import (BuilderInterface, HostInterface, NodeInterface,
                               SoftwareInterface, SubLoader, SystemInterface)
-from tcsfw.main_tools import EvidenceLoader
+from tcsfw.main_tools import EvidenceLoader, ToolPlanLoader
 from tcsfw.model import (Addressable, Connection, ConnectionType,
                          ExternalActivity, Host, HostType, SensitiveData,
                          Service)
 from tcsfw.property import Properties, PropertyKey
 from tcsfw.registry import Registry
 from tcsfw.result import Report
+from tcsfw.selector import RequirementSelector
 from tcsfw.services import DHCPService, DNSService
 from tcsfw.traffic import Evidence, EvidenceSource
 from tcsfw.verdict import Status, Verdict
@@ -260,9 +261,6 @@ class Builder(SystemBuilder):
         for ln in self.loaders:
             for sub in ln.subs:
                 sub.load(registry, cc, filter=label_filter)
-
-        if log_events:
-            return  # stop after load
 
         api = VisualizerAPI(registry, cc, self.visualizer)
         dump_report = True
@@ -910,7 +908,9 @@ class ClaimBuilder:
                  authority=ClaimAuthority.MODEL):
         self.builder = builder
         self.authority = authority
-        self.source = EvidenceSource("Statement explanations", label=label)
+        self.source = builder.sources.get(label)
+        if self.source is None:
+            builder.sources[label] = self.source = EvidenceSource(f"Claims '{label}'", label=label)
         self._explanation = explanation
         self._keys: List[PropertyKey] = []
         self._locations: List[Entity] = []
@@ -1010,7 +1010,9 @@ class ClaimSetBuilder(BuilderInterface):
     def __init__(self, builder: SystemBuilder):
         self.builder = builder
         self.claim_builders: List[ClaimBuilder] = []
+        self.tool_plans: List[ToolPlanLoader] = []
         self.base_label = "explain"
+        self.sources: Dict[str, EvidenceSource] = {}
 
     def claim(self, explanation: str, verdict=Verdict.PASS) -> ClaimBuilder:
         """Self-made claims"""
@@ -1024,6 +1026,18 @@ class ClaimSetBuilder(BuilderInterface):
         """Ignore claims or requirements"""
         return ClaimBuilder(self, explanation, Verdict.IGNORE, self.base_label)
 
+    def plan_tool(self, tool_name: str, group: Tuple[str, str], location: RequirementSelector, 
+                  *key: Tuple[str, ...]) -> ToolPlanLoader:
+        """Plan use of a tool using the property keys it is supposed to set"""
+        sl = ToolPlanLoader(group)
+        sl.location = location
+        for k in key:
+            pk = PropertyKey.create(k)
+            pv = pk.verdict(Verdict.PASS, explanation=f"{tool_name} sets {pk}")
+            sl.properties[pk] = pv[1]
+        self.tool_plans.append(sl)
+        return sl
+
     def set_base_label(self, base_label: str) -> Self:
         """Set label for the claims"""
         self.base_label = base_label
@@ -1031,7 +1045,10 @@ class ClaimSetBuilder(BuilderInterface):
 
     def finish_loaders(self) -> List[SubLoader]:
         """Finish"""
-        return [cb.finish_loaders() for cb in self.claim_builders]
+        ls = []
+        ls.extend([cb.finish_loaders() for cb in self.claim_builders])
+        ls.extend(self.tool_plans)
+        return ls
 
 
 class CookieBuilder(BuilderInterface):
@@ -1044,7 +1061,6 @@ class CookieBuilder(BuilderInterface):
         """Set cookies, name: domain, path, explanation"""
         for name, p in cookies.items():
             self.component.cookies[name] = CookieData(p[0], p[1], p[2])
-
 
 if __name__ == "__main__":
     Builder().run()

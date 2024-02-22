@@ -58,8 +58,3 @@ class ReleaseReader(ComponentCheckTool):
         if self.send_events:
             ev = PropertyEvent(Evidence(source), software, (ReleaseInfo.PROPERTY_KEY, i))
             interface.property_update(ev)
-
-    def _entity_coverage(self, entity: Entity) -> List[PropertyKey]:
-        if isinstance(entity, Software):
-            return [ReleaseInfo.PROPERTY_KEY]
-        return []

@@ -247,7 +247,7 @@ class FileMetaInfo:
     def parse_from_json(cls, json: Dict, directory_name: str, system: IoTSystem) -> 'FileMetaInfo':
         """Parse from JSON"""
         label = str(json.get("label", directory_name))
-        file_type = BatchFileType.parse(json.get("file_type"))
+        file_type = BatchFileType.parse(json.get("file_type")).value
         r = cls(label, file_type)
         r.load_baseline = bool(json.get("load_baseline", False))
         r.file_load_order = json.get("file_order", [])

@@ -45,37 +45,23 @@ class SSHAuditScan(EndpointCheckTool):
                 for i in items:
                     make_issue(op, kind, i)
 
-        p_keys = set()
+        bp_keys = set()  # best practices
+        vn_keys = set()  # vulnerabilities (none)
         for key, exp in issues.items():
             self.logger.info("SSH issue %s: %s", key, exp)
             ev = PropertyAddressEvent(evidence, endpoint, key.verdict(Verdict.FAIL, f"{self.tool.name}: {exp}"))
-            p_keys.add(key)
+            bp_keys.add(key)
             interface.property_address_update(ev)
 
-        # scan summary at the end
-        exp = f"{self.tool.name} scan completed"
-        kv = self.property_key.value_set(p_keys, explanation=exp)
-        ev = PropertyAddressEvent(evidence, endpoint, kv)
-        interface.property_address_update(ev)
-
-        # SSH is encryption
-        ev = PropertyAddressEvent(evidence, endpoint,
-                                  Properties.ENCRYPTION.value_set({kv[0]}, explanation="SSH for encryption"))
-        interface.property_address_update(ev)
-
-        # SSH is assumed to be good for authentication
-        ev = PropertyAddressEvent(evidence, endpoint,
-                                  Properties.AUTHENTICATION.value_set({kv[0]}, explanation="SSH for authentication"))
-        interface.property_address_update(ev)
-
-    def _entity_coverage(self, entity: Entity) -> List[PropertyKey]:
-        if isinstance(entity, Service) and entity.protocol in {Protocol.SSH}:
-            ks = []
-            key = self.property_key
-            ks.extend([key, key.append_key("best-practices"), key.append_key("no-vulnz"), Properties.ENCRYPTION])
-            # also authentication
-            key = Properties.AUTHENTICATION
-            ks.extend([key, key.append_key("best-practices"), key.append_key("no-vulnz")])
-            return ks
-        return []
-
+        # send several property events
+        key = self.property_key
+        events = [
+            key.verdict(Verdict.PASS, f"{self.tool.name} confirm SSH"),
+            key.append_key("best-practices").value_set(bp_keys, f"{self.tool.name} best practices"),
+            key.append_key("no-vulnz").value_set(vn_keys, f"{self.tool.name} no vulnerabilities"),
+            Properties.ENCRYPTION.verdict(Verdict.PASS, f"{self.tool.name} encryption"),
+            Properties.AUTHENTICATION.verdict(Verdict.PASS, f"{self.tool.name} authentication")
+        ]
+        for p in events:
+            ev = PropertyAddressEvent(evidence, endpoint, p)
+            interface.property_address_update(ev)

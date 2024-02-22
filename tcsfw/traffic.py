@@ -174,7 +174,7 @@ class EthernetFlow(Flow):
         s = self.source
         t = self.target
         pt = f" 0x{self.payload:04x}" if self.payload >= 0 else ""
-        return f"{s[0]} >> {t[0]}{pt} {self.protocol.value.upper()}"
+        return f"{s} >> {t}{pt} {self.protocol.value.upper()}"
 
     def __hash__(self):
         return self.source.__hash__() ^ self.target.__hash__() ^ self.payload ^ self.protocol.__hash__()

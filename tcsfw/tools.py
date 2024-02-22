@@ -47,29 +47,6 @@ class CheckTool:
             n = f"{host}.{pp[0].value.lower()}.{pp[1]}{self.data_file_suffix}"
         return n
 
-    def coverage(self, data: Dict[Entity, Dict[PropertyKey, Set[Tool]]]):
-        """Tell about covered entities and properties"""
-        tool = self._coverage_tool()
-
-        def do_coverage(e: Entity):
-            cov = self._entity_coverage(e)
-            for p in cov:
-                data.setdefault(e, {}).setdefault(p, set()).add(tool)
-            for c in e.get_children():
-                do_coverage(c)
-            if isinstance(e, Host):
-                for c in e.connections:
-                    do_coverage(c)
-        do_coverage(self.system)
-
-    def _entity_coverage(self, entity: Entity) -> List[PropertyKey]:
-        """Get node coverage data"""
-        return []
-
-    def _coverage_tool(self) -> Tool:
-        """The tool to report in coverage"""
-        return self.tool
-
 class BaseFileCheckTool(CheckTool):
     """Check tool which scans set of files, no way to specify entries directly"""
     def __init__(self, tool_label: str, system: IoTSystem):

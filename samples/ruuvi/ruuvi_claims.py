@@ -89,33 +89,32 @@ def make_claims(system: Builder, gateway, tags, user, mobile, backend_1, backend
     )
 
     # Tool planning
-    plans = system.load()
-    tls_check = plans.plan_tool("conn-tls-check", "TLS conn. audit*", Locations.CONNECTION.protocol("tls"),
-                                ("check", "traffic", "tls"))
-    plans.group("basic-tools", tls_check)
 
-    isolate = plans.plan_tool("isolate", "Isolate network/power*", Locations.SYSTEM + Locations.HOST,
-                              ("action", "isolate"))
-    code = plans.plan_tool("code", "Code analysis*", Locations.SOFTWARE, ("check", "code-review"))
-    fuzz = plans.plan_tool("fuzz", "Fuzzer*", Locations.SERVICE, ("check", "fuzz"))
-    plans.group("advanced-tools", isolate, code, fuzz)
+    group = "basic-tools", "Basic tools"
+    claims.plan_tool("TLS conn. audit*", group, Locations.CONNECTION.protocol("tls"),
+                     ("check", "traffic", "tls"))
 
-    basic_func = plans.plan_tool("basic-func", "Basic function test*",
-                                 Locations.SYSTEM + Locations.HOST.type_of(HostType.DEVICE),
-                                 ("check", "basic-function"))
-    auth = plans.plan_tool("auth-grant", "Auth audit*", Locations.SERVICE.authenticated(),
-                           ("check", "auth", "best-practice"), ("check", "auth", "no-vulnz"), 
-                           ("check", "auth", "brute-force"),
-                           ("check", "auth"), ("check", "auth", "grant"))
-    modify_sw = plans.plan_tool("modify_sw", "Modify device SW*", Locations.SOFTWARE,("check", "modify-sw"))
-    storage = plans.plan_tool("storage", "Secure storage analysis*", Locations.DATA.parameters(),
-                              ("check", "secure-storage"))
-    param_changed = plans.plan_tool("param_change", "Check that parameter updated*",
-                                    Locations.DATA.parameters(),("check", "param-changed"))
-    password_valid = plans.plan_tool("password-valid", "Password validator*", Locations.SERVICE.authenticated(),
-                                     ("check", "password-validity"))
-    update_crack = plans.plan_tool("update-crack", "Update cracker*", Locations.CONNECTION + Locations.SOFTWARE,
-                                   ("check", "mod-update"))
-    tele = plans.plan_tool("tele", "Telemetry audit*", Locations.SYSTEM, ("check", "telemetry"))
+    group = "advanced-tools", "Advanced tools"
+    claims.plan_tool("Isolate network/power*", group, Locations.SYSTEM + Locations.HOST,
+                     ("action", "isolate"))
+    claims.plan_tool("Code analysis*", group, Locations.SOFTWARE, ("check", "code-review"))
+    claims.plan_tool("Fuzzer*", group, Locations.SERVICE, ("check", "fuzz"))
 
-    plans.group("custom-tools", auth, basic_func, modify_sw, storage, param_changed, password_valid, update_crack, tele)
+    group = "custom-tools", "Custom tools"
+    claims.plan_tool("Basic function test*", group,
+                     Locations.SYSTEM + Locations.HOST.type_of(HostType.DEVICE),
+                     ("check", "basic-function"))
+    claims.plan_tool("Auth audit*", group, Locations.SERVICE.authenticated(),
+                     ("check", "auth", "best-practice"), ("check", "auth", "no-vulnz"), 
+                     ("check", "auth", "brute-force"),
+                     ("check", "auth"), ("check", "auth", "grant"))
+    claims.plan_tool("Modify device SW*", group, Locations.SOFTWARE,("check", "modify-sw"))
+    claims.plan_tool("Secure storage analysis*", group, Locations.DATA.parameters(),
+                     ("check", "secure-storage"))
+    claims.plan_tool("Check that parameter updated*", group,
+                     Locations.DATA.parameters(),("check", "param-changed"))
+    claims.plan_tool("Password validator*", group, Locations.SERVICE.authenticated(),
+                     ("check", "password-validity"))
+    claims.plan_tool("Update cracker*", group, Locations.CONNECTION + Locations.SOFTWARE,
+                     ("check", "mod-update"))
+    claims.plan_tool("Telemetry audit*", group, Locations.SYSTEM, ("check", "telemetry"))

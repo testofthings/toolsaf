@@ -62,8 +62,3 @@ class SPDXReader(ComponentCheckTool):
         if self.send_events:
             ev = PropertyEvent(evidence, software, Properties.COMPONENTS.value_set(properties))
             interface.property_update(ev)
-
-    def _entity_coverage(self, entity: Entity) -> List[PropertyKey]:
-        if isinstance(entity, Software):
-            return [Properties.COMPONENTS]
-        return []

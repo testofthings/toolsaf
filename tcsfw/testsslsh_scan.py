@@ -31,7 +31,8 @@ class TestSSLScan(EndpointCheckTool):
 
     def do_scan(self, event_sink: EventInterface, endpoint: AnyAddress, raw: Dict, evidence: Evidence):
         """Scan TLS service"""
-        p_keys = set()
+        bp_keys = set()  # best practices
+        vn_keys = set()  # vulnerabilities
         for f in raw:
             f_id = f['id']
             if f_id == 'overall_grade':
@@ -47,29 +48,20 @@ class TestSSLScan(EndpointCheckTool):
             exp = f"{self.tool.name} ({f_id}): {finding}"
             kv = PropertyKey(self.tool_label, f_id).verdict(Verdict.FAIL, exp)
             ev = PropertyAddressEvent(evidence, endpoint, kv)
-            p_keys.add(kv[0])
+            if severity in {'MEDIUM'}:
+                vn_keys.add(kv[0])
+            else:
+                bp_keys.add(kv[0])
             event_sink.property_address_update(ev)
 
-        # overall service verdict
-        exp = f"{self.tool.name} scan completed"
-
-        keys = self._get_keys()
-
-        kv = keys[0].value_set(p_keys, explanation=exp)
-        ev = PropertyAddressEvent(evidence, endpoint, kv)
-        event_sink.property_address_update(ev)
-        # do not know how to differentiate these... all go hand-in-hand
-        for key in keys[1:]:
-            ev = PropertyAddressEvent(evidence, endpoint, key.value_set({keys[0]}, explanation=exp))
-            event_sink.property_address_update(ev)
-
-    def _entity_coverage(self, entity: Entity) -> List[PropertyKey]:
-        if isinstance(entity, Service) and entity.protocol in {Protocol.TLS}:
-            return self._get_keys()
-        return []
-
-    def _get_keys(self) -> List[PropertyKey]:
-        """Get covered keys"""
+        # send several property events
         key = self.property_key
-        return [key, key.append_key("best-practices"), key.append_key("no-vulnz"), Properties.ENCRYPTION]
-
+        events = [
+            key.verdict(Verdict.PASS, f"{self.tool.name} confirm TLS"),
+            key.append_key("best-practices").value_set(bp_keys, f"{self.tool.name} best practices"),
+            key.append_key("no-vulnz").value_set(vn_keys, f"{self.tool.name} no vulnerabilities"),
+            Properties.ENCRYPTION.verdict(Verdict.PASS, f"{self.tool.name} encryption")
+        ]
+        for p in events:
+            ev = PropertyAddressEvent(evidence, endpoint, p)
+            event_sink.property_address_update(ev)

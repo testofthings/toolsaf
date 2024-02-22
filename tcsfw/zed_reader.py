@@ -55,8 +55,3 @@ class ZEDReader(BaseFileCheckTool):
             interface.property_address_update(ev)
             ps.add(key)
         return ps
-
-    def _entity_coverage(self, entity: Entity) -> List[PropertyKey]:
-        if isinstance(entity, Service) and entity.protocol in {Protocol.HTTP, Protocol.TLS}:
-            return [Properties.WEB_BEST]
-        return []

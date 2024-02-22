@@ -81,10 +81,3 @@ class NMAPScan(BaseFileCheckTool):
             interface.host_scan(HostScan(evidence, ip_addr or hw_addr, host_services))
 
         return True
-
-    def _entity_coverage(self, entity: Entity) -> List[PropertyKey]:
-        if isinstance(entity, IoTSystem):
-            return [Properties.EXPECTED_HOSTS]
-        if isinstance(entity, Addressable) and not entity.is_global():
-            return [Properties.EXPECTED_SERVICES]  # local hosts can be scanned
-        return []
