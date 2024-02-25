@@ -1,6 +1,7 @@
 from logging import Logger
 from typing import Any, List, Set, TextIO, Tuple, Dict, Optional, cast
 from tcsfw.address import AnyAddress
+from tcsfw.basics import Verdict
 
 from tcsfw.entity import Entity
 from tcsfw.event_interface import EventInterface, PropertyEvent, PropertyAddressEvent
@@ -9,7 +10,7 @@ from tcsfw.model import IoTSystem, Connection, Host, ModelListener, Service, Net
 from tcsfw.property import Properties, PropertyKey
 from tcsfw.services import NameEvent
 from tcsfw.traffic import EvidenceSource, HostScan, ServiceScan, Flow, Event
-from tcsfw.verdict import Status, Verdict
+from tcsfw.verdict import Status
 
 
 class LoggingEvent:

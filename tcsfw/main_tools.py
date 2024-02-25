@@ -1,44 +1,77 @@
-import itertools
-import pathlib
 from typing import Any, List, Dict, Tuple, Self, Optional
+from tcsfw.address import AnyAddress, HWAddress, IPAddress, Protocol
+from tcsfw.basics import ExternalActivity, HostType
 
-from tcsfw.android_manifest_scan import AndroidManifestScan
 from tcsfw.batch_import import LabelFilter
-from tcsfw.censys_scan import CensysScan
 from tcsfw.claim_coverage import RequirementClaimMapper
-from tcsfw.components import Software
 from tcsfw.event_interface import PropertyEvent
-from tcsfw.har_scan import HARScan
+from tcsfw.main import EvidenceBuilder, FlowBuilder, TrafficDataBuilder, NodeBuilder, SystemBuilder
 from tcsfw.requirement import SelectorContext
-from tcsfw.selector import Locations, RequirementSelector
-from tcsfw.main_basic import SubLoader, SystemInterface, NodeInterface, SoftwareInterface, HostInterface
-from tcsfw.mitm_log_reader import MITMLogReader
-from tcsfw.model import EvidenceNetworkSource, HostType
-from tcsfw.nmap_scan import NMAPScan
-from tcsfw.pcap_reader import PCAPReader
+from tcsfw.selector import Locations
+from tcsfw.model import EvidenceNetworkSource
 from tcsfw.property import PropertyKey
 from tcsfw.registry import Registry
-from tcsfw.releases import ReleaseReader
-from tcsfw.spdx_reader import SPDXReader
-from tcsfw.ssh_audit_scan import SSHAuditScan
-from tcsfw.testsslsh_scan import TestSSLScan
-from tcsfw.tools import CheckTool
-from tcsfw.traffic import Evidence, EvidenceSource, Flow, Tool
-from tcsfw.tshark_reader import TSharkReader
-from tcsfw.verdict import Verdict
-from tcsfw.vulnerability_reader import VulnerabilityReader
-from tcsfw.web_checker import WebChecker
-from tcsfw.zed_reader import ZEDReader
+from tcsfw.traffic import NO_EVIDENCE, Evidence, EvidenceSource, Flow, IPFlow, Tool
+
+class NodeManipulator:
+    """Interface to interact with other backend"""
+    def get_node(self) -> NodeBuilder:
+        raise NotImplementedError()
 
 
-class EvidenceLoader(SubLoader):
+class SubLoader:
+    """Base class for loaders"""
+    def __init__(self, name: str):
+        self.loader_name = name
+        self.base_ref = ""
+        self.mappings: Dict[AnyAddress, NodeManipulator] = {}
+        self.activity_map: Dict[NodeManipulator, ExternalActivity] = {}
+        self.parent_loader: Optional[SubLoader] = None
+        self.source_label = "?"
+        self.baseline = False  # read a baseline, only supported for some loaders
+
+    def hw(self, entity: NodeBuilder, *hw_address: str) -> Self:
+        assert isinstance(entity, NodeManipulator)
+        for a in hw_address:
+            self.mappings[HWAddress.new(a)] = entity
+        return self
+
+    def ip(self, entity: NodeBuilder, *ip_address: str) -> Self:
+        assert isinstance(entity, NodeManipulator)
+        for a in ip_address:
+            self.mappings[IPAddress.new(a)] = entity
+        return self
+
+    def external_activity(self, entity: NodeBuilder, activity: ExternalActivity) -> Self:
+        assert isinstance(entity, NodeManipulator)
+        self.activity_map[entity] = activity
+        return self
+
+    def get_source(self) -> EvidenceNetworkSource:
+        add_map = {}
+        ext_map = {}
+        if self.parent_loader:
+            ps = self.parent_loader.get_source()
+            add_map.update(ps.address_map)
+            ext_map.update(ps.activity_map)
+        add_map.update({a: e.get_node() for a, e in self.mappings.items()})
+        ext_map.update({e.get_node(): fs for e, fs in self.activity_map.items()})
+        return EvidenceNetworkSource(self.loader_name, self.base_ref, self.source_label, address_map=add_map,
+                                     activity_map=ext_map)
+
+    def load(self, registry: Registry, coverage: RequirementClaimMapper, filter: LabelFilter):
+        """Load evidence"""
+        pass
+
+
+class EvidenceLoader(EvidenceBuilder):
     """Load evidence files"""
-    def __init__(self, builder: SystemInterface):
-        super().__init__("Loader")
+    def __init__(self, builder: SystemBuilder):
+        SubLoader.__init__(self, "Loader")
         self.builder = builder
         self.subs: List[SubLoader] = []
 
-    def fabricate(self, label: str) -> 'FabricationLoader':
+    def traffic(self, label="Fab data") -> 'FabricationLoader':
         """Fabricate evidence for testing or visualization"""
         sl = FabricationLoader(label)
         self.subs.append(sl)
@@ -52,15 +85,17 @@ class EvidenceLoader(SubLoader):
             t.groups.append(group_label)
 
 
-class FabricationLoader(SubLoader):
+class FabricationLoader(SubLoader,TrafficDataBuilder):
     """Fabricate evidence for testing or visualization"""
     def __init__(self, source_label: str):
         super().__init__(source_label)
         self.flows: List[Flow] = []
 
-    def connection(self, flow: Flow) -> Self:
+    def connection(self, flow: FlowBuilder) -> Self:
         """Add a connection"""
-        self.flows.append(flow)
+        # NOTE: Only UDP and TCP are implemented at this point
+        f = IPFlow(NO_EVIDENCE, flow.source, flow.target, Protocol.get_protocol(flow.protocol))
+        self.flows.append(f)
         return self
 
     def load(self, registry: Registry, coverage: RequirementClaimMapper, filter: LabelFilter):

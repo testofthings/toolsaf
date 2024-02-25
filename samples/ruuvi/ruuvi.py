@@ -5,7 +5,7 @@
 from ruuvi_claims import make_claims
 from tcsfw.main import Builder, ARP, ICMP, EAPOL, HTTP, BLEAdvertisement, TLS, SSH, DHCP, NTP, DNS
 
-system = Builder("Ruuvi Gateway & Tags")
+system = Builder.new("Ruuvi Gateway & Tags")
 
 gateway = system.device("Ruuvi Gateway").serve(EAPOL, DHCP, ARP, ICMP, DNS(captive=True))
 setup_http = gateway / HTTP(auth=True)

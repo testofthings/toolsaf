@@ -1,15 +1,16 @@
 from typing import List, Optional, Tuple, Self, Dict, Set, Callable, Iterable, Union, Any
 
 from tcsfw.address import Protocol
+from tcsfw.basics import HostType, Verdict
 from tcsfw.claim import Claim
 from tcsfw.components import DataReference, DataStorages, Software
 from tcsfw.entity import Entity, ClaimStatus, ExplainableClaim, ClaimAuthority
 from tcsfw.events import ReleaseInfo
-from tcsfw.model import IoTSystem, Connection, Host, Service, HostType, NetworkNode
+from tcsfw.model import IoTSystem, Connection, Host, Service, NetworkNode
 from tcsfw.property import Properties, PropertyKey, PropertyVerdictValue, \
     PropertySetValue
 from tcsfw.traffic import Tool
-from tcsfw.verdict import Verdict, Verdictable
+from tcsfw.verdict import Verdictable
 
 
 class ClaimContext:

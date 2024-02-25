@@ -1,5 +1,4 @@
 import datetime
-import enum
 import ipaddress
 import itertools
 import re
@@ -7,36 +6,11 @@ from typing import List, Set, Optional, Tuple, TypeVar, Callable, Dict, Any, Sel
 from urllib.parse import urlparse
 
 from tcsfw.address import AnyAddress, Addresses, EndpointAddress, Protocol, IPAddress, HWAddress, DNSName
+from tcsfw.basics import ConnectionType, ExternalActivity, HostType, Verdict
 from tcsfw.entity import Entity
 from tcsfw.property import PropertyKey
 from tcsfw.traffic import Flow, EvidenceSource
-from tcsfw.verdict import Status, Verdict
-
-
-class HostType(enum.Enum):
-    """Host types"""
-    GENERIC = ""               # default, assumed plaintext data
-    DEVICE = "Device"          # local device
-    MOBILE = "Mobile"          # mobile (application)
-    REMOTE = "Remote"          # remote, youngsters call it "cloud"
-    BROWSER = "Browser"        # browser, user selected and installed
-    ADMINISTRATIVE = "Admin"   # administration, match ConnectionType
-
-
-class ConnectionType(enum.Enum):
-    """Connection types"""
-    UNKNOWN = ""               # default, assumed plaintext data
-    ENCRYPTED = "Encrypted"    # strong encryption
-    ADMINISTRATIVE = "Admin"   # administration, no private data
-    LOGICAL = "Logical"        # only a logical connection
-
-
-class ExternalActivity(enum.IntEnum):
-    """External activity levels"""
-    BANNED = 0                 # no external activity allowed
-    PASSIVE = 1                # passive, probing ok but no replies
-    OPEN = 2                   # external use of open services ok
-    UNLIMITED = 3              # unlimited activity, including client connections
+from tcsfw.verdict import Status
 
 
 class Connection(Entity):

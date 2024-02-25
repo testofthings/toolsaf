@@ -1,16 +1,18 @@
 import pathlib
 
 from tcsfw.address import IPAddress, DNSName, Protocol
+from tcsfw.basics import Verdict
+from tcsfw.builder_backend import SystemBackend
 from tcsfw.inspector import Inspector
-from tcsfw.main import SystemBuilder, DNS
+from tcsfw.main import DNS
 from tcsfw.matcher import SystemMatcher
 from tcsfw.pcap_reader import PCAPReader
 from tcsfw.traffic import IPFlow
-from tcsfw.verdict import Status, Verdict
+from tcsfw.verdict import Status
 
 
 def test_dns():
-    sb = SystemBuilder()
+    sb = SystemBackend()
     dev1 = sb.device().ip("1.0.0.1")
     dns = sb.backend().ip("5.5.5.5") / DNS
     c1 = dev1 >> dns
@@ -25,7 +27,7 @@ def test_dns():
 
 
 def test_dns_pcap():
-    sb = SystemBuilder()
+    sb = SystemBackend()
     dev1 = sb.device().ip("192.168.20.132")
     dns = sb.backend().ip("155.198.142.7") / DNS
     c1 = dev1 >> dns
@@ -51,7 +53,7 @@ def test_dns_pcap():
 
 
 def test_dns_large_pcap():
-    sb = SystemBuilder()
+    sb = SystemBackend()
     sb.any() / DNS
     m = Inspector(sb.system)
     s = sb.system
@@ -66,7 +68,7 @@ def test_dns_large_pcap():
 
 
 def test_dns_large_pcap2():
-    sb = SystemBuilder()
+    sb = SystemBackend()
     sb.any() / DNS
     m = Inspector(sb.system)
     s = sb.system

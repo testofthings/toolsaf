@@ -7,12 +7,13 @@ from datetime import datetime
 from typing import BinaryIO, Optional, List, Dict, Iterable, Tuple, Set, Self
 
 from tcsfw.address import DNSName, IPAddress, AnyAddress, Addresses
+from tcsfw.basics import Verdict
 from tcsfw.entity import ClaimAuthority, Entity
 from tcsfw.event_interface import EventInterface
 from tcsfw.model import NetworkNode, Addressable, IoTSystem, NodeComponent, Connection, Host
 from tcsfw.property import PropertyKey
 from tcsfw.traffic import Evidence, EvidenceSource, Tool, Flow, IPFlow
-from tcsfw.verdict import Status, Verdict
+from tcsfw.verdict import Status
 
 
 class CheckTool:

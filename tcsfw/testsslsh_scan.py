@@ -11,7 +11,7 @@ from tcsfw.property import PropertyKey, Properties, PropertyKey
 from tcsfw.registry import Registry
 from tcsfw.tools import EndpointCheckTool
 from tcsfw.traffic import Evidence, EvidenceSource
-from tcsfw.verdict import Verdict
+from tcsfw.basics import Verdict
 
 
 class TestSSLScan(EndpointCheckTool):

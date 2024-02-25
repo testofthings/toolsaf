@@ -7,11 +7,12 @@ from typing import Dict, List, Optional, Type
 from framing.raw_data import Raw
 from tcsfw.address import Addresses, AnyAddress
 from tcsfw.android_manifest_scan import AndroidManifestScan
+from tcsfw.basics import ExternalActivity
 from tcsfw.censys_scan import CensysScan
 from tcsfw.event_interface import EventInterface
 from tcsfw.har_scan import HARScan
 from tcsfw.mitm_log_reader import MITMLogReader
-from tcsfw.model import EvidenceNetworkSource, ExternalActivity, IoTSystem
+from tcsfw.model import EvidenceNetworkSource, IoTSystem
 from tcsfw.nmap_scan import NMAPScan
 from tcsfw.pcap_reader import PCAPReader
 from tcsfw.releases import ReleaseReader

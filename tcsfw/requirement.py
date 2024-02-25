@@ -1,8 +1,9 @@
 from typing import Tuple, List, Dict, Set, Callable, Iterator, Optional, Iterable, Any
+from tcsfw.basics import ConnectionType, HostType
 
 from tcsfw.claim import Claim
 from tcsfw.entity import Entity
-from tcsfw.model import Host, Connection, Service, HostType, ConnectionType, IoTSystem
+from tcsfw.model import Host, Connection, Service, IoTSystem
 from tcsfw.property import PropertyKey
 
 

@@ -6,11 +6,11 @@ from xml.etree import ElementTree
 from tcsfw.components import Software
 from tcsfw.entity import Entity
 from tcsfw.event_interface import PropertyEvent, EventInterface
-from tcsfw.model import IoTSystem, HostType, NodeComponent
+from tcsfw.model import IoTSystem, NodeComponent
 from tcsfw.property import Properties, PropertyKey
 from tcsfw.tools import ComponentCheckTool
 from tcsfw.traffic import EvidenceSource, Evidence
-from tcsfw.verdict import Verdict
+from tcsfw.basics import HostType, Verdict
 
 
 class AndroidManifestScan(ComponentCheckTool):

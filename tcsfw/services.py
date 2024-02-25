@@ -1,7 +1,8 @@
 from typing import List, Set, Optional
 
 from tcsfw.address import IPAddresses, EndpointAddress, Protocol, HWAddress, IPAddress
-from tcsfw.model import Service, NetworkNode, Connection, Host, ConnectionType, HostType, Addressable, ExternalActivity
+from tcsfw.basics import ConnectionType, ExternalActivity, HostType
+from tcsfw.model import Service, NetworkNode, Connection, Host, Addressable
 from tcsfw.traffic import IPFlow, Flow, Event, Evidence
 
 

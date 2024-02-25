@@ -1,13 +1,15 @@
 from tcsfw.address import EndpointAddress, Protocol, DNSName, IPAddress, HWAddress
-from tcsfw.main import SystemBuilder, UDP, SSH
+from tcsfw.basics import Verdict
+from tcsfw.builder_backend import SystemBackend
+from tcsfw.main import UDP, SSH
 from tcsfw.matcher import SystemMatcher
-from tcsfw.model import ExternalActivity
+from tcsfw.basics import ExternalActivity
 from tcsfw.traffic import IPFlow
-from tcsfw.verdict import Status, Verdict
+from tcsfw.verdict import Status
 
 
-def simple_setup_1(external=False) -> SystemBuilder:
-    sb = SystemBuilder()
+def simple_setup_1(external=False) -> SystemBackend:
+    sb = SystemBackend()
     dev1 = sb.device().hw("1:0:0:0:0:1")
     dev2 = sb.device().ip("192.168.0.2")
     dev3 = sb.device()
@@ -18,8 +20,8 @@ def simple_setup_1(external=False) -> SystemBuilder:
     return sb
 
 
-def simple_setup_2() -> SystemBuilder:
-    sb = SystemBuilder()
+def simple_setup_2() -> SystemBackend:
+    sb = SystemBackend()
     dev1 = sb.device().hw("1:0:0:0:0:1")
     dev2 = sb.device().name("target.org")
     dev3 = sb.device()
@@ -210,7 +212,7 @@ def test_host_merging():
 
 
 def test_unknown_multicast():
-    sb = SystemBuilder()
+    sb = SystemBackend()
     m = SystemMatcher(sb.system)
 
     cs1 = m.connection(IPFlow.UDP(
@@ -300,7 +302,7 @@ def test_external_connection():
 
 
 def test_wildcard_source():
-    sb = SystemBuilder()
+    sb = SystemBackend()
     user = sb.browser()  # no address
     server = sb.backend().ip("203.0.113.1")
     ssh = server / SSH()
@@ -315,7 +317,7 @@ def test_wildcard_source():
 
 
 def test_any_host():
-    sb = SystemBuilder()
+    sb = SystemBackend()
     any1 = sb.any().name("ANY")  # no address
     dev1 = sb.device().hw("1:0:0:0:0:1")
     dev1 >> any1 / UDP(port=1001)
@@ -367,7 +369,7 @@ def test_any_host():
 
 
 def test_match_preferences():
-    sb = SystemBuilder()
+    sb = SystemBackend()
     p4 = sb.device("P4")                                 # match anything
     p3 = sb.device("P3").serve(UDP(2000))                # match port
     p2 = sb.device("P2").ip("1.0.0.1")                   # match address
@@ -403,7 +405,7 @@ def test_match_preferences():
 
 
 def test_reply_misinterpretation():
-    sb = SystemBuilder()
+    sb = SystemBackend()
     dev = sb.device().hw("1:0:0:0:0:1")
     m = SystemMatcher(sb.system)
 

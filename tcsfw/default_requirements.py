@@ -2,7 +2,7 @@ from tcsfw.claim import Claim
 from tcsfw.claim_set import Claims, EncryptionClaim, UpdateClaim, ReleaseClaim, BOMClaim, \
     AuthenticationClaim, AvailabilityClaim, PermissionClaim, \
     NoVulnerabilitiesClaim, ProtocolClaim
-from tcsfw.model import HostType
+from tcsfw.basics import HostType
 from tcsfw.requirement import Specification
 from tcsfw.selector import ConnectionSelector, HostSelector, Locations, ServiceSelector
 

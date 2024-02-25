@@ -1,14 +1,15 @@
-from tcsfw.main import HTTP, SystemBuilder, UDP
+from tcsfw.builder_backend import SystemBackend
+from tcsfw.main import HTTP, UDP
 from tcsfw.matcher import SystemMatcher
 from tcsfw.traffic import IPFlow, Evidence
 
 
 def test_source_matching():
-    sb = SystemBuilder()
+    sb = SystemBackend()
     dev1 = sb.device().hw("1:0:0:0:0:1")
     m = SystemMatcher(sb.system)
 
-    source2 = sb.load().hw(dev1, "1:0:0:0:1:1")
+    source2 = sb.load().traffic().hw(dev1, "1:0:0:0:1:1")
     e2 = Evidence(source2.get_source())
 
     c1 = m.connection(
@@ -26,7 +27,7 @@ def test_source_matching():
 
 
 def test_null_address_matching():
-    sb = SystemBuilder()
+    sb = SystemBackend()
     dev1 = sb.device().ip("192.168.11.1")
     ser2 = sb.device().ip("10.10.10.12") / HTTP
     dev1 >> ser2

@@ -1,10 +1,12 @@
+from tcsfw.basics import Verdict
+from tcsfw.builder_backend import SystemBackend
 from test_inspector import simple_setup_3
 from test_model import simple_setup_1
 from tcsfw.inspector import Inspector
-from tcsfw.main import SystemBuilder, DHCP
+from tcsfw.main import DHCP
 from tcsfw.registry import Registry
 from tcsfw.traffic import IPFlow, NO_EVIDENCE
-from tcsfw.verdict import Status, Verdict
+from tcsfw.verdict import Status
 
 
 def test_reset():
@@ -105,7 +107,7 @@ def test_reset_2():
 
 
 def test_reset_dhcp():
-    sb = SystemBuilder()
+    sb = SystemBackend()
     dev1 = sb.device().hw("1:0:0:0:0:1")
     dhcp = sb.any() / DHCP
     c1 = dev1 >> dhcp

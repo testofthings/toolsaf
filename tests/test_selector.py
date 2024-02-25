@@ -1,5 +1,6 @@
+from tcsfw.basics import HostType
 from test_model import simple_setup_1
-from tcsfw.model import IoTSystem, Host, HostType
+from tcsfw.model import IoTSystem, Host
 from tcsfw.requirement import SelectorContext
 from tcsfw.selector import Locations
 

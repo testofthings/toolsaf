@@ -1,13 +1,15 @@
+from tcsfw.basics import Verdict
+from tcsfw.builder_backend import SystemBackend
 import test_model
 from tcsfw.address import EndpointAddress, Protocol, IPAddress
 from tcsfw.inspector import Inspector
-from tcsfw.main import DHCP, ICMP, SystemBuilder, UDP, TCP, UNLIMITED
+from tcsfw.main import DHCP, ICMP, UDP, TCP, UNLIMITED
 from tcsfw.traffic import IPFlow, Evidence, EvidenceSource, ServiceScan, HostScan
-from tcsfw.verdict import Status, Verdict
+from tcsfw.verdict import Status
 
 
-def simple_setup_3(tcp=False) -> SystemBuilder:
-    sb = SystemBuilder()
+def simple_setup_3(tcp=False) -> SystemBackend:
+    sb = SystemBackend()
     dev1 = sb.device().hw("1:0:0:0:0:1")
     dev2 = sb.device().ip("192.168.0.2")
     dev3 = sb.device().ip("192.168.0.3")
@@ -63,7 +65,7 @@ def test_traffic_verdict():
 
 
 def test_irrelevant_traffic():
-    sb = SystemBuilder()
+    sb = SystemBackend()
     dev1 = sb.device().hw("1:0:0:0:0:1")
     dev2 = sb.device().ip("192.168.0.2")
     dev2.external_activity(UNLIMITED)
@@ -148,7 +150,7 @@ def test_foreign_connection():
 
 
 def test_multicast():
-    sb = SystemBuilder()
+    sb = SystemBackend()
     dev1 = sb.device().hw("1:0:0:0:0:1")
     dev1 >> sb.broadcast(UDP(port=333))
     i = Inspector(sb.system)
@@ -170,7 +172,7 @@ def test_multicast():
 
 
 def test_external_dhcp_multicast():
-    sb = SystemBuilder()
+    sb = SystemBackend()
     dev1 = sb.mobile().hw("1:0:0:0:0:1")  # unlimited activity
     dev2 = sb.backend().serve(DHCP)       # listens for broafcasts to ff:ff:ff:ff:ff:ff
     i = Inspector(sb.system)

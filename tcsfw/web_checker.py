@@ -12,7 +12,7 @@ from tcsfw.model import IoTSystem, NetworkNode
 from tcsfw.property import Properties, PropertyKey
 from tcsfw.tools import BaseFileCheckTool, NodeCheckTool
 from tcsfw.traffic import EvidenceSource, Evidence
-from tcsfw.verdict import Verdict
+from tcsfw.basics import Verdict
 
 
 class WebChecker(BaseFileCheckTool):

@@ -11,7 +11,7 @@ from tcsfw.property import Properties, PropertyKey
 from tcsfw.services import NameEvent
 from tcsfw.tools import BaseFileCheckTool
 from tcsfw.traffic import EvidenceSource, Evidence, IPFlow
-from tcsfw.verdict import Verdict
+from tcsfw.basics import Verdict
 
 
 class MITMLogReader(BaseFileCheckTool):

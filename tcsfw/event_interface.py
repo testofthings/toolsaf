@@ -1,12 +1,13 @@
 from typing import Dict, Type, Callable, Any, Tuple
 
 from tcsfw.address import AnyAddress
+from tcsfw.basics import Verdict
 from tcsfw.entity import Entity
 from tcsfw.model import IoTSystem
 from tcsfw.property import PropertyKey
 from tcsfw.services import NameEvent
 from tcsfw.traffic import ServiceScan, HostScan, Event, Flow, IPFlow, EthernetFlow, BLEAdvertisementFlow, Evidence
-from tcsfw.verdict import Verdictable, Verdict
+from tcsfw.verdict import Verdictable
 
 
 class EventInterface:

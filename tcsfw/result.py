@@ -2,11 +2,12 @@ import logging
 from typing import TextIO, List, Dict, Optional, Self, Set
 
 from tcsfw.address import Protocol
+from tcsfw.basics import ConnectionType, HostType, Verdict
 from tcsfw.entity import Entity
-from tcsfw.model import IoTSystem, Host, HostType, ConnectionType, Service, NetworkNode
+from tcsfw.model import IoTSystem, Host, Service, NetworkNode
 from tcsfw.property import Properties
 from tcsfw.registry import Registry
-from tcsfw.verdict import Status, Verdict
+from tcsfw.verdict import Status
 
 # Keywords for verdicts
 FAIL = "fail"

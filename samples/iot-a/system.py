@@ -2,7 +2,7 @@ import tcsfw
 from tcsfw.main import Builder, TLS
 from tcsfw.traffic import IPFlow
 
-system = Builder("IoT A")
+system = Builder.new("IoT A")
 device = system.device()
 backend = system.backend().serve(TLS(auth=True))
 app = system.mobile()
@@ -22,8 +22,8 @@ system.visualize().place(
 
 # Load some fake traffic
 load = system.load()
-load.fabricate("Data set I").hw(device, "1:0:0:0:0:1").ip(backend, "10.10.0.2") \
-    .connection(IPFlow.TCP("1:0:0:0:0:1", "192.168.0.1", 1100) >> ("1:0:0:0:0:2", "10.10.0.2", 443))
+load.traffic("Data set I").hw(device, "1:0:0:0:0:1").ip(backend, "10.10.0.2") \
+    .connection(Builder.TCP("1:0:0:0:0:1", "192.168.0.1", 1100) >> ("1:0:0:0:0:2", "10.10.0.2", 443))
 
 if __name__ == "__main__":
     system.run()

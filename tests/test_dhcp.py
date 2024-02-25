@@ -1,16 +1,18 @@
 import pathlib
 from tcsfw.address import HWAddress, IPAddress
+from tcsfw.basics import Verdict
+from tcsfw.builder_backend import SystemBackend
 from tcsfw.event_logger import EventLogger
 from tcsfw.inspector import Inspector
-from tcsfw.main import UNLIMITED, SystemBuilder, DHCP, UDP
+from tcsfw.main import UNLIMITED, DHCP, UDP
 from tcsfw.matcher import SystemMatcher
 from tcsfw.pcap_reader import PCAPReader
 from tcsfw.traffic import IPFlow
-from tcsfw.verdict import Status, Verdict
+from tcsfw.verdict import Status
 
 
 def test_dhcp():
-    sb = SystemBuilder()
+    sb = SystemBackend()
     dev1 = sb.device().hw("1:0:0:0:0:1")
     dhcp = sb.any().name("X") / DHCP
     c1 = dev1 >> dhcp
@@ -65,7 +67,7 @@ def test_dhcp():
     assert h3.name == "192.168.0.1 2"
 
 def test_unexpected_dhcp_matching():
-    sb = SystemBuilder()
+    sb = SystemBackend()
     dhcp = sb.any() / DHCP
     other = sb.broadcast(UDP(port=7777))
     dev = sb.device().hw("30:c6:f7:52:db:5c")
@@ -80,7 +82,7 @@ def test_unexpected_dhcp_matching():
 
 
 def test_from_pcap():
-    sb = SystemBuilder()
+    sb = SystemBackend()
     other = sb.broadcast(UDP(port=7777))
     dhcp = sb.any() / DHCP
     dev = sb.device().hw("30:c6:f7:52:db:5c")
@@ -96,7 +98,7 @@ def test_from_pcap():
     assert cos[1].status == Status.EXPECTED
 
 def test_from_pcap2():
-    sb = SystemBuilder()
+    sb = SystemBackend()
     dhcp = sb.any() / DHCP
     dev1 = sb.device().hw("30:c6:f7:52:db:5c")
     dev1 >> dhcp

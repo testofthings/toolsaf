@@ -5,6 +5,7 @@ import re
 import textwrap
 from dataclasses import dataclass
 from typing import List, Dict, Optional, Iterable, Tuple, Set
+from tcsfw.basics import HostType
 
 from tcsfw.claim import Claim
 from tcsfw.claim_set import EntityClaim, AuthenticationClaim, NoUnexpectedServices, \
@@ -12,7 +13,7 @@ from tcsfw.claim_set import EntityClaim, AuthenticationClaim, NoUnexpectedServic
     MITMClaim, ProtocolClaim, FuzzingClaim, PropertyClaim, \
     PhysicalManipulationClaim, NamedClaim
 from tcsfw.entity import Entity
-from tcsfw.model import HostType, IoTSystem, Host, Service, Connection
+from tcsfw.model import IoTSystem, Host, Service, Connection
 from tcsfw.property import Properties, PropertyKey
 from tcsfw.requirement import Specification, Requirement, SelectorContext, SpecificationSelectorContext, \
     EntitySelector

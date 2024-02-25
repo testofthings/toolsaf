@@ -1,9 +1,9 @@
-from tcsfw.model import HostType
+from tcsfw.basics import HostType
 from tcsfw.selector import Locations
-from tcsfw.main import Builder, TLS, HTTP, SSH
+from tcsfw.main import TLS, HTTP, SSH, SystemBuilder
 
 
-def make_claims(system: Builder, gateway, tags, user, mobile, backend_1, backend_2, web_1, web_2, web_3, ble_ad):
+def make_claims(system: SystemBuilder, gateway, tags, user, mobile, backend_1, backend_2, web_1, web_2, web_3, ble_ad):
     claims = system.claims(base_label="false-positives")
 
     # Ignore some finding(s)

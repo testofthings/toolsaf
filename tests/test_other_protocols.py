@@ -1,12 +1,14 @@
 from tcsfw.address import HWAddress, Protocol, HWAddresses
+from tcsfw.basics import Verdict
+from tcsfw.builder_backend import SystemBackend
 from tcsfw.inspector import Inspector
-from tcsfw.main import SystemBuilder, ICMP, UDP, ARP, EAPOL
+from tcsfw.main import ICMP, UDP, ARP, EAPOL
 from tcsfw.traffic import IPFlow, EthernetFlow, NO_EVIDENCE
-from tcsfw.verdict import Status, Verdict
+from tcsfw.verdict import Status
 
 
 def test_icmp():
-    sb = SystemBuilder()
+    sb = SystemBackend()
     dev1 = sb.device().ip("1.0.1.1") / ICMP
     dev1 >> sb.device().ip("1.0.1.2") / UDP(port=2000)  # this used to steal icmp() endpoint
     i = Inspector(sb.system)
@@ -37,7 +39,7 @@ def test_icmp():
 
 
 def test_arp():
-    sb = SystemBuilder()
+    sb = SystemBackend()
     dev1 = sb.device().hw("01:02:03:04:05:06")
     arp1 = dev1 / ARP  # the broadcast service
     i = Inspector(sb.system)
@@ -78,7 +80,7 @@ def test_arp():
 
 
 def test_eapol_name():
-    sb = SystemBuilder()
+    sb = SystemBackend()
     dev1 = sb.device().hw("01:02:03:04:05:06")
     s = dev1 / EAPOL
     assert s.entity.name == "EAPOL"

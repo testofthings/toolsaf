@@ -6,6 +6,7 @@ from typing import Dict, List, Tuple, Any, Iterable, BinaryIO, Optional
 from framing.raw_data import Raw
 
 from tcsfw.address import AnyAddress, HWAddress, HWAddresses, IPAddresses, Protocol, IPAddress
+from tcsfw.basics import Verdict
 from tcsfw.claim_coverage import RequirementClaimMapper
 from tcsfw.coverage_result import CoverageReport
 from tcsfw.entity import Entity
@@ -15,7 +16,7 @@ from tcsfw.property import PropertyKey, PropertySetValue, PropertyVerdictValue
 from tcsfw.registry import Registry
 from tcsfw.result import Report
 from tcsfw.traffic import Evidence, NO_EVIDENCE, Flow, IPFlow
-from tcsfw.verdict import Status, Verdict, Verdictable
+from tcsfw.verdict import Status, Verdictable
 
 # format strings
 FORMAT_YEAR_MONTH_DAY = "%Y-%m-%d"

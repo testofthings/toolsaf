@@ -1,10 +1,11 @@
 from typing import List, TypeVar, Generic, Iterator
 
 from tcsfw.address import Protocol
+from tcsfw.basics import HostType
 from tcsfw.claim import Claim
 from tcsfw.components import DataStorages, Software, DataReference
 from tcsfw.entity import Entity
-from tcsfw.model import Addressable, Host, HostType, IoTSystem, NetworkNode, Service, Connection
+from tcsfw.model import Addressable, Host, IoTSystem, NetworkNode, Service, Connection
 from tcsfw.property import Properties, PropertyKey
 from tcsfw.requirement import Requirement, EntitySelector, SelectorContext
 from tcsfw.verdict import Status

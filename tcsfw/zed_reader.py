@@ -11,7 +11,7 @@ from tcsfw.model import IoTSystem, Service
 from tcsfw.property import Properties, PropertyKey
 from tcsfw.tools import BaseFileCheckTool
 from tcsfw.traffic import EvidenceSource, Evidence
-from tcsfw.verdict import Verdict
+from tcsfw.basics import Verdict
 
 
 class ZEDReader(BaseFileCheckTool):

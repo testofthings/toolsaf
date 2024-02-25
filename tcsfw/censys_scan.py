@@ -14,7 +14,7 @@ from tcsfw.model import IoTSystem, NetworkNode, Service, Host
 from tcsfw.property import Properties, PropertyKey
 from tcsfw.tools import EndpointCheckTool
 from tcsfw.traffic import EvidenceSource, ServiceScan, Evidence, HostScan
-from tcsfw.verdict import Verdict
+from tcsfw.basics import Verdict
 
 
 class CensysScan(EndpointCheckTool):

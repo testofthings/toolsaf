@@ -1,9 +1,10 @@
 import enum
 from typing import Dict, Optional, Self, List, Any, Tuple, Iterable, Callable, Iterator, TypeVar
+from tcsfw.basics import Verdict
 
 from tcsfw.claim import Claim
 from tcsfw.property import Properties, PropertyKey
-from tcsfw.verdict import Status, Verdict, Verdictable
+from tcsfw.verdict import Status, Verdictable
 
 
 class Entity:

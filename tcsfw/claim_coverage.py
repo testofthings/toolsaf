@@ -9,7 +9,7 @@ from tcsfw.property import PropertyKey
 from tcsfw.requirement import Specification, Requirement, SelectorContext
 from tcsfw.selector import RequirementSelector
 from tcsfw.traffic import Tool
-from tcsfw.verdict import Verdict
+from tcsfw.basics import Verdict
 
 
 class RequirementStatus:

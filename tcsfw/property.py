@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from typing import Set, Dict, Any, Optional, Tuple, TypeVar, Generic, Self
+from tcsfw.basics import Verdict
 
-from tcsfw.verdict import Verdict, Verdictable
+from tcsfw.verdict import Verdictable
 
 class PropertyKey:
     """Property key"""
