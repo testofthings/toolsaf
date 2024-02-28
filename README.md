@@ -14,7 +14,10 @@ The functionality of the framework is now reading output of several different "s
 
 Before use, you must [install](Install.md) the framework from _Github_.
 
-The project contains security statement for _Ruuvi gateway and tags_ (https://ruuvi.com/) which is used in the research. The statement is in directory `samples/ruuvi/`. The data for verifying the security statement is available for academic research, please request it from Rauli. Remember to tell the goals of the research and the organization performing it. Right to refuse requests is reserved.
+The framework comes with sample security stateuments in directory `samples/`. The security statements descriptin are in a [Domain Specific Language (DSL)](DSLIntro.md).
+The description of the claims also employs [a DSL](ClaimIntro.md), but that is very much unmature at the moment.
+
+The one used in the research is the security statement for _Ruuvi gateway and tags_ (https://ruuvi.com/) which is used in the research. The statement is in directory `samples/ruuvi/`. The data for verifying the security statement is available for academic research, please request it from Rauli. Remember to tell the goals of the research and the organization performing it. Right to refuse requests is reserved.
 
 Security statements are described by Python-based DSLs. A description is executable Python script. The security statement for Ruuvi is executed like this, assuming working directory is the project root:
 ```

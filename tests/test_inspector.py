@@ -1,9 +1,9 @@
-from tcsfw.basics import Verdict
+from tcsfw.basics import ExternalActivity, Verdict
 from tcsfw.builder_backend import SystemBackend
 import test_model
 from tcsfw.address import EndpointAddress, Protocol, IPAddress
 from tcsfw.inspector import Inspector
-from tcsfw.main import DHCP, ICMP, UDP, TCP, UNLIMITED
+from tcsfw.main import DHCP, UDP, TCP
 from tcsfw.traffic import IPFlow, Evidence, EvidenceSource, ServiceScan, HostScan
 from tcsfw.verdict import Status
 
@@ -68,7 +68,7 @@ def test_irrelevant_traffic():
     sb = SystemBackend()
     dev1 = sb.device().hw("1:0:0:0:0:1")
     dev2 = sb.device().ip("192.168.0.2")
-    dev2.external_activity(UNLIMITED)
+    dev2.external_activity(ExternalActivity.UNLIMITED)
     dev1 >> dev2 / UDP(port=1234)
     i = Inspector(sb.system)
 
@@ -121,7 +121,7 @@ def test_scan():
 def test_foreign_connection():
     sb = test_model.simple_setup_1()
     dev2 = sb.system.get_endpoint(IPAddress.new("192.168.0.2"))
-    dev2.set_external_activity(UNLIMITED)
+    dev2.set_external_activity(ExternalActivity.UNLIMITED)
     i = Inspector(sb.system)
 
     # target is known service
