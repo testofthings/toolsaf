@@ -40,6 +40,7 @@ class PCAPReader(BaseFileCheckTool):
         self.timestamp = datetime.datetime.fromtimestamp(0)
         self.ip_reassembler = IPReassembler()
         self.flows: Dict[Tuple, Flow] = {}
+        self.dns_names = {}  # report one just once
 
     @classmethod
     def inspect(cls, pcap_file: pathlib.Path, interface: EventInterface) -> 'PCAPReader':
@@ -164,7 +165,17 @@ class PCAPReader(BaseFileCheckTool):
         events = []
         for rd in dns_frames.DNSMessage.Question.iterate(frame):
             name = dns_frames.DNSName.string(rd, dns_frames.DNSQuestion.QNAME)
-            events.append(NameEvent(evidence, service, name, peers=peers))
+            if name not in self.dns_names:
+                self.dns_names[name] = None
+                events.append(NameEvent(evidence, service, name, peers=peers))
+
+        def learn_name(name: str, ip: IPAddress):
+            old = self.dns_names.get(ip)
+            if old == name:
+                return
+            self.dns_names[ip] = name
+            n = NameEvent(evidence, service, name, IPAddress(ip), peers=peers)
+            events.append(n)
 
         rd_frames = []
         rd_frames.extend(dns_frames.DNSMessage.Answer.iterate(frame))
@@ -173,10 +184,8 @@ class PCAPReader(BaseFileCheckTool):
         for rd in rd_frames:
             name = dns_frames.DNSName.string(rd, dns_frames.DNSResource.NAME)
             proc_rd = {
-                dns_frames.RDATA.A: lambda r: events.append(
-                    NameEvent(evidence, service, name, IPAddress(r.as_ip_address()), peers=peers)),
-                dns_frames.RDATA.AAAA: lambda r: events.append(
-                    NameEvent(evidence, service, name, IPAddress(r.as_ip_address()), peers=peers)),
+                dns_frames.RDATA.A: lambda r: learn_name(name, r.as_ip_address()),
+                dns_frames.RDATA.AAAA: lambda r: learn_name(name, r.as_ip_address()),
             }
             dns_frames.DNSResource.RDATA.process_frame(rd, proc_rd)
 
@@ -194,7 +203,6 @@ class PCAPReader(BaseFileCheckTool):
             self.interface.connection(flow)
         # We used to track packets
         # else:
-            # FIXME: Stop parsing after a lot of data or configured not to care?
             # key = self.ip_flow_ends(ethernet, ip, TCP.Source_port[frame], TCP.Destination_port[frame])
             # flow = self.flows.get(key)
             # if flow:
