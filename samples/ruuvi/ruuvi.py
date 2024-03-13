@@ -97,7 +97,7 @@ system.visualize().place(
 ).where({
     "b": ble_ad,
     "G": gateway.visual().image(
-        "https://ruuvi.com/i/u/ruuvi-gateway-website-news-450x354.png", scale=200),
+        "https://ruuvi.com/i/u/ruuvi-gateway-website-news-450x354.png", scale=170),
     "T": tags.visual().image(
         "https://ruuvi.com/i/u/ruuvitag-pro-perspective-smallest-768x596.png"),
     "U": user,
@@ -106,7 +106,8 @@ system.visualize().place(
     "3": web_2,
     "4": web_3,
     "g": backend_2.visual().image(
-        "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"),
+        "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/217d5ea0-623d-40b1-9b31-027b904a5f15/dccuk5k-9eee2a52-9684-4023-ae06-ae13c46c5d08.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7InBhdGgiOiJcL2ZcLzIxN2Q1ZWEwLTYyM2QtNDBiMS05YjMxLTAyN2I5MDRhNWYxNVwvZGNjdWs1ay05ZWVlMmE1Mi05Njg0LTQwMjMtYWUwNi1hZTEzYzQ2YzVkMDgucG5nIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmZpbGUuZG93bmxvYWQiXX0.Np75DuhEKpH9be24vgxOsTj0LFf6CNmtN8jQJO3WDuU",
+        scale=125),
     "M": mobile.visual().image(
         "https://www.telstra.com.au/content/dam/tcom/devices/mobile/mhdwhst-tmx3/blue/front.png"),
     # do not show
