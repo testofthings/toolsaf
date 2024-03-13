@@ -2,7 +2,7 @@ import enum
 from typing import Dict, Optional, Self, List, Any, Tuple, Iterable, Callable, Iterator, TypeVar
 from tcsfw.basics import Verdict
 
-from tcsfw.claim import Claim
+from tcsfw.claim import AbstractClaim
 from tcsfw.property import Properties, PropertyKey
 from tcsfw.verdict import Status, Verdictable
 
@@ -111,7 +111,7 @@ class ClaimAuthority(enum.Enum):
 
 
 class ClaimStatus:
-    def __init__(self, claim: Claim, explanation="", verdict=Verdict.INCON, authority=ClaimAuthority.MODEL):
+    def __init__(self, claim: AbstractClaim, explanation="", verdict=Verdict.INCON, authority=ClaimAuthority.MODEL):
         assert claim is not None and verdict is not None
         self.claim = claim
         self.verdict = verdict
@@ -130,7 +130,7 @@ class ClaimStatus:
         return f"{self.verdict.value} {self.get_explanation()}"
 
 
-class ExplainableClaim(Claim):
+class ExplainableClaim(AbstractClaim):
     """A claim which can be explained, with or without status"""
     def explain(self, status: Optional[ClaimStatus]) -> str:
         """Explain the claim and status. Status can be null"""

@@ -26,17 +26,6 @@ class CoverageReport:
         self.logger = logging.getLogger("report")
 
     @classmethod
-    def load_specification(self, identifier: str) -> Specification:
-        """Load specification by name"""
-        if not identifier or identifier == DEFAULT.specification_id:
-            return DEFAULT
-        if identifier == ETSI_TS_103_701.specification_id:
-            return ETSI_TS_103_701
-        if identifier == ETSI_TS_103_701_FIN.specification_id:
-            return ETSI_TS_103_701_FIN
-        raise FileNotFoundError(f"Unknown specification '{identifier}'")
-
-    @classmethod
     def _list_properties(cls, status: RequirementStatus) -> Dict[PropertyKey, bool]:
         """List properties resolved for a claim"""
         r = {}

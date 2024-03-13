@@ -2,7 +2,7 @@ from typing import List, Optional, Tuple, Self, Dict, Set, Callable, Iterable, U
 
 from tcsfw.address import Protocol
 from tcsfw.basics import HostType, Verdict
-from tcsfw.claim import Claim
+from tcsfw.claim import AbstractClaim
 from tcsfw.components import DataReference, DataStorages, Software
 from tcsfw.entity import Entity, ClaimStatus, ExplainableClaim, ClaimAuthority
 from tcsfw.events import ReleaseInfo
@@ -17,9 +17,9 @@ class ClaimContext:
     """The context where a claim is resolved"""
     def __init__(self):
         # Properties read by the claims, with their values (converted to bool, when possible)
-        self.properties: Dict[Tuple[Entity, Claim], Dict[PropertyKey, Any]] = {}
+        self.properties: Dict[Tuple[Entity, AbstractClaim], Dict[PropertyKey, Any]] = {}
 
-    def check(self, claim: 'EntityClaim', entity: Entity) -> Optional[ClaimStatus]:
+    def check(self, claim: 'RequirementClaim', entity: Entity) -> Optional[ClaimStatus]:
         """Resolve claim results"""
         base_cs = claim.check(entity, self)  # always run the check for collecting data
         manual_key = claim.get_override_key(entity)
@@ -36,13 +36,13 @@ class ClaimContext:
             cs = base_cs
         return cs
 
-    def get_property_value(self, entity: Entity, claim: Claim, key: PropertyKey) -> Optional:
+    def get_property_value(self, entity: Entity, claim: AbstractClaim, key: PropertyKey) -> Optional:
         """Get and test property value"""
         v = key.get(entity.properties)
         self.properties.setdefault((entity, claim), {})[key] = v  # may be null
         return v
 
-    def get_property_verdict(self, entity: Entity, claim: Claim, key: PropertyKey,
+    def get_property_verdict(self, entity: Entity, claim: AbstractClaim, key: PropertyKey,
                              properties: Dict[PropertyKey, Any]) -> Optional[Verdict]:
         """Get verdict by property"""
         v = entity.properties.get(key)
@@ -59,15 +59,15 @@ class ClaimContext:
         self.properties.setdefault((entity, claim), {})[key] = ver == Verdict.PASS
         return ver
 
-    def mark_coverage(self, entity: Entity, claim: Claim, key: PropertyKey, value: Any):
+    def mark_coverage(self, entity: Entity, claim: AbstractClaim, key: PropertyKey, value: Any):
         """Just mark property asked, without it being in entity"""
         kv = self.properties.setdefault((entity, claim), {})
         if key not in kv:
             kv[key] = value
 
 
-class EntityClaim(ExplainableClaim):
-    """Base class for entity claims"""
+class RequirementClaim(ExplainableClaim):
+    """A claim in requirement"""
     def __init__(self, description=""):
         super().__init__(description)
         self.property_key: Optional[PropertyKey] = None
@@ -77,15 +77,15 @@ class EntityClaim(ExplainableClaim):
         self.description = value
         return self
 
-    def __or__(self, other: 'EntityClaim') -> 'AlternativeClaim':
+    def __or__(self, other: 'RequirementClaim') -> 'AlternativeClaim':
         """Alternative claims, first to pass is used"""
         return AlternativeClaim((self, other))
 
-    def __add__(self, other: 'EntityClaim') -> 'AggregateClaim':
+    def __add__(self, other: 'RequirementClaim') -> 'AggregateClaim':
         """Many possible claims, at least one must pass"""
         return AggregateClaim((self, other), one_pass=True)
 
-    def __mul__(self, other: 'EntityClaim') -> 'AggregateClaim':
+    def __mul__(self, other: 'RequirementClaim') -> 'AggregateClaim':
         """Many possible claims, all must pass"""
         return AggregateClaim((self, other))
 
@@ -104,18 +104,18 @@ class EntityClaim(ExplainableClaim):
         """Check a claim for target entity"""
         return None
 
-    def get_sub_claims(self) -> Iterable['EntityClaim']:
+    def get_sub_claims(self) -> Iterable['RequirementClaim']:
         """List possibly sub-claims"""
         return []
 
     @classmethod
-    def get_all_claims(cls, claim: Claim) -> Set['EntityClaim']:
+    def get_all_claims(cls, claim: AbstractClaim) -> Set['RequirementClaim']:
         """Get all stacked entity claims"""
         s = set()
-        if not isinstance(claim, EntityClaim):
+        if not isinstance(claim, RequirementClaim):
             return s
 
-        def unpack(claim: EntityClaim):
+        def unpack(claim: RequirementClaim):
             s.add(claim)
             for c in claim.get_sub_claims():
                 unpack(c)
@@ -159,9 +159,9 @@ class EntityClaim(ExplainableClaim):
         return entity
 
 
-class NamedClaim(EntityClaim):
+class NamedClaim(RequirementClaim):
     """Named claim"""
-    def __init__(self, name: str, claim: EntityClaim):
+    def __init__(self, name: str, claim: RequirementClaim):
         super().__init__(name)
         self.named_claim = claim
 
@@ -174,11 +174,11 @@ class NamedClaim(EntityClaim):
     def __repr__(self):
         return f"{self.description}"
 
-    def get_sub_claims(self) -> List['EntityClaim']:
+    def get_sub_claims(self) -> List['RequirementClaim']:
         return [self.named_claim]
 
 
-class ConnectionClaim(EntityClaim):
+class ConnectionClaim(RequirementClaim):
     """Base class to for connection claims"""
     def __init__(self, description="Connection"):
         super().__init__(description)
@@ -188,7 +188,7 @@ class ConnectionClaim(EntityClaim):
         return None
 
 
-class HostClaim(EntityClaim):
+class HostClaim(RequirementClaim):
     """Host claim"""
     def __init__(self, description="Host"):
         super().__init__(description)
@@ -198,7 +198,7 @@ class HostClaim(EntityClaim):
         return None
 
 
-class PropertyClaim(EntityClaim):
+class PropertyClaim(RequirementClaim):
     """Claim simple property value match"""
     def __init__(self, description: str, key: PropertyKey):
         super().__init__(description)
@@ -241,9 +241,9 @@ class PropertyClaim(EntityClaim):
         return self.property_key.__hash__()
 
 
-class AlternativeClaim(EntityClaim):
+class AlternativeClaim(RequirementClaim):
     """List of alternative claims"""
-    def __init__(self, claims: tuple[EntityClaim, ...], description=""):
+    def __init__(self, claims: tuple[RequirementClaim, ...], description=""):
         super().__init__(description or (" | " .join([f"{s}" for s in claims])))
         self.sequence = claims
 
@@ -259,10 +259,10 @@ class AlternativeClaim(EntityClaim):
                 break  # verdict is set now
         return best
 
-    def get_sub_claims(self) -> Tuple[EntityClaim, ...]:
+    def get_sub_claims(self) -> Tuple[RequirementClaim, ...]:
         return self.sequence
 
-    def __or__(self, other: EntityClaim) -> 'AlternativeClaim':
+    def __or__(self, other: RequirementClaim) -> 'AlternativeClaim':
         """Make alternative claim"""
         return AlternativeClaim(self.sequence + (other,))
 
@@ -273,9 +273,9 @@ class AlternativeClaim(EntityClaim):
         return hash(self.sequence)
 
 
-class AggregateClaim(EntityClaim):
+class AggregateClaim(RequirementClaim):
     """Aggregate claim made up of sub claims"""
-    def __init__(self, claims: Tuple[EntityClaim, ...], description="", one_pass=False):
+    def __init__(self, claims: Tuple[RequirementClaim, ...], description="", one_pass=False):
         super().__init__(description or ((" + " if one_pass else " * ") .join([f"{s}" for s in claims])))
         self.sequence = claims
         self.one_pass = one_pass
@@ -309,13 +309,13 @@ class AggregateClaim(EntityClaim):
         st.aggregate_of = sub
         return st
 
-    def get_sub_claims(self) -> Tuple[EntityClaim]:
+    def get_sub_claims(self) -> Tuple[RequirementClaim]:
         return self.sequence
 
-    def __add__(self, other: EntityClaim) -> 'AggregateClaim':
+    def __add__(self, other: RequirementClaim) -> 'AggregateClaim':
         return AggregateClaim(self.sequence + (other,), one_pass=True)
 
-    def __mul__(self, other: EntityClaim) -> 'AggregateClaim':
+    def __mul__(self, other: RequirementClaim) -> 'AggregateClaim':
         return AggregateClaim(self.sequence + (other,))
 
     def __eq__(self, other):
@@ -325,7 +325,7 @@ class AggregateClaim(EntityClaim):
         return hash(self.sequence)
 
 
-class ServiceClaim(EntityClaim):
+class ServiceClaim(RequirementClaim):
     """Base class for service claims"""
     def __init__(self, description="Service"):
         super().__init__(description)
@@ -335,7 +335,7 @@ class ServiceClaim(EntityClaim):
         return None
 
 
-class ConnectionAsServiceClaim(EntityClaim):
+class ConnectionAsServiceClaim(RequirementClaim):
     """Service claim applied to a connection target"""
     def __init__(self, service_claim: ServiceClaim):
         super().__init__(service_claim.description)
@@ -349,7 +349,7 @@ class ConnectionAsServiceClaim(EntityClaim):
             cl.claim = self  # FIXME: Factory method for ClaimStatus to change the claim
         return cl
 
-    def get_sub_claims(self) -> Tuple[EntityClaim]:
+    def get_sub_claims(self) -> Tuple[RequirementClaim]:
         return (self.sub, )
 
 
@@ -390,7 +390,7 @@ class NoUnexpectedConnections(HostClaim):
         return ClaimStatus(self, verdict=ver, authority=ClaimAuthority.TOOL, explanation=exp)
 
 
-class SoftwareClaim(EntityClaim):
+class SoftwareClaim(RequirementClaim):
     """Host software claim"""
     def __init__(self, description="Software"):
         super().__init__(description)
@@ -413,7 +413,7 @@ class AvailabilityClaim(PropertyClaim):
         c.base_claim = self.get_base_claim()
         return c
 
-    def resources(self, *key: str) -> EntityClaim:
+    def resources(self, *key: str) -> RequirementClaim:
         """Create new claim"""
         return AggregateClaim(claims=tuple([self.resource(k) for k in key]))
 
@@ -426,7 +426,7 @@ class AvailabilityClaim(PropertyClaim):
             return ClaimStatus(self)
         return cs
 
-    def get_base_claim(self) -> EntityClaim:
+    def get_base_claim(self) -> RequirementClaim:
         return self.base_claim or self
 
     def __eq__(self, other):
@@ -457,7 +457,7 @@ class ContentClaim(AvailabilityClaim):
         return self.property_key.__hash__() ^ self.resource_key.__hash__()
 
 
-class NoUnexpectedServices(EntityClaim):
+class NoUnexpectedServices(RequirementClaim):
     """No unexpected services, covers also administrative services"""
     def __init__(self, description="No unexpected services found"):
         super().__init__(description)
@@ -683,8 +683,8 @@ class FuzzingClaim(PropertyClaim):
 
 class PermissionClaim(SoftwareClaim):
     """Claim for permissions, mobile for now"""
-    def __init__(self, no_vulnerabilities=False, description: str = None):
-        super().__init__("permissions are listed")
+    def __init__(self, description="permissions are listed"):
+        super().__init__(description)
 
     def check(self, entity: Entity, context: ClaimContext) -> Optional[ClaimStatus]:
         # only mobile now
@@ -712,7 +712,7 @@ class ReleaseClaim(SoftwareClaim):
         return None
 
 
-class SystemClaim(EntityClaim):
+class SystemClaim(RequirementClaim):
     def __init__(self, description="System"):
         super().__init__(description)
 
@@ -735,29 +735,85 @@ class PhysicalManipulationClaim(PropertyClaim):
         self.default_to = Verdict.INCON
 
 
-class Claims:
-    """Basic claims, priority order, use the first appropriate"""
+class Claim:
+    """Claim factory"""
 
     @classmethod
-    def name(self, value: str, claim: EntityClaim) -> EntityClaim:
+    def expected(cls, name="Expected") -> PropertyClaim:
+        """Expected entity"""
+        return PropertyClaim(name, Properties.EXPECTED)
+
+    @classmethod
+    def authentication(cls, name="Authenticated") -> AuthenticationClaim:
+        """Authentication claim"""
+        return AuthenticationClaim(name)
+
+    @classmethod
+    def encryption(cls, name="Encryption used") -> EncryptionClaim:
+        """Encryption claim"""
+        return EncryptionClaim(name)
+
+    @classmethod
+    def protocol_best_practices(cls, name="Protoćol best practices used") -> ProtocolClaim:
+        """Protocol best practice claim"""
+        return ProtocolClaim(name)
+
+    @classmethod
+    def web_best_practices(cls, name="Web best practices") -> PropertyClaim:
+        """Web best practices claim"""
+        return PropertyClaim(name, Properties.WEB_BEST)
+
+    @classmethod
+    def http_redirect(cls, name="HTTP redirection") -> HTTPRedirectClaim:
+        """HTTP redirection claim"""
+        return HTTPRedirectClaim(name)
+
+    @classmethod
+    def updateable(cls, name="Update mechanism") -> UpdateClaim:
+        """Update mechanism claim"""
+        return UpdateClaim(name)
+
+    @classmethod
+    def sbom(cls, name="SBOM is accurate") -> BOMClaim:
+        """SBOM claim"""
+        return BOMClaim(name)
+
+    @classmethod
+    def no_vulnerabilities(cls, name="No known vulnerabilities") -> NoVulnerabilitiesClaim:
+        """No vulnerabilities claim"""
+        return NoVulnerabilitiesClaim(name)
+
+    @classmethod
+    def available(cls, resource_key: str) -> AvailabilityClaim:
+        """Resource availability claim"""
+        return AvailabilityClaim(resource_key)
+
+    @classmethod
+    def sensitive_data(cls, name="Sensitive data defined") -> SensitiveDataClaim:
+        """Sensitive data claim"""
+        return SensitiveDataClaim(name)
+
+    @classmethod
+    def releases(cls, name="Releases are available") -> ReleaseClaim:
+        """Releases claim"""
+        return ReleaseClaim(name)
+
+    @classmethod
+    def permissions(cls, name="Permissions are defined") -> PermissionClaim:
+        """Mobile permission claim"""
+        return PermissionClaim(name)
+
+    @classmethod
+    def name(self, value: str, claim: RequirementClaim) -> RequirementClaim:
         """Give claim a name"""
         return NamedClaim(value, claim)
 
     @classmethod
-    def any_of(cls, *claim: EntityClaim) -> EntityClaim:
+    def any_of(cls, *claim: RequirementClaim) -> RequirementClaim:
         """Enough to met any of the claims"""
         return AlternativeClaim(list(claim))
 
-    EXPECTED = PropertyClaim("Expected", Properties.EXPECTED) # expected entity confirmed
-    AUTOMATIC_UPDATES = UpdateClaim()                         # automatic software updates
-    COOKIES_LISTED = HostClaim("Cookies are listed")          # Browser cookies listed
-    WEB_BEST_PRACTICE = PropertyClaim("Web best practises", Properties.WEB_BEST)
-    HTTP_REDIRECT = HTTPRedirectClaim()
-    NO_UNEXPECTED_SERVICES = NoUnexpectedServices()           # no unexpected services
-    PERMISSIONS_LISTED = HostClaim("Permissions are listed")  # (Mobile) permissions listed
-    SENSITIVE_DATA = SensitiveDataClaim()                     # claims of sensitive data
-
 
 PropertyLocation = Tuple[Entity, PropertyKey]
-ClaimLocation = Tuple[Claim, Entity]
+ClaimLocation = Tuple[AbstractClaim, Entity]
 IdentifierLocation = Tuple[Tuple[str, str], Entity]

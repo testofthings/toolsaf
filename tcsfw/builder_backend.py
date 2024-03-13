@@ -7,7 +7,7 @@ import sys
 from tcsfw.address import DNSName, HWAddresses, IPAddress, IPAddresses
 from tcsfw.basics import ConnectionType, ExternalActivity, HostType, Verdict
 from tcsfw.batch_import import BatchImporter, LabelFilter
-from tcsfw.claim import Claim
+from tcsfw.claim import AbstractClaim
 from tcsfw.claim_coverage import RequirementClaimMapper
 from tcsfw.client_api import APIRequest
 from tcsfw.components import CookieData, Cookies, DataReference, DataStorages, Software
@@ -25,6 +25,7 @@ from tcsfw.registry import Registry
 from tcsfw.inspector import Inspector
 from tcsfw.result import Report
 from tcsfw.services import DHCPService, DNSService
+from tcsfw.specifications import Specifications
 from tcsfw.traffic import Evidence
 from tcsfw.visualizer import Visualizer, VisualizerAPI
 
@@ -820,11 +821,11 @@ class ClaimBackend(ClaimBuilder):
                 self._locations.append(sw)
         return self
 
-    def claims(self, *claims: Union[Claim, Tuple[str, str]]) -> Self:
+    def claims(self, *claims: Union[AbstractClaim, Tuple[str, str]]) -> Self:
         # bug? - requirements may be placed in extra tuple?
         cl = []
         for c in claims:
-            if isinstance(c, tuple) and isinstance(c[0], Claim):
+            if isinstance(c, tuple) and isinstance(c[0], AbstractClaim):
                 cl.extend(c)
             else:
                 cl.append(c)
@@ -998,12 +999,12 @@ class SystemBackendRunner(SystemBackend):
             cmd, _, spec_id = out_form.partition(":")
             cmd = cmd[8:]
             report = CoverageReport(registry.logging, cc)
-            spec = report.load_specification(spec_id)
+            spec = Specifications.get_specification(spec_id)
             report.print_summary(sys.stdout, spec, cmd.strip("- "))
         elif out_form and out_form.startswith("latex"):
             cmd, _, spec_id = out_form.partition(":")
             cmd = cmd[5:]
-            spec = CoverageReport.load_specification(spec_id)
+            spec = Specifications.get_specification(spec_id)
             report = LaTeXGenerator(self.system, spec, cc)
             report.generate(sys.stdout, cmd.strip(" -"))
         elif dump_report or out_form:

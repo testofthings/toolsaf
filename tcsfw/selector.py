@@ -2,9 +2,8 @@ from typing import List, TypeVar, Generic, Iterator
 
 from tcsfw.address import Protocol
 from tcsfw.basics import HostType
-from tcsfw.claim import Claim
 from tcsfw.components import DataStorages, Software, DataReference
-from tcsfw.entity import Entity
+from tcsfw.entity import Entity, ExplainableClaim
 from tcsfw.model import Addressable, Host, IoTSystem, NetworkNode, Service, Connection
 from tcsfw.property import Properties, PropertyKey
 from tcsfw.requirement import Requirement, EntitySelector, SelectorContext
@@ -23,9 +22,9 @@ class RequirementSelector(EntitySelector):
     def __add__(self, other: 'RequirementSelector') -> 'RequirementSelector':
         return AlternativeSelectors([self, other])
 
-    def __xor__(self, other: Claim) -> Requirement:
+    def __xor__(self, other: ExplainableClaim) -> Requirement:
         """Add the claim"""
-        assert isinstance(other, Claim), f"Expected claim, got: {other}"
+        assert isinstance(other, ExplainableClaim), f"Expected claim, got: {other}"
         return Requirement(("", ""), other.description, self, other)
 
 
@@ -299,14 +298,37 @@ class AlternativeSelectors(RequirementSelector):
             yield from s.select(entity, context)
 
 
-class Locations:
-    SYSTEM = SystemSelector()
-    HOST = HostSelector()
-    SERVICE = ServiceSelector()
-    CONNECTION = ConnectionSelector()
+class Select:
+    """Factory for selectors"""
+    @classmethod
+    def host(cls, unexpected=False) -> HostSelector:
+        """Select hosts"""
+        return HostSelector(unexpected)
 
-    SOFTWARE = SoftwareSelector()
-    DATA = DataSelector()
+    @classmethod
+    def service(cls, unexpected=False) -> ServiceSelector:
+        """Select services"""
+        return ServiceSelector(unexpected)
 
+    @classmethod
+    def connection(cls, unexpected=False) -> ConnectionSelector:
+        """Select connections"""
+        return ConnectionSelector(unexpected)
 
+    @classmethod
+    def system(cls) -> SystemSelector:
+        """Select the system"""
+        return cls.SYSTEM_SINGLE  # singleton now
 
+    @classmethod
+    def software(cls) -> SoftwareSelector:
+        """Select software"""
+        return cls.SOFTWARE_SINGLE # singleton now
+
+    @classmethod
+    def data(cls) -> DataSelector:
+        """Select data"""
+        return DataSelector()
+
+    SYSTEM_SINGLE = SystemSelector()
+    SOFTWARE_SINGLE = SoftwareSelector()

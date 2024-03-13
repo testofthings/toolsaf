@@ -15,6 +15,7 @@ from tcsfw.pcap_reader import PCAPReader
 from tcsfw.property import PropertyKey, PropertySetValue, PropertyVerdictValue
 from tcsfw.registry import Registry
 from tcsfw.result import Report
+from tcsfw.specifications import Specifications
 from tcsfw.traffic import Evidence, NO_EVIDENCE, Flow, IPFlow
 from tcsfw.verdict import Status, Verdictable
 
@@ -368,7 +369,7 @@ class ClientAPI(ModelListener):
         """Get coverage data as JSON"""
         path = context.request.path
         spec_name = path[1:] if path.startswith("/") else ""
-        spec = CoverageReport.load_specification(spec_name)
+        spec = Specifications.get_specification(spec_name)
         report = CoverageReport(self.registry.logging, self.claim_coverage)
         js = report.json(specification=spec)
         js["system"] = self.get_system_info(context)

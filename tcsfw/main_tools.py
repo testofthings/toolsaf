@@ -7,7 +7,7 @@ from tcsfw.claim_coverage import RequirementClaimMapper
 from tcsfw.event_interface import PropertyEvent
 from tcsfw.main import EvidenceBuilder, FlowBuilder, TrafficDataBuilder, NodeBuilder, SystemBuilder
 from tcsfw.requirement import SelectorContext
-from tcsfw.selector import Locations
+from tcsfw.selector import Select
 from tcsfw.model import EvidenceNetworkSource
 from tcsfw.property import PropertyKey
 from tcsfw.registry import Registry
@@ -111,7 +111,7 @@ class ToolPlanLoader(SubLoader):
     def __init__(self, group: Tuple[str, str]):
         super().__init__(group[1])    # group[0] is e.g. 'basic-tools', 'advanced-tools', 'custom-tools'
         self.source_label = group[1]  # group[1] is fancy names for them (just captialize?)
-        self.location = Locations.SYSTEM
+        self.location = Select.system()
         self.properties: Dict[PropertyKey, Any] = {}
         self.groups = ["planning", group[0]]
 

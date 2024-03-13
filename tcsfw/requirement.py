@@ -1,7 +1,7 @@
 from typing import Tuple, List, Dict, Set, Callable, Iterator, Optional, Iterable, Any
 from tcsfw.basics import ConnectionType, HostType
 
-from tcsfw.claim import Claim
+from tcsfw.claim import AbstractClaim
 from tcsfw.entity import Entity
 from tcsfw.model import Host, Connection, Service, IoTSystem
 from tcsfw.property import PropertyKey
@@ -35,7 +35,7 @@ class SelectorContext:
 
 class Requirement:
     """A requirement"""
-    def __init__(self, identifier: Tuple[str, str], text: str, selector: EntitySelector, claim: Claim):
+    def __init__(self, identifier: Tuple[str, str], text: str, selector: EntitySelector, claim: AbstractClaim):
         self.identifier = identifier
         self.text = text
         self.selector = selector
@@ -84,6 +84,12 @@ class Specification:
         self.default_sections = True
         self.custom_sections: List[str] = []
 
+    def _add(self, req_id: str, requirement: Requirement) -> Requirement:
+        """Add new requirement"""
+        requirement.identifier = self.specification_id, req_id
+        self.requirement_map[req_id] = requirement
+        return requirement
+
     def list_requirements(self, cutoff: Optional[int] = None) -> Iterable[Requirement]:
         """List requirements, priority at least the cutoff"""
         co = self.cutoff_priority if cutoff is None else cutoff
@@ -98,12 +104,6 @@ class Specification:
         key = {r: i for i, r in enumerate(self.requirement_map.values())}
         return lambda r: key.get(r, -1)
 
-    def _req(self, req_id: str, requirement: Requirement) -> Requirement:
-        """Add new requirement"""
-        requirement.identifier = self.specification_id, req_id
-        self.requirement_map[req_id] = requirement
-        return requirement
-
     def get_short_info(self, requirement: Requirement) -> str:
         """Get possible short information texts for requirements"""
         if not self.short_infos:
@@ -113,8 +113,8 @@ class Specification:
             info = info[:info.index(".")]
         return info
 
-    def create_aliases(self, selected: Iterable[Tuple[Requirement, Entity, Claim]]) \
-            -> Dict[Tuple[Requirement, Entity, Claim], str]:
+    def create_aliases(self, selected: Iterable[Tuple[Requirement, Entity, AbstractClaim]]) \
+            -> Dict[Tuple[Requirement, Entity, AbstractClaim], str]:
         """Create aliases for entities selected in different requirements"""
         return {}
 

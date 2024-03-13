@@ -1,5 +1,5 @@
 from tcsfw.basics import HostType
-from tcsfw.selector import Locations
+from tcsfw.selector import Select
 from tcsfw.main import TLS, HTTP, SSH, SystemBuilder
 
 
@@ -91,30 +91,30 @@ def make_claims(system: SystemBuilder, gateway, tags, user, mobile, backend_1, b
     # Tool planning
 
     group = "basic-tools", "Basic tools"
-    claims.plan_tool("TLS conn. audit*", group, Locations.CONNECTION.protocol("tls"),
+    claims.plan_tool("TLS conn. audit*", group, Select.connection().protocol("tls"),
                      ("check", "traffic", "tls"))
 
     group = "advanced-tools", "Advanced tools"
-    claims.plan_tool("Isolate network/power*", group, Locations.SYSTEM + Locations.HOST,
+    claims.plan_tool("Isolate network/power*", group, Select.system() + Select.host(),
                      ("action", "isolate"))
-    claims.plan_tool("Code analysis*", group, Locations.SOFTWARE, ("check", "code-review"))
-    claims.plan_tool("Fuzzer*", group, Locations.SERVICE, ("check", "fuzz"))
+    claims.plan_tool("Code analysis*", group, Select.software(), ("check", "code-review"))
+    claims.plan_tool("Fuzzer*", group, Select.service(), ("check", "fuzz"))
 
     group = "custom-tools", "Custom tools"
     claims.plan_tool("Basic function test*", group,
-                     Locations.SYSTEM + Locations.HOST.type_of(HostType.DEVICE),
+                     Select.system() + Select.host().type_of(HostType.DEVICE),
                      ("check", "basic-function"))
-    claims.plan_tool("Auth audit*", group, Locations.SERVICE.authenticated(),
+    claims.plan_tool("Auth audit*", group, Select.service().authenticated(),
                      ("check", "auth", "best-practice"), ("check", "auth", "no-vulnz"), 
                      ("check", "auth", "brute-force"),
                      ("check", "auth"), ("check", "auth", "grant"))
-    claims.plan_tool("Modify device SW*", group, Locations.SOFTWARE,("check", "modify-sw"))
-    claims.plan_tool("Secure storage analysis*", group, Locations.DATA.parameters(),
+    claims.plan_tool("Modify device SW*", group, Select.software(),("check", "modify-sw"))
+    claims.plan_tool("Secure storage analysis*", group, Select.data().parameters(),
                      ("check", "secure-storage"))
     claims.plan_tool("Check that parameter updated*", group,
-                     Locations.DATA.parameters(),("check", "param-changed"))
-    claims.plan_tool("Password validator*", group, Locations.SERVICE.authenticated(),
+                     Select.data().parameters(),("check", "param-changed"))
+    claims.plan_tool("Password validator*", group, Select.service().authenticated(),
                      ("check", "password-validity"))
-    claims.plan_tool("Update cracker*", group, Locations.CONNECTION + Locations.SOFTWARE,
+    claims.plan_tool("Update cracker*", group, Select.connection() + Select.software(),
                      ("check", "mod-update"))
-    claims.plan_tool("Telemetry audit*", group, Locations.SYSTEM, ("check", "telemetry"))
+    claims.plan_tool("Telemetry audit*", group, Select.system(), ("check", "telemetry"))

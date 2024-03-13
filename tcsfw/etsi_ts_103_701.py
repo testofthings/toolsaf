@@ -7,9 +7,9 @@ from dataclasses import dataclass
 from typing import List, Dict, Optional, Iterable, Tuple, Set
 from tcsfw.basics import HostType
 
-from tcsfw.claim import Claim
-from tcsfw.claim_set import EntityClaim, AuthenticationClaim, NoUnexpectedServices, \
-    AvailabilityClaim, Claims, UserInterfaceClaim, ContentClaim, \
+from tcsfw.claim import AbstractClaim
+from tcsfw.claim_set import RequirementClaim, AuthenticationClaim, NoUnexpectedServices, \
+    AvailabilityClaim, Claim, UserInterfaceClaim, ContentClaim, \
     MITMClaim, ProtocolClaim, FuzzingClaim, PropertyClaim, \
     PhysicalManipulationClaim, NamedClaim
 from tcsfw.entity import Entity
@@ -17,7 +17,7 @@ from tcsfw.model import IoTSystem, Host, Service, Connection
 from tcsfw.property import Properties, PropertyKey
 from tcsfw.requirement import Specification, Requirement, SelectorContext, SpecificationSelectorContext, \
     EntitySelector
-from tcsfw.selector import ConnectionSelector, HostSelector, Locations, ServiceSelector, UpdateConnectionSelector, RequirementSelector
+from tcsfw.selector import Select, ServiceSelector, UpdateConnectionSelector, RequirementSelector
 
 
 class IXIT_Section:
@@ -33,39 +33,39 @@ class IXIT_Section:
         return f"{self.name}-{self.number}"
 
 
-DEVICE = Locations.HOST.type_of(HostType.DEVICE)
-DEVICE_UNEXPECTED = HostSelector(with_unexpected=True).type_of(HostType.DEVICE)
+DEVICE = Select.host().type_of(HostType.DEVICE)
+DEVICE_UNEXPECTED = Select.host(unexpected=True).type_of(HostType.DEVICE)
 
 class IXIT:
-    AuthMech = IXIT_Section("AuthMech", 1, DEVICE / Locations.SERVICE.authenticated())
-    UserInfo = IXIT_Section("UserInfo", 2, Locations.SYSTEM)
+    AuthMech = IXIT_Section("AuthMech", 1, DEVICE / Select.service().authenticated())
+    UserInfo = IXIT_Section("UserInfo", 2, Select.system())
     VulnTypes = IXIT_Section("VulnTypes", 3)
     Conf = IXIT_Section("Conf", 4)
     VulnMon = IXIT_Section("VulMon", 5)
-    SoftComp = IXIT_Section("SoftComp", 6, DEVICE / Locations.SOFTWARE)
+    SoftComp = IXIT_Section("SoftComp", 6, DEVICE / Select.software())
     UpdMech = IXIT_Section("UpdMech", 7, UpdateConnectionSelector())
     UpdProc = IXIT_Section("UpdProc", 8)
     ReplSup = IXIT_Section("ReplSup", 9, DEVICE)
-    SecParam = IXIT_Section("SecParam", 10, Locations.DATA)  # FIXME: Not that great
-    ComMech = IXIT_Section("ComMech", 11, Locations.CONNECTION)
-    NetSecImpl = IXIT_Section("NetSecImpl", 12, DEVICE / Locations.SOFTWARE)
-    SoftServ = IXIT_Section("SoftServ", 13, DEVICE / Locations.SERVICE.authenticated())
+    SecParam = IXIT_Section("SecParam", 10, Select.data())  # FIXME: Not that great
+    ComMech = IXIT_Section("ComMech", 11, Select.connection())
+    NetSecImpl = IXIT_Section("NetSecImpl", 12, DEVICE / Select.software())
+    SoftServ = IXIT_Section("SoftServ", 13, DEVICE / Select.service().authenticated())
     SecMgmt = IXIT_Section("SecMgmt", 14)
     Intf = IXIT_Section("Intf", 15, DEVICE_UNEXPECTED)
     CodeMin = IXIT_Section("CodeMin", 16)
     PrivlCtrl = IXIT_Section("PrivlCtrl", 17)
     AccCtrl = IXIT_Section("AccCtrl", 18)
     SecDev = IXIT_Section("SecDev", 19)
-    SecBoot = IXIT_Section("SecBoot", 20, DEVICE / Locations.SOFTWARE)
-    PersData = IXIT_Section("PersData", 21, Locations.DATA.personal())
+    SecBoot = IXIT_Section("SecBoot", 20, DEVICE / Select.software())
+    PersData = IXIT_Section("PersData", 21, Select.data().personal())
     ExtSens = IXIT_Section("ExtSens", 22, DEVICE.with_property(Properties.SENSORS))
-    ResMech = IXIT_Section("ResMech", 23, Locations.SYSTEM)
-    TelData = IXIT_Section("TelData", 24, Locations.SYSTEM)
-    DelFunc = IXIT_Section("DelFunc", 25, Locations.SYSTEM)
-    UserDec = IXIT_Section("UserDec", 26, Locations.SYSTEM)
-    UserIntf = IXIT_Section("UserIntf", 27, Locations.SYSTEM)
-    ExtAPI = IXIT_Section("ExtAPI", 28, DEVICE / ServiceSelector(with_unexpected=True))
-    InpVal = IXIT_Section("InpVal", 29, DEVICE / Locations.SERVICE)
+    ResMech = IXIT_Section("ResMech", 23, Select.system())
+    TelData = IXIT_Section("TelData", 24, Select.system())
+    DelFunc = IXIT_Section("DelFunc", 25, Select.system())
+    UserDec = IXIT_Section("UserDec", 26, Select.system())
+    UserIntf = IXIT_Section("UserIntf", 27, Select.system())
+    ExtAPI = IXIT_Section("ExtAPI", 28, DEVICE / Select.service(unexpected=True))
+    InpVal = IXIT_Section("InpVal", 29, DEVICE / Select.service())
 
     # Not from ETSI
     Generic = IXIT_Section("System*", 0, RequirementSelector())
@@ -77,34 +77,34 @@ def check(key: str | PropertyKey, description: str) -> PropertyClaim:
 
 # Special locators
 # Services which use passwords, which are not defined by the user (not detectable)
-AuthMech_NotUserDefined = DEVICE / Locations.SERVICE.authenticated()
+AuthMech_NotUserDefined = DEVICE / Select.service().authenticated()
 # All authentication mechanism, including unexpected
 AuthMech_All = DEVICE / ServiceSelector(with_unexpected=True).authenticated()
 # All update connections, including unexpected
-UpdMech_All = ConnectionSelector(with_unexpected=True).endpoint(DEVICE)
+UpdMech_All = Select.connection(unexpected=True).endpoint(DEVICE)
 # All communication mechanisms, including unexpected
-ComMech_All = ConnectionSelector(with_unexpected=True)
+ComMech_All = Select.connection(unexpected=True)
 # Unexpected communication mechanisms after secure boot failure
-SecBoot_Unexpected = Locations.HOST.type_of(HostType.DEVICE) / ConnectionSelector(with_unexpected=True)
+SecBoot_Unexpected = Select.host().type_of(HostType.DEVICE) / Select.connection(unexpected=True)
 # A physical interface (same as Intf now))
 Intf_Physical = DEVICE_UNEXPECTED
 # All hosts which can have ExtAPI
 ExtAPI_Hosts_All = DEVICE
 
 # Personal data (items)
-UserInfo_Personal = Locations.DATA.personal()
+UserInfo_Personal = Select.data().personal()
 
 # Claims
 UI = UserInterfaceClaim() % "UI"
 PHYSICAL_MANIPULATION = PhysicalManipulationClaim() % "Physical manipulation"
 CONTENT = ContentClaim() % "Document content review"
 
-DEFINED_HOSTS_ONLY = NamedClaim("Defined hosts only", Claims.EXPECTED)
+DEFINED_HOSTS_ONLY = Claim.expected("Defined hosts only")
 HOST_DEFINED_SERVICES = NoUnexpectedServices() % "Defined services only"
-CONNECTIONS_DEFINED_ONLY = NamedClaim("Defined connections only", Claims.EXPECTED)
-DEFINED_AUTH_ONLY = Claims.name("Defined authentication mechanisms only", Claims.EXPECTED)
-SERVICE_BEST_PRACTICES = (Claims.WEB_BEST_PRACTICE + ProtocolClaim()
-                          + Claims.HTTP_REDIRECT) % "Protocol checks"
+CONNECTIONS_DEFINED_ONLY = Claim.expected("Defined connections only")
+DEFINED_AUTH_ONLY = Claim.expected("Defined authentication mechanisms only")
+SERVICE_BEST_PRACTICES = (Claim.web_best_practices() + Claim.protocol_best_practices()
+                          + Claim.http_redirect()) % "Protocol checks"
 CONNECTION = ProtocolClaim(encrypted=True) % "Defined connection mechanism"
 CONN_BEST_PRACTICES = (ProtocolClaim(tail="best-practices", encrypted=True) + MITMClaim()) % "Cryptographic best practices"
 CONN_NO_VULNERABILITIES = ProtocolClaim(tail="no-vulnz", encrypted=True) % "No known vulnerabilities"
@@ -129,7 +129,7 @@ ISOLATE = PropertyClaim.custom(
     "Disconnect network/power", key=("action", "isolate"))
 TELEMETRY_CHECK = check("telemetry", "Telemetry data check")
 
-VALIDATE_INPUT = (FuzzingClaim() * Claims.WEB_BEST_PRACTICE) % "Input validation"
+VALIDATE_INPUT = (FuzzingClaim() * Claim.web_best_practices()) % "Input validation"
 
 # 5.3.2.2 are hard to decipher, settling that a) plan custom tools, b) run standard and custom tools
 UPDATE_MISUSE_DESIGN = check("mod-update", "Update mech.  misuse attacks devised")
@@ -447,12 +447,12 @@ class EtsiTs103701(Specification):
         self.requirement_map = new_r
 
     def make(self, identifier: str, ixit: IXIT_Section,
-             select: Optional[RequirementSelector] = None,  claim=EntityClaim(),
+             select: Optional[RequirementSelector] = None,  claim=RequirementClaim(),
              reference="") -> Requirement:
         """Make a requirement"""
         assert identifier not in self.requirement_map, f"Double {identifier}"
         assert isinstance(select, RequirementSelector) or select is None, f"Bad selector for {identifier}"
-        assert isinstance(claim, EntityClaim), f"Bad claim for {identifier}"
+        assert isinstance(claim, RequirementClaim), f"Bad claim for {identifier}"
         # if claim == UI:
         #     ixit = IXIT.UserIntf  # NOTE: Forcing all UI claims into same target
         props = {}
@@ -486,11 +486,11 @@ class EtsiTs103701(Specification):
         sid = i_split[0]
         r.section_name = f"{sid} {self.section_names[sid]}"
         r.target_name = ixit.name
-        self.requirement_map[identifier] = r
+        self._add(identifier, r)
         return r
 
-    def create_aliases(self, selected: Iterable[Tuple[Requirement, Entity, Claim]]) \
-            -> Dict[Tuple[Requirement, Entity, Claim], str]:
+    def create_aliases(self, selected: Iterable[Tuple[Requirement, Entity, AbstractClaim]]) \
+            -> Dict[Tuple[Requirement, Entity, AbstractClaim], str]:
         """ Create aliases by test targets"""
         bases: Dict[str, Set[Entity]] = {}
         for req, ent, claim in selected:
