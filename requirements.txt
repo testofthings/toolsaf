@@ -1,2 +1,4 @@
 censys
 aiohttp
+sqlalchemy
+prompt_toolkit

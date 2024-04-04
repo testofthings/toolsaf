@@ -25,7 +25,7 @@ class Protocol(enum.Enum):
     @classmethod
     def get_protocol(cls, value: str, default: Optional['Protocol'] = None) -> Optional['Protocol']:
         try:
-            return cls[value.upper()]
+            return cls[value.upper()] if value else default
         except KeyError:
             return default
 
@@ -79,6 +79,10 @@ class AnyAddress:
     def priority(self) -> int:
         """Priority of addresses, if choosing one to use"""
         return 0
+
+    def get_parseable_value(self) -> str:
+        """Get value which can be unambigiously parsed"""
+        raise NotImplementedError()
 
     def __lt__(self, other):
         return self.__repr__() < other.__repr__()
@@ -141,6 +145,18 @@ class Addresses:
             return DNSName(v)
         raise Exception(f"Unknown address type '{t}', allowed are 'ip', 'hw', and 'name'")
 
+    @classmethod
+    def parse_endpoint(cls, value: str) -> AnyAddress:
+        """Parse address or endpoint"""
+        a, _, p = value.partition("/")
+        addr = cls.parse_address(a)
+        if p == "":
+            return addr
+        prot, _, port = p.partition(":")
+        if port == "":
+            return EndpointAddress(addr, Protocol.get_protocol(prot), -1)
+        return EndpointAddress(addr, Protocol.get_protocol(prot), int(port))
+
 class HWAddress(AnyAddress):
     """Hardware address, e.g. Ethernet"""
     def __init__(self, data: str):
@@ -180,6 +196,9 @@ class HWAddress(AnyAddress):
 
     def priority(self) -> int:
         return 1 if not self.is_multicast() else 11
+
+    def get_parseable_value(self) -> str:
+        return f"{self.data}|hw"
 
     def __eq__(self, other):
         if not isinstance(other, HWAddress):
@@ -229,6 +248,9 @@ class IPAddress(AnyAddress):
     def priority(self) -> int:
         return 2
 
+    def get_parseable_value(self) -> str:
+        return f"{self.data}"  # IP is the default
+
     def __eq__(self, other):
         if not isinstance(other, IPAddress):
             return False
@@ -260,6 +282,9 @@ class DNSName(AnyAddress):
 
     def priority(self) -> int:
         return 3
+
+    def get_parseable_value(self) -> str:
+        return f"{self.name}|name"
 
     def __eq__(self, other):
         if not isinstance(other, DNSName):
@@ -342,6 +367,11 @@ class EndpointAddress(AnyAddress):
 
     def priority(self) -> int:
         return self.host.priority() + 1
+
+    def get_parseable_value(self) -> str:
+        port = f":{self.port}" if self.port >= 0 else ""
+        prot = f"/{self.protocol.value}" if self.protocol != Protocol.ANY else ""
+        return f"{self.host.get_parseable_value()}{prot}{port}"
 
     def __eq__(self, other):
         if not isinstance(other, EndpointAddress):

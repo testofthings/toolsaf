@@ -65,6 +65,8 @@ class Entity:
                 v = Verdict.aggregate(v, c.get_verdict(cache))
             for p in self.properties.values():
                 v = Verdict.aggregate(v, p.get_verdict()) if isinstance(p, Verdictable) else v
+            if v == Verdict.PASS:
+                v = self.get_expected_verdict()  # expected has veto
             cache[self] = v = v or Verdict.INCON
         return v
 

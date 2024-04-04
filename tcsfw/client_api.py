@@ -1,5 +1,9 @@
+import io
 import json
 import logging
+import os
+import shutil
+import traceback
 import urllib
 from typing import Dict, List, Tuple, Any, Iterable, BinaryIO, Optional
 
@@ -10,13 +14,14 @@ from tcsfw.basics import Verdict
 from tcsfw.claim_coverage import RequirementClaimMapper
 from tcsfw.coverage_result import CoverageReport
 from tcsfw.entity import Entity
+from tcsfw.event_interface import EventMap
 from tcsfw.model import Addressable, NetworkNode, Connection, Host, Service, ModelListener, IoTSystem, NodeComponent
 from tcsfw.pcap_reader import PCAPReader
-from tcsfw.property import PropertyKey, PropertySetValue, PropertyVerdictValue
+from tcsfw.property import Properties, PropertyKey, PropertySetValue, PropertyVerdictValue
 from tcsfw.registry import Registry
 from tcsfw.result import Report
 from tcsfw.specifications import Specifications
-from tcsfw.traffic import Evidence, NO_EVIDENCE, Flow, IPFlow
+from tcsfw.traffic import NO_EVIDENCE
 from tcsfw.verdict import Status, Verdictable
 
 # format strings
@@ -57,27 +62,32 @@ class APIRequest:
 
 class APIListener:
     """Model change listener through API"""
-    def systemReset(self, data: Dict, system: IoTSystem):
-        pass
+    def note_system_reset(self, data: Dict, system: IoTSystem):
+        self.note_event(data)
 
-    def connectionChange(self, data: Dict, connection: Connection):
-        pass
+    def note_connection_change(self, data: Dict, connection: Connection):
+        self.note_event(data)
 
-    def hostChange(self, data: Dict, host: Host):
-        pass
+    def note_host_change(self, data: Dict, host: Host):
+        self.note_event(data)
 
+    def note_address_change(self, data: Dict, host: Host):
+        self.note_event(data)
+
+    def note_property_change(self, data: Dict, entity: Entity):
+        self.note_event(data)
+
+    def note_event(self, data: Dict):
+        pass
 
 class RequestContext:
     def __init__(self, request: APIRequest, api: 'ClientAPI'):
         self.request = request
         self.api = api
 
-        self.verdict_cache: Dict[Entity, Verdict] = {}
-
     def change_path(self, path: str) -> 'RequestContext':
         """Change the path"""
         c = RequestContext(self.request.change_path(path), self.api)
-        c.verdict_cache = self.verdict_cache
         return c
 
 
@@ -89,31 +99,18 @@ class ClientAPI(ModelListener):
         self.logger = logging.getLogger("api")
         self.api_listener: List[Tuple[APIListener, APIRequest]] = []
         registry.system.model_listeners.append(self)
+        # API aggregates verdicts from children into parents, keep track
+        self.verdict_cache: Dict[Entity, Verdict] = {}
         # local IDs strings for entities and connections
         self.ids: Dict[Any, str] = {}
-
-    def parse_flow(self, evidence: Evidence, data: Dict) -> Tuple[Flow, str]:
-        """Parse flow"""
-        s = (
-            HWAddress.new(data["source-hw"]) if "source-hw" in data else HWAddresses.NULL,
-            IPAddress.new(data["source-ip"]) if "source-ip" in data else IPAddresses.NULL,
-            int(data["source-port"]) if "source-port" in data else 0,
-        )
-        t = (
-            HWAddress.new(data["target-hw"]) if "target-hw" in data else HWAddresses.NULL,
-            IPAddress.new(data["target-ip"]) if "target-ip" in data else IPAddresses.NULL,
-            int(data["target-port"]) if "target-port" in data else 0,
-        )
-        ref = data.get("ref", "")
-        return IPFlow(evidence, s, t, Protocol[data["protocol"] if "protocol" in data else Protocol.ANY]), ref
 
     def api_get(self, request: APIRequest) -> Dict:
         """Get API data"""
         context = RequestContext(request, self)
         path = request.path
-        if path == "model":
+        if path == "all":
             request.get_connections = False
-            return self.get_model(context.change_path("."))
+            return {"events:" : list(self.api_iterate_all(request.change_path(".")))}
         elif path.startswith("coverage"):
             return self.get_coverage(context.change_path(path[8:]))
         elif path.startswith("host/"):
@@ -133,14 +130,17 @@ class ClientAPI(ModelListener):
         if path == "reset":
             param = json.load(data) if data else {}
             self.post_evidence_filter(param.get("evidence", {}), include_all=param.get("include_all", False))
-        elif path == "flow":
-            flow, ref = self.parse_flow(NO_EVIDENCE, json.load(data))
-            self.registry.connection(flow)
-        # NOTE: We would need DNS service instance
-        # elif path == "name":
-        #     js = json.load(data)
-        #     self.registry.name(
-        #         NameEvent(NO_EVIDENCE, js["name"], address=IPAddress.new(js["address"]) if "address" in js else None))
+            self.system_reset()
+            if param.get("dump_all", False):
+                r = {"events": list(self.api_iterate_all(request.change_path(".")))}
+        elif path.startswith("event/"):
+            e_name = path[6:]
+            e_type = EventMap.get_event_class(e_name)
+            if e_type is None:
+                raise FileNotFoundError(f"Unknown event type {e_name}")
+            js = json.load(data) if data else {}
+            e = e_type.decode_data_json(NO_EVIDENCE, js, self.get_by_id)
+            self.registry.consume(e)
         elif path == "capture":
             raw = Raw.stream(data)
             count = PCAPReader(self.registry.system).parse(raw)
@@ -158,6 +158,14 @@ class ClientAPI(ModelListener):
             if ev:
                 e_filter[ev] = sel
         self.registry.reset(e_filter, include_all)
+
+    def system_reset(self):
+        """Do system reset with listener calls"""
+        self.verdict_cache.clear()
+        for ln, req in self.api_listener:
+            context = RequestContext(req, self)
+            d = self.get_system_info(context)
+            ln.note_system_reset({"system": d}, self.registry.system)
 
     def get_log(self, entity="", key="") -> Dict:
         """Get log"""
@@ -197,10 +205,12 @@ class ClientAPI(ModelListener):
         """Get status and verdict for an entity"""
         return f"{status.value}/{verdict.value}"
 
-    def get_properties(self, properties: Dict[PropertyKey, Any]) -> Dict:
+    def get_properties(self, properties: Dict[PropertyKey, Any], json_dict: Dict = None) -> Dict:
         """Get properties"""
-        cs = {}
+        cs = {} if json_dict is None else json_dict
         for key, p  in properties.items():
+            if key == Properties.EXPECTED:
+                continue  # this property is shown by status
             vs = {
                 "name": key.get_name(short=True),
             }
@@ -217,30 +227,17 @@ class ClientAPI(ModelListener):
             cs[key.get_name()] = vs
         return cs
 
-    def get_components(self, entity: NetworkNode, context: RequestContext) -> List:
+    def get_components(self, entity: NetworkNode, context: RequestContext) -> Iterable[Tuple[NodeComponent, Dict]]:
         def sub(component: NodeComponent) -> Dict:
-            # if isinstance(component, Software):
-                # FIXME - putting in release info even without claims for it
-                # info = component.info
-                # claim_d = Claim.identifier_map(claims)
-                # if info.first_release and not FirstRelease.find(claim_d):
-                #     c = FirstRelease(info.first_release)
-                #     claims[c] = ClaimStatus(c, verdict=Verdict.EXTERNAL)
-                # if info.latest_release_name and info.latest_release and not LatestRelease.find(claim_d):
-                #     c = LatestRelease(info.latest_release_name, info.latest_release)
-                #     claims[c] = ClaimStatus(c, verdict=Verdict.EXTERNAL)
-                # if info.interval_days is not None and not ReleaseInterval.find(claim_d):
-                #     c = ReleaseInterval(info.interval_days)
-                #     claims[c] = ClaimStatus(c, verdict=Verdict.EXTERNAL)
             com_cs = {
                 "name": component.name,
                 "id": self.get_id(component),
-                "status": self.get_status_verdict(component.status, component.get_verdict(context.verdict_cache)),
-                "properties": self.get_properties(component.properties)
+                "node_id": self.get_id(entity),
+                "status": self.get_status_verdict(component.status, component.get_verdict(self.verdict_cache)),
             }
             if component.sub_components:
                 com_cs["sub_components"] = [sub(c) for c in component.sub_components]
-            return com_cs
+            return component, com_cs
 
         root_list = []
         for com in entity.components:
@@ -258,7 +255,7 @@ class ClientAPI(ModelListener):
                 name = name[path.index("/")]
             entity = parent.get_entity(name)
             if not entity:
-                raise FileNotFoundError(f"Parent '{parent.name}' does not have that child")
+                raise FileNotFoundError(f"Parent '{parent.name}' does not have child '{name}'")
             r_tail = path[len(name) + 1:]
             if r_tail:
                 _, r = self.get_entity(entity, context.change_path(r_tail))
@@ -269,7 +266,7 @@ class ClientAPI(ModelListener):
             "id": self.get_id(entity),
             "description": entity.description,
             "addresses": sorted([f"{a}" for a in entity.addresses]),
-            "status": self.get_status_verdict(entity.status, entity.get_verdict(context.verdict_cache)),
+            "status": self.get_status_verdict(entity.status, entity.get_verdict(self.verdict_cache)),
         }
         if entity.is_multicast():
             r["type"] = "Broadcast"  # special type
@@ -285,18 +282,6 @@ class ClientAPI(ModelListener):
             r["host_id"] = self.get_id(host)
         if isinstance(entity.parent, Addressable):
             r["parent_id"] = self.get_id(entity.parent)
-        if entity.children:
-            r["services"] = [self.get_entity(c, context)[1]
-                             for c in entity.children if c.status != Status.PLACEHOLDER]
-        if entity.components:
-            r["components"] = self.get_components(entity, context)
-        if isinstance(entity, Host):
-            if context.request.get_connections:
-                cj: List[Dict] = r.setdefault("connections", [])
-                for c in entity.connections:
-                    if c.is_relevant(ignore_ends=True):
-                        cj.append(self.get_connection(c, context))
-        r["properties"] = self.get_properties(entity.properties)
         return entity, r
 
     def get_connection(self, connection: Connection, context: RequestContext) -> Dict:
@@ -317,9 +302,8 @@ class ClientAPI(ModelListener):
             "target": location(t),
             "target_id": self.get_id(t),
             "target_host_id": self.get_id(t.get_parent_host()),
-            "status": self.get_status_verdict(connection.status, connection.get_verdict(context.verdict_cache)),
+            "status": self.get_status_verdict(connection.status, connection.get_verdict(self.verdict_cache)),
             "type": connection.con_type.value,
-            "properties": self.get_properties(connection.properties),
         }
         return cr
 
@@ -327,36 +311,17 @@ class ClientAPI(ModelListener):
         """Get system information"""
         s = self.registry.system
         si = {
+            "id": self.get_id(s),
             "system_name": s.name,
-            "components": self.get_components(s, context),
-            # "checks": self.get_checks(s.status, s.claims),
         }
         return si
-
-    def get_model(self, context: RequestContext) -> Dict:
-        """Get whole model"""
-        system = self.registry.system
-        root: Dict[str, Any] = {
-            "reset": {},
-            "system": self.get_system_info(context)
-        }
-        hj = root.setdefault("hosts", [])
-        for h in system.get_hosts():
-            if h.status != Status.PLACEHOLDER:
-                _, hr = self.get_entity(h, context)
-                hj.append(hr)
-        cj = root.setdefault("connections", [])
-        for c in self.registry.system.get_connections():
-            cr = self.get_connection(c, context)
-            cj.append(cr)
-        root["evidence"] = self.get_evidence_filter()
-        return root
 
     def get_evidence_filter(self) -> Dict:
         """Get evidence filter"""
         r = {}
+        ev_filter = self.registry.evidence_filter
         for ev in sorted(self.registry.all_evidence, key=lambda x: x.label):
-            filter_v = self.registry.trail_filter.get(ev.label, False)
+            filter_v = ev_filter.get(ev.label, False)
             sr = r[ev.label] = {
                 "name": ev.name,
                 "selected": filter_v
@@ -375,26 +340,45 @@ class ClientAPI(ModelListener):
         js["system"] = self.get_system_info(context)
         return js
 
+
+    def _yield_property_update(self, entity: Entity) -> Iterable[Dict]:
+        """Yield property update, if properites to show"""
+        pr = self.get_properties(entity.properties)
+        if not pr:
+            return []
+        r = { "update": {
+            "id": self.get_id(entity),
+            "properties": pr
+        }}
+        yield r
+
     def api_iterate_all(self, request: APIRequest) -> Iterable[Dict]:
         """Iterate all model entities and connections"""
         context = RequestContext(request, self)
         system = self.registry.system
         request.get_connections = False
         # start with reset, client should clear all entity and connection information
-        its = [
-            {"reset": {}},
-            {"system": self.get_system_info(context)},
-        ]
+        yield {"reset": {}}
+        yield {"system": self.get_system_info(context)}
+        yield from self._yield_property_update(system)
         # ... as we list it here then
         for h in system.get_hosts():
             if h.status != Status.PLACEHOLDER:
                 _, hr = self.get_entity(h, context)
-                its.append({"host": hr})
+                yield {"host": hr}
+                for com, com_r in self.get_components(h, context):
+                    yield {"component": com_r}
+                    yield from self._yield_property_update(com)
+                yield from self._yield_property_update(h)
+                for c in h.children:
+                    _, cr = self.get_entity(c, context)
+                    yield {"service": cr}
+                    yield from self._yield_property_update(c)
         for c in self.registry.system.get_connections():
             cr = self.get_connection(c, context)
-            its.append({"connection": cr})
-        its.append({"evidence": self.get_evidence_filter()})
-        return its
+            yield {"connection": cr}
+            yield from self._yield_property_update(c)
+        yield {"evidence": self.get_evidence_filter()}
 
     def get_by_id(self, id_string: str) -> Optional:
         """Get entity by id string"""
@@ -413,27 +397,157 @@ class ClientAPI(ModelListener):
             p = "conn"
         elif isinstance(entity, NodeComponent):
             p = "com"
+        elif isinstance(entity, IoTSystem):
+            p = "system"
         else:
             raise Exception("Unknown entity type %s", type(entity))
         return f"{p}-{int_id}"
 
-    def systemReset(self, system: IoTSystem):
-        for ln, req in self.api_listener:
-            context = RequestContext(req, self)
-            d = self.get_system_info(context)
-            ln.systemReset({"system": d}, system)
-
-    def connectionChange(self, connection: Connection):
+    def connection_change(self, connection: Connection):
         if not connection.is_relevant(ignore_ends=True):
             return
         for ln, req in self.api_listener:
             context = RequestContext(req, self)
             d = self.get_connection(connection, context)
-            ln.connectionChange({"connection": d}, connection)
+            ln.note_connection_change({"connection": d}, connection)
+        # check if connection ends have changed status
+        self._find_verdict_changes(connection.source)
+        self._find_verdict_changes(connection.target)
 
-    def hostChange(self, host: Host):
+    def host_change(self, host: Host):
         for ln, req in self.api_listener:
             context = RequestContext(req.change_path("."), self)
             _, d = self.get_entity(host, context)
-            ln.hostChange({"host": d}, host)
+            ln.note_host_change({"host": d}, host)
 
+    def address_change(self, host: Host):
+        d = {
+            "host_id": self.get_id(host),
+            "addresses": sorted([f"{a}" for a in host.addresses])
+        }
+        for ln, req in self.api_listener:
+            ln.note_address_change({"address": d}, host)
+
+    def service_change(self, service: Service):
+        for ln, req in self.api_listener:
+            context = RequestContext(req.change_path("."), self)
+            _, d = self.get_entity(service, context)
+            ln.note_host_change({"service": d}, service)
+        # service affect parent verdict
+        self._find_verdict_changes(service.get_parent_host())
+
+    def property_change(self, entity: Entity, value: Tuple[PropertyKey, Any]):
+        props = self.get_properties({value[0]: value[1]})
+        d = {
+            "id": self.get_id(entity)
+        }
+        # check if status change
+        old_v = self.verdict_cache.pop(entity, None)
+        if old_v is not None:
+            new_v = entity.get_verdict(self.verdict_cache)
+            if new_v != old_v:
+                d["status"] = self.get_status_verdict(entity.status, new_v)
+                if isinstance(entity, Service):
+                    # check if parent verdict changed, too
+                    self._find_verdict_changes(entity.get_parent_host())
+        if props:
+            d["properties"] = props
+        js = {"update": d}
+        for ln, req in self.api_listener:
+            ln.note_property_change(js, entity)
+        self._find_verdict_changes(entity)
+
+    def _find_verdict_changes(self, entity: Entity):
+        """Find parent verdict changes and send updates, as required"""
+        old_v = self.verdict_cache.pop(entity, None)
+        new_v = entity.get_verdict(self.verdict_cache)
+        if old_v is None or new_v == old_v:
+            return  # new entity or no change -> no update
+        js = {"update": {
+            "id": self.get_id(entity),
+            "status": self.get_status_verdict(entity.status, new_v),
+        }}
+        for ln, req in self.api_listener:
+            ln.note_property_change(js, entity)
+        if isinstance(entity, Service):
+            # check if parent verdict changed, too
+            self._find_verdict_changes(entity.get_parent_host())
+
+import prompt_toolkit
+from prompt_toolkit.history import FileHistory
+
+class ClientPrompt(APIListener):
+    """A prompt to interact with the model"""
+    def __init__(self, api: ClientAPI):
+        self.api = api
+        # find out screen dimensions
+        self.screen_height = shutil.get_terminal_size()[1]
+        # iterate all entities to create IDs for them (yes, a hack)
+        list(api.api_iterate_all(APIRequest(".")))
+        # session with history
+        history_file = os.path.expanduser("~/.tcsfw_prompt_history")
+        self.session = prompt_toolkit.PromptSession(history=FileHistory(history_file))
+        # current output buffer
+        self.buffer = []
+        self.buffer_index = 0
+        # listen for events
+        api.api_listener.append((self, APIRequest(".")))
+
+    def prompt_loop(self):
+        """Prompt loop"""
+
+        def print_lines(start_line: int) -> int:
+            start_line = max(0, start_line)
+            show_lines = min(self.screen_height - 1, len(self.buffer) - start_line)
+            print("\n".join(self.buffer[start_line:start_line + show_lines]))
+            return start_line + show_lines
+
+        while True:
+            # read a line from stdin
+            line = self.session.prompt("tcsfw> ").strip()
+            if not line:
+                continue
+            if line in {"quit", "q"}:
+                break
+            if line in {"next", "n"}:
+                self.buffer_index = print_lines(self.buffer_index)
+                continue
+            if line in {"prev", "p"}:
+                self.buffer_index = print_lines(self.buffer_index - 2 * (self.screen_height + 1))
+                continue
+            if line in {"top", "t"}:
+                self.buffer_index = print_lines(0)
+                continue
+            if line in {"end", "e"}:
+                self.buffer_index = print_lines(len(self.buffer) - self.screen_height + 1)
+                continue
+            try:
+                # format method and arguments
+                parts = line.partition(" ")
+                method = parts[0].lower()
+                args = parts[2]
+                self.buffer.clear() # collect new output
+                if method in {"get", "g"}:
+                    req = APIRequest.parse(args)
+                    self.buffer = []
+                    out = json.dumps(self.api.api_get(req), indent=2)
+                elif method in {"post", "p"}:
+                    parts = args.partition(" ")
+                    req = APIRequest.parse(parts[0])
+                    data = parts[2] if parts[2] else None
+                    bin_data = None if data is None else io.BytesIO(data.encode())
+                    self.buffer = []
+                    out = json.dumps(self.api.api_post(req, bin_data), indent=2)
+                else:
+                    print(f"Unknown method {method}")
+                    continue
+                self.buffer.extend(out.split("\n"))
+                show_lines = min(self.screen_height - 1, len(self.buffer))
+                print("\n".join(self.buffer[:show_lines]))
+                self.buffer_index = show_lines
+            except Exception as e:
+                # print full stack trace
+                traceback.print_exc()
+
+    def note_event(self, data: Dict):
+        self.buffer.extend(json.dumps(data).split("\n"))

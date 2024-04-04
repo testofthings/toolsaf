@@ -1,6 +1,6 @@
-from typing import Dict, Type, Callable, Any, Tuple
+from typing import Dict, Optional, Type, Callable, Any, Tuple
 
-from tcsfw.address import AnyAddress
+from tcsfw.address import Addresses, AnyAddress
 from tcsfw.basics import Verdict
 from tcsfw.entity import Entity
 from tcsfw.model import IoTSystem
@@ -76,6 +76,29 @@ class PropertyEvent(Event, Verdictable):
         # without entity, at least for event log
         return self.key_value[0].get_value_string(self.key_value[1])
 
+    def get_data_json(self, id_resolver: Callable[[Any], Any]) -> Dict:
+        k, v = self.key_value
+        r = {
+            "entity": id_resolver(self.entity),
+            "key": k.get_name(),
+        }
+        k.get_value_json(v, r)
+        return r
+
+    @classmethod
+    def decode_data_json(cls, evidence: Evidence, data: Dict, entity_resolver: Callable[[Any], Any]) -> 'PropertyEvent':
+        """Decode event from JSON"""
+        entity = entity_resolver(data["entity"])
+        key = PropertyKey.parse(data["key"])
+        ver = Verdict.parse(data.get("verdict"))
+        return PropertyEvent(evidence, entity, key.verdict(ver))
+
+    def __hash__(self) -> int:
+        return super().__hash__() ^ hash(self.entity) ^ hash(self.key_value)
+
+    def __eq__(self, v) -> bool:
+        return super().__eq__(v) and self.entity == v.entity and self.key_value == v.key_value
+
 
 class PropertyAddressEvent(Event, Verdictable):
     """Property value event by address"""
@@ -97,3 +120,49 @@ class PropertyAddressEvent(Event, Verdictable):
     def get_info(self) -> str:
         # without entity, at least for event log
         return self.key_value[0].get_value_string(self.key_value[1])
+
+    def get_data_json(self, id_resolver: Callable[[Any], Any]) -> Dict:
+        k, v = self.key_value
+        r = {
+            "address": self.address.get_parseable_value(),
+            "key": k.get_name(),
+        }
+        k.get_value_json(v, r)
+        return r
+
+    @classmethod
+    def decode_data_json(cls, evidence: Evidence, data: Dict,
+                         entity_resolver: Callable[[Any], Any]) -> 'PropertyAddressEvent':
+        address = Addresses.parse_endpoint(data["address"])
+        key = PropertyKey.parse(data["key"])
+        ver = Verdict.parse(data.get("verdict"))
+        return PropertyAddressEvent(evidence, address, key.verdict(ver))
+
+    def __hash__(self) -> int:
+        return super().__hash__() ^ hash(self.address) ^ hash(self.key_value)
+
+    def __eq__(self, v) -> bool:
+        return super().__eq__(v) and self.address == v.address and self.key_value == v.key_value
+
+
+class EventMap:
+    Event_types = {
+            "flow-eth": EthernetFlow,
+            "flow-ip": IPFlow,
+            "flow-ble": BLEAdvertisementFlow,
+            "prop-ent": PropertyEvent,
+            "prop-add": PropertyAddressEvent,
+            "name": NameEvent,
+            "scan-service": ServiceScan,
+            "scan-host": HostScan,
+        }
+
+    Event_names = {v: k for k, v in Event_types.items()}
+
+    @classmethod
+    def get_event_class(cls, name: str) -> Optional[Type[Event]]:
+        return cls.Event_types.get(name)
+
+    @classmethod
+    def get_event_name(cls, event: Type[Event]) -> str:
+        return cls.Event_names[event]

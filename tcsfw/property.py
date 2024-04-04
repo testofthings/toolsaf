@@ -103,6 +103,29 @@ class PropertyKey:
             s = f"{value}"
         return f"{self.get_name()}={s}" if s else self.get_name()
 
+    def get_value_json(self, value: Any, json_data: Dict) -> Dict:
+        """Get value as JSON"""
+        if isinstance(value, PropertyVerdictValue):
+            json_data["verdict"] = value.verdict.value
+            if value.explanation:
+                json_data["exp"] = value.explanation
+        elif isinstance(value, PropertySetValue):
+            json_data["set"] = [k.get_name() for k in value.sub_keys]
+            if value.explanation:
+                json_data["exp"] = value.explanation
+        else:
+            json_data["value"] = f"{value}"
+        return json_data
+
+    def decode_value_json(self, data: Dict) -> Any:
+        """Decode value from JSON"""
+        exp = data.get("exp", "")
+        if "verdict" in data:
+            return PropertyVerdictValue(Verdict.parse(data["verdict"]), exp)
+        if "set" in data:
+            return PropertySetValue({PropertyKey.parse(k) for k in data["set"]}, exp)
+        return data.get("value")
+
     #
     # Verdict value
     #
@@ -111,6 +134,13 @@ class PropertyKey:
         """New key and verdict value """
         assert isinstance(verdict, Verdict)
         return self, PropertyVerdictValue(verdict, explanation)
+
+    def put_verdict(self, properties: 'PropertyDict', verdict=Verdict.INCON,
+                    explanation="") -> Tuple['PropertyKey', 'PropertyVerdictValue']:
+        """Set verdict value"""
+        kv = PropertyVerdictValue(verdict, explanation)
+        properties[self] = kv
+        return self, kv
 
     def get_verdict(self, properties: 'PropertyDict') -> Optional[Verdict]:
         """Get the verdict, if any, not verdict value objects"""
@@ -181,6 +211,14 @@ class PropertyVerdictValue(Verdictable):
         s = f" {self.explanation}" if self.explanation else ""
         return f"[{self.verdict.value}]{s}"
 
+    def __hash__(self) -> int:
+        return self.verdict.__hash__() ^ self.explanation.__hash__()
+
+    def __eq__(self, v) -> bool:
+        if not isinstance(v, PropertyVerdictValue):
+            return False
+        return self.verdict == v.verdict and self.explanation == v.explanation
+
 
 @dataclass
 class PropertySetValue:
@@ -205,6 +243,14 @@ class PropertySetValue:
         if v is None or v == Verdict.IGNORE:
             v = Verdict.PASS  # no verdicts is pass
         return v
+
+    def __hash__(self) -> int:
+        return self.sub_keys.__hash__() ^ self.explanation.__hash__()
+
+    def __eq__(self, v) -> bool:
+        if not isinstance(v, PropertySetValue):
+            return False
+        return self.sub_keys() == v.sub_keys and self.explanation == v.explanation
 
 
 class Properties:

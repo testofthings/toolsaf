@@ -58,8 +58,6 @@ class NMAPScan(BaseFileCheckTool):
             elif hw_addr in used_ads:
                 host = system.get_endpoint(hw_addr)
                 assert isinstance(host, Host)
-                if ip_addr and not system.is_external(ip_addr):
-                    system.learn_ip_address(host, ip_addr)
             else:
                 # unknown addresses are not included to roster
                 continue
@@ -74,10 +72,12 @@ class NMAPScan(BaseFileCheckTool):
                 service_x = port_x.find("service")
                 ad = EndpointAddress(ip_addr, proto, port)
                 ad_name = service_x.attrib.get('name') if service_x is not None and 'name' in service_x.attrib else ""
-                interface.service_scan(ServiceScan(evidence, ad, ad_name))
+                scan = ServiceScan(evidence, ad, ad_name)
+                interface.service_scan(scan)
                 host_services.add(ad)
 
             # summarize the seen ports
-            interface.host_scan(HostScan(evidence, ip_addr or hw_addr, host_services))
+            scan = HostScan(evidence, ip_addr or hw_addr, host_services)
+            interface.host_scan(scan)
 
         return True

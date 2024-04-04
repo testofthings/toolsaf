@@ -56,8 +56,10 @@ class SubLoader:
             ext_map.update(ps.activity_map)
         add_map.update({a: e.get_node() for a, e in self.mappings.items()})
         ext_map.update({e.get_node(): fs for e, fs in self.activity_map.items()})
-        return EvidenceNetworkSource(self.loader_name, self.base_ref, self.source_label, address_map=add_map,
-                                     activity_map=ext_map)
+        s = EvidenceNetworkSource(self.loader_name, self.base_ref, self.source_label, address_map=add_map,
+                                  activity_map=ext_map)
+        s.model_override = True
+        return s
 
     def load(self, registry: Registry, coverage: RequirementClaimMapper, filter: LabelFilter):
         """Load evidence"""

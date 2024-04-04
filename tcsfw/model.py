@@ -128,6 +128,16 @@ class NetworkNode(Entity):
     def get_children(self) -> Iterable['Entity']:
         return itertools.chain(self.children, self.components)
 
+    def iterate_all(self) -> Iterator['Entity']:
+        """Iterate all entities"""
+        yield self
+        for c in self.children:
+            if c.status != Status.PLACEHOLDER:
+                yield from c.iterate_all()
+        for c in self.components:
+            if c.status != Status.PLACEHOLDER:
+                yield c
+
     def long_name(self):
         """Get longer name, or at least the name"""
         return self.name
@@ -442,6 +452,12 @@ class IoTSystem(NetworkNode):
         cs = self.get_connections()
         return itertools.chain(self.children, self.components, cs)
 
+    def iterate_all(self) -> Iterator[Entity]:
+        yield from super().iterate_all()
+        for c in self.get_connections():
+            if c.status != Status.PLACEHOLDER:
+                yield c
+
     def is_host_reachable(self) -> bool:
         return True
 
@@ -529,12 +545,12 @@ class IoTSystem(NetworkNode):
             nn = f"{Addresses.get_prioritized(host.addresses)}"
             if nn != host.name:
                 host.name = self.free_child_name(nn)
-        self.call_listeners(lambda ln: ln.hostChange(host))
+        self.call_listeners(lambda ln: ln.address_change(host))
 
         for h in self.get_hosts():
             if h != host:
                 h.addresses.discard(ip_address)
-                self.call_listeners(lambda ln: ln.hostChange(h))
+                self.call_listeners(lambda ln: ln.address_change(h))
 
     def get_system(self) -> 'IoTSystem':
         return self
@@ -615,7 +631,7 @@ class IoTSystem(NetworkNode):
         return se, path
 
     def __repr__(self):
-        s = []
+        s = [self.long_name()]
         for h in self.get_hosts():
             s.append(f"{h.status.value} {h.name} {sorted(h.addresses)}")
         for conn in self.connections.values():
@@ -625,23 +641,23 @@ class IoTSystem(NetworkNode):
 
 class ModelListener:
     """Listener for model changes"""
-    def systemReset(self, system: IoTSystem):
-        """System reset"""
-        pass
-
-    def connectionChange(self, connection: Connection):
+    def connection_change(self, connection: Connection):
         """Connection created or changed"""
         pass
 
-    def newFlow(self, source: AnyAddress, target: AnyAddress, flow: Flow, connection: Connection):
-        """New flow event"""
-        pass
-
-    def hostChange(self, host: Host):
+    def host_change(self, host: Host):
         """Host created or changed"""
         pass
 
-    def propertyChange(self, entity: Entity, value: Tuple[PropertyKey, Any]):
+    def address_change(self, host: Host):
+        """Host addresses have changed"""
+        pass
+
+    def service_change(self, service: Service):
+        """Service created or changed"""
+        pass
+
+    def property_change(self, entity: Entity, value: Tuple[PropertyKey, Any]):
         """Property changed. Not all changes create events, just the 'important' ones"""
         pass
 
@@ -657,8 +673,29 @@ class EvidenceNetworkSource(EvidenceSource):
 
     def rename(self, name: Optional[str] = None, base_ref: Optional[str] = None,
                label: Optional[str] = None) -> Self:
-        return EvidenceNetworkSource(
+        s = EvidenceNetworkSource(
             self.name if name is None else name,
             self.base_ref if base_ref is None else base_ref,
             self.label if label is None else label,
             self.address_map, self.activity_map)
+        s.model_override = self.model_override
+        return s
+
+    def get_data_json(self, id_resolver: Callable[[Any], Any]) -> Dict:
+        r = super().get_data_json(id_resolver)
+        if self.address_map:
+            r["address_map"] = {k.get_parseable_value(): id_resolver(v) for k, v in self.address_map.items()}
+        if self.activity_map:
+            # JSON does not allow integer keys
+            r["activity_map"] = [[id_resolver(k), v.value] for k, v in self.activity_map.items()]
+        return r
+
+    def decode_data_json(self, data: Dict, id_resolver: Callable[[Any], Any]) -> 'EvidenceNetworkSource':
+        """Parse data from JSON"""
+        for a, e in data.get("address_map", {}).items():
+            ent = id_resolver(e)
+            self.address_map[Addresses.parse_endpoint(a)] = ent
+        for n, a in data.get("activity_map", {}):
+            ent = id_resolver(n)
+            self.activity_map[ent] = ExternalActivity(a)
+        return self

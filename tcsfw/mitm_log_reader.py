@@ -55,11 +55,9 @@ class MITMLogReader(BaseFileCheckTool):
                     if name not in names:
                         interface.name(name)
                         names.add(name)
-                c = interface.connection(flow)
-                if not c.is_expected():
-                    continue  # Non-expected connection, who cares...
+                # Put verdict to connection message
                 v = Verdict.PASS if ev == "tls_failed" else Verdict.FAIL
-                ev = PropertyEvent(evidence, c, Properties.MITM.verdict(v))
-                interface.property_update(ev)
+                Properties.MITM.put_verdict(flow.properties, v)
+                interface.connection(flow)
 
         return True

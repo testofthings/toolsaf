@@ -1,6 +1,6 @@
 import dataclasses
 import itertools
-from typing import Tuple, Dict, Optional, Set, List, Iterable
+from typing import Self, Tuple, Dict, Optional, Set, List, Iterable
 
 from tcsfw.address import AnyAddress, EndpointAddress, HWAddress, IPAddress, Addresses, IPAddresses, Protocol, \
     DNSName
@@ -26,7 +26,7 @@ class SystemMatcher(ModelListener):
         self.system.reset()
         return self
 
-    def hostChange(self, host: Host):
+    def address_change(self, host: Host):
         ads = self.host_addresses.get(host, set())
         dns = any(isinstance(a, DNSName) for a in host.addresses)
         if not dns or ads == host.addresses:
@@ -160,16 +160,25 @@ class MatchEngine:
         if self.source:
             # load source-specific stuff
             for ad, ent in self.source.address_map.items():
-                self.endpoints.setdefault(ad, []).append(self._add_host(ent))
+                ex_ent = self.endpoints.setdefault(ad, [])
+                for ex in ex_ent:
+                    if ex.entity == ent:
+                        ex.add_address(ad)  # entity has new address
+                        break
+                else:
+                    # no other addresses, but source-specific one
+                    ex_ent.append(self._add_host(ent).add_address(ad))
             for me in itertools.chain(*self.endpoints.values()):
                 fs = self.source.activity_map.get(me.entity)
                 if fs is not None:
                     me.external_activity = fs
 
     def updateAddresses(self, host: Host, old: Set[AnyAddress]):
-        # update address -> endpoint mappings
+        # remove old mappings for the addresses
         for ad in old:
-            self.endpoints[ad] = [m for m in self.endpoints.get(ad, []) if m.entity != host]
+            ends = self.endpoints.get(ad, [])
+            self.endpoints[ad] = [m for m in ends if m.entity != host]
+        # add the host again
         self._add_host(host)
 
     def _add_host(self, entity: Addressable) -> 'MatchEndpoint':
@@ -433,6 +442,7 @@ class MatchEndpoint:
     """Match endpoint"""
     def __init__(self, entity: Addressable, match_no_service=True, priority_services=False):
         self.entity = entity
+        self.addresses = entity.addresses.copy()
         self.match_no_service = match_no_service    # match without service?
         self.match_priority = entity.match_priority
         self.system = entity.get_system()
@@ -442,13 +452,18 @@ class MatchEndpoint:
             self.add_service(s, priority_services)
         self.external_activity = entity.external_activity
 
+    def add_address(self, address: AnyAddress) -> Self:
+        """Add mapped address to endpoint"""
+        self.addresses.add(address)
+        return self
+
     def is_same_host(self, other: Optional['MatchEndpoint']) -> bool:
         """Does the an other endpoint have the same host"""
         return other and other.entity.get_parent_host() == self.entity.get_parent_host()
 
     def new_connections(self) -> bool:
         """Allow new connections with this endpoint"""
-        return len(self.entity.addresses) > 0  # 'any' host only for existing connections
+        return len(self.addresses) > 0  # 'any' host only for existing connections
 
     def add_service(self, service: Service, priority_services=True):
         """Add service matching to endpoint"""

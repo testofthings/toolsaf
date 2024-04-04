@@ -70,7 +70,8 @@ class Report:
         writer.write("== Connections ==\n")
         for conn in self.system.get_connections(relevant_only=False):
             stat = conn.con_type.value if conn.con_type == ConnectionType.LOGICAL else conn.status_string()
-            writer.write(f"{conn.source.long_name():>30} ==> {conn.target.long_name()} [{stat}]\n")
+            writer.write(f"  {conn.source.long_name():<30} ==> {conn.target.long_name()} [{stat}]\n")
+            self.print_properties(conn, "    ", writer)
 
     def _create_report(self) -> 'TabularReport':
         """Create report objects"""

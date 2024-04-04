@@ -1,4 +1,5 @@
 import enum
+from typing import Optional
 
 
 class HostType(enum.Enum):
@@ -58,3 +59,16 @@ class Verdict(enum.Enum):
                 return s
         return Verdict.INCON
 
+    @classmethod
+    def parse(cls, value: Optional[str]) -> 'Verdict':
+        """Parse string to verdict"""
+        if value is None:
+            return cls.INCON
+        v = Verdict_by_value.get(value.lower())
+        if v is None:
+            raise ValueError(f"Unknown verdict: {value}")
+        return v
+
+
+# Map verdicts to verdict values in lowercase
+Verdict_by_value = {v.value.lower(): v for v in Verdict}

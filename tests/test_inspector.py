@@ -1,10 +1,11 @@
 from tcsfw.basics import ExternalActivity, Verdict
 from tcsfw.builder_backend import SystemBackend
+from tcsfw.services import NameEvent
 import test_model
 from tcsfw.address import EndpointAddress, Protocol, IPAddress
 from tcsfw.inspector import Inspector
-from tcsfw.main import DHCP, UDP, TCP
-from tcsfw.traffic import IPFlow, Evidence, EvidenceSource, ServiceScan, HostScan
+from tcsfw.main import DHCP, DNS, UDP, TCP
+from tcsfw.traffic import NO_EVIDENCE, IPFlow, Evidence, EvidenceSource, ServiceScan, HostScan
 from tcsfw.verdict import Status
 
 
@@ -180,3 +181,51 @@ def test_external_dhcp_multicast():
     cs1 = i.connection(IPFlow.UDP(
         "1:0:0:0:0:1", "192.168.0.1", 68) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 67))
     assert cs1.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
+
+
+
+def test_learn_dns_name():
+    """Learn DNS name to find endpoint"""
+    sb = SystemBackend()
+    ser0 = sb.backend("Aname.org")
+    dns = sb.backend() / DNS
+
+    i = Inspector(sb.system)
+    # connection which initializes matching
+    flow_0 = IPFlow.UDP("2:2:0:0:0:1", "192.168.0.1", 1100) >> ("2:2:0:0:0:2", "192.168.0.2", 1234)
+    i.connection(flow_0)
+
+    # event about DNS naming
+    ev = NameEvent(NO_EVIDENCE, dns.entity, "Aname.org", IPAddress.new("12.0.0.2"))
+    i.name(ev)
+
+    flow = IPFlow.UDP("1:0:0:0:0:1", "22.0.0.1", 1100) >> ("1:0:0:0:0:2", "12.0.0.2", 1234)
+    con = i.connection(flow)
+
+    assert con.get_expected_verdict() == Verdict.FAIL
+    assert con.target == ser0.entity
+
+
+def test_learn_dns_name_expected_connection():
+    """Learn DNS name to match to expected connection"""
+    sb = SystemBackend()
+    dev0 = sb.device().hw("1:0:0:0:0:1")
+    ser1 = sb.backend("Aname.org")
+    dev0 >> ser1 / UDP(port=1234)
+    dns = sb.backend() / DNS
+
+    i = Inspector(sb.system)
+    # connection which initializes matching
+    flow_0 = IPFlow.UDP("2:2:0:0:0:1", "192.168.0.1", 1100) >> ("2:2:0:0:0:2", "192.168.0.2", 1234)
+    i.connection(flow_0)
+
+    # event about DNS naming
+    ev = NameEvent(NO_EVIDENCE, dns.entity, "Aname.org", IPAddress.new("12.0.0.2"))
+    i.name(ev)
+
+    flow = IPFlow.UDP("1:0:0:0:0:1", "192.168.0.2", 1100) >> ("1:0:0:0:0:2", "12.0.0.2", 1234)
+    con = i.connection(flow)
+
+    assert con.get_expected_verdict() == Verdict.PASS
+    assert con.source == dev0.entity
+    assert con.target.get_parent_host() == ser1.entity
