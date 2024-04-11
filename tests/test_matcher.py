@@ -1,10 +1,10 @@
 from tcsfw.address import Addresses, IPAddress
-from tcsfw.basics import Verdict
+from tcsfw.verdict import Verdict
 from tcsfw.builder_backend import SystemBackend
 from tcsfw.matcher import SystemMatcher
 from tcsfw.model import EvidenceNetworkSource
 from tcsfw.traffic import Evidence, IPFlow
-from tcsfw.verdict import Status
+from tcsfw.basics import Status
 
 
 def test_source_ip():

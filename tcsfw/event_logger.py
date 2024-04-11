@@ -1,20 +1,22 @@
+"""Intercept events and create a log of them"""
+
 from logging import Logger
-from typing import Any, List, Set, TextIO, Tuple, Dict, Optional, cast
+import logging
+from typing import Any, List, Set, Tuple, Dict, Optional, cast
 from tcsfw.address import AnyAddress
-from tcsfw.basics import Verdict
+from tcsfw.verdict import Verdict
 
 from tcsfw.entity import Entity
 from tcsfw.event_interface import EventInterface, PropertyEvent, PropertyAddressEvent
 from tcsfw.inspector import Inspector
-from tcsfw.model import IoTSystem, Connection, Host, ModelListener, Service, NetworkNode
+from tcsfw.model import IoTSystem, Connection, Host, ModelListener, Service
 from tcsfw.property import Properties, PropertyKey
 from tcsfw.services import NameEvent
 from tcsfw.traffic import EvidenceSource, HostScan, ServiceScan, Flow, Event
-from tcsfw.verdict import Status
 
 
 class LoggingEvent:
-    """Event with logging"""
+    """Stored logging event"""
     def __init__(self, event: Event, entity: Optional[Entity] = None, property: Tuple[PropertyKey, Any] = None):
         self.event = event
         self.property = property  # implicit property set
@@ -45,7 +47,7 @@ class LoggingEvent:
         if self.property:
             r.add(self.property[0])
         ev = self.event
-        if isinstance(ev, PropertyEvent) or isinstance(ev, PropertyAddressEvent):
+        if isinstance(ev, (PropertyEvent, PropertyAddressEvent)):
             r.add(ev.key_value[0])
         return r
 
@@ -58,12 +60,14 @@ class LoggingEvent:
 
 
 class EventLogger(EventInterface, ModelListener):
+    """Event logger implementation"""
     def __init__(self, inspector: Inspector):
         self.inspector = inspector
         self.logs: List[LoggingEvent] = []
         self.current: Optional[LoggingEvent] = None  # current event
         inspector.system.model_listeners.append(self) # subscribe property events
         self.event_logger: Optional[Logger] = None
+        self.logger = logging.getLogger("events")
 
     def print_event(self, log: LoggingEvent):
         """Print event for debugging"""
@@ -77,7 +81,7 @@ class EventLogger(EventInterface, ModelListener):
             s += f" {com}"
         self.event_logger.info(s)
 
-    def _add(self, event: Event, entity: Optional[Entity] = None, 
+    def _add(self, event: Event, entity: Optional[Entity] = None,
              property: Tuple[PropertyKey, Any] = None) -> LoggingEvent:
         """Add new current log entry"""
         ev = LoggingEvent(event, entity, property)

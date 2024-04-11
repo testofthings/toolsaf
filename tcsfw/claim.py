@@ -1,6 +1,4 @@
-class Scope:
-    """A claim scope"""
-
+"""Abstract claim"""
 
 class AbstractClaim:
     """The base class for claims the system, entity, node, connection, etc."""

@@ -1,14 +1,14 @@
 import pathlib
 
 from tcsfw.address import IPAddress, DNSName, Protocol
-from tcsfw.basics import Verdict
+from tcsfw.verdict import Verdict
 from tcsfw.builder_backend import SystemBackend
 from tcsfw.inspector import Inspector
 from tcsfw.main import DNS
 from tcsfw.matcher import SystemMatcher
 from tcsfw.pcap_reader import PCAPReader
 from tcsfw.traffic import IPFlow
-from tcsfw.verdict import Status
+from tcsfw.basics import Status
 
 
 def test_dns():

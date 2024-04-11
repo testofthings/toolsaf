@@ -1,7 +1,9 @@
+"""PCAP tool"""
+
 import datetime
 from io import BytesIO
 import pathlib
-from typing import Optional, Dict, Self, Tuple, List
+from typing import Optional, Dict, Self, Tuple
 
 from framing.backends import RawFrame
 from framing.frame_types import dns_frames
@@ -14,20 +16,16 @@ from framing.frame_types.udp_frames import UDP
 from framing.frames import Frames
 from framing.raw_data import Raw, RawData
 
-from tcsfw.address import EndpointAddress, HWAddress, Protocol, IPAddress
-from tcsfw.components import Software
-from tcsfw.entity import Entity
+from tcsfw.address import HWAddress, Protocol, IPAddress
 from tcsfw.event_interface import EventInterface
-from tcsfw.inspector import Inspector
-from tcsfw.model import Connection, IoTSystem, Addressable
-from tcsfw.property import PropertyKey, Properties
-from tcsfw.registry import Registry
+from tcsfw.model import Connection, IoTSystem
 from tcsfw.services import NameEvent, DNSService
 from tcsfw.tools import BaseFileCheckTool
-from tcsfw.traffic import IPFlow, EvidenceSource, Evidence, EthernetFlow, Flow, Tool
+from tcsfw.traffic import IPFlow, EvidenceSource, Evidence, EthernetFlow, Flow
 
 
 class PCAPReader(BaseFileCheckTool):
+    """PCAP reading tool"""
     def __init__(self, system: IoTSystem, name="PCAP reader"):
         super().__init__("pcap", system)
         self.data_file_suffix = ".pcap"
@@ -44,6 +42,7 @@ class PCAPReader(BaseFileCheckTool):
 
     @classmethod
     def inspect(cls, pcap_file: pathlib.Path, interface: EventInterface) -> 'PCAPReader':
+        """Inspect PCAP file and send events to the given interface"""
         r = PCAPReader(interface.get_system())
         with pcap_file.open("rb") as f:
             r.process_file(f, pcap_file.name, interface, EvidenceSource(pcap_file.name))
@@ -73,17 +72,17 @@ class PCAPReader(BaseFileCheckTool):
                 self.timestamp = datetime.datetime.fromtimestamp(PacketRecord.Timestamp[rec])
                 self.source.timestamp = self.timestamp  # recent
                 PacketRecord.Packet_Data.process_frame(rec, {
-                    EthernetII: lambda f: self._ethernet_frame(f)
+                    EthernetII: self._ethernet_frame
                 })
             except ValueError as e:
                 # seen with DNS traffic
-                self.logger.warning(f"Frame {self.frame_number}: {e}")
+                self.logger.warning("Frame %s: %s", self.frame_number, e)
             count += 1
         return count
 
     def _ethernet_frame(self, frame: EthernetII):
         """Parse ethernet frame"""
-        self.logger.debug(f"Parse PCAP frame {self.frame_number}")
+        self.logger.debug("Parse PCAP frame %s", self.frame_number)
         EthernetII.data.process_frame(frame, {
             IPv4: lambda f: self._ipv4_frame(frame, f),
             RawFrame: lambda _: self._other_ethernet_frame(frame),

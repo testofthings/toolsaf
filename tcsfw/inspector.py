@@ -1,17 +1,18 @@
-import datetime
+"""Model inspector"""
+
 import logging
-from typing import Any, Dict, Set, Tuple
+from typing import Dict, Set
 
 from tcsfw.address import DNSName, AnyAddress
-from tcsfw.basics import ExternalActivity, Verdict
+from tcsfw.basics import ExternalActivity, Status
 from tcsfw.entity import Entity
 from tcsfw.event_interface import EventInterface, PropertyAddressEvent, PropertyEvent
 from tcsfw.matcher import SystemMatcher
-from tcsfw.model import IoTSystem, Connection, Service, Host, Addressable, NodeComponent
-from tcsfw.property import Properties, PropertyKey
+from tcsfw.model import IoTSystem, Connection, Service, Host, Addressable
+from tcsfw.property import Properties
 from tcsfw.services import NameEvent
 from tcsfw.traffic import ServiceScan, HostScan, Flow, IPFlow
-from tcsfw.verdict import Status
+from tcsfw.verdict import Verdict
 
 
 class Inspector(EventInterface):
@@ -57,7 +58,7 @@ class Inspector(EventInterface):
     def connection(self, flow: Flow) -> Connection:
         self.logger.debug("inspect flow %s", flow)
         key = self.matcher.connection_w_ends(flow)
-        conn, s, t, reply = key
+        conn, _, _, reply = key
 
         flow.reply = reply  # bit ugly to fix, but now available for logger
 
@@ -88,7 +89,6 @@ class Inspector(EventInterface):
         if target.status == Status.PLACEHOLDER:
             target.status = conn.status
 
-        external = conn.status == Status.EXTERNAL
         if c_count == 1:
             # new connection is seen
             conn.set_seen_now()
@@ -136,13 +136,14 @@ class Inspector(EventInterface):
             for p, v in flow.properties.items():
                 # No model events, perhaps later?
                 p.update(conn.properties, v)
-                self.system.call_listeners(lambda ln: ln.property_change(conn, (p, v)))
+                self.system.call_listeners(
+                    lambda ln: ln.property_change(conn, (p, v)))  # pylint: disable=cell-var-from-loop
 
         for ent in entities:
             if ent not in updated:
                 continue
             ev = Properties.EXPECTED.verdict(ent.get_expected_verdict())
-            self.system.call_listeners(lambda ln: ln.property_change(ent, ev))
+            self.system.call_listeners(lambda ln: ln.property_change(ent, ev))  # pylint: disable=cell-var-from-loop
             updated.discard(ent)
         return conn
 

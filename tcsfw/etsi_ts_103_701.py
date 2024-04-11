@@ -1,3 +1,5 @@
+"""ETSI TS 103 701 requirements"""
+
 import dataclasses
 import os
 import pathlib
@@ -20,7 +22,8 @@ from tcsfw.requirement import Specification, Requirement, SelectorContext, Speci
 from tcsfw.selector import Select, ServiceSelector, UpdateConnectionSelector, RequirementSelector
 
 
-class IXIT_Section:
+class IXIT_Section:  # pylint: disable=invalid-name
+    """IXIT section definition"""
     SectionList = []
 
     def __init__(self, name: str, number: int, location: Optional[RequirementSelector] = None):
@@ -36,7 +39,9 @@ class IXIT_Section:
 DEVICE = Select.host().type_of(HostType.DEVICE)
 DEVICE_UNEXPECTED = Select.host(unexpected=True).type_of(HostType.DEVICE)
 
+
 class IXIT:
+    """IXIT sections"""
     AuthMech = IXIT_Section("AuthMech", 1, DEVICE / Select.service().authenticated())
     UserInfo = IXIT_Section("UserInfo", 2, Select.system())
     VulnTypes = IXIT_Section("VulnTypes", 3)
@@ -46,7 +51,7 @@ class IXIT:
     UpdMech = IXIT_Section("UpdMech", 7, UpdateConnectionSelector())
     UpdProc = IXIT_Section("UpdProc", 8)
     ReplSup = IXIT_Section("ReplSup", 9, DEVICE)
-    SecParam = IXIT_Section("SecParam", 10, Select.data())  # FIXME: Not that great
+    SecParam = IXIT_Section("SecParam", 10, Select.data())
     ComMech = IXIT_Section("ComMech", 11, Select.connection())
     NetSecImpl = IXIT_Section("NetSecImpl", 12, DEVICE / Select.software())
     SoftServ = IXIT_Section("SoftServ", 13, DEVICE / Select.service().authenticated())
@@ -72,6 +77,7 @@ class IXIT:
 
 
 def check(key: str | PropertyKey, description: str) -> PropertyClaim:
+    """Utility to create a custom check claim"""
     return PropertyClaim.custom(description, key=("check", key) if isinstance(key, str) else key)
 
 
@@ -106,7 +112,8 @@ DEFINED_AUTH_ONLY = Claim.expected("Defined authentication mechanisms only")
 SERVICE_BEST_PRACTICES = (Claim.web_best_practices() + Claim.protocol_best_practices()
                           + Claim.http_redirect()) % "Protocol checks"
 CONNECTION = ProtocolClaim(encrypted=True) % "Defined connection mechanism"
-CONN_BEST_PRACTICES = (ProtocolClaim(tail="best-practices", encrypted=True) + MITMClaim()) % "Cryptographic best practices"
+CONN_BEST_PRACTICES = (ProtocolClaim(tail="best-practices", encrypted=True) + MITMClaim()) \
+    % "Cryptographic best practices"
 CONN_NO_VULNERABILITIES = ProtocolClaim(tail="no-vulnz", encrypted=True) % "No known vulnerabilities"
 AVAILABILITY = AvailabilityClaim() % "Document availability"
 
@@ -144,6 +151,7 @@ CROSS_REFERENCE = PropertyClaim.custom("Cross references", key=Properties.REVIEW
 
 
 class EtsiTs103701(Specification):
+    """ETSI TS 103 701 specification"""
     def __init__(self, specification_id: str, name: str, requirements: Dict[str, Requirement] = None):
         super().__init__(specification_id, name)
         self.cutoff_priority = 1
@@ -431,19 +439,13 @@ class EtsiTs103701(Specification):
         self.make("6-4-1a", IXIT.PersData, claim=REVIEW)
         self.make("6-5-1a", IXIT.UserInfo, claim=REVIEW)
 
-        # handle references
-        for to, fro in self.references.items():
-            rt = self.requirement_map[to]
-            rf = self.requirement_map[f"{fro}a"]
-            # rt.priority = rf.priority
-
         # sort em
         def req_sort_key(s):
             parts = re.split(r'(\d+)', s[0])
             parts = [int(part) if part.isdigit() else part for part in parts]
             return parts
 
-        new_r: Dict[str, Requirement] = {k:v for k, v in sorted(self.requirement_map.items(), key=req_sort_key)}
+        new_r: Dict[str, Requirement] = dict(sorted(self.requirement_map.items(), key=req_sort_key))
         self.requirement_map = new_r
 
     def make(self, identifier: str, ixit: IXIT_Section,
@@ -501,7 +503,7 @@ class EtsiTs103701(Specification):
             b_d = aliases[base] = {}
             b_names = {e.long_name(): e for e in es}
             i = 0
-            for n, e in sorted(b_names.items()):
+            for _, e in sorted(b_names.items()):
                 i += 1
                 b_d[e] = f"{base}-{i}"
         r = {}
@@ -511,6 +513,7 @@ class EtsiTs103701(Specification):
         return r
 
     def is_unit_specified(self, unit: 'TestUnit'):
+        """Check if the test unit is specified in the specification"""
         i = self.specification_id, unit.identifier()
         return i in self.requirement_map
 
@@ -529,6 +532,7 @@ class EtsiTs103701(Specification):
                     included.add(e.get_parent_host())
 
         class Selector(SpecificationSelectorContext):
+            """The returned selector"""
             def include_host(self, entity: Host) -> bool:
                 return entity in included and super().include_host(entity)
 
@@ -587,6 +591,7 @@ class TestCase:
     functional: bool = False
 
     def f_c_str(self) -> str:
+        """Get functional/conceptual string"""
         if self.conceptual and self.functional:
             return "c/f"
         if self.conceptual:
@@ -607,11 +612,11 @@ class TestCase:
 
 def read_text_data(path=pathlib.Path("tcsfw/data/etsi_ts_103_701.txt")) -> List[TestCase]:
     """Read data from text file"""
-    with path.open() as f:
+    with path.open(encoding="utf-8") as f:
         lines = f.readlines()
 
-    tc_line = re.compile("Test case ([-0-9.]*)(.*)")
-    tu_line = re.compile("([a-z])\)(.*)")
+    tc_line = re.compile(r"Test case ([-0-9.]*)(.*)")
+    tu_line = re.compile(r"([a-z])\)(.*)")
     verdict_line = re.compile("Assignment of verdict.*")
 
     cases = []
@@ -655,14 +660,14 @@ def read_text_data(path=pathlib.Path("tcsfw/data/etsi_ts_103_701.txt")) -> List[
             tu.purpose += f"\n{line}"
         elif tu:
             if not tu.purpose:
-                raise Exception(f"No purpose for {tc.identifier} {tu}")
+                raise ValueError(f"No purpose for {tc.identifier} {tu}")
             tu = None
     return cases
 
 
 def verify_ixit_data(specification: EtsiTs103701, path=pathlib.Path("etsi/ixit_test_targets.txt")):
-    """Read IXIT data from text file"""
-    with path.open() as f:
+    """Read IXIT data from text file, as verification"""
+    with path.open(encoding="utf-8") as f:
         lines = f.readlines()
 
     rs: Dict[str, Set[Requirement]] = {}
@@ -676,13 +681,13 @@ def verify_ixit_data(specification: EtsiTs103701, path=pathlib.Path("etsi/ixit_t
         if not line or line.startswith("#"):
             continue
         sid, _, name_s = line.partition(" ")
-        names1 = set([n.partition("-")[2].strip() for n in name_s.split(",") if n])
-        names2 = set([r.selector.get_name() for r in rs[sid]])
+        names1 = set(n.partition("-")[2].strip() for n in name_s.split(",") if n)
+        names2 = set(r.selector.get_name() for r in rs[sid])
         names2.discard(IXIT.Generic.name)
         if names1 != names2:
             print(f"MISMATCH {sid}")
-            print(f"  Spec: " + ", ".join(sorted(names1)))
-            print(f"  Code: " + ", ".join(sorted(names2)))
+            print("  Spec: " + ", ".join(sorted(names1)))
+            print("  Code: " + ", ".join(sorted(names2)))
 
 
 
@@ -693,8 +698,8 @@ ETSI_TS_103_701 = EtsiTs103701("etsi_ts_103_701", "ETSI TS 103 701 Security peri
 ETSI_TS_103_701_FIN = ETSI_TS_103_701.get_finnish_label_tests()
 
 
-if __name__ == "__main__":
-    spec = ETSI_TS_103_701
+def main_print():
+    """Print the specification data for debugging"""
     cl = read_text_data()
     try:
         width = os.get_terminal_size(0).columns
@@ -702,7 +707,7 @@ if __name__ == "__main__":
         width = 80
     ul = []
     left = set(ETSI_TS_103_701.requirement_map.keys())
-    print(f"== Requirements ==")
+    print("== Requirements ==")
     for c in cl:
         print(f"{c}")
         for u in c.units:
@@ -712,7 +717,7 @@ if __name__ == "__main__":
             us = "\n       ".join(textwrap.wrap(f"{u}", width=width - 10))
             print(f"{m} {us}")
 
-    print(f"== IXIT test targets ==")
+    print("== IXIT test targets ==")
     for c in cl:
         print(f"{c}")
         cfs = c.f_c_str()
@@ -750,11 +755,9 @@ if __name__ == "__main__":
                 cu_c += 1
         print(f"Test units priority {p:>2}: {c} con={cu_c} fun={fu_c}")
 
-    print(f"== IXIT verification ==")
-    verify_ixit_data(ETSI_TS_103_701)
+    if pathlib.Path("etsi/ixit_test_targets.txt").exists():
+        print("== IXIT verification ==")
+        verify_ixit_data(ETSI_TS_103_701)
 
-    # for c in cl:
-    #     if c.functional:
-    #         continue
-    #     for u in c.units:
-    #        print(f'        self.make("{u.identifier()}", None, claim=REVIEW)')
+if __name__ == "__main__":
+    main_print()

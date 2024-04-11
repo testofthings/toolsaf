@@ -1,3 +1,5 @@
+"""HTTP server"""
+
 import asyncio
 import hmac
 import json
@@ -11,8 +13,7 @@ from typing import Dict, Tuple, List
 from aiohttp import web, WSMsgType
 
 from tcsfw.client_api import ClientAPI, APIRequest, APIListener
-from tcsfw.entity import Entity
-from tcsfw.model import Host, Connection, IoTSystem
+from tcsfw.model import IoTSystem
 
 
 class Session(APIListener):
@@ -24,7 +25,7 @@ class Session(APIListener):
         self.subscribed = False  # subscribed?
         self.server.api.api_listener.append((self, self.original_request))
 
-    def note_system_reset(self, data: Dict, system: IoTSystem):
+    def note_system_reset(self, _data: Dict, _system: IoTSystem):
         if self.subscribed:
             self.server.dump_model(self)
 
@@ -33,6 +34,7 @@ class Session(APIListener):
             self.server.send_queue.put_nowait((self, data))
 
     def close(self):
+        """Close the session"""
         self.subscribed = False
         self.server.api.api_listener.remove((self, self.original_request))
 
@@ -50,7 +52,7 @@ class HTTPServerRunner:
         self.port = port
         self.auth_token = os.environ.get("TCSFW_SERVER_API_KEY", "")
         if not self.auth_token and not no_auth_ok:
-            raise Exception("No environment variable TCSFW_SERVER_API_KEY (use --no-auth-ok to skip check)")
+            raise ValueError("No environment variable TCSFW_SERVER_API_KEY (use --no-auth-ok to skip check)")
         self.component_delay = 0
         self.sessions: List[Session] = []
         self.loop = asyncio.get_event_loop()
@@ -78,7 +80,7 @@ class HTTPServerRunner:
         rr = web.AppRunner(app)
         await rr.setup()
         site = web.TCPSite(rr, self.host, self.port)
-        self.logger.info(f"HTTP server running at {self.host}:{self.port}...")
+        self.logger.info("HTTP server running at %s:%s...", self.host, self.port)
         await site.start()
 
     async def registry_worker(self):
@@ -122,7 +124,7 @@ class HTTPServerRunner:
             token_1 = auth_t.encode("utf-8")
             token_2 = self.auth_token.encode("utf-8")
             if not hmac.compare_digest(token_1, token_2):
-                 raise PermissionError("Invalid API key")
+                raise PermissionError("Invalid API key")
 
     async def handle_http(self, request):
         """Handle normal HTTP GET or POST request"""
@@ -156,7 +158,7 @@ class HTTPServerRunner:
             return web.Response(status=404)
         except PermissionError:
             return web.Response(status=401)
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             traceback.print_exc()
             return web.Response(status=500)
 
@@ -197,8 +199,7 @@ class HTTPServerRunner:
                 if msg.type == WSMsgType.CLOSE:
                     self.logger.info("WS close")
                     break
-                else:
-                    self.logger.warning("Unexpected WS type %d", msg.type)
+                self.logger.warning("Unexpected WS type %d", msg.type)
         try:
             await receive_loop()
         finally:

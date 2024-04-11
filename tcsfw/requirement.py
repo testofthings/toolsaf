@@ -1,3 +1,5 @@
+"""Requirements and specifications"""
+
 from typing import Tuple, List, Dict, Set, Callable, Iterator, Optional, Iterable, Any
 from tcsfw.basics import ConnectionType, HostType
 
@@ -9,7 +11,7 @@ from tcsfw.property import PropertyKey
 
 class EntitySelector:
     """Select entries by criteria"""
-    def select(self, entity: Entity, context: 'SelectorContext') -> Iterator[Entity]:
+    def select(self, _entity: Entity, _context: 'SelectorContext') -> Iterator[Entity]:
         """Select starting from entity and in a context"""
         return iter(())
 
@@ -46,11 +48,13 @@ class Requirement:
         self.target_name = ""
 
     def identifier_string(self, tail_only=False) -> str:
+        """Get identifier as string"""
         if tail_only:
             return self.identifier[1]
         return f"{self.identifier[0]} {self.identifier[1]}"
 
     def get_text(self, with_identifier=False) -> str:
+        """Get text with or without identifier"""
         if not with_identifier:
             return self.text
         return f"{self.identifier_string(tail_only=True)}: {self.text}"
@@ -73,8 +77,7 @@ class SpecificationSelectorContext(SelectorContext):
 
 class Specification:
     """Specification, collection of requirements"""
-    def __init__(self, specification_id: str, specification_name: str, ignored=None):
-        # FIXME: Nuked ignored parameter
+    def __init__(self, specification_id: str, specification_name: str):
         self.specification_id = specification_id
         self.specification_name = specification_name
         self.all_ids: Set[str] = {specification_id}
@@ -95,7 +98,7 @@ class Specification:
         co = self.cutoff_priority if cutoff is None else cutoff
         return [r for r in self.requirement_map.values() if r.priority >= co]
 
-    def get_entity_selector(self, system: IoTSystem) -> SelectorContext:
+    def get_entity_selector(self, _system: IoTSystem) -> SelectorContext:
         """Get selector context which filters the scope of the specification"""
         return SpecificationSelectorContext()
 
@@ -113,7 +116,7 @@ class Specification:
             info = info[:info.index(".")]
         return info
 
-    def create_aliases(self, selected: Iterable[Tuple[Requirement, Entity, AbstractClaim]]) \
+    def create_aliases(self, _selected: Iterable[Tuple[Requirement, Entity, AbstractClaim]]) \
             -> Dict[Tuple[Requirement, Entity, AbstractClaim], str]:
         """Create aliases for entities selected in different requirements"""
         return {}

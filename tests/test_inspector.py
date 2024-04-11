@@ -1,4 +1,4 @@
-from tcsfw.basics import ExternalActivity, Verdict
+from tcsfw.basics import ExternalActivity, Status
 from tcsfw.builder_backend import SystemBackend
 from tcsfw.services import NameEvent
 import test_model
@@ -6,7 +6,7 @@ from tcsfw.address import EndpointAddress, Protocol, IPAddress
 from tcsfw.inspector import Inspector
 from tcsfw.main import DHCP, DNS, UDP, TCP
 from tcsfw.traffic import NO_EVIDENCE, IPFlow, Evidence, EvidenceSource, ServiceScan, HostScan
-from tcsfw.verdict import Status
+from tcsfw.verdict import Verdict
 
 
 def simple_setup_3(tcp=False) -> SystemBackend:

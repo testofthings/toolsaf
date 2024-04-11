@@ -1,19 +1,20 @@
+"""Ssh-audit output reading tool"""
+
 from io import BytesIO
 import json
-import pathlib
-from typing import Dict, List
+from typing import Dict
 
 from tcsfw.address import AnyAddress, Protocol
-from tcsfw.entity import Entity
 from tcsfw.event_interface import PropertyAddressEvent, EventInterface
 from tcsfw.model import Service, IoTSystem, NetworkNode
 from tcsfw.property import Properties, PropertyKey
 from tcsfw.tools import EndpointCheckTool
 from tcsfw.traffic import Evidence, EvidenceSource
-from tcsfw.basics import Verdict
+from tcsfw.verdict import Verdict
 
 
 class SSHAuditScan(EndpointCheckTool):
+    """Ssh-audit output reading tool"""
     def __init__(self, system: IoTSystem):
         super().__init__("ssh-audit", ".json", system)
         self.tool.name = "SSH audit"
@@ -24,10 +25,10 @@ class SSHAuditScan(EndpointCheckTool):
             return False
         return node.protocol == Protocol.SSH
 
-    def process_stream(self, endpoint: AnyAddress, data_file: BytesIO, interface: EventInterface,
+    def process_stream(self, endpoint: AnyAddress, stream: BytesIO, interface: EventInterface,
                        source: EvidenceSource):
         """Scan network node"""
-        raw = json.load(data_file)
+        raw = json.load(stream)
 
         evidence = Evidence(source)
 

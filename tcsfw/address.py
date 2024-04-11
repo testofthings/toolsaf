@@ -1,6 +1,7 @@
+"""Addresses and protocols"""
+
 import enum
 import ipaddress
-import urllib.parse
 from ipaddress import IPv4Address, IPv6Address
 from typing import Union, Optional, Tuple, Iterable, Self
 
@@ -24,6 +25,7 @@ class Protocol(enum.Enum):
 
     @classmethod
     def get_protocol(cls, value: str, default: Optional['Protocol'] = None) -> Optional['Protocol']:
+        """Get protocol by name"""
         try:
             return cls[value.upper()] if value else default
         except KeyError:
@@ -72,7 +74,7 @@ class AnyAddress:
         """Is global address?"""
         return False
 
-    def change_host(self, host: 'AnyAddress') -> Self:
+    def change_host(self, _host: 'AnyAddress') -> Self:
         """Change host to given address. As default, returns this address"""
         return self
 
@@ -82,7 +84,7 @@ class AnyAddress:
 
     def get_parseable_value(self) -> str:
         """Get value which can be unambigiously parsed"""
-        raise NotImplementedError()
+        return str(self)
 
     def __lt__(self, other):
         return self.__repr__() < other.__repr__()
@@ -116,6 +118,8 @@ class PseudoAddress(AnyAddress):
 
 
 class Addresses:
+    """Address constants and utilities"""
+
     # Wildcard for any address
     ANY = PseudoAddress("*", wildcard=True)
 
@@ -143,7 +147,7 @@ class Addresses:
             return HWAddress.new(v)
         if t == "name":
             return DNSName(v)
-        raise Exception(f"Unknown address type '{t}', allowed are 'ip', 'hw', and 'name'")
+        raise ValueError(f"Unknown address type '{t}', allowed are 'ip', 'hw', and 'name'")
 
     @classmethod
     def parse_endpoint(cls, value: str) -> AnyAddress:
@@ -157,6 +161,7 @@ class Addresses:
             return EndpointAddress(addr, Protocol.get_protocol(prot), -1)
         return EndpointAddress(addr, Protocol.get_protocol(prot), int(port))
 
+
 class HWAddress(AnyAddress):
     """Hardware address, e.g. Ethernet"""
     def __init__(self, data: str):
@@ -168,7 +173,7 @@ class HWAddress(AnyAddress):
         """New address, check something about the format"""
         p = list(data.split(":"))
         if len(p) != 6:
-            raise Exception(f"Bad HW address '{data}'")
+            raise ValueError(f"Bad HW address '{data}'")
         for i in range(6):
             if len(p[i]) != 2:
                 p[i] = f"0{p[i]}"  # zero-prefix
@@ -213,6 +218,8 @@ class HWAddress(AnyAddress):
 
 
 class HWAddresses:
+    """HW address constants"""
+
     NULL = HWAddress("00:00:00:00:00:00")
 
     BROADCAST = HWAddress("ff:ff:ff:ff:ff:ff")
@@ -228,6 +235,7 @@ class IPAddress(AnyAddress):
 
     @classmethod
     def new(cls, address: str) -> 'IPAddress':
+        """Create new IP address"""
         return IPAddress(ipaddress.ip_address(address))
 
     @classmethod
@@ -264,6 +272,8 @@ class IPAddress(AnyAddress):
 
 
 class IPAddresses:
+    """IP address constants"""
+
     NULL = IPAddress.new("0.0.0.0")
 
     BROADCAST = IPAddress.new("255.255.255.255")
@@ -311,7 +321,7 @@ class DNSName(AnyAddress):
         if '.' not in name:
             return False
         for c in name:
-            if c != '.' and c != ':' and not ('0' <= c <= '9'):
+            if c != '.' and c != ':' and not ('0' <= c <= '9'):  # pylint: disable=superfluous-parens
                 return True  # nost just numbers, good enough for this check
         return False  # only numbers and dots
 
@@ -383,6 +393,7 @@ class EndpointAddress(AnyAddress):
 
     @classmethod
     def protocol_port_string(cls, value: Optional[Tuple[Protocol, int]]) -> str:
+        """Get string value for protocol:port, omit port if value <0"""
         if value is None:
             return ""
         return f"{value[0].value}:{value[1]}" if value[1] >= 0 else f"{value[0].value}"

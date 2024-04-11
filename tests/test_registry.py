@@ -1,4 +1,4 @@
-from tcsfw.basics import Verdict
+from tcsfw.verdict import Verdict
 from tcsfw.builder_backend import SystemBackend
 from test_inspector import simple_setup_3
 from test_model import simple_setup_1
@@ -6,7 +6,7 @@ from tcsfw.inspector import Inspector
 from tcsfw.main import DHCP
 from tcsfw.registry import Registry
 from tcsfw.traffic import IPFlow, NO_EVIDENCE
-from tcsfw.verdict import Status
+from tcsfw.basics import Status
 
 
 def test_reset():

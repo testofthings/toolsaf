@@ -1,16 +1,17 @@
+"""The set of available claims"""
+
 from typing import List, Optional, Tuple, Self, Dict, Set, Callable, Iterable, Union, Any
 
 from tcsfw.address import Protocol
-from tcsfw.basics import HostType, Verdict
+from tcsfw.basics import HostType
 from tcsfw.claim import AbstractClaim
-from tcsfw.components import DataReference, DataStorages, Software
+from tcsfw.components import DataReference, Software
 from tcsfw.entity import Entity, ClaimStatus, ExplainableClaim, ClaimAuthority
-from tcsfw.events import ReleaseInfo
+from tcsfw.release_info import ReleaseInfo
 from tcsfw.model import IoTSystem, Connection, Host, Service, NetworkNode
 from tcsfw.property import Properties, PropertyKey, PropertyVerdictValue, \
     PropertySetValue
-from tcsfw.traffic import Tool
-from tcsfw.verdict import Verdictable
+from tcsfw.verdict import Verdict, Verdictable
 
 
 class ClaimContext:
@@ -36,7 +37,7 @@ class ClaimContext:
             cs = base_cs
         return cs
 
-    def get_property_value(self, entity: Entity, claim: AbstractClaim, key: PropertyKey) -> Optional:
+    def get_property_value(self, entity: Entity, claim: AbstractClaim, key: PropertyKey) -> Optional[Any]:
         """Get and test property value"""
         v = key.get(entity.properties)
         self.properties.setdefault((entity, claim), {})[key] = v  # may be null
@@ -94,13 +95,13 @@ class RequirementClaim(ExplainableClaim):
         self.description = name
         return self
 
-    def get_override_key(self, entity: Entity) -> Optional[PropertyKey]:
+    def get_override_key(self, _entity: Entity) -> Optional[PropertyKey]:
         """Get override key for this property / entity"""
         if self.property_key is None:
             return None
         return self.property_key.prefix_key(Properties.PREFIX_MANUAL)
 
-    def check(self, entity: Entity, context: ClaimContext) -> Optional[ClaimStatus]:
+    def check(self, _entity: Entity, _context: ClaimContext) -> Optional[ClaimStatus]:
         """Check a claim for target entity"""
         return None
 
@@ -183,7 +184,7 @@ class ConnectionClaim(RequirementClaim):
     def __init__(self, description="Connection"):
         super().__init__(description)
 
-    def check(self, entity: Entity, context: ClaimContext) -> Optional[ClaimStatus]:
+    def check(self, entity: Entity, _context: ClaimContext) -> Optional[ClaimStatus]:
         assert isinstance(entity, Connection)
         return None
 
@@ -193,7 +194,7 @@ class HostClaim(RequirementClaim):
     def __init__(self, description="Host"):
         super().__init__(description)
 
-    def check(self, entity: Entity, context: ClaimContext) -> Optional[ClaimStatus]:
+    def check(self, entity: Entity, _context: ClaimContext) -> Optional[ClaimStatus]:
         self.assert_host(entity)
         return None
 
@@ -212,7 +213,7 @@ class PropertyClaim(RequirementClaim):
             return PropertyClaim(description, key)
         return PropertyClaim(description, key=PropertyKey.create(key))
 
-    def pre_filter(self, entity: Entity, context: ClaimContext) -> bool:
+    def pre_filter(self, _entity: Entity, _context: ClaimContext) -> bool:
         """Filter before property check"""
         return True
 
@@ -330,7 +331,7 @@ class ServiceClaim(RequirementClaim):
     def __init__(self, description="Service"):
         super().__init__(description)
 
-    def check(self, entity: Entity, context: ClaimContext) -> Optional[ClaimStatus]:
+    def check(self, entity: Entity, _context: ClaimContext) -> Optional[ClaimStatus]:
         assert isinstance(entity, Service)
         return None
 
@@ -371,7 +372,7 @@ class NoUnexpectedConnections(HostClaim):
     def __init__(self, description="No unexpected connections found"):
         super().__init__(description)
 
-    def check(self, entity: Entity, context: ClaimContext) -> Optional[ClaimStatus]:
+    def check(self, entity: Entity, _context: ClaimContext) -> Optional[ClaimStatus]:
         entity = self.assert_host(entity)
         exp_c, see_c, un_c = 0, 0, 0
         for c in entity.connections:
@@ -395,7 +396,7 @@ class SoftwareClaim(RequirementClaim):
     def __init__(self, description="Software"):
         super().__init__(description)
 
-    def check(self, entity: Entity, context: ClaimContext) -> Optional[ClaimStatus]:
+    def check(self, entity: Entity, _context: ClaimContext) -> Optional[ClaimStatus]:
         assert isinstance(entity, Software)
         return None
 
@@ -508,7 +509,7 @@ class AuthenticationClaim(PropertyClaim):
     def __init__(self, description="Authenticated", key=Properties.AUTHENTICATION):
         super().__init__(description, key)
 
-    def pre_filter(self, entity: Entity, context: ClaimContext) -> bool:
+    def pre_filter(self, entity: Entity, _context: ClaimContext) -> bool:
         return isinstance(entity, Service) and entity.authentication
 
 
@@ -552,7 +553,7 @@ class UnexpectedUpdateClaim(PropertyClaim):
     def __init__(self, description="Unexpected update mechanism"):
         super().__init__(description, PropertyKey("check", "no-update-mechanism"))
 
-    def pre_filter(self, entity: Entity, context: ClaimContext) -> bool:
+    def pre_filter(self, entity: Entity, _context: ClaimContext) -> bool:
         if not isinstance(entity, Software):
             return False
         if entity.entity.host_type == HostType.MOBILE:
@@ -579,7 +580,7 @@ class BOMClaim(PropertyClaim):
     def __init__(self, description="SBOM", key=Properties.COMPONENTS):
         super().__init__(description, key)
 
-    def pre_filter(self, entity: Entity, context: ClaimContext) -> bool:
+    def pre_filter(self, entity: Entity, _context: ClaimContext) -> bool:
         # if no SW components, how can we verify anything?
         return isinstance(entity, Software) and len(entity.components) > 0
 
@@ -646,7 +647,7 @@ class EncryptionClaim(PropertyClaim):
     def __init__(self, description="Strong encryption protocol chosen"):
         super().__init__(description, key=Properties.ENCRYPTION)
 
-    def pre_filter(self, entity: Entity, context: ClaimContext) -> bool:
+    def pre_filter(self, entity: Entity, _context: ClaimContext) -> bool:
         return (isinstance(entity, NetworkNode) or isinstance(entity, Connection)) and entity.is_encrypted()
 
     def do_check(self, key: PropertyKey, entity: Entity, context: ClaimContext) -> Optional[ClaimStatus]:
@@ -659,7 +660,7 @@ class HTTPRedirectClaim(PropertyClaim):
     def __init__(self, description="HTTP redirect to HTTPS"):
         super().__init__(description, key=Properties.HTTP_REDIRECT)
 
-    def pre_filter(self, entity: Entity, context: ClaimContext) -> bool:
+    def pre_filter(self, entity: Entity, _context: ClaimContext) -> bool:
         return isinstance(entity, Service) and entity.protocol == Protocol.HTTP
 
 
@@ -668,7 +669,7 @@ class MITMClaim(PropertyClaim):
     def __init__(self, description="MITM"):
         super().__init__(description, key=Properties.MITM)
 
-    def pre_filter(self, entity: Entity, context: ClaimContext) -> bool:
+    def pre_filter(self, entity: Entity, _context: ClaimContext) -> bool:
         return isinstance(entity, Connection) and entity.is_encrypted()
 
 
@@ -677,7 +678,7 @@ class FuzzingClaim(PropertyClaim):
     def __init__(self, description="Fuzz testing"):
         super().__init__(description, key=Properties.FUZZ)
 
-    def pre_filter(self, entity: Entity, context: ClaimContext) -> bool:
+    def pre_filter(self, entity: Entity, _context: ClaimContext) -> bool:
         return isinstance(entity, Service)
 
 
@@ -716,7 +717,7 @@ class SystemClaim(RequirementClaim):
     def __init__(self, description="System"):
         super().__init__(description)
 
-    def check(self, entity: Entity, context: ClaimContext) -> Optional[ClaimStatus]:
+    def check(self, entity: Entity, _context: ClaimContext) -> Optional[ClaimStatus]:
         assert isinstance(entity, IoTSystem)
         return None
 

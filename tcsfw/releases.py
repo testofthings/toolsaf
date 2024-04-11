@@ -1,30 +1,28 @@
+"""Release data reading"""
+
 import datetime
 from io import BytesIO
 import json
-import logging
-import pathlib
 from statistics import mean
 from typing import Tuple, List, cast
 
 from tcsfw.components import Software
-from tcsfw.entity import Entity
 from tcsfw.event_interface import EventInterface, PropertyEvent
 from tcsfw.model import IoTSystem, NetworkNode, NodeComponent
-from tcsfw.property import PropertyKey
 from tcsfw.tools import ComponentCheckTool
 from tcsfw.traffic import EvidenceSource, Evidence
-from tcsfw.events import ReleaseInfo
+from tcsfw.release_info import ReleaseInfo
 
 
 class ReleaseReader(ComponentCheckTool):
-    """Read release data"""
+    """Read release data aquired from GitLab API"""
     def __init__(self, system: IoTSystem):
         super().__init__("gitlab-releases", ".json", system)
         self.tool.name = "GitLab releases"
 
-    def _filter_component(self, node: NetworkNode) -> bool:
+    def _filter_component(self, component: NetworkNode) -> bool:
         """Filter checked entities"""
-        return isinstance(node, Software)
+        return isinstance(component, Software)
 
     def process_stream(self, component: NodeComponent, data_file: BytesIO, interface: EventInterface,
                        source: EvidenceSource):

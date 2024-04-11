@@ -1,16 +1,14 @@
+"""Nmap scan result XML parser"""
+
 import datetime
 from io import BytesIO
-import pathlib
-from typing import Dict, Set, List
 from xml.etree import ElementTree
 
 from tcsfw.address import IPAddress, HWAddress, EndpointAddress, Protocol
-from tcsfw.entity import Entity
 from tcsfw.event_interface import EventInterface
-from tcsfw.model import IoTSystem, Host, Addressable
-from tcsfw.property import PropertyKey, Properties
+from tcsfw.model import IoTSystem, Host
 from tcsfw.tools import BaseFileCheckTool
-from tcsfw.traffic import EvidenceSource, Evidence, ServiceScan, HostScan, Tool
+from tcsfw.traffic import EvidenceSource, Evidence, ServiceScan, HostScan
 
 
 class NMAPScan(BaseFileCheckTool):

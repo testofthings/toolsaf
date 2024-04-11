@@ -1,3 +1,5 @@
+"""Client API implementation"""
+
 import io
 import json
 import logging
@@ -6,11 +8,13 @@ import shutil
 import traceback
 import urllib
 from typing import Dict, List, Tuple, Any, Iterable, BinaryIO, Optional
+import prompt_toolkit
+from prompt_toolkit.history import FileHistory
 
 from framing.raw_data import Raw
 
-from tcsfw.address import AnyAddress, HWAddress, HWAddresses, IPAddresses, Protocol, IPAddress
-from tcsfw.basics import Verdict
+from tcsfw.basics import Status
+from tcsfw.verdict import Verdict
 from tcsfw.claim_coverage import RequirementClaimMapper
 from tcsfw.coverage_result import CoverageReport
 from tcsfw.entity import Entity
@@ -19,10 +23,9 @@ from tcsfw.model import Addressable, NetworkNode, Connection, Host, Service, Mod
 from tcsfw.pcap_reader import PCAPReader
 from tcsfw.property import Properties, PropertyKey, PropertySetValue, PropertyVerdictValue
 from tcsfw.registry import Registry
-from tcsfw.result import Report
 from tcsfw.specifications import Specifications
 from tcsfw.traffic import NO_EVIDENCE
-from tcsfw.verdict import Status, Verdictable
+from tcsfw.verdict import Verdictable
 
 # format strings
 FORMAT_YEAR_MONTH_DAY = "%Y-%m-%d"
@@ -62,25 +65,31 @@ class APIRequest:
 
 class APIListener:
     """Model change listener through API"""
-    def note_system_reset(self, data: Dict, system: IoTSystem):
+    def note_system_reset(self, data: Dict, _system: IoTSystem):
+        """System reset event"""
         self.note_event(data)
 
-    def note_connection_change(self, data: Dict, connection: Connection):
+    def note_connection_change(self, data: Dict, _connection: Connection):
+        """Connection change event"""
         self.note_event(data)
 
-    def note_host_change(self, data: Dict, host: Host):
+    def note_host_change(self, data: Dict, _host: Host):
+        """Host change event"""
         self.note_event(data)
 
-    def note_address_change(self, data: Dict, host: Host):
+    def note_address_change(self, data: Dict, _host: Host):
+        """Address change event"""
         self.note_event(data)
 
-    def note_property_change(self, data: Dict, entity: Entity):
+    def note_property_change(self, data: Dict, _entity: Entity):
+        """Property change event"""
         self.note_event(data)
 
-    def note_event(self, data: Dict):
-        pass
+    def note_event(self, _data: Dict):
+        """Any API event"""
 
 class RequestContext:
+    """API request context"""
     def __init__(self, request: APIRequest, api: 'ClientAPI'):
         self.request = request
         self.api = api
@@ -92,7 +101,7 @@ class RequestContext:
 
 
 class ClientAPI(ModelListener):
-    """API for clients"""
+    """Client API implementation"""
     def __init__(self, registry: Registry, claims: RequirementClaimMapper):
         self.registry = registry
         self.claim_coverage = claims
@@ -174,7 +183,7 @@ class ClientAPI(ModelListener):
             e = self.get_by_id(entity)
             if e is None:
                 raise FileNotFoundError(f"Invalid entity {entity}")
-            rs["id"] = self.get_id(e),
+            rs["id"] = self.get_id(e)
             k = PropertyKey.parse(key) if key else None
             if k:
                 rs["property"] = f"{k}"
@@ -227,7 +236,8 @@ class ClientAPI(ModelListener):
             cs[key.get_name()] = vs
         return cs
 
-    def get_components(self, entity: NetworkNode, context: RequestContext) -> Iterable[Tuple[NodeComponent, Dict]]:
+    def get_components(self, entity: NetworkNode, _context: RequestContext) -> Iterable[Tuple[NodeComponent, Dict]]:
+        """Get components of an entity"""
         def sub(component: NodeComponent) -> Dict:
             com_cs = {
                 "name": component.name,
@@ -284,7 +294,7 @@ class ClientAPI(ModelListener):
             r["parent_id"] = self.get_id(entity.parent)
         return entity, r
 
-    def get_connection(self, connection: Connection, context: RequestContext) -> Dict:
+    def get_connection(self, connection: Connection, _context: RequestContext) -> Dict:
         """GET connection"""
         def location(entity: NetworkNode) -> List[str]:
             if isinstance(entity, Addressable):
@@ -307,7 +317,7 @@ class ClientAPI(ModelListener):
         }
         return cr
 
-    def get_system_info(self, context: RequestContext) -> Dict:
+    def get_system_info(self, _context: RequestContext) -> Dict:
         """Get system information"""
         s = self.registry.system
         si = {
@@ -380,7 +390,7 @@ class ClientAPI(ModelListener):
             yield from self._yield_property_update(c)
         yield {"evidence": self.get_evidence_filter()}
 
-    def get_by_id(self, id_string: str) -> Optional:
+    def get_by_id(self, id_string: str) -> Optional[Any]:
         """Get entity by id string"""
         _, _, i = id_string.partition("-")
         return self.registry.get_entity(int(i))
@@ -400,7 +410,7 @@ class ClientAPI(ModelListener):
         elif isinstance(entity, IoTSystem):
             p = "system"
         else:
-            raise Exception("Unknown entity type %s", type(entity))
+            raise ValueError(f"Unknown entity type {type(entity)}")
         return f"{p}-{int_id}"
 
     def connection_change(self, connection: Connection):
@@ -425,7 +435,7 @@ class ClientAPI(ModelListener):
             "host_id": self.get_id(host),
             "addresses": sorted([f"{a}" for a in host.addresses])
         }
-        for ln, req in self.api_listener:
+        for ln, _ in self.api_listener:
             ln.note_address_change({"address": d}, host)
 
     def service_change(self, service: Service):
@@ -453,7 +463,7 @@ class ClientAPI(ModelListener):
         if props:
             d["properties"] = props
         js = {"update": d}
-        for ln, req in self.api_listener:
+        for ln, _ in self.api_listener:
             ln.note_property_change(js, entity)
         self._find_verdict_changes(entity)
 
@@ -467,14 +477,11 @@ class ClientAPI(ModelListener):
             "id": self.get_id(entity),
             "status": self.get_status_verdict(entity.status, new_v),
         }}
-        for ln, req in self.api_listener:
+        for ln, _ in self.api_listener:
             ln.note_property_change(js, entity)
         if isinstance(entity, Service):
             # check if parent verdict changed, too
             self._find_verdict_changes(entity.get_parent_host())
-
-import prompt_toolkit
-from prompt_toolkit.history import FileHistory
 
 class ClientPrompt(APIListener):
     """A prompt to interact with the model"""
@@ -545,7 +552,7 @@ class ClientPrompt(APIListener):
                 show_lines = min(self.screen_height - 1, len(self.buffer))
                 print("\n".join(self.buffer[:show_lines]))
                 self.buffer_index = show_lines
-            except Exception as e:
+            except Exception:  # pylint: disable=broad-except
                 # print full stack trace
                 traceback.print_exc()
 

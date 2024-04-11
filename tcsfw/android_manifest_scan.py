@@ -1,19 +1,20 @@
+"""Tool to read Android manifest XML"""
+
 from io import BytesIO
-import pathlib
-from typing import cast, List
+from typing import cast
 from xml.etree import ElementTree
 
 from tcsfw.components import Software
-from tcsfw.entity import Entity
 from tcsfw.event_interface import PropertyEvent, EventInterface
 from tcsfw.model import IoTSystem, NodeComponent
 from tcsfw.property import Properties, PropertyKey
 from tcsfw.tools import ComponentCheckTool
 from tcsfw.traffic import EvidenceSource, Evidence
-from tcsfw.basics import HostType, Verdict
+from tcsfw.verdict import Verdict
 
 
 class AndroidManifestScan(ComponentCheckTool):
+    """Android manifest XML tool"""
     def __init__(self, system: IoTSystem):
         super().__init__("android", ".xml", system)
         self.tool.name = "Android Manifest"

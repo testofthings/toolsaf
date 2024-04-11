@@ -1,9 +1,10 @@
-from dataclasses import dataclass
+"""Components for network nodes, hosts, services, etc."""
+
 from dataclasses import dataclass
 from typing import List, Optional, Dict, Set
 
-from tcsfw.events import ReleaseInfo
-from tcsfw.model import NodeComponent, Connection, NetworkNode, Host, SensitiveData, Service, Addressable
+from tcsfw.release_info import ReleaseInfo
+from tcsfw.model import NodeComponent, Connection, NetworkNode, Host, SensitiveData, Addressable
 
 
 class Software(NodeComponent):
@@ -89,6 +90,7 @@ class Cookies(NodeComponent):
 
     @classmethod
     def cookies_for(cls, entity: NetworkNode) -> 'Cookies':
+        """Get cookies for an entity, create if needed"""
         for c in entity.components:
             if isinstance(c, Cookies):
                 return c

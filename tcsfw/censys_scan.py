@@ -1,23 +1,24 @@
+"""Censys scan result tool"""
+
 import argparse
 from io import BytesIO
 import json
 import logging
 import pathlib
-from typing import List
 
 from censys.search import CensysHosts
 
 from tcsfw.address import Protocol, EndpointAddress, AnyAddress
-from tcsfw.entity import Entity
 from tcsfw.event_interface import PropertyAddressEvent, EventInterface
-from tcsfw.model import IoTSystem, NetworkNode, Service, Host
-from tcsfw.property import Properties, PropertyKey
+from tcsfw.model import IoTSystem, NetworkNode, Host
+from tcsfw.property import Properties
 from tcsfw.tools import EndpointCheckTool
 from tcsfw.traffic import EvidenceSource, ServiceScan, Evidence, HostScan
-from tcsfw.basics import Verdict
+from tcsfw.verdict import Verdict
 
 
 class CensysScan(EndpointCheckTool):
+    """Censys scan tool"""
     def __init__(self, system: IoTSystem):
         super().__init__("censys", ".json", system)
         self.tool.name = "Censys"
@@ -25,7 +26,7 @@ class CensysScan(EndpointCheckTool):
     def _filter_node(self, node: NetworkNode) -> bool:
         return isinstance(node, Host)
 
-    def process_stream(self, address: AnyAddress, stream: BytesIO, interface: EventInterface, source: EvidenceSource):
+    def process_stream(self, endpoint: AnyAddress, stream: BytesIO, interface: EventInterface, source: EvidenceSource):
         raw = json.load(stream)
 
         evidence = Evidence(source)
@@ -37,14 +38,14 @@ class CensysScan(EndpointCheckTool):
             transport = Protocol.get_protocol(s.get('transport_protocol'), Protocol.ANY)
             port = int(s['port'])
 
-            self.logger.info("%s %s %d: %s", address, transport, port, service_name)
+            self.logger.info("%s %s %d: %s", endpoint, transport, port, service_name)
             if service_name == "UNKNOWN":
                 service_name = ""
             if service_name:
                 service_name = f"{service_name} in port {port}"
             elif transport:
                 service_name = f"{transport.value} {port}"
-            addr = EndpointAddress(address, transport, port)
+            addr = EndpointAddress(endpoint, transport, port)
             interface.service_scan(ServiceScan(evidence, addr, service_name))
 
             if protocol == Protocol.HTTP:
@@ -56,7 +57,7 @@ class CensysScan(EndpointCheckTool):
                     interface.property_address_update(ev)
             host_services.add(addr)
         # other services were not seen
-        interface.host_scan(HostScan(evidence, address, host_services))
+        interface.host_scan(HostScan(evidence, endpoint, host_services))
 
 
 if __name__ == "__main__":

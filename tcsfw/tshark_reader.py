@@ -1,17 +1,16 @@
+"""Tshark JSON reading tool"""
+
 import argparse
 import datetime
 from io import BytesIO
 import json
 import pathlib
-from typing import Dict, Optional, List, Self
+from typing import Dict, Optional, Self
 
-from tcsfw.address import HWAddress, Protocol
-from tcsfw.components import Software
-from tcsfw.entity import Entity
+from tcsfw.address import HWAddress
 from tcsfw.event_interface import EventInterface
 from tcsfw.inspector import Inspector
-from tcsfw.model import IoTSystem, Addressable, Connection, Host, Service
-from tcsfw.property import PropertyKey, Properties
+from tcsfw.model import IoTSystem
 from tcsfw.tools import BaseFileCheckTool
 from tcsfw.traffic import EvidenceSource, BLEAdvertisementFlow, Evidence
 
@@ -35,7 +34,7 @@ class TSharkReader(BaseFileCheckTool):
     def read(self, data_file: pathlib.Path, interface: EventInterface, source: EvidenceSource):
         """Read PCAP file"""
         with data_file.open("r") as f:
-            return self.read_stream(f, data_file.name, interface, source)
+            return self.process_file(f, data_file.name, interface, source)
 
     def parse(self, raw: Dict, interface: EventInterface):
         """Parse JSON"""
@@ -51,6 +50,7 @@ class TSharkReader(BaseFileCheckTool):
                 ads.add(ad)
 
     def parse_hvc_event(self, raw: Dict, interface: EventInterface, evidence: Evidence) -> HWAddress:
+        """Parse HVC event"""
         bd_addr = raw['bthci_evt.bd_addr']
         ev_code = int(raw['bthci_evt.le_advts_event_type'], 16)
         add = HWAddress.new(bd_addr)  # FIXME: We need different HW address space for BL and Eth!

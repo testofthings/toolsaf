@@ -1,9 +1,9 @@
+"""Base class and default database implementation"""
+
 import logging
 from typing import Any, Iterable, Optional, Dict, List
 from tcsfw.event_interface import EventInterface
-from tcsfw.model import IoTSystem
-
-from tcsfw.traffic import Event, EvidenceSource
+from tcsfw.traffic import Event
 
 
 class EntityDatabase:
@@ -15,13 +15,12 @@ class EntityDatabase:
         self.ids: Dict[Any, int] = {}
         self.reverse_id: List[Any] = []
 
-    def restore_stored(self, interface: EventInterface) -> Iterable[Event]:
+    def restore_stored(self, _interface: EventInterface) -> Iterable[Event]:
         """Restore stored events after model is loaded"""
         return []
 
     def reset(self, source_filter: Dict[str, bool] = None):
         """Reset database cursor"""
-        pass
 
     def next_pending(self) -> Optional[Event]:
         """Fetch next pending event, if any"""

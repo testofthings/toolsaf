@@ -1,19 +1,21 @@
+"""SQL database by SQLAlchemy"""
+
 import json
 from typing import Any, Iterator, List, Optional, Dict, Tuple, Set
 
-from tcsfw.entity_database import EntityDatabase
 from sqlalchemy import Boolean, Column, Integer, String, create_engine, delete, select
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
-from tcsfw.event_interface import EventInterface, EventMap, PropertyAddressEvent, PropertyEvent
-from tcsfw.model import Addressable, Connection, EvidenceNetworkSource, Host, IoTSystem, ModelListener, NetworkNode, NodeComponent, Service
-from tcsfw.services import NameEvent
+from sqlalchemy.orm import Session
 
-from tcsfw.traffic import BLEAdvertisementFlow, EthernetFlow, Event, Evidence, EvidenceSource, HostScan, IPFlow, ServiceScan
+from tcsfw.entity_database import EntityDatabase
+from tcsfw.event_interface import EventInterface, EventMap
+from tcsfw.model import Addressable, Connection, EvidenceNetworkSource, Host, ModelListener, NodeComponent, Service
+from tcsfw.traffic import Event, Evidence, EvidenceSource
 
 Base = declarative_base()
 
 class TableEntityID(Base):
+    """SQL table for entity names and types"""
     __tablename__ = 'entity_ids'
     id = Column(Integer, primary_key=True)
     name = Column(String)
@@ -24,6 +26,7 @@ class TableEntityID(Base):
 
 
 class TableEvidenceSource(Base):
+    """SQL table for evidence sources"""
     __tablename__ = 'sources'
     id = Column(Integer, primary_key=True)
     name = Column(String)
@@ -34,6 +37,7 @@ class TableEvidenceSource(Base):
 
 
 class TableEvent(Base):
+    """SQL table for events"""
     __tablename__ = 'events'
     id = Column(Integer, primary_key=True)
     type = Column(String)
@@ -175,9 +179,7 @@ class SQLDatabase(EntityDatabase, ModelListener):
         event_type = self.event_types.get(e_type)
         if event_type is None:
             return None
-        if src is None:
-            self.logger.warning(f"Event {ev.id} has unknown source {ev.source_id}")
-            return None
+        assert src is not None
         evi = Evidence(src, e_tail)
         js = json.loads(e_data)
         event = event_type.decode_data_json(evi, js, self.get_entity)
@@ -291,8 +293,9 @@ class SQLDatabase(EntityDatabase, ModelListener):
                     source_id = self.free_source_id
                     self.free_source_id += 1
                     data_js = source.get_data_json(self.get_id)
-                    src = TableEvidenceSource(id=source_id, name=source.name, label=source.label, base_ref=source.base_ref,
-                                            model=source.model_override, data=json.dumps(data_js))
+                    src = TableEvidenceSource(id=source_id, name=source.name, label=source.label, 
+                                              base_ref=source.base_ref,
+                                              model=source.model_override, data=json.dumps(data_js))
                     ses.add(src)
                     self.source_cache[source] = source_id
                 js = event.get_data_json(self.get_id)

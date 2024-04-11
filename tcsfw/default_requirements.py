@@ -1,3 +1,5 @@
+"""Default requirements as claims"""
+
 from tcsfw.claim_set import Claim
 from tcsfw.basics import HostType
 from tcsfw.requirement import Specification

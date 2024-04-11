@@ -1,7 +1,9 @@
+"""Services with dedicated logic"""
+
 from typing import Any, Callable, Dict, List, Set, Optional
 
-from tcsfw.address import IPAddresses, EndpointAddress, Protocol, HWAddress, IPAddress
-from tcsfw.basics import ConnectionType, ExternalActivity, HostType
+from tcsfw.address import EndpointAddress, Protocol, IPAddress
+from tcsfw.basics import ConnectionType, HostType
 from tcsfw.model import Service, NetworkNode, Connection, Host, Addressable
 from tcsfw.traffic import IPFlow, Flow, Event, Evidence
 

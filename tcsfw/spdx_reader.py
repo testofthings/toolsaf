@@ -1,17 +1,17 @@
+"""SPDX SBOM reading tool"""
+
 from io import BytesIO
 import json
-import pathlib
 from datetime import datetime
-from typing import cast, List
+from typing import cast
 
 from tcsfw.components import Software, SoftwareComponent
-from tcsfw.entity import Entity
 from tcsfw.event_interface import PropertyEvent, EventInterface
 from tcsfw.model import IoTSystem, NodeComponent
 from tcsfw.property import Properties, PropertyKey
 from tcsfw.tools import ComponentCheckTool
 from tcsfw.traffic import EvidenceSource, Evidence
-from tcsfw.basics import Verdict
+from tcsfw.verdict import Verdict
 
 
 class SPDXReader(ComponentCheckTool):

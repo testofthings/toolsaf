@@ -1,13 +1,15 @@
+"""Requirement selectors"""
+
 from typing import List, TypeVar, Generic, Iterator
 
 from tcsfw.address import Protocol
 from tcsfw.basics import HostType
 from tcsfw.components import DataStorages, Software, DataReference
 from tcsfw.entity import Entity, ExplainableClaim
-from tcsfw.model import Addressable, Host, IoTSystem, NetworkNode, Service, Connection
+from tcsfw.model import Host, IoTSystem, NetworkNode, Service, Connection
 from tcsfw.property import Properties, PropertyKey
 from tcsfw.requirement import Requirement, EntitySelector, SelectorContext
-from tcsfw.verdict import Status
+from tcsfw.basics import Status
 
 S = TypeVar("S", bound='EntitySelector')
 
@@ -44,7 +46,7 @@ class NamedSelector(RequirementSelector):
 
 class SystemSelector(RequirementSelector):
     """Select system"""
-    def select(self, entity: Entity, context: SelectorContext) -> Iterator[IoTSystem]:
+    def select(self, entity: Entity, _context: SelectorContext) -> Iterator[IoTSystem]:
         if isinstance(entity, IoTSystem):
             yield entity
         else:
@@ -73,6 +75,7 @@ class HostSelector(RequirementSelector):
         types = set(host_type)
 
         class Selector(HostSelector):
+            """The modified selector"""
             def select(self, entity: Entity, context: SelectorContext) -> Iterator[Entity]:
                 return (c for c in parent.select(entity, context) if c.host_type in types)
         return Selector()
@@ -82,6 +85,7 @@ class HostSelector(RequirementSelector):
         parent = self
 
         class Selector(HostSelector):
+            """The modified selector"""
             def select(self, entity: Entity, context: SelectorContext) -> Iterator[Entity]:
                 return (c for c in parent.select(entity, context) if key in c.properties)
         return Selector()
@@ -108,6 +112,7 @@ class ServiceSelector(RequirementSelector):
         parent = self
 
         class Selector(ServiceSelector):
+            """The modified selector"""
             def select(self, entity: Entity, context: SelectorContext) -> Iterator[Service]:
                 return (c for c in parent.select(entity, context) if c.authentication == value)
         return Selector()
@@ -117,6 +122,7 @@ class ServiceSelector(RequirementSelector):
         parent = self
 
         class Selector(ServiceSelector):
+            """The modified selector"""
             def select(self, entity: Entity, context: SelectorContext) -> Iterator[Service]:
                 return (c for c in parent.select(entity, context) if c.protocol in {Protocol.HTTP, Protocol.TLS})
         return Selector()
@@ -126,6 +132,7 @@ class ServiceSelector(RequirementSelector):
         parent = self
 
         class Selector(ServiceSelector):
+            """The modified selector"""
             def select(self, entity: Entity, context: SelectorContext) -> Iterator[Connection]:
                 for c in parent.select(entity, context):
                     if not c.is_multicast() and Properties.HTTP_REDIRECT.get(c.properties) is None:
@@ -161,6 +168,7 @@ class ConnectionSelector(RequirementSelector):
         parent = self
 
         class Selector(ConnectionSelector):
+            """The modified selector"""
             def select(self, entity: Entity, context: SelectorContext) -> Iterator[Connection]:
                 for c in parent.select(entity, context):
                     if c.is_encrypted():
@@ -172,6 +180,7 @@ class ConnectionSelector(RequirementSelector):
         parent = self
 
         class Selector(ConnectionSelector):
+            """The modified selector"""
             def select(self, entity: Entity, context: SelectorContext) -> Iterator[Connection]:
                 for c in parent.select(entity, context):
                     target = c.target
@@ -184,6 +193,7 @@ class ConnectionSelector(RequirementSelector):
         parent = self
 
         class Selector(ConnectionSelector):
+            """The modified selector"""
             def select(self, entity: Entity, context: SelectorContext) -> Iterator[Connection]:
                 for c in parent.select(entity, context):
                     target = c.target
@@ -196,6 +206,7 @@ class ConnectionSelector(RequirementSelector):
         parent = self
 
         class Selector(ConnectionSelector):
+            """The modified selector"""
             def select(self, entity: Entity, context: SelectorContext) -> Iterator[Connection]:
                 for c in parent.select(entity, context):
                     s = endpoint.select(c.source, context)
@@ -224,7 +235,7 @@ class SoftwareSelector(RequirementSelector):
 
 class DataSelector(RequirementSelector):
     """Select data components"""
-    def select(self, entity: Entity, context: SelectorContext) -> Iterator[DataReference]:
+    def select(self, entity: Entity, _context: SelectorContext) -> Iterator[DataReference]:
         if not isinstance(entity, NetworkNode):
             return None
         for c in entity.components:
@@ -237,6 +248,7 @@ class DataSelector(RequirementSelector):
         parent = self
 
         class Selector(DataSelector):
+            """The modified selector"""
             def select(self, entity: Entity, context: SelectorContext) -> Iterator[DataReference]:
                 return (c for c in parent.select(entity, context) if c.data.personal == value)
         return Selector()
@@ -246,6 +258,7 @@ class DataSelector(RequirementSelector):
         parent = self
 
         class Selector(DataSelector):
+            """The modified selector"""
             def select(self, entity: Entity, context: SelectorContext) -> Iterator[DataReference]:
                 return (c for c in parent.select(entity, context) if c.data.password == value)
         return Selector()

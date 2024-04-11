@@ -1,7 +1,9 @@
-from typing import Any, List, Dict, Tuple, Self, Optional
-from tcsfw.address import AnyAddress, HWAddress, IPAddress, Protocol
-from tcsfw.basics import ExternalActivity, HostType
+"""Tool loader definitions"""
 
+from typing import Any, List, Dict, Tuple, Self, Optional
+
+from tcsfw.address import AnyAddress, HWAddress, IPAddress, Protocol
+from tcsfw.basics import ExternalActivity
 from tcsfw.batch_import import LabelFilter
 from tcsfw.claim_coverage import RequirementClaimMapper
 from tcsfw.event_interface import PropertyEvent
@@ -11,16 +13,18 @@ from tcsfw.selector import Select
 from tcsfw.model import EvidenceNetworkSource
 from tcsfw.property import PropertyKey
 from tcsfw.registry import Registry
-from tcsfw.traffic import NO_EVIDENCE, Evidence, EvidenceSource, Flow, IPFlow, Tool
+from tcsfw.traffic import NO_EVIDENCE, Evidence, Flow, IPFlow
+
 
 class NodeManipulator:
     """Interface to interact with other backend"""
     def get_node(self) -> NodeBuilder:
+        """Get manipulated node"""
         raise NotImplementedError()
 
 
 class SubLoader:
-    """Base class for loaders"""
+    """Base class for direct evidence/claim loaders"""
     def __init__(self, name: str):
         self.loader_name = name
         self.base_ref = ""
@@ -31,23 +35,27 @@ class SubLoader:
         self.baseline = False  # read a baseline, only supported for some loaders
 
     def hw(self, entity: NodeBuilder, *hw_address: str) -> Self:
+        """Map data-specific hardware address to entity"""
         assert isinstance(entity, NodeManipulator)
         for a in hw_address:
             self.mappings[HWAddress.new(a)] = entity
         return self
 
     def ip(self, entity: NodeBuilder, *ip_address: str) -> Self:
+        """Map data-specific IP address to entity"""
         assert isinstance(entity, NodeManipulator)
         for a in ip_address:
             self.mappings[IPAddress.new(a)] = entity
         return self
 
     def external_activity(self, entity: NodeBuilder, activity: ExternalActivity) -> Self:
+        """Map data-specific external activity to entity"""
         assert isinstance(entity, NodeManipulator)
         self.activity_map[entity] = activity
         return self
 
     def get_source(self) -> EvidenceNetworkSource:
+        """Get the evidence source configured for this loader"""
         add_map = {}
         ext_map = {}
         if self.parent_loader:
@@ -63,13 +71,12 @@ class SubLoader:
 
     def load(self, registry: Registry, coverage: RequirementClaimMapper, filter: LabelFilter):
         """Load evidence"""
-        pass
 
 
 class EvidenceLoader(EvidenceBuilder):
     """Load evidence files"""
     def __init__(self, builder: SystemBuilder):
-        SubLoader.__init__(self, "Loader")
+        super().__init__()
         self.builder = builder
         self.subs: List[SubLoader] = []
 
@@ -87,7 +94,7 @@ class EvidenceLoader(EvidenceBuilder):
             t.groups.append(group_label)
 
 
-class FabricationLoader(SubLoader,TrafficDataBuilder):
+class FabricationLoader(SubLoader, TrafficDataBuilder):
     """Fabricate evidence for testing or visualization"""
     def __init__(self, source_label: str):
         super().__init__(source_label)
@@ -110,6 +117,7 @@ class FabricationLoader(SubLoader,TrafficDataBuilder):
 
 
 class ToolPlanLoader(SubLoader):
+    """Load plans for future tools"""
     def __init__(self, group: Tuple[str, str]):
         super().__init__(group[1])    # group[0] is e.g. 'basic-tools', 'advanced-tools', 'custom-tools'
         self.source_label = group[1]  # group[1] is fancy names for them (just captialize?)

@@ -1,6 +1,8 @@
+"""Properties"""
+
 from dataclasses import dataclass
-from typing import Set, Dict, Any, Optional, Tuple, TypeVar, Generic, Self
-from tcsfw.basics import Verdict
+from typing import Set, Dict, Any, Optional, Tuple, Self
+from tcsfw.verdict import Verdict
 
 from tcsfw.verdict import Verdictable
 
@@ -65,7 +67,7 @@ class PropertyKey:
         """Get explanation for value, if any"""
         if isinstance(value, PropertyVerdictValue):
             return value.explanation
-        elif isinstance(value, PropertySetValue):
+        if isinstance(value, PropertySetValue):
             return value.explanation
         return ""
 
@@ -150,6 +152,7 @@ class PropertyKey:
         return v.get_verdict() if isinstance(v, Verdictable) else None
 
     def update_verdict(self, properties: 'PropertyDict', value: 'PropertyVerdictValue'):
+        """Update property verdict"""
         assert isinstance(value, PropertyVerdictValue) and isinstance(value.verdict, Verdict), \
             f"Invalid property verdict value: {value}"
         old = self.get(properties)
@@ -200,7 +203,7 @@ PropertyDict = Dict[PropertyKey, Any]
 
 @dataclass
 class PropertyVerdictValue(Verdictable):
-    """Property verdict value"""
+    """Verdict as property value, explanation optional"""
     verdict: Verdict
     explanation: str = ""
 
@@ -211,17 +214,10 @@ class PropertyVerdictValue(Verdictable):
         s = f" {self.explanation}" if self.explanation else ""
         return f"[{self.verdict.value}]{s}"
 
-    def __hash__(self) -> int:
-        return self.verdict.__hash__() ^ self.explanation.__hash__()
-
-    def __eq__(self, v) -> bool:
-        if not isinstance(v, PropertyVerdictValue):
-            return False
-        return self.verdict == v.verdict and self.explanation == v.explanation
-
 
 @dataclass
 class PropertySetValue:
+    """Set of keys as property value, explanation optional"""
     sub_keys: Set[PropertyKey]
     explanation: str = ""
 
@@ -244,16 +240,10 @@ class PropertySetValue:
             v = Verdict.PASS  # no verdicts is pass
         return v
 
-    def __hash__(self) -> int:
-        return self.sub_keys.__hash__() ^ self.explanation.__hash__()
-
-    def __eq__(self, v) -> bool:
-        if not isinstance(v, PropertySetValue):
-            return False
-        return self.sub_keys() == v.sub_keys and self.explanation == v.explanation
-
 
 class Properties:
+    """Built-in property keys"""
+
     AUTHENTICATION = PropertyKey("check", "auth")    # Authentication check
     AUTH_BEST_PRACTICE = AUTHENTICATION.append_key("best-practice")  # Auth. crypto best practise
     AUTH_NO_VULNERABILITIES = AUTHENTICATION.append_key("no-vulnz")  # Auth. known vulnerabilities

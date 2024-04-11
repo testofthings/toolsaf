@@ -1,7 +1,10 @@
+"""Model visualization"""
+
 from typing import List, Dict, Tuple
 
 from tcsfw.claim_coverage import RequirementClaimMapper
 from tcsfw.client_api import ClientAPI, RequestContext
+from tcsfw.main import ConfigurationException
 from tcsfw.model import NetworkNode, Connection, Host
 from tcsfw.registry import Registry
 
@@ -47,13 +50,14 @@ class Visualizer:
                 x = line.find(h)
                 if x != -1:
                     if ent in self.coordinates:
-                        raise Exception(f"Visual handle '{h}' has more than one entity")
+                        raise ConfigurationException(f"Visual handle '{h}' has more than one entity")
                     self.coordinates[ent] = x + 1, y + 2
                     max_x, max_y = max(max_x, x + 1), max(max_y, y + 3)
         self.dimensions = max_x + 1, max_y + 1
 
 
 class VisualizerAPI(ClientAPI):
+    """Extend ClientAPI with coordinates and images"""
     def __init__(self, registry: Registry, claim_coverage: RequirementClaimMapper, visualizer: Visualizer):
         super().__init__(registry, claim_coverage)
         self.visualizer = visualizer

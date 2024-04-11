@@ -1,11 +1,14 @@
+"""Batch tool-data import"""
+
 from ast import Set
 import json
 import logging
 import pathlib
 import io
 from typing import Dict, List, Optional, Type
-from framing.raw_data import Raw
-from tcsfw.address import Addresses, AnyAddress
+from enum import StrEnum
+
+from tcsfw.address import Addresses
 from tcsfw.android_manifest_scan import AndroidManifestScan
 from tcsfw.basics import ExternalActivity
 from tcsfw.censys_scan import CensysScan
@@ -20,8 +23,7 @@ from tcsfw.spdx_reader import SPDXReader
 from tcsfw.ssh_audit_scan import SSHAuditScan
 from tcsfw.testsslsh_scan import TestSSLScan
 from tcsfw.tools import CheckTool, SimpleFlowTool
-from tcsfw.traffic import EvidenceSource, IPFlow
-from enum import StrEnum
+from tcsfw.traffic import EvidenceSource
 from tcsfw.tshark_reader import TSharkReader
 from tcsfw.vulnerability_reader import VulnerabilityReader
 from tcsfw.web_checker import WebChecker
@@ -56,14 +58,14 @@ class BatchImporter:
         """Import a batch of files from a directory or zip file recursively."""
         if file.is_file() and file.suffix.lower() == ".zip":
             raise NotImplementedError("Zip file import is not implemented yet.")
-        elif file.is_dir:
+        if file.is_dir:
             self._import_batch(file)
         else:
             raise ValueError(f"Expected directory or ZIP as : {file.as_posix()}")
 
     def _import_batch(self, file: pathlib.Path):
         """Import a batch of files from a directory or zip file recursively."""
-        self.logger.info(f"scanning {file.as_posix()}")
+        self.logger.info("scanning %s", file.as_posix())
         if file.is_dir():
             dir_name = file.name
             meta_file = file / "00meta.json"
@@ -114,7 +116,7 @@ class BatchImporter:
                 self._do_process_files(proc_list, info, skip_processing)
 
             if not info.label:
-                self.logger.info(f"skipping all files as no 00meta.json")
+                self.logger.info("skipping all files as no 00meta.json")
 
             # recursively scan the directory
             for child in proc_list:
@@ -123,7 +125,7 @@ class BatchImporter:
                         continue
                     # process the files individually
                     if not info.default_include and info.label not in self.filter.included:
-                        self.logger.debug(f"skipping (default=False) {child.as_posix()}")
+                        self.logger.debug("skipping (default=False) %s", child.as_posix())
                         continue # skip file if not explicitly included
                     with child.open("rb") as f:
                         self._do_process(f, child, info, skip_processing)
@@ -133,7 +135,7 @@ class BatchImporter:
     def _do_process(self, stream: io.BytesIO, file_path: pathlib.Path, info: 'FileMetaInfo', skip_processing: bool):
         """Process the file as stream"""
         if not skip_processing:
-            self.logger.info(f"processing ({info.label}) {file_path.as_posix()}")
+            self.logger.info("processing (%s) %s", info.label, file_path.as_posix())
 
         file_name = file_path.name
         file_ext = file_path.suffix.lower()
@@ -164,14 +166,15 @@ class BatchImporter:
                 ev = info.source.rename(name=reader.tool.name, base_ref=file_path.as_posix())
                 self.evidence.setdefault(info.label, []).append(ev)
                 if skip_processing:
-                    self.logger.info(f"skipping ({info.label}) {file_path.as_posix()}")
+                    self.logger.info("skipping (%s) %s", info.label, file_path.as_posix())
                     return
                 reader.load_baseline = info.load_baseline
-                return reader.process_file(stream, file_name, self.interface, ev)
+                reader.process_file(stream, file_name, self.interface, ev)
+                return
 
         except Exception as e:
             raise ValueError(f"Error in {file_name}") from e
-        self.logger.info(f"skipping unsupported '{file_name}' type {info.file_type}")
+        self.logger.info("skipping unsupported '%s' type %s", file_name, info.file_type)
 
     def _do_process_files(self, files: List[pathlib.Path], info: 'FileMetaInfo', skip_processing: bool):
         """Process files"""
@@ -179,7 +182,7 @@ class BatchImporter:
         tool.load_baseline = info.load_baseline
 
         if skip_processing:
-            self.logger.info(f"skipping ({info.label}) data files")
+            self.logger.info("skipping (%s) data files", info.label)
             ev = info.source.rename(name=tool.tool.name)
             self.evidence.setdefault(info.label, []).append(ev)
             return
@@ -195,9 +198,9 @@ class BatchImporter:
             if done:
                 unmapped.remove(fn.name)
             else:
-                self.logger.info(f"unprocessed ({info.label}) file {fn.as_posix()}")
+                self.logger.info("unprocessed (%s) file %s", info.label, fn.as_posix())
         if unmapped:
-            self.logger.debug(f"no files for {sorted(unmapped)}")
+            self.logger.debug("no files for %s", sorted(unmapped))
 
 
 class BatchFileType(StrEnum):
@@ -245,17 +248,17 @@ class FileMetaInfo:
         return cls.parse_from_json(json.load(stream), directory_name, system)
 
     @classmethod
-    def parse_from_json(cls, json: Dict, directory_name: str, system: IoTSystem) -> 'FileMetaInfo':
+    def parse_from_json(cls, json_data: Dict, directory_name: str, system: IoTSystem) -> 'FileMetaInfo':
         """Parse from JSON"""
-        label = str(json.get("label", directory_name))
-        file_type = BatchFileType.parse(json.get("file_type")).value
+        label = str(json_data.get("label", directory_name))
+        file_type = BatchFileType.parse(json_data.get("file_type")).value
         r = cls(label, file_type)
-        r.load_baseline = bool(json.get("load_baseline", False))
-        r.file_load_order = json.get("file_order", [])
-        r.default_include = bool(json.get("include", True))
+        r.load_baseline = bool(json_data.get("load_baseline", False))
+        r.file_load_order = json_data.get("file_order", [])
+        r.default_include = bool(json_data.get("include", True))
 
         # read batch-specific addresses
-        for add, ent in json.get("addresses", {}).items():
+        for add, ent in json_data.get("addresses", {}).items():
             address = Addresses.parse_address(add)
             entity = system.get_entity(ent)
             if not entity:
@@ -263,7 +266,7 @@ class FileMetaInfo:
             r.source.address_map[address] = entity
 
         # read batch-specific external activity policies
-        for n, policy_n in json.get("external_activity", {}).items():
+        for n, policy_n in json_data.get("external_activity", {}).items():
             node = system.get_entity(n)
             if not node:
                 raise ValueError(f"Unknown entity '{n}'")

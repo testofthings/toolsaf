@@ -4,7 +4,7 @@ from tcsfw.inspector import Inspector
 from tcsfw.main import ARP
 from tcsfw.basics import ExternalActivity
 from tcsfw.traffic import EthernetFlow
-from tcsfw.verdict import Status
+from tcsfw.basics import Status
 
 
 def test_serve_arp():

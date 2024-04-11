@@ -1,9 +1,11 @@
+"""Traffic flow and events"""
+
 import datetime
-from typing import Any, Callable, Tuple, Set, Optional, Self, Union, Dict
+from typing import Any, Callable, Tuple, Set, Optional, Self, Dict
 
 from tcsfw.address import HWAddress, IPAddress, HWAddresses, IPAddresses, Protocol, EndpointAddress, AnyAddress, \
     Addresses
-from tcsfw.property import Properties, PropertyKey
+from tcsfw.property import PropertyKey
 
 
 class EvidenceSource:
@@ -17,9 +19,11 @@ class EvidenceSource:
 
     def rename(self, name: str) -> Self:
         """Rename and create new source"""
-        return EvidenceSource(name, self.base_ref, self.label, self.model_override)
+        s = EvidenceSource(name, self.base_ref, self.label)
+        s.model_override = self.model_override
+        return s
 
-    def get_data_json(self, id_resolver: Callable[[Any], Any]) -> Dict:
+    def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict:
         """Get extra data as JSON"""
         return {}
 
@@ -59,7 +63,7 @@ class Tool:
         return self.name
 
 
-"""No evidence"""
+# No evidence
 NO_EVIDENCE = Evidence(EvidenceSource("No evidence"))
 
 
@@ -80,14 +84,14 @@ class Event:
         """Short event information"""
         return self.get_value_string() or self.evidence.source.name
 
-    def get_data_json(self, id_resolver: Callable[[Any], Any]) -> Dict:
+    def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict:
         """Get JSON representation of data"""
         return {}
 
     @classmethod
-    def decode_data_json(cls, evidence: Evidence, data: Dict, entity_resolver: Callable[[Any], Any]):
+    def decode_data_json(cls, evidence: Evidence, data: Dict, entity_resolver: Callable[[Any], Any]) -> 'Event':
         """Placeholder for event decoding from JSON"""
-        return None
+        raise NotImplementedError()
 
     def __repr__(self):
         return self.get_value_string()
@@ -106,14 +110,14 @@ class ServiceScan(Event):
         self.endpoint = endpoint
         self.service_name = service_name
 
-    def get_data_json(self, id_resolver: Callable[[Any], Any]) -> Dict:
+    def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict:
         return {
             "endpoint": self.endpoint.get_parseable_value(),
             "service": self.service_name,
         }
 
     @classmethod
-    def decode_data_json(cls, evidence: Evidence, data: Dict, entity_resolver: Callable[[Any], Any]) -> 'ServiceScan':
+    def decode_data_json(cls, evidence: Evidence, data: Dict, _entity_resolver: Callable[[Any], Any]) -> 'ServiceScan':
         """Decode event from JSON"""
         endpoint = Addresses.parse_endpoint(data["endpoint"])
         name = data.get("service", "")
@@ -124,19 +128,20 @@ class ServiceScan(Event):
 
 
 class HostScan(Event):
+    """Host scan result"""
     def __init__(self, evidence: Evidence, host: AnyAddress, endpoints: Set[EndpointAddress]):
         super().__init__(evidence)
         self.host = host
         self.endpoints = endpoints
 
-    def get_data_json(self, id_resolver: Callable[[Any], Any]) -> Dict:
+    def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict:
         return {
             "host": self.host.get_parseable_value(),
             "endpoints": [e.get_parseable_value() for e in self.endpoints],
         }
 
     @classmethod
-    def decode_data_json(cls, evidence: Evidence, data: Dict, entity_resolver: Callable[[Any], Any]) -> 'HostScan':
+    def decode_data_json(cls, evidence: Evidence, data: Dict, _entity_resolver: Callable[[Any], Any]) -> 'HostScan':
         """Decode event from JSON"""
         host = Addresses.parse_endpoint(data["host"])
         endpoints = {Addresses.parse_endpoint(e) for e in data.get("endpoints", [])}
@@ -156,7 +161,7 @@ class Flow(Event):
         """Get source or target address stack"""
         raise NotImplementedError()
 
-    def port(self, target=True) -> int:
+    def port(self, _target=True) -> int:
         """Get source or target (default) port or -1"""
         return -1
 
@@ -177,7 +182,7 @@ class Flow(Event):
         """Get target top address"""
         return NotImplementedError()
 
-    def get_data_json(self, id_resolver: Callable[[Any], Any]) -> Dict:
+    def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict:
         r = {}  # protocol set by subclass, which knows the default
         if self.protocol != Protocol.ETHERNET:
             r["protocol"] = self.protocol.value
@@ -202,6 +207,7 @@ class Flow(Event):
 
 
 class EthernetFlow(Flow):
+    """Ethernet flow"""
     def __init__(self, evidence: Evidence, source: HWAddress, target: HWAddress, payload=-1,
                  protocol=Protocol.ETHERNET):
         super().__init__(evidence, protocol)
@@ -212,7 +218,7 @@ class EthernetFlow(Flow):
     def stack(self, target: bool) -> Tuple[AnyAddress]:
         return (self.target,) if target else (self.source,)
 
-    def port(self, target=True) -> int:
+    def port(self, _target=True) -> int:
         return self.payload  # both ways
 
     def get_source_address(self) -> AnyAddress:
@@ -232,7 +238,7 @@ class EthernetFlow(Flow):
         return r
 
     @classmethod
-    def decode_data_json(cls, evidence: Evidence, data: Dict, entity_resolver: Callable[[Any], Any]) -> 'EthernetFlow':
+    def decode_data_json(cls, evidence: Evidence, data: Dict, _entity_resolver: Callable[[Any], Any]) -> 'EthernetFlow':
         protocol = Protocol.get_protocol(data.get("protocol"), Protocol.ETHERNET)
         source = HWAddress.new(data["source"])
         target = HWAddress.new(data["target"])
@@ -288,29 +294,34 @@ class IPFlow(Flow):
         self.target = target
 
     @classmethod
-    def IP(cls, source_hw: str, source_ip: str, protocol: int) -> 'IPFlow':
-        return IPFlow(NO_EVIDENCE, source=(HWAddress.new(source_hw), IPAddress.new(source_ip), protocol), 
+    def IP(cls, source_hw: str, source_ip: str, protocol: int) -> 'IPFlow': # pylint: disable=invalid-name
+        """New IP flow"""
+        return IPFlow(NO_EVIDENCE, source=(HWAddress.new(source_hw), IPAddress.new(source_ip), protocol),
                       protocol=Protocol.IP)
 
     @classmethod
-    def UDP(cls, source_hw: str, source_ip: str, port: int) -> 'IPFlow':
-        return IPFlow(NO_EVIDENCE, source=(HWAddress.new(source_hw), IPAddress.new(source_ip), port), 
+    def UDP(cls, source_hw: str, source_ip: str, port: int) -> 'IPFlow':  # pylint: disable=invalid-name
+        """New UDP flow"""
+        return IPFlow(NO_EVIDENCE, source=(HWAddress.new(source_hw), IPAddress.new(source_ip), port),
                       protocol=Protocol.UDP)
 
     @classmethod
-    def TCP(cls, source_hw: str, source_ip: str, port: int) -> 'IPFlow':
-        return IPFlow(NO_EVIDENCE, source=(HWAddress.new(source_hw), IPAddress.new(source_ip), port), 
+    def TCP(cls, source_hw: str, source_ip: str, port: int) -> 'IPFlow': # pylint: disable=invalid-name
+        """New TCP flow"""
+        return IPFlow(NO_EVIDENCE, source=(HWAddress.new(source_hw), IPAddress.new(source_ip), port),
                       protocol=Protocol.TCP)
 
     @classmethod
     def udp_flow(cls, source_hw=HWAddresses.NULL.data, source_ip="0.0.0.0", source_port=0,
                  target_hw=HWAddresses.NULL.data, target_ip="0.0.0.0", target_port=0):
+        """New UDP flow with both endpoints"""
         return IPFlow(NO_EVIDENCE, source=(HWAddress.new(source_hw), IPAddress.new(source_ip), source_port),
                       target=(HWAddress.new(target_hw), IPAddress.new(target_ip), target_port), protocol=Protocol.UDP)
 
     @classmethod
     def tcp_flow(cls, source_hw=HWAddresses.NULL.data, source_ip="0.0.0.0", source_port=0,
                  target_hw=HWAddresses.NULL.data, target_ip="0.0.0.0", target_port=0):
+        """New TCP flow with both endpoints"""
         return IPFlow(NO_EVIDENCE, source=(HWAddress.new(source_hw), IPAddress.new(source_ip), source_port),
                       target=(HWAddress.new(target_hw), IPAddress.new(target_ip), target_port), protocol=Protocol.TCP)
 
@@ -325,6 +336,7 @@ class IPFlow(Flow):
         return IPFlow(self.evidence, self.target, self.source, self.protocol)
 
     def new_evidence(self, evidence: Evidence) -> Self:
+        """New flow with new evidence"""
         flow = IPFlow(evidence, self.source, self.target, self.protocol)
         flow.evidence = evidence
         return flow

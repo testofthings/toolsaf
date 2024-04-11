@@ -1,5 +1,7 @@
+"""Implmentation of claim mapping and coverage"""
+
 import logging
-from typing import Dict, Set, List, Tuple
+from typing import Dict, Set, Tuple
 
 from tcsfw.claim import AbstractClaim
 from tcsfw.claim_set import RequirementClaim, ClaimContext
@@ -7,9 +9,8 @@ from tcsfw.entity import Entity, ClaimStatus, ClaimAuthority
 from tcsfw.model import IoTSystem
 from tcsfw.property import PropertyKey
 from tcsfw.requirement import Specification, Requirement, SelectorContext
-from tcsfw.selector import RequirementSelector
 from tcsfw.traffic import Tool
-from tcsfw.basics import Verdict
+from tcsfw.verdict import Verdict
 
 
 class RequirementStatus:
@@ -30,7 +31,7 @@ class ClaimMapping:
         self.results: Dict[Entity, Dict[Requirement, RequirementStatus]] = {}
         self.aliases: Dict[Tuple[Requirement, Entity, AbstractClaim], str] = {}
 
-    def get_section(self, entity: Entity, requirement: Requirement) -> str:
+    def get_section(self, entity: Entity, _requirement: Requirement) -> str:
         """Get section for an entity and requirement"""
         return self.DefaultSections.get(entity.concept_name, entity.concept_name)
 

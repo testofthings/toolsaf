@@ -1,20 +1,20 @@
+"""Testssl.sh output reading tool"""
+
 from io import BytesIO
 import json
-import pathlib
-from typing import Dict, List, Optional
+from typing import Dict
 
-from tcsfw.address import AnyAddress, Protocol
-from tcsfw.entity import Entity
+from tcsfw.address import AnyAddress
 from tcsfw.event_interface import EventInterface, PropertyAddressEvent
 from tcsfw.model import Service, IoTSystem, NetworkNode
-from tcsfw.property import PropertyKey, Properties, PropertyKey
-from tcsfw.registry import Registry
+from tcsfw.property import PropertyKey, Properties
 from tcsfw.tools import EndpointCheckTool
 from tcsfw.traffic import Evidence, EvidenceSource
-from tcsfw.basics import Verdict
+from tcsfw.verdict import Verdict
 
 
 class TestSSLScan(EndpointCheckTool):
+    """Testssl.sh output reading tool"""
     def __init__(self, system: IoTSystem):
         super().__init__("testssl", ".json", system)
         self.tool.name = "Testssl.sh"
@@ -23,9 +23,9 @@ class TestSSLScan(EndpointCheckTool):
     def _filter_node(self, node: NetworkNode) -> bool:
         return isinstance(node, Service)
 
-    def process_stream(self,  endpoint: AnyAddress, data_file: BytesIO, interface: EventInterface,
+    def process_stream(self,  endpoint: AnyAddress, stream: BytesIO, interface: EventInterface,
                        source: EvidenceSource):
-        raw = json.load(data_file)
+        raw = json.load(stream)
         evi = Evidence(source)
         self.do_scan(interface, endpoint, raw, evi)
 
@@ -37,7 +37,6 @@ class TestSSLScan(EndpointCheckTool):
             f_id = f['id']
             if f_id == 'overall_grade':
                 continue
-            rm, _, ip = f['ip'].partition("/")
             severity = f['severity']
             finding = f['finding']
             if severity in {'INFO', 'OK', 'LOW'} or finding == '--':

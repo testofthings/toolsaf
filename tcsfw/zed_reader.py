@@ -1,17 +1,17 @@
+"""ZED attack proxy result reader"""
+
 from io import BytesIO
 import json
-import pathlib
 from datetime import datetime
 from typing import List, Set
 
 from tcsfw.address import EndpointAddress, Protocol, DNSName
-from tcsfw.entity import Entity
 from tcsfw.event_interface import EventInterface, PropertyAddressEvent
-from tcsfw.model import IoTSystem, Service
+from tcsfw.model import IoTSystem
 from tcsfw.property import Properties, PropertyKey
 from tcsfw.tools import BaseFileCheckTool
 from tcsfw.traffic import EvidenceSource, Evidence
-from tcsfw.basics import Verdict
+from tcsfw.verdict import Verdict
 
 
 class ZEDReader(BaseFileCheckTool):

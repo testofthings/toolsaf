@@ -1,7 +1,9 @@
+"""Event interface to consume model events"""
+
 from typing import Dict, Optional, Type, Callable, Any, Tuple
 
 from tcsfw.address import Addresses, AnyAddress
-from tcsfw.basics import Verdict
+from tcsfw.verdict import Verdict
 from tcsfw.entity import Entity
 from tcsfw.model import IoTSystem
 from tcsfw.property import PropertyKey
@@ -11,6 +13,7 @@ from tcsfw.verdict import Verdictable
 
 
 class EventInterface:
+    """Event interface"""
     def get_system(self) -> IoTSystem:
         """Access system model"""
         raise NotImplementedError()
@@ -146,6 +149,7 @@ class PropertyAddressEvent(Event, Verdictable):
 
 
 class EventMap:
+    """Map between event classes and names"""
     Event_types = {
             "flow-eth": EthernetFlow,
             "flow-ip": IPFlow,
@@ -161,8 +165,10 @@ class EventMap:
 
     @classmethod
     def get_event_class(cls, name: str) -> Optional[Type[Event]]:
+        """Get event class by name"""
         return cls.Event_types.get(name)
 
     @classmethod
     def get_event_name(cls, event: Type[Event]) -> str:
+        """Get event name by class"""
         return cls.Event_names[event]

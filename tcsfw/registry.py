@@ -1,5 +1,7 @@
+"""Event registry backed by database"""
+
 import logging
-from typing import Optional, Dict, Self, Any, Set, Tuple
+from typing import Optional, Dict, Self, Any, Set
 
 from tcsfw.entity import Entity
 from tcsfw.entity_database import EntityDatabase, InMemoryDatabase
@@ -7,7 +9,6 @@ from tcsfw.event_interface import EventInterface, PropertyAddressEvent, Property
 from tcsfw.event_logger import EventLogger
 from tcsfw.inspector import Inspector
 from tcsfw.model import IoTSystem, Connection, Host, Service
-from tcsfw.property import PropertyKey
 from tcsfw.services import NameEvent
 from tcsfw.traffic import ServiceScan, HostScan, Event, EvidenceSource, Flow
 
@@ -76,7 +77,7 @@ class Registry(EventInterface):
         self.evidence_filter = s_filter
         self.database.reset(s_filter)
         if evidence_filter is not None:
-            self.logger.info("filter: " + " ".join([f"{e.name}={v}" for e, v in evidence_filter.items()]))
+            self.logger.info("filter: %s", " ".join([f"{e.name}={v}" for e, v in evidence_filter.items()]))
         # must call logging reset _after_ database reset, as system events are send with logging reset
         self.logging.reset()
         return self
@@ -116,9 +117,9 @@ class Registry(EventInterface):
 
     def host_scan(self, scan: HostScan) -> Optional[Host]:
         self._new_event(scan)
-        return self.logging.host_scan(scan)
         if self.database.events_thru_db:
             return None
+        return self.logging.host_scan(scan)
 
     def __repr__(self):
         return self.logging.__repr__()

@@ -1,3 +1,5 @@
+"""Available requirement specifications"""
+
 from typing import List
 from tcsfw.requirement import Specification
 from tcsfw.default_requirements import DEFAULT
