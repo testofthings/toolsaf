@@ -1,6 +1,5 @@
 """Check precense of saved web pages"""
 
-from datetime import datetime
 from io import BytesIO, TextIOWrapper
 import re
 import urllib
@@ -36,8 +35,8 @@ class WebChecker(BaseFileCheckTool):
             if f_url != url:
                 continue
             self.logger.info("web link %s: %s", url, status_text)
-            kv = Properties.DOCUMENT_AVAILABILITY.append_key(key).verdict(Verdict.PASS if ok else Verdict.FAIL, status_text)
-            source.timestamp = datetime.now()  # FIXME: get timestamp from the file
+            kv = Properties.DOCUMENT_AVAILABILITY.append_key(key).verdict(
+                Verdict.PASS if ok else Verdict.FAIL, status_text)
             evidence = Evidence(source, url)
             ev = PropertyEvent(evidence, self.system, kv)
             interface.property_update(ev)

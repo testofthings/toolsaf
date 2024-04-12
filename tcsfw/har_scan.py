@@ -22,7 +22,7 @@ class HARScan(NodeCheckTool):
         super().__init__("har", ".json", system)
         self.tool.name = "HAR"
 
-    def _filter_component(self, node: NetworkNode) -> bool:
+    def filter_component(self, node: NetworkNode) -> bool:
         return isinstance(node, Host)
 
     def process_stream(self, node: NetworkNode, data_file: BytesIO, interface: EventInterface, source: EvidenceSource):

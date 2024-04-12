@@ -78,3 +78,9 @@ def test_parse_endpoint_address():
     assert a.get_host() == HWAddress.new("01:02:03:04:05:06")
     assert a.protocol == Protocol.HTTP
     assert a.port == -1
+
+
+def test_hw_address_generation():
+    ip = IPAddress.new("192.168.0.2")
+    hw = HWAddress.from_ip(ip)
+    assert hw == HWAddress('40:00:c0:a8:00:02')

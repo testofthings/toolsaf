@@ -23,7 +23,7 @@ class CensysScan(EndpointCheckTool):
         super().__init__("censys", ".json", system)
         self.tool.name = "Censys"
 
-    def _filter_node(self, node: NetworkNode) -> bool:
+    def filter_node(self, node: NetworkNode) -> bool:
         return isinstance(node, Host)
 
     def process_stream(self, endpoint: AnyAddress, stream: BytesIO, interface: EventInterface, source: EvidenceSource):

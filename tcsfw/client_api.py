@@ -120,17 +120,16 @@ class ClientAPI(ModelListener):
         if path == "all":
             request.get_connections = False
             return {"events:" : list(self.api_iterate_all(request.change_path(".")))}
-        elif path.startswith("coverage"):
+        if path.startswith("coverage"):
             return self.get_coverage(context.change_path(path[8:]))
-        elif path.startswith("host/"):
+        if path.startswith("host/"):
             _, r = self.get_entity(self.registry.system, context.change_path(path[5:]))
             return r
-        elif path.startswith("log"):
+        if path.startswith("log"):
             ps = request.parameters
             r = self.get_log(ps.get("entity", ""), ps.get("key", ""))
             return r
-        else:
-            raise FileNotFoundError("Bad API request")
+        raise FileNotFoundError("Bad API request")
 
     def api_post(self, request: APIRequest, data: Optional[BinaryIO]) -> Dict:
         """Post API data"""
@@ -202,8 +201,8 @@ class ClientAPI(ModelListener):
                 "ref": ev.evidence.get_reference(),
                 "entity": ent.long_name() if ent else "",
             }
-            if lo.property:
-                ls["property"] = f"{lo.property[0]}"
+            if lo.property_value:
+                ls["property"] = f"{lo.property_value[0]}"
             lo_v = ev.get_verdict() if isinstance(ev, Verdictable) else Verdict.INCON
             if lo_v != Verdict.INCON:
                 ls["verdict"] = ev.get_verdict().value
@@ -355,7 +354,7 @@ class ClientAPI(ModelListener):
         """Yield property update, if properites to show"""
         pr = self.get_properties(entity.properties)
         if not pr:
-            return []
+            return
         r = { "update": {
             "id": self.get_id(entity),
             "properties": pr

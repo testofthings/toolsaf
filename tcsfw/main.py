@@ -10,6 +10,8 @@ from tcsfw.verdict import Verdict
 ProtocolType = Union['ProtocolConfigurer', Type['ProtocolConfigurer']]
 ServiceOrGroup = Union['ServiceBuilder', 'ServiceGroupBuilder']
 
+# pylint: disable=duplicate-code
+# pylint: disable=cyclic-import
 
 class ConfigurationException(Exception):
     """Feature or function misconfigured"""
@@ -450,7 +452,8 @@ class Builder:
     @classmethod
     def new(cls, name="Unnamed system") -> SystemBuilder:
         """Create a new system builder"""
-        from tcsfw.builder_backend import SystemBackendRunner  # avoid circular import
+        # avoid circular import
+        from tcsfw.builder_backend import SystemBackendRunner  # pylint: disable=import-outside-toplevel
         return SystemBackendRunner(name)
 
     @classmethod

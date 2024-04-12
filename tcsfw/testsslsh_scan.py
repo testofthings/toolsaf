@@ -20,7 +20,7 @@ class TestSSLScan(EndpointCheckTool):
         self.tool.name = "Testssl.sh"
         self.property_key = Properties.PROTOCOL.append_key("tls")
 
-    def _filter_node(self, node: NetworkNode) -> bool:
+    def filter_node(self, node: NetworkNode) -> bool:
         return isinstance(node, Service)
 
     def process_stream(self,  endpoint: AnyAddress, stream: BytesIO, interface: EventInterface,

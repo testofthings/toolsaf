@@ -462,7 +462,7 @@ class IoTSystem(NetworkNode):
             return True
         if h.is_multicast() or h.is_null() or not isinstance(h, IPAddress):
             return False
-        # FIXME: How it works for IPv6?
+        # FIXME: Broadcast for IPv6 not implemented  pylint: disable=fixme
         for m in self.ip_networks:
             if h.data in m:
                 return False

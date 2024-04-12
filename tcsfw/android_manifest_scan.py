@@ -19,7 +19,7 @@ class AndroidManifestScan(ComponentCheckTool):
         super().__init__("android", ".xml", system)
         self.tool.name = "Android Manifest"
 
-    def _filter_component(self, component: NodeComponent) -> bool:
+    def filter_component(self, component: NodeComponent) -> bool:
         return isinstance(component, Software)
 
     def process_stream(self, component: NodeComponent, data_file: BytesIO, interface: EventInterface,

@@ -69,7 +69,7 @@ class SubLoader:
         s.model_override = True
         return s
 
-    def load(self, registry: Registry, coverage: RequirementClaimMapper, filter: LabelFilter):
+    def load(self, registry: Registry, coverage: RequirementClaimMapper, label_filter: LabelFilter):
         """Load evidence"""
 
 
@@ -107,8 +107,8 @@ class FabricationLoader(SubLoader, TrafficDataBuilder):
         self.flows.append(f)
         return self
 
-    def load(self, registry: Registry, coverage: RequirementClaimMapper, filter: LabelFilter):
-        if not filter.filter(self.source_label):
+    def load(self, registry: Registry, coverage: RequirementClaimMapper, label_filter: LabelFilter):
+        if not label_filter.filter(self.source_label):
             return
         evi = Evidence(self.get_source())
         for f in self.flows:
@@ -125,14 +125,14 @@ class ToolPlanLoader(SubLoader):
         self.properties: Dict[PropertyKey, Any] = {}
         self.groups = ["planning", group[0]]
 
-    def load(self, registry: Registry, coverage: RequirementClaimMapper, filter: LabelFilter):
+    def load(self, registry: Registry, coverage: RequirementClaimMapper, label_filter: LabelFilter):
         for g in self.groups:
-            if g in filter.excluded:
+            if g in label_filter.excluded:
                 return  # explicitly excluded
-            if g in filter.included:
+            if g in label_filter.included:
                 break  # explicitly included
         else:
-           return  # plans must be explicitly included
+            return  # plans must be explicitly included
 
         evidence = Evidence(self.get_source())
         for p, v in self.properties.items():

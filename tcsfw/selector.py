@@ -49,8 +49,6 @@ class SystemSelector(RequirementSelector):
     def select(self, entity: Entity, _context: SelectorContext) -> Iterator[IoTSystem]:
         if isinstance(entity, IoTSystem):
             yield entity
-        else:
-            return iter(())
 
 
 class HostSelector(RequirementSelector):
@@ -220,8 +218,7 @@ class UpdateConnectionSelector(ConnectionSelector):
     """Select update connections of a software"""
     def select(self, entity: Entity, context: SelectorContext) -> Iterator[Connection]:
         for sw in SoftwareSelector().select(entity, context):
-            for c in sw.update_connections:
-                yield c
+            yield from sw.update_connections
 
 
 class SoftwareSelector(RequirementSelector):
@@ -229,19 +226,17 @@ class SoftwareSelector(RequirementSelector):
     def select(self, entity: Entity, context: SelectorContext) -> Iterator[Software]:
         for h in HostSelector().select(entity, context):
             if not h.is_multicast():  # Multicast node does not contain software
-                for s in Software.list_software(h):
-                    yield s
+                yield from Software.list_software(h)
 
 
 class DataSelector(RequirementSelector):
     """Select data components"""
     def select(self, entity: Entity, _context: SelectorContext) -> Iterator[DataReference]:
         if not isinstance(entity, NetworkNode):
-            return None
+            return
         for c in entity.components:
             if isinstance(c, DataStorages):
-                for r in c.sub_components:
-                    yield r
+                yield from c.sub_components
 
     def personal(self, value=True) -> 'DataSelector':
         """Select personal data"""
@@ -286,7 +281,7 @@ class SequenceSelector(Generic[SS], RequirementSelector):
             for e in e_set:
                 n_set.extend(s.select(e, context))
             if not n_set:
-                return iter(())
+                return
             e_set = n_set
         for e in e_set:
             yield from self.sub.select(e, context)

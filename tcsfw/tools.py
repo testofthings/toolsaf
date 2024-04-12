@@ -30,12 +30,12 @@ class CheckTool:
         # Read a data file
         raise NotImplementedError(f"In {self.__class__.__name__}")
 
-    def _get_file_by_name(self, name: str) -> str:
+    def get_file_by_name(self, name: str) -> str:
         """Get data file by name"""
         assert self.data_file_suffix, "Data file suffix not set"
         return f"{name}{self.data_file_suffix}"
 
-    def _get_file_by_endpoint(self, address: AnyAddress) -> Optional[str]:
+    def get_file_by_endpoint(self, address: AnyAddress) -> Optional[str]:
         """Get data file by endpoint address"""
         assert self.data_file_suffix, f"Data file suffix not set for {self}"
         host = address.get_host()
@@ -61,7 +61,7 @@ class EndpointCheckTool(CheckTool):
         # map from file names into addressable entities
         self.data_file_suffix = data_file_suffix
         self.file_name_map: Dict[str, Addressable] = {}
-        self._create_file_name_map()
+        self.create_file_name_map()
 
     def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource):
         key = self.file_name_map.get(file_name)
@@ -71,33 +71,33 @@ class EndpointCheckTool(CheckTool):
             return True
         return False
 
-    def _create_file_name_map(self):
+    def create_file_name_map(self):
         """Create file name map"""
         for host in self.system.get_hosts(include_external=False):
             if host.status != Status.EXPECTED:
                 continue
-            if self._filter_node(host):
+            if self.filter_node(host):
                 # scan hosts
-                self._map_addressable(host)
+                self.map_addressable(host)
                 continue
             for s in host.children:
                 if s.status != Status.EXPECTED:
                     continue
-                if self._filter_node(s):
-                    self._map_addressable(s)
+                if self.filter_node(s):
+                    self.map_addressable(s)
 
-    def _map_addressable(self, entity: Addressable):
+    def map_addressable(self, entity: Addressable):
         """Map addressable entity to file names"""
         # First pass is DNS names, then IP addresses
         addresses = entity.get_addresses()
         ads_sorted = [a for a in addresses if isinstance(a.get_host(), DNSName)]
         ads_sorted.extend([a for a in addresses if isinstance(a.get_host(), IPAddress)])
         for a in ads_sorted:
-            a_file_name = self._get_file_by_endpoint(a)
+            a_file_name = self.get_file_by_endpoint(a)
             if a_file_name not in self.file_name_map:
                 self.file_name_map[a_file_name] = a
 
-    def _filter_node(self, _node: NetworkNode) -> bool:
+    def filter_node(self, _node: NetworkNode) -> bool:
         """Filter checked entities"""
         return True
 
@@ -112,7 +112,7 @@ class NodeCheckTool(CheckTool):
         super().__init__(tool_label, system)
         self.data_file_suffix = data_file_suffix
         self.file_name_map: Dict[str, NetworkNode] = {}
-        self._create_file_name_map()
+        self.create_file_name_map()
 
     def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource):
         key = self.file_name_map.get(file_name)
@@ -122,15 +122,15 @@ class NodeCheckTool(CheckTool):
             return True
         return False
 
-    def _create_file_name_map(self):
+    def create_file_name_map(self):
         """Create file name map"""
         tool = self
 
         def check_component(node: NetworkNode):
             for c in node.children:
-                if not tool._filter_component(c):
+                if not tool.filter_component(c):
                     continue
-                self.file_name_map[tool._get_file_by_name(c.name)] = c
+                self.file_name_map[tool.get_file_by_name(c.name)] = c
                 check_component(c)
         check_component(self.system)
 
@@ -139,7 +139,7 @@ class NodeCheckTool(CheckTool):
         """Check entity with data"""
         raise NotImplementedError()
 
-    def _filter_component(self, _node: NetworkNode) -> bool:
+    def filter_component(self, _node: NetworkNode) -> bool:
         """Filter checked entities"""
         return True
 
@@ -166,14 +166,14 @@ class ComponentCheckTool(CheckTool):
 
         def check_component(node: NetworkNode):
             for c in node.components:
-                if not tool._filter_component(c):
+                if not tool.filter_component(c):
                     continue
-                self.file_name_map[tool._get_file_by_name(c.name)] = c
+                self.file_name_map[tool.get_file_by_name(c.name)] = c
             for c in node.children:
                 check_component(c)
         check_component(self.system)
 
-    def _filter_component(self, _component: NodeComponent) -> bool:
+    def filter_component(self, _component: NodeComponent) -> bool:
         """Filter checked entities"""
         return True
 

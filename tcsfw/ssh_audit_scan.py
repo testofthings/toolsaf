@@ -20,7 +20,7 @@ class SSHAuditScan(EndpointCheckTool):
         self.tool.name = "SSH audit"
         self.property_key = Properties.PROTOCOL.append_key("ssh")
 
-    def _filter_node(self, node: NetworkNode) -> bool:
+    def filter_node(self, node: NetworkNode) -> bool:
         if not isinstance(node, Service):
             return False
         return node.protocol == Protocol.SSH

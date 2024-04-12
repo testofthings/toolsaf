@@ -124,7 +124,7 @@ class PropertyAddressEvent(Event, Verdictable):
         # without entity, at least for event log
         return self.key_value[0].get_value_string(self.key_value[1])
 
-    def get_data_json(self, id_resolver: Callable[[Any], Any]) -> Dict:
+    def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict:
         k, v = self.key_value
         r = {
             "address": self.address.get_parseable_value(),

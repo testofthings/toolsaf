@@ -52,6 +52,8 @@ class CoverageReport:
             raise ValueError(f"No such coverage info '{name}'")
 
     def _print_source_coverage(self, writer: TextIO, specification: Specification):
+        # pylint: disable=too-many-nested-blocks
+
         mapping = self._get_mappings(specification)
         sources = self.logging.get_all_property_sources()
 
@@ -296,7 +298,8 @@ class CoverageReport:
             sec_verdict = Verdict.PASS  # section verdict
             col_verdict = [Verdict.PASS] * len(cols)  # column (concept) verdicts
             rows = sec["rows"] = []
-            for req, req_stats in sorted(req_map.items(), key=lambda kv: req_sorter(kv[0])):
+            for req, req_stats in sorted(req_map.items(),
+                                         key=lambda kv: req_sorter(kv[0])):  # pylint: disable=cell-var-from-loop
                 if req.priority < specification.cutoff_priority:
                     continue  # quick hack
                 if not col_set.intersection(req_stats.keys()):

@@ -1,6 +1,7 @@
 """Batch tool-data import"""
 
 from ast import Set
+from datetime import datetime
 import json
 import logging
 import pathlib
@@ -33,10 +34,10 @@ from tcsfw.zed_reader import ZEDReader
 
 class BatchImporter:
     """Batch importer for importing a batch of files from a directory."""
-    def __init__(self, interface: EventInterface, filter: 'LabelFilter' = None):
+    def __init__(self, interface: EventInterface, label_filter: 'LabelFilter' = None):
         self.interface = interface
         self.system = interface.get_system()
-        self.filter = filter or LabelFilter()
+        self.label_filter = label_filter or LabelFilter()
         self.logger = logging.getLogger("batch_importer")
 
         # map file types into batch tools
@@ -108,7 +109,7 @@ class BatchImporter:
                 proc_list = sorted_files
 
             # filter by label
-            skip_processing = not self.filter.filter(info.label)
+            skip_processing = not self.label_filter.filter(info.label)
 
             # process the files in a batch?
             as_batch = info.file_type in self.batch_tools
@@ -124,7 +125,7 @@ class BatchImporter:
                     if as_batch or not info.label:
                         continue
                     # process the files individually
-                    if not info.default_include and info.label not in self.filter.included:
+                    if not info.default_include and info.label not in self.label_filter.included:
                         self.logger.debug("skipping (default=False) %s", child.as_posix())
                         continue # skip file if not explicitly included
                     with child.open("rb") as f:
@@ -164,6 +165,8 @@ class BatchImporter:
 
             if reader:
                 ev = info.source.rename(name=reader.tool.name, base_ref=file_path.as_posix())
+                # tool-specific code can override, if knows better
+                ev.timestamp = datetime.fromtimestamp(file_path.stat().st_mtime)
                 self.evidence.setdefault(info.label, []).append(ev)
                 if skip_processing:
                     self.logger.info("skipping (%s) %s", info.label, file_path.as_posix())
@@ -194,6 +197,8 @@ class BatchImporter:
             ev = info.source.rename(name=tool.tool.name, base_ref=fn.as_posix())
             self.evidence.setdefault(info.label, []).append(ev)
             with fn.open("rb") as f:
+                # tool-specific code can override, if knows better
+                ev.timestamp = datetime.fromtimestamp(fn.stat().st_mtime)
                 done = tool.process_file(f, fn.name, self.interface, ev)
             if done:
                 unmapped.remove(fn.name)

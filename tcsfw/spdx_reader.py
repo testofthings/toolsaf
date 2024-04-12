@@ -20,7 +20,7 @@ class SPDXReader(ComponentCheckTool):
         super().__init__("spdx", ".json", system)
         self.tool.name = "SPDX SBOM"
 
-    def _filter_component(self, component: NodeComponent) -> bool:
+    def filter_component(self, component: NodeComponent) -> bool:
         return isinstance(component, Software)
 
     def process_stream(self, component: NodeComponent, data_file: BytesIO, interface: EventInterface,

@@ -59,8 +59,7 @@ class InMemoryDatabase(EntityDatabase):
             if self.trail_filter.get(source.label, False):
                 self.logger.debug("process #%d %s", self.cursor, e)
                 return e
-            else:
-                self.logger.debug("filtered #%d %s", self.cursor, e)
+            self.logger.debug("filtered #%d %s", self.cursor, e)
         return None
 
     def get_id(self, entity) -> int:

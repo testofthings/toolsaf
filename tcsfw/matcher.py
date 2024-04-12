@@ -416,7 +416,7 @@ class MatchEngine:
         target_act = target.endpoint.external_activity
         if source_act > ExternalActivity.BANNED and target_act > ExternalActivity.BANNED:
             # unexpected connections may be allowed
-            reply = c.source == target.endpoint.entity # FIXME: This is weak?
+            reply = c.source == target.endpoint.entity
             if source_act >= ExternalActivity.UNLIMITED:
                 # source is free to make connections
                 c.status = Status.EXTERNAL
@@ -447,7 +447,7 @@ class MatchEndpoint:
         self.system = entity.get_system()
         self.services: Dict[EndpointAddress, List[MatchEndpoint]] = {}
         for s in entity.children:
-            assert isinstance(s, Service), "Non-service {}".format(s)
+            assert isinstance(s, Service), f"Non-service {s}"
             self.add_service(s, priority_services)
         self.external_activity = entity.external_activity
 
@@ -467,7 +467,7 @@ class MatchEndpoint:
     def add_service(self, service: Service, priority_services=True):
         """Add service matching to endpoint"""
         for a in service.addresses:
-            assert isinstance(a, EndpointAddress), "Non-endpoint address {}".format(a)
+            assert isinstance(a, EndpointAddress), f"Non-endpoint address {a}"
             me = MatchEndpoint(service, match_no_service=False)
             if priority_services:
                 me.match_priority = 1001  # the MAX

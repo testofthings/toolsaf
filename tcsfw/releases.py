@@ -20,7 +20,7 @@ class ReleaseReader(ComponentCheckTool):
         super().__init__("gitlab-releases", ".json", system)
         self.tool.name = "GitLab releases"
 
-    def _filter_component(self, component: NetworkNode) -> bool:
+    def filter_component(self, component: NetworkNode) -> bool:
         """Filter checked entities"""
         return isinstance(component, Software)
 

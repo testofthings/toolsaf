@@ -182,9 +182,7 @@ class HWAddress(AnyAddress):
     @classmethod
     def from_ip(cls, address: 'IPAddress') -> 'HWAddress':
         """Create testing HW address for IP address"""
-        a = "40:00"
-        for b in address.data.packed[-4:]:
-            a += f":{b:02x}"
+        a = "40:00:" + ":".join(f"{b:02x}" for b in address.data.packed[-4:])
         return HWAddress(a)
 
     def get_hw_address(self) -> Optional['HWAddress']:
