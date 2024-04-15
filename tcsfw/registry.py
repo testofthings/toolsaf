@@ -43,23 +43,6 @@ class Registry(EventInterface):
         """Get entity by id, if any"""
         return self.database.get_entity(id_value)
 
-    def do_task(self) -> bool:
-        """Perform registry task"""
-        e = self.database.next_pending()
-        if e is not None:
-            self.logging.consume(e)
-            return True
-        return False
-
-    def do_all_tasks(self) -> Self:
-        """Do all tasks at once"""
-        while True:
-            e = self.database.next_pending()
-            if e is None:
-                break
-            self.logging.consume(e)
-        return self
-
     def _new_event(self, event: Event):
         """Handle new event"""
         self.database.put_event(event)
@@ -82,43 +65,42 @@ class Registry(EventInterface):
         self.logging.reset()
         return self
 
+    def apply_all_events(self) -> Self:
+        """Apply all stored events, after reset"""
+        while True:
+            e = self.database.next_pending()
+            if e is None:
+                break
+            self.logging.consume(e)
+        return self
+
     def get_system(self) -> IoTSystem:
         return self.system
 
     def connection(self, flow: Flow) -> Optional[Connection]:
-        self._new_event(flow)
-        if self.database.events_thru_db:
-            return None
-        return self.logging.connection(flow)
+        e = self.logging.connection(flow)
+        if e is not None:
+            self._new_event(flow)
+        return e
 
     def name(self, event: NameEvent) -> Optional[Host]:
         self._new_event(event)
-        if self.database.events_thru_db:
-            return None
         return self.logging.name(event)
 
     def property_update(self, update: PropertyEvent) -> Optional[Entity]:
         self._new_event(update)
-        if self.database.events_thru_db:
-            return None
         return self.logging.property_update(update)
 
     def property_address_update(self, update: PropertyAddressEvent) -> Optional[Entity]:
         self._new_event(update)
-        if self.database.events_thru_db:
-            return None
         return self.logging.property_address_update(update)
 
     def service_scan(self, scan: ServiceScan) -> Optional[Service]:
         self._new_event(scan)
-        if self.database.events_thru_db:
-            return None
         return self.logging.service_scan(scan)
 
     def host_scan(self, scan: HostScan) -> Optional[Host]:
         self._new_event(scan)
-        if self.database.events_thru_db:
-            return None
         return self.logging.host_scan(scan)
 
     def __repr__(self):

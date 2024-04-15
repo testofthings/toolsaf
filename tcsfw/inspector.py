@@ -1,7 +1,7 @@
 """Model inspector"""
 
 import logging
-from typing import Dict, Set
+from typing import Dict, Optional, Set
 
 from tcsfw.address import DNSName, AnyAddress
 from tcsfw.basics import ExternalActivity, Status
@@ -21,16 +21,16 @@ class Inspector(EventInterface):
         self.matcher = SystemMatcher(system)
         self.system = system
         self.logger = logging.getLogger("inspector")
-        self.connection_count: Dict[Connection, int] = {}
-        self.sessions: Dict[Flow, bool] = {}
-        self.known_entities: Set[Entity] = set()
+        self.connection_count: Dict[Connection, int] = {}  # count connections
+        self.direction: Dict[Flow, bool] = {}              # direction: false = request, true = reply
+        self.known_entities: Set[Entity] = set()            # known entities
         self._list_hosts()
 
     def reset(self):
         """Reset the system clearing all evidence"""
         self.matcher.reset()
         self.connection_count.clear()
-        self.sessions.clear()
+        self.direction.clear()
         self._list_hosts()
 
     def _list_hosts(self):
@@ -55,24 +55,26 @@ class Inspector(EventInterface):
     def get_system(self) -> IoTSystem:
         return self.system
 
-    def connection(self, flow: Flow) -> Connection:
+    def connection(self, flow: Flow) -> Optional[Connection]:
         self.logger.debug("inspect flow %s", flow)
         key = self.matcher.connection_w_ends(flow)
         conn, _, _, reply = key
+        assert conn.status != Status.PLACEHOLDER, f"Received placeholder connection: {conn}"
 
         flow.reply = reply  # bit ugly to fix, but now available for logger
 
-        assert conn.status != Status.PLACEHOLDER, f"Received placeholder connection: {conn}"
-
-        c_count = self.connection_count.get(conn, 0) + 1
-        self.connection_count[conn] = c_count
+        conn_c = self.connection_count.get(conn, 0) + 1
+        self.connection_count[conn] = conn_c
+        new_conn = conn_c == 1  # new connection?
 
         # detect new sessions
-        session = self.sessions.get(flow)
-        new_session = session is None
-        if new_session:
-            # new session or direction
-            self.sessions[flow] = reply
+        conn_dir = self.direction.get(flow)
+        new_direction = conn_dir is None  # new direction?
+        if new_direction:
+            self.direction[flow] = not reply
+
+        if not (new_conn or new_direction):
+            return None  # old connection, old direction -> discard
 
         updated = set()   # entity which status updated
         send = set()      # force to send entity update
@@ -89,8 +91,8 @@ class Inspector(EventInterface):
         if target.status == Status.PLACEHOLDER:
             target.status = conn.status
 
-        if c_count == 1:
-            # new connection is seen
+        if new_conn:
+            # new connection is observed
             conn.set_seen_now()
             updated.add(conn)
             # what about learning local IP/HW address pairs
@@ -103,9 +105,8 @@ class Inspector(EventInterface):
                 if learn:
                     send.add(ends[1])
 
-        if new_session:
-            # flow event for each new session
-            # new direction, update sender
+        if new_direction:
+            # new direction, may be old connection
             if not reply:
                 update_seen_status(source)
                 if target.status == Status.UNEXPECTED:
@@ -125,7 +126,6 @@ class Inspector(EventInterface):
 
         # these entities to send events, in this order
         entities = [conn, source, source.get_parent_host(), target, target.get_parent_host()]
-
         for ent in entities:
             is_new = self._check_entity(ent)
             if is_new:
@@ -147,12 +147,12 @@ class Inspector(EventInterface):
             updated.discard(ent)
         return conn
 
-    def name(self, event: NameEvent) -> Host:
+    def name(self, event: NameEvent) -> Optional[Host]:
         address = event.address
         if event.service and event.service.captive_portal and event.address in event.service.parent.addresses:
             address = None  # it is just redirecting to itself
         name = DNSName(event.name)
-        h = self.system.learn_named_address(name, address)
+        h, changes = self.system.learn_named_address(name, address)
         if h not in self.known_entities:
             # new host
             if h.status == Status.UNEXPECTED:
@@ -169,6 +169,9 @@ class Inspector(EventInterface):
                     # either unknown DNS requester or peers can be externally active
                     h.status = Status.EXTERNAL
             self.known_entities.add(h)
+        elif not changes:
+            # old host and nothing learned -> stop this maddness to save resources
+            return None
         self.system.call_listeners(lambda ln: ln.address_change(h))
         return h
 

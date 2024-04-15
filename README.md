@@ -42,13 +42,26 @@ $ TCSFW_SERVER_API_KEY=xxx python samples/ruuvi/ruuvi.py \
     --http-server 8180
 ```
 
+## Providing tool data
+
 Once the security statement is defined, it can be verified.
 The verification is tool-driven based on output from the tools. Tool results must be stored in a [batch directory](Tools.md) structure, which is specified by `--read` argument, e.g.
 ```
-$ python samples/ruuvi/ruuvi.py --read <batch-directory>
+$ python samples/ruuvi/ruuvi.py --read <batch-dir>
 ```
 
 The `--read` and `--http-server` arguments can be combined to inspecft the verification results using the UI.
+
+Batch files can be provided through API in a zip-file to endpoint `api1/batch`.
+The content type must be set to `application/zip` and authorization-cookie must be set.
+This can be done e.g by `curl`-command, like this:
+```
+$ curl -v -X POST --data-binary @<batch-file>.zip  \
+   -H "Content-Type: application/zip" -b "authorization=xxx" \
+   http://localhost:8180/api1/batch
+```
+
+## More options
 
 The framework has additional [command-line options](CommandLine.md).
 

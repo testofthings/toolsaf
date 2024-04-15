@@ -43,7 +43,7 @@ def test_reset():
     assert dev1.connections[1].status == Status.UNEXPECTED
 
     # disable all sources
-    r.reset().do_all_tasks()
+    r.reset().apply_all_events()
 
     cache = {}
     assert dev1.get_verdict(cache) == Verdict.INCON
@@ -55,7 +55,7 @@ def test_reset():
     assert dev1.connections[1].status == Status.PLACEHOLDER
 
     # enable sources again
-    r.reset(enable_all=True).do_all_tasks()
+    r.reset(enable_all=True).apply_all_events()
 
     cache = {}
     assert dev1.get_verdict(cache) == Verdict.FAIL
@@ -85,7 +85,7 @@ def test_reset_2():
     flows = r.logging.collect_flows()
     assert len(flows) == 3
 
-    r.reset().do_all_tasks()
+    r.reset().apply_all_events()
     assert c1.status == Status.EXPECTED
     assert c1.is_relevant(ignore_ends=True)
     assert c2.status == Status.PLACEHOLDER
@@ -95,7 +95,7 @@ def test_reset_2():
     flows = r.logging.collect_flows()
     assert len(flows) == 1
 
-    r.reset(enable_all=True).do_all_tasks()
+    r.reset(enable_all=True).apply_all_events()
     assert c1.status == Status.EXPECTED
     assert c1.is_relevant(ignore_ends=True)
     assert c2.status == Status.UNEXPECTED
@@ -125,7 +125,7 @@ def test_reset_dhcp():
     assert cli.children[0].get_expected_verdict() == Verdict.PASS
 
     # disable all sources
-    r.reset().do_all_tasks()
+    r.reset().apply_all_events()
 
     assert len(cli.children) == 1
     assert len(cli.connections) == 1
@@ -133,7 +133,7 @@ def test_reset_dhcp():
     assert cli.children[0].get_expected_verdict() == Verdict.INCON
 
     # enable sources again
-    r.reset(enable_all=True).do_all_tasks()
+    r.reset(enable_all=True).apply_all_events()
 
     assert len(cli.children) == 1
     assert len(cli.connections) == 1

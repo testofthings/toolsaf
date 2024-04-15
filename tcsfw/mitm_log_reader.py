@@ -30,6 +30,9 @@ class MITMLogReader(BaseFileCheckTool):
 
         matcher = re.compile(r"\[[^]]+] ([^,]+),([^,]+),([^,]+),([^,]+),([^,]+),([^,]+),.*")
 
+        dupes = set()
+        fresh_c, dupe_c = 0, 0
+
         with TextIOWrapper(data) as f:
             while True:
                 raw_line = f.readline()
@@ -43,6 +46,15 @@ class MITMLogReader(BaseFileCheckTool):
                 ev, s_add, s_port, d_add, d_port, d = m.groups()
                 if ev not in {"tls_established", "tls_failed"}:
                     continue
+
+                # avoid repeating same event
+                dupe_key = ev, s_add, d_add, d_port  # source port can change
+                if dupe_key in dupes:
+                    dupe_c += 1
+                    continue
+                dupes.add(dupe_key)
+                fresh_c += 1
+
                 flow = IPFlow.tcp_flow(
                     # we do not know HW addresses from the log
                     HWAddresses.NULL.data, s_add, int(s_port),

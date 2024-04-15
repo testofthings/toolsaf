@@ -107,18 +107,22 @@ class EventLogger(EventInterface, ModelListener):
         if self.event_logger:
             self.print_event(ev)
 
-    def connection(self, flow: Flow) -> Connection:
+    def connection(self, flow: Flow) -> Optional[Connection]:
         lo = self._add(flow)
         e = self.inspector.connection(flow)
+        if e is None:
+            return None
         lo.pick_status_verdict(e)
         if self.event_logger:
             self.print_event(lo)
         self.current = None
         return e
 
-    def name(self, event: NameEvent) -> Host:
+    def name(self, event: NameEvent) -> Optional[Host]:
         lo = self._add(event)
         e = self.inspector.name(event)
+        if e is None:
+            return None  # redundant event, no actions
         lo.pick_status_verdict(e)
         if self.event_logger:
             self.print_event(lo)

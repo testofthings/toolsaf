@@ -1083,7 +1083,14 @@ class SystemBackendRunner(SystemBackend):
         api = VisualizerAPI(registry, cc, self.visualizer)
         if self.args.test_post:
             res, data = self.args.test_post
-            resp = api.api_post(APIRequest(res), io.BytesIO(data.encode()))
+            request = APIRequest.parse(res)
+            if data.strip().startswith("{"):
+                # assuming JSON
+                resp = api.api_post(request, io.BytesIO(data.encode()))
+            else:
+                # assuming file
+                api.logger.info("POST file %s", data)
+                resp = api.api_post_file(request, pathlib.Path(data))
             print(json.dumps(resp, indent=4))
         if self.args.test_get:
             for res in self.args.test_get:

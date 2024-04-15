@@ -10,7 +10,6 @@ class EntityDatabase:
     """Store and retrieve events, later entities, etc."""
     def __init__(self):
         self.logger = logging.getLogger("database")
-        self.events_thru_db = False  # all events through DB?
         # local ID integers for entities and connections, usable for persistent DB
         self.ids: Dict[Any, int] = {}
         self.reverse_id: List[Any] = []
@@ -73,8 +72,8 @@ class InMemoryDatabase(EntityDatabase):
         return self.reverse_id[id_value] if id_value < len(self.reverse_id) else None
 
     def put_event(self, event: Event):
-        if not self.events_thru_db and self.cursor == len(self.trail):
-            self.cursor += 1  # assuming event is sent directly
+        if  self.cursor == len(self.trail):
+            self.cursor += 1
         self.trail.append(event)
         source = event.evidence.source
         self.trail_filter.setdefault(source.label, True)

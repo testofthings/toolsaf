@@ -87,7 +87,7 @@ def test_registry_events():
 
     lis = AModelListener()
     reg.system.model_listeners = [lis]  # replace
-    reg.reset(enable_all=True).do_all_tasks()
+    reg.reset(enable_all=True).apply_all_events()
 
     # FIXME: We do not get one address event the 2nd time, as addresses are not cleared on reset
     # - If this is a problem, registry could keep track of learned addresses and clear them on reset

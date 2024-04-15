@@ -74,7 +74,7 @@ class Software(NodeComponent):
         return None
 
 
-@dataclass
+@dataclass(frozen=True)
 class CookieData:
     """Cookie data"""
     domain: str = "/"

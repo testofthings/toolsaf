@@ -4,6 +4,7 @@ import io
 import json
 import logging
 import os
+import pathlib
 import shutil
 import traceback
 import urllib
@@ -11,16 +12,14 @@ from typing import Dict, List, Tuple, Any, Iterable, BinaryIO, Optional
 import prompt_toolkit
 from prompt_toolkit.history import FileHistory
 
-from framing.raw_data import Raw
-
 from tcsfw.basics import Status
+from tcsfw.batch_import import BatchImporter
 from tcsfw.verdict import Verdict
 from tcsfw.claim_coverage import RequirementClaimMapper
 from tcsfw.coverage_result import CoverageReport
 from tcsfw.entity import Entity
 from tcsfw.event_interface import EventMap
 from tcsfw.model import Addressable, NetworkNode, Connection, Host, Service, ModelListener, IoTSystem, NodeComponent
-from tcsfw.pcap_reader import PCAPReader
 from tcsfw.property import Properties, PropertyKey, PropertySetValue, PropertyVerdictValue
 from tcsfw.registry import Registry
 from tcsfw.specifications import Specifications
@@ -85,6 +84,10 @@ class APIListener:
         """Property change event"""
         self.note_event(data)
 
+    def note_evidence_change(self, data: Dict):
+        """Evidence change event"""
+        self.note_event(data)
+
     def note_event(self, _data: Dict):
         """Any API event"""
 
@@ -137,8 +140,7 @@ class ClientAPI(ModelListener):
         r = {}
         if path == "reset":
             param = json.load(data) if data else {}
-            self.post_evidence_filter(param.get("evidence", {}), include_all=param.get("include_all", False))
-            self.system_reset()
+            self.system_reset(param.get("evidence", {}), include_all=param.get("include_all", False))
             if param.get("dump_all", False):
                 r = {"events": list(self.api_iterate_all(request.change_path(".")))}
         elif path.startswith("event/"):
@@ -149,16 +151,27 @@ class ClientAPI(ModelListener):
             js = json.load(data) if data else {}
             e = e_type.decode_data_json(NO_EVIDENCE, js, self.get_by_id)
             self.registry.consume(e)
-        elif path == "capture":
-            raw = Raw.stream(data)
-            count = PCAPReader(self.registry.system).parse(raw)
-            r = {"frames": count, "bytes": raw.bytes_available()}
         else:
-            raise NotImplementedError("Bad API request")
+            raise FileNotFoundError("Unknown API endpoint")
         return r
 
-    def post_evidence_filter(self, filter_list: Dict, include_all: bool = False):
-        """Post new evidence filter and reset the model"""
+    def api_post_file(self, request: APIRequest, data_file: pathlib.Path) -> Dict:
+        """Post API data in ZIP file"""
+        path = request.path
+        if path != "batch":
+            raise FileNotFoundError("Unknown API endpoint")
+        old_evidence = self.registry.all_evidence.copy()
+        importer = BatchImporter(self.registry)
+        importer.import_batch(data_file)
+        if old_evidence != self.registry.all_evidence:
+            # batch import can bring new evdence sources, send evidence change event
+            change_event = {"evidence": self.get_evidence_filter()}
+            for ln, _ in self.api_listener:
+                ln.note_evidence_change(change_event)
+        return {}
+
+    def system_reset(self, filter_list: Dict, include_all: bool = False):
+        """Reset, set new evidence filter and reset the model"""
         fs = {ev.label: ev for ev in self.registry.all_evidence}
         e_filter = {}
         for fn, sel in filter_list.items():
@@ -166,14 +179,14 @@ class ClientAPI(ModelListener):
             if ev:
                 e_filter[ev] = sel
         self.registry.reset(e_filter, include_all)
-
-    def system_reset(self):
-        """Do system reset with listener calls"""
         self.verdict_cache.clear()
+        # API reset event
         for ln, req in self.api_listener:
             context = RequestContext(req, self)
             d = self.get_system_info(context)
             ln.note_system_reset({"system": d}, self.registry.system)
+        # reapply all events after reset
+        self.registry.apply_all_events()
 
     def get_log(self, entity="", key="") -> Dict:
         """Get log"""
@@ -432,6 +445,7 @@ class ClientAPI(ModelListener):
     def address_change(self, host: Host):
         d = {
             "host_id": self.get_id(host),
+            "host_name": host.long_name(),  # to help reading JSON events
             "addresses": sorted([f"{a}" for a in host.addresses])
         }
         for ln, _ in self.api_listener:
@@ -448,7 +462,8 @@ class ClientAPI(ModelListener):
     def property_change(self, entity: Entity, value: Tuple[PropertyKey, Any]):
         props = self.get_properties({value[0]: value[1]})
         d = {
-            "id": self.get_id(entity)
+            "id": self.get_id(entity),
+            "ent_name": entity.long_name(),  # to help reading JSON events
         }
         # check if status change
         old_v = self.verdict_cache.pop(entity, None)
@@ -474,6 +489,7 @@ class ClientAPI(ModelListener):
             return  # new entity or no change -> no update
         js = {"update": {
             "id": self.get_id(entity),
+            "ent_name": entity.long_name(),  # to help reading JSON events
             "status": self.get_status_verdict(entity.status, new_v),
         }}
         for ln, _ in self.api_listener:

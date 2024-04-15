@@ -46,6 +46,8 @@ class HARScan(NodeCheckTool):
 
         raw_log = json.load(data_file)["log"]
 
+        dupes = set()
+
         raw_entries = raw_log["entries"]
         for raw in raw_entries:
             source.timestamp = datetime.strptime(raw["startedDateTime"], "%Y-%m-%dT%H:%M:%S.%fZ")
@@ -62,6 +64,13 @@ class HARScan(NodeCheckTool):
                 else:
                     cookie = component.cookies.get(name)
                 n_cookie = CookieData(decode(raw_c.get("domain", "")), decode(raw_c.get("path", "/")))
+
+                # avoid repeating same event
+                dupe_key = name, n_cookie
+                if dupe_key in dupes:
+                    continue
+                dupes.add(dupe_key)
+
                 verdict = Verdict.PASS
                 if self.load_baseline:
                     # loading baseline values

@@ -50,7 +50,6 @@ class SQLDatabase(EntityDatabase, ModelListener):
     """Use SQL database for storage"""
     def __init__(self, db_uri: str):
         super().__init__()
-        self.events_thru_db = False  # Later: all go to DB first
         self.engine = create_engine(db_uri)
         Base.metadata.create_all(self.engine)
         self.db_conn = self.engine.connect()
@@ -134,16 +133,15 @@ class SQLDatabase(EntityDatabase, ModelListener):
         offset = 0
         self.pending_offset = -1  # indicate all is read
         while True:
-            batch = self._read_event_batch(offset)
+            offset, batch = self._read_event_batch(offset)
             if not batch:
                 return  # no more events
-            offset += len(batch)
             for ev in batch:
                 event = self._form_event(ev)
                 yield event
 
     def _read_event_batch(self, offset: int,
-                          sources: Optional[Set[int]] = None) -> List[Tuple[str, EvidenceSource, str, str]]:
+                          sources: Optional[Set[int]] = None) -> Tuple[int, List[Tuple[str, EvidenceSource, str, str]]]:
         """Read a batch of events from database"""
         source_cache: Dict[int, EvidenceSource] = {}
 
@@ -158,22 +156,30 @@ class SQLDatabase(EntityDatabase, ModelListener):
                 source_cache[source_id] = src
             return src
 
+        off = offset
         r_size = 8196
         batch = []
         with Session(self.engine) as ses:
             with ses.begin():
                 sel = select(TableEvent)
+                # For reason or other, selection at SQL did not work - try again!
                 # if sources is None:
                 #     sel = select(TableEvent)
                 # else:
                 #     sel = select(TableEvent).where(TableEvent.source_id in sources)
-                sel = sel.offset(offset).limit(r_size)
-                for ev in ses.execute(sel).scalars():
-                    if sources is not None and ev.source_id not in sources:
-                        continue
-                    src = get_source(ses, ev.source_id)
-                    batch.append((ev.type, src, ev.tail_ref, ev.data))
-        return batch
+                while len(batch) < r_size:
+                    sel = sel.offset(off).limit(r_size)
+                    sel_count = 0
+                    for ev in ses.execute(sel).scalars():
+                        sel_count += 1
+                        if sources is not None and ev.source_id not in sources:
+                            continue
+                        src = get_source(ses, ev.source_id)
+                        batch.append((ev.type, src, ev.tail_ref, ev.data))
+                    if sel_count == 0:
+                        break  # no more events to filter
+                    off += sel_count
+        return off, batch
 
     def _form_event(self, data: Tuple[str, EvidenceSource, str, str]) -> Optional[Event]:
         """Form an event from database data"""
@@ -208,11 +214,12 @@ class SQLDatabase(EntityDatabase, ModelListener):
             return None  # all read
         if not self.pending_batch:
             # read new batch
-            self.pending_batch = self._read_event_batch(self.pending_offset, sources=self.pending_source_ids)
-            if not self.pending_batch:
+            offset, batch = self._read_event_batch(self.pending_offset, sources=self.pending_source_ids)
+            self.pending_offset = offset
+            self.pending_batch = batch
+            if not batch:
                 self.pending_offset = -1  # No more data
                 return None
-            self.pending_offset += len(self.pending_batch)
         ev = self._form_event(self.pending_batch[0])
         self.pending_batch = self.pending_batch[1:]
         return ev

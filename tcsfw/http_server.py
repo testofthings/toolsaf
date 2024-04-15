@@ -2,13 +2,15 @@
 
 import asyncio
 import hmac
+from io import BytesIO
 import json
 import logging
 import os
 import pathlib
 import tempfile
 import traceback
-from typing import Dict, Tuple, List
+from typing import Dict, Optional, Tuple, List
+import zipfile
 
 from aiohttp import web, WSMsgType
 
@@ -58,12 +60,10 @@ class HTTPServerRunner:
         self.loop = asyncio.get_event_loop()
         self.send_queue: asyncio.Queue[Tuple[Session, Dict]] = asyncio.Queue()
         self.send_queue_target_size = 10
-        self.process_tasks = asyncio.Event()
 
     def run(self):
         """Start sync loop and run the server"""
         self.loop.run_until_complete(self.start_server())
-        self.loop.create_task(self.registry_worker())
         self.loop.create_task(self.send_worker())
         self.loop.run_forever()
         # registry must be indirect
@@ -83,17 +83,6 @@ class HTTPServerRunner:
         self.logger.info("HTTP server running at %s:%s...", self.host, self.port)
         await site.start()
 
-    async def registry_worker(self):
-        """A worker for registry tasks"""
-        while True:
-            await self.process_tasks.wait()
-            if self.send_queue.qsize() > self.send_queue_target_size:
-                more = False  # wait more stuff to be sent
-            else:
-                more = self.registry.do_task()
-            if not more:
-                self.process_tasks.clear()
-
     async def send_worker(self):
         """A worker to send data to websockets"""
         while True:
@@ -105,11 +94,6 @@ class HTTPServerRunner:
             if self.component_delay > 0:
                 # artificial delay for testing
                 await asyncio.sleep(self.component_delay)
-            self.process_tasks.set()
-
-    async def update_registry(self):
-        """More tasks have been added"""
-        self.process_tasks.set()
 
     def check_permission(self, request):
         """Check permissions"""
@@ -138,19 +122,18 @@ class HTTPServerRunner:
                 res = self.api.api_get(req)
             elif request.method == "POST":
                 # read all data as easy solution to async problem
-                r_size = 0
-                with tempfile.TemporaryFile() as tmp:
-                    b = await request.content.read(1024)
-                    while b:
-                        tmp.write(b)
-                        r_size += len(b)
-                        b = await request.content.read(1024)
-                    tmp.seek(0)
-                    res = self.api.api_post(req, tmp if r_size > 0 else None)
-
+                if request.content_type == "application/json" or not request.content_type:
+                    # JSON data
+                    with tempfile.TemporaryFile() as tmp:
+                        data = await self.read_stream_to_file(request, tmp)
+                        res = self.api.api_post(req, data)
+                elif request.content_type == "application/zip":
+                    # ZIP file
+                    res = await self.api_post_zip(req, request)
+                else:
+                    raise ValueError("Unexpected content-type")
             else:
                 raise NotImplementedError("Unexpected method/path")
-            await self.update_registry()
             return web.Response(text=json.dumps(res))
         except NotImplementedError:
             return web.Response(status=400)
@@ -161,6 +144,30 @@ class HTTPServerRunner:
         except Exception:  # pylint: disable=broad-except
             traceback.print_exc()
             return web.Response(status=500)
+
+    async def read_stream_to_file(self, request, file: BytesIO) -> Optional[BytesIO]:
+        """Read stream to a file, return data or None if no data"""
+        r_size = 0
+        b = await request.content.read(1024)
+        while b:
+            r_size += len(b)
+            file.write(b)
+            b = await request.content.read(1024)
+        file.seek(0)
+        return file if r_size > 0 else None
+
+    async def api_post_zip(self, api_request: APIRequest, request):
+        """Handle POST request with zip file"""
+        # unzip stream to temporary directory
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # create temporary file, extract to directory, delete the temporary file
+            with tempfile.TemporaryFile() as tmp_file:
+                await self.read_stream_to_file(request, tmp_file)
+                with zipfile.ZipFile(tmp_file, 'r') as zip_ref:
+                    zip_ref.extractall(temp_dir)
+            self.logger.info("Unzipped to %s", temp_dir)
+            res = self.api.api_post_file(api_request, pathlib.Path(temp_dir))
+        return res
 
     async def handle_ws(self, request):
         """Handle websocket HTTP request"""

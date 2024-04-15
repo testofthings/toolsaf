@@ -468,10 +468,13 @@ class IoTSystem(NetworkNode):
                 return False
         return True
 
-    def learn_named_address(self, name: DNSName, address: Optional[AnyAddress]) -> Host:
-        """Learn DNS named addresses"""
+    def learn_named_address(self, name: DNSName, address: Optional[AnyAddress]) -> Tuple[Host, bool]:
+        """Learn DNS named addresses, return named host and if any changes"""
+        # pylint: disable=too-many-return-statements
+
         # check for reverse DNS
         if name.name.endswith(".arpa") and len(name.name) > 5:
+            # reverse DNS from IP addresss to name
             nn = name.name[:-5]
             if nn.endswith(".in-addr") and len(nn) > 8:
                 address = IPAddress.new(nn[:-8])
@@ -485,7 +488,7 @@ class IoTSystem(NetworkNode):
             if address:
                 add = self.get_endpoint(address)
                 assert isinstance(add, Host)
-                return add
+                return add, False  # Did not add name to host (why?)
 
         # find relevant hosts
         named = None
@@ -498,6 +501,9 @@ class IoTSystem(NetworkNode):
         assert len(by_ip) < 2, f"Multiple hosts with address {address}"
         add = by_ip[0] if by_ip else None
 
+        if named and not address:
+            return named, False  # we know the host by name
+
         if not named and add:
             # just use the addressed
             add.addresses.add(name)
@@ -508,7 +514,7 @@ class IoTSystem(NetworkNode):
                 nn = f"{pri}"
                 if nn != add.name:
                     add.name = self.free_child_name(nn)
-            return add
+            return add, True
 
         if named is None:
             named = self.get_endpoint(name)
@@ -516,19 +522,21 @@ class IoTSystem(NetworkNode):
         if not add:
             # just use the named
             if address:
+                if address in named.addresses:
+                    return named, False  # known address
                 named.addresses.add(address)
-            return named
+            return named, True  # new address
 
         if len(named.addresses) == 1:
             # named host has no IP addresses, remove it and use the other
             self.children.remove(named)
             add.addresses.add(name)
-            return add
+            return add, True
 
         # IP address shared by two hosts, use the latest as things change between captures
         add.addresses.remove(address)
         named.addresses.add(address)
-        return named
+        return named, True
 
     def learn_ip_address(self, host: Host, ip_address: IPAddress):
         """Learn IP address of a host. Remove the IP address from other hosts, if any"""
