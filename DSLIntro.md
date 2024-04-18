@@ -44,6 +44,13 @@ system.visualize().place(
 The letters "A", "B", and "C" stand for the application, backend, and device.
 Thei positions are determined in the `place` method.
 
+## Claims
+
+Claims are made for the model and verified by tool outputs.
+Claims are still very unmature concept.
+The description of the claims also employs [a DSL](ClaimIntro.md), but that is very much unfinalized at the moment.
+
+
 ## DSL reference
 
 The interface code for the DSL is in Python module `tcsfw.main`.

@@ -18,8 +18,8 @@ from tcsfw.client_api import ClientAPI, APIRequest, APIListener
 from tcsfw.model import IoTSystem
 
 
-class Session(APIListener):
-    """A session per web socket"""
+class WebsocketChannel(APIListener):
+    """A channel per web socket"""
     def __init__(self, server: 'HTTPServerRunner', socket: web.WebSocketResponse, request: APIRequest):
         self.server = server
         self.socket = socket
@@ -36,7 +36,7 @@ class Session(APIListener):
             self.server.send_queue.put_nowait((self, data))
 
     def close(self):
-        """Close the session"""
+        """Close the channel"""
         self.subscribed = False
         self.server.api.api_listener.remove((self, self.original_request))
 
@@ -47,7 +47,6 @@ class HTTPServerRunner:
 
     def __init__(self, api: ClientAPI, base_directory=pathlib.Path("."), port=8180, no_auth_ok=False):
         self.api = api
-        self.registry = api.registry
         self.logger = logging.getLogger("server")
         self.sample_path = base_directory / "sample"
         self.host = "127.0.0.1"
@@ -55,10 +54,12 @@ class HTTPServerRunner:
         self.auth_token = os.environ.get("TCSFW_SERVER_API_KEY", "")
         if not self.auth_token and not no_auth_ok:
             raise ValueError("No environment variable TCSFW_SERVER_API_KEY (use --no-auth-ok to skip check)")
+        if self.auth_token:
+            self.host = None  # allow all hosts, when token is present
         self.component_delay = 0
-        self.sessions: List[Session] = []
+        self.channels: List[WebsocketChannel] = []
         self.loop = asyncio.get_event_loop()
-        self.send_queue: asyncio.Queue[Tuple[Session, Dict]] = asyncio.Queue()
+        self.send_queue: asyncio.Queue[Tuple[WebsocketChannel, Dict]] = asyncio.Queue()
         self.send_queue_target_size = 10
 
     def run(self):
@@ -66,30 +67,29 @@ class HTTPServerRunner:
         self.loop.run_until_complete(self.start_server())
         self.loop.create_task(self.send_worker())
         self.loop.run_forever()
-        # registry must be indirect
-        self.registry.fallthrough = False
 
     async def start_server(self):
         """Start the Web server"""
         app = web.Application()
         app.add_routes([
-            web.get('/api1/ws/{tail:.+}', self.handle_ws),  # must be first
+            web.get('/api1/endpoint/{tail:.+}', self.handle_endpoint),  # only during development
+            web.get('/api1/ws/{tail:.+}', self.handle_ws),  # must be before /api1/
             web.get('/api1/{tail:.+}', self.handle_http),
             web.post('/api1/{tail:.+}', self.handle_http),
         ])
         rr = web.AppRunner(app)
         await rr.setup()
         site = web.TCPSite(rr, self.host, self.port)
-        self.logger.info("HTTP server running at %s:%s...", self.host, self.port)
+        self.logger.info("HTTP server running at %s:%s...", self.host or "*", self.port)
         await site.start()
 
     async def send_worker(self):
         """A worker to send data to websockets"""
         while True:
-            session, d = await self.send_queue.get()
-            if session.subscribed:
+            channel, d = await self.send_queue.get()
+            if channel.subscribed:
                 self.logger.info("send %s", d)
-                await session.socket.send_json(d)
+                await channel.socket.send_json(d)
             self.send_queue.task_done()
             if self.component_delay > 0:
                 # artificial delay for testing
@@ -127,7 +127,7 @@ class HTTPServerRunner:
                     with tempfile.TemporaryFile() as tmp:
                         data = await self.read_stream_to_file(request, tmp)
                         res = self.api.api_post(req, data)
-                elif request.content_type == "application/zip":
+                elif request.content_type in {"application/zip", "multipart/form-data"}:
                     # ZIP file
                     res = await self.api_post_zip(req, request)
                 else:
@@ -156,13 +156,39 @@ class HTTPServerRunner:
         file.seek(0)
         return file if r_size > 0 else None
 
+    async def read_multipart_form_to_file(self, request, file: BytesIO) -> Optional[BytesIO]:
+        """Read multipart form to a file, return data or None if no data"""
+        reader = await request.multipart()
+        r_size = 0
+        part = await reader.next()
+        while part:
+            f_name = part.filename
+            if not f_name:
+                continue  # not sure what to do with non-file parts
+            if not f_name.lower().endswith(".zip"):
+                raise ValueError("Only ZIP files suupported in multipart form")
+            content_type = part.headers.get("Content-Type")
+            if content_type and content_type != "application/octet-stream":
+                raise ValueError("In multipart form, only application/octet-stream is allowed")
+            chunk = await part.read_chunk()
+            while chunk:
+                file.write(chunk)
+                r_size += len(chunk)
+                chunk = await part.read_chunk()
+            part = await reader.next()
+        file.seek(0)
+        return file if r_size > 0 else None
+
     async def api_post_zip(self, api_request: APIRequest, request):
         """Handle POST request with zip file"""
         # unzip stream to temporary directory
         with tempfile.TemporaryDirectory() as temp_dir:
             # create temporary file, extract to directory, delete the temporary file
             with tempfile.TemporaryFile() as tmp_file:
-                await self.read_stream_to_file(request, tmp_file)
+                if request.content_type == "multipart/form-data":
+                    await self.read_multipart_form_to_file(request, tmp_file)
+                else:
+                    await self.read_stream_to_file(request, tmp_file)
                 with zipfile.ZipFile(tmp_file, 'r') as zip_ref:
                     zip_ref.extractall(temp_dir)
             self.logger.info("Unzipped to %s", temp_dir)
@@ -178,7 +204,7 @@ class HTTPServerRunner:
             return web.Response(status=404)
         req = req.change_path(".")  # we can only subscribe all
 
-        ws = web.WebSocketResponse()
+        ws = web.WebSocketResponse(heartbeat=10)
         await ws.prepare(request)
 
         try:
@@ -191,13 +217,13 @@ class HTTPServerRunner:
 
         self.logger.info('WS loop started')
 
-        session = Session(self, ws, req)
+        channel = WebsocketChannel(self, ws, req)
         # initial model
         # do not async so that no updates between getting model and putting it to the queue
-        session.subscribed = True
+        channel.subscribed = True
         if req.parameters.get("load_all", "").lower() != "false":  # can avoid JSON dump for debugging
-            self.dump_model(session)
-        self.sessions.append(session)
+            self.dump_model(channel)
+        self.channels.append(channel)
 
         async def receive_loop():
             # we expect nothing from client
@@ -210,13 +236,26 @@ class HTTPServerRunner:
         try:
             await receive_loop()
         finally:
-            session.close()  # drop remaining sends
-            self.sessions.remove(session)
+            channel.close()  # drop remaining sends
+            self.channels.remove(channel)
         return ws
 
-    def dump_model(self, session: Session):
-        """Dump the whole model into a session"""
-        if not session.subscribed:
+    async def handle_endpoint(self, request):
+        """Handle endpoint intended for launcher, but this is nice for development"""
+        try:
+            self.check_permission(request)
+            assert request.path_qs.startswith("/api1/endpoint/")
+            res =  { } ## empty response
+            return web.Response(text=json.dumps(res))
+        except PermissionError:
+            return web.Response(status=401)
+        except Exception:  # pylint: disable=broad-except
+            traceback.print_exc()
+            return web.Response(status=500)
+
+    def dump_model(self, channel: WebsocketChannel):
+        """Dump the whole model into channel"""
+        if not channel.subscribed:
             return
-        for d in self.api.api_iterate_all(session.original_request):
-            self.send_queue.put_nowait((session, d))
+        for d in self.api.api_iterate_all(channel.original_request):
+            self.send_queue.put_nowait((channel, d))

@@ -16,9 +16,24 @@ Command-line help is available with the usual `--help`. Below it is used without
 $ python tcsfw/main.py --help
 ```
 
+## SQL database
+
+Command line option `--db` connect to SQL database.
+At the moment, the only tested database is (Sqlite)[https://www.sqlite.org/].
+For example, to read batch files and put the resulting events into DB:
+
+     $ python statement --db sqlite:///test.db -r <batch-directory>
+
+Existing events are automatically fetched from the database on startup.
+For example, the following starts API server with content of the database.
+
+
+     $ python statement --db sqlite:///test.db --http-server 8180
+
 ## Requirement coverage
 
 Coverage for default requirements (called _claims_ or _tests_ in research papers) can be checked like this:
+Please note, requirement coverage if very much in prototype phase.
 
 ```
 $ python samples/basic-a/system.py --output coverage

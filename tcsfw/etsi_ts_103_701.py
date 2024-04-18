@@ -610,8 +610,11 @@ class TestCase:
         return f"Test case {self.identifier} {self.purpose} ({'/'.join(ts)})"
 
 
-def read_text_data(path=pathlib.Path("tcsfw/data/etsi_ts_103_701.txt")) -> List[TestCase]:
+def read_text_data(path: pathlib.Path = None) -> List[TestCase]:
     """Read data from text file"""
+    if path is None:
+        source_dir = pathlib.Path(__file__).resolve().parent
+        path = source_dir / "data" / "etsi_ts_103_701.txt"
     with path.open(encoding="utf-8") as f:
         lines = f.readlines()
 

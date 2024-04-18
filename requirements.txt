@@ -1,5 +1,6 @@
 packet-framing
 censys
 aiohttp
+aiofiles
 sqlalchemy
 prompt_toolkit
