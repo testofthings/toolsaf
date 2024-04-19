@@ -29,7 +29,7 @@ Thus, the first thing is to create a Python application project. I recommend cre
 
     $ mkdir my_ss
     $ cd my_ss
-    $ python 3.11 -m venv create .venv
+    $ python 3.11 -m venv .venv
     $ source .venv/bin/activate
 
 After that, you must [install](Install.md) the framework from _Github_.
