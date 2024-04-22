@@ -72,7 +72,7 @@ class HTTPServerRunner:
         """Start the Web server"""
         app = web.Application()
         app.add_routes([
-            web.get('/api1/endpoint/{tail:.+}', self.handle_endpoint),  # only during development
+            web.get('/login/{tail:.+}', self.handle_login),  # only during development
             web.get('/api1/ws/{tail:.+}', self.handle_ws),  # must be before /api1/
             web.get('/api1/{tail:.+}', self.handle_http),
             web.post('/api1/{tail:.+}', self.handle_http),
@@ -95,9 +95,11 @@ class HTTPServerRunner:
                 # artificial delay for testing
                 await asyncio.sleep(self.component_delay)
 
-    def check_permission(self, request):
+    def check_permission(self, request, from_query=""):
         """Check permissions"""
-        auth_t = request.headers.get("x-authorization", "").strip()
+        auth_t = from_query
+        if not auth_t:
+            auth_t = request.headers.get("x-authorization", "").strip()
         if not auth_t:
             auth_t = request.cookies.get("authorization", "").strip()
         if not auth_t:
@@ -240,12 +242,12 @@ class HTTPServerRunner:
             self.channels.remove(channel)
         return ws
 
-    async def handle_endpoint(self, request):
-        """Handle endpoint intended for launcher, but this is nice for development"""
+    async def handle_login(self, request):
+        """Handle login, which is launcher job, this only used in development."""
+        req = APIRequest.parse(request.path_qs[6:])
         try:
-            self.check_permission(request)
-            assert request.path_qs.startswith("/api1/endpoint/")
-            res =  { } ## empty response
+            query_api_key = req.parameters.get("api_key", "").strip()  # development hack to use without proxies!
+            res =  {"api_key": query_api_key}  # only echoing back what was given
             return web.Response(text=json.dumps(res))
         except PermissionError:
             return web.Response(status=401)
