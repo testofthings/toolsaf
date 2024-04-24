@@ -122,7 +122,7 @@ class ClientAPI(ModelListener):
         path = request.path
         if path == "all":
             request.get_connections = False
-            return {"events:" : list(self.api_iterate_all(request.change_path(".")))}
+            return {"events" : list(self.api_iterate_all(request.change_path(".")))}
         if path.startswith("coverage"):
             return self.get_coverage(context.change_path(path[8:]))
         if path.startswith("host/"):

@@ -610,7 +610,7 @@ class ProtocolBackend:
 class ARPBackend(ProtocolBackend):
     """ARP protocol backend"""
 
-    def __init__(self, _configurer: ARP, broadcast_endpoint=False):
+    def __init__(self, _configurer: ARP, protocol=Protocol.ARP, broadcast_endpoint=False):
         super().__init__(Protocol.ARP, name="ARP")
         self.host_type = HostType.ADMINISTRATIVE
         self.con_type = ConnectionType.ADMINISTRATIVE
@@ -654,7 +654,7 @@ class DHCPBackend(ProtocolBackend):
     """DHCP protocol backend"""
 
     def __init__(self, configurer: DHCP):
-        super().__init__(Protocol.UDP, port=configurer.port, name="DHCP")
+        super().__init__(Protocol.UDP, port=configurer.port, protocol=Protocol.DHCP, name="DHCP")
         # DHCP requests go to broadcast, thus the reply looks like request
         self.external_activity = ExternalActivity.UNLIMITED
 
@@ -679,7 +679,7 @@ class DNSBackend(ProtocolBackend):
     """DNS protocol backend"""
 
     def __init__(self, configurer: DNS):
-        super().__init__(Protocol.UDP, port=configurer.port, name="DNS")
+        super().__init__(Protocol.UDP, port=configurer.port, protocol=Protocol.DNS, name="DNS")
         self.external_activity = ExternalActivity.OPEN
         self.captive_portal = configurer.captive
 
@@ -695,7 +695,7 @@ class EAPOLBackend(ProtocolBackend):
     """EAPOL protocol backend"""
 
     def __init__(self, configurer: EAPOL):
-        super().__init__(Protocol.ETHERNET, port=0x888e, name=configurer.name)
+        super().__init__(Protocol.ETHERNET, port=0x888e, protocol=Protocol.EAPOL, name=configurer.name)
         self.host_type = HostType.ADMINISTRATIVE
         self.con_type = ConnectionType.ADMINISTRATIVE
         self.external_activity = ExternalActivity.OPEN
@@ -706,8 +706,7 @@ class HTTPBackend(ProtocolBackend):
     """HTTP protocol backend"""
 
     def __init__(self, configurer: HTTP):
-        super().__init__(Protocol.TCP, port=configurer.port,
-                         protocol=Protocol.HTTP, name=configurer.name)
+        super().__init__(Protocol.TCP, port=configurer.port, protocol=Protocol.HTTP, name=configurer.name)
         self.authentication = configurer.auth
         self.redirect_only = False
 
@@ -724,7 +723,7 @@ class ICMPBackend(ProtocolBackend):
     """ICMP protocol backend"""
 
     def __init__(self, configurer: ICMP):
-        super().__init__(Protocol.IP, port=1, name=configurer.name)
+        super().__init__(Protocol.IP, port=1, protocol=Protocol.ICMP, name=configurer.name)
         self.external_activity = ExternalActivity.OPEN
         self.port_to_name = False
 
@@ -753,8 +752,7 @@ class TLSBackend(ProtocolBackend):
     """TLS protocol backend"""
 
     def __init__(self, configurer: TLS):
-        super().__init__(Protocol.TCP, port=configurer.port,
-                         protocol=Protocol.TLS, name=configurer.name)
+        super().__init__(Protocol.TCP, port=configurer.port, protocol=Protocol.TLS, name=configurer.name)
         self.authentication = configurer.auth
         self.con_type = ConnectionType.ENCRYPTED
         # self.critical_parameter.append(PieceOfData("TLS-creds"))
@@ -764,7 +762,7 @@ class NTPBackend(ProtocolBackend):
     """NTP protocol backend"""
 
     def __init__(self, configurer: NTP):
-        super().__init__(Protocol.UDP, port=configurer.port, name=configurer.name)
+        super().__init__(Protocol.UDP, port=configurer.port, protocol=Protocol.NTP, name=configurer.name)
         self.host_type = HostType.ADMINISTRATIVE
         self.con_type = ConnectionType.ADMINISTRATIVE
         self.external_activity = ExternalActivity.OPEN
@@ -774,8 +772,7 @@ class SSHBackend(ProtocolBackend):
     """SSH protocol backend"""
 
     def __init__(self, configurer: SSH):
-        super().__init__(Protocol.TCP, port=configurer.port,
-                         protocol=Protocol.SSH, name=configurer.name)
+        super().__init__(Protocol.TCP, port=configurer.port, protocol=Protocol.SSH, name=configurer.name)
         self.authentication = True
         self.con_type = ConnectionType.ENCRYPTED
         # self.critical_parameter.append(PieceOfData("SSH-creds"))
@@ -984,8 +981,8 @@ class ClaimSetBackend(ClaimSetBuilder):
 class SystemBackendRunner(SystemBackend):
     """Backend for system builder"""
 
-    def __init__(self, name="Unnamed system"):
-        super().__init__(name)
+    def _parse_arguments(self) -> argparse.Namespace:
+        """Parse command line arguments"""
         parser = argparse.ArgumentParser()
         parser.add_argument("--read", "-r", action="append",
                             help="Read tool output from batch directories")
@@ -1020,16 +1017,17 @@ class SystemBackendRunner(SystemBackend):
         parser.add_argument(
             "--log-events", action="store_true", help="Log events")
 
-        self.parser = parser
-        self.args = parser.parse_args()
+        args = parser.parse_args()
         logging.basicConfig(format='%(message)s', level=getattr(
-            logging, self.args.log_level or 'INFO'))
+            logging, args.log_level or 'INFO'))
+        return args
 
     def run(self):
         """Model is ready, run the checks"""
-        if self.args.dhcp:
+        args = self._parse_arguments()
+        if args.dhcp:
             self.any().serve(DHCP)
-        if self.args.dns:
+        if args.dns:
             self.any().serve(DNS)
 
         self.finish_()
@@ -1037,12 +1035,12 @@ class SystemBackendRunner(SystemBackend):
         registry = Registry(Inspector(self.system))
         cc = RequirementClaimMapper(self.system)
 
-        log_events = self.args.log_events
+        log_events = args.log_events
         if log_events:
             # print event log
             registry.logging.event_logger = registry.logger
 
-        db_conn = self.args.db
+        db_conn = args.db
         if db_conn:
             # connect to SQL database
             registry.logger.info("Connecting to database %s", db_conn)
@@ -1050,7 +1048,7 @@ class SystemBackendRunner(SystemBackend):
         # finish loading after DB connection
         registry.finish_model_load()
 
-        for set_ip in self.args.set_ip or []:
+        for set_ip in args.set_ip or []:
             name, _, ips = set_ip.partition("=")
             h = self.system.get_entity(name) or self.system.get_endpoint(
                 DNSName.name_or_ip(name))
@@ -1059,14 +1057,14 @@ class SystemBackendRunner(SystemBackend):
             for ip in ips.split(","):
                 self.system.learn_ip_address(h, IPAddress.new(ip))
 
-        label_filter = LabelFilter(self.args.def_loads or "")
+        label_filter = LabelFilter(args.def_loads or "")
 
         # load file batches, if defined
         batch_import = BatchImporter(registry, label_filter=label_filter)
-        for in_file in self.args.read or []:
+        for in_file in args.read or []:
             batch_import.import_batch(pathlib.Path(in_file))
 
-        if self.args.help_tools:
+        if args.help_tools:
             # print help and exit
             for label, sl in sorted(batch_import.evidence.items()):
                 sl_s = ", ".join(sorted(set(s.name for s in sl)))
@@ -1081,8 +1079,8 @@ class SystemBackendRunner(SystemBackend):
                 sub.load(registry, cc, label_filter=label_filter)
 
         api = VisualizerAPI(registry, cc, self.visualizer)
-        if self.args.test_post:
-            res, data = self.args.test_post
+        if args.test_post:
+            res, data = args.test_post
             request = APIRequest.parse(res)
             if data.strip().startswith("{"):
                 # assuming JSON
@@ -1092,11 +1090,11 @@ class SystemBackendRunner(SystemBackend):
                 api.logger.info("POST file %s", data)
                 resp = api.api_post_file(request, pathlib.Path(data))
             print(json.dumps(resp, indent=4))
-        if self.args.test_get:
-            for res in self.args.test_get:
+        if args.test_get:
+            for res in args.test_get:
                 print(json.dumps(api.api_get(APIRequest.parse(res)), indent=4))
 
-        out_form = self.args.output
+        out_form = args.output
         if not out_form:
             # default text output
             report = Report(registry)
@@ -1111,12 +1109,12 @@ class SystemBackendRunner(SystemBackend):
         else:
             raise ConfigurationException(f"Unknown output format '{out_form}'")
 
-        if self.args.prompt:
+        if args.prompt:
             prompt = ClientPrompt(api)
             prompt.prompt_loop()
 
-        if self.args.http_server:
+        if args.http_server:
             server = HTTPServerRunner(
-                api, port=self.args.http_server, no_auth_ok=self.args.no_auth_ok)
-            server.component_delay = (self.args.test_delay or 0) / 1000
+                api, port=args.http_server, no_auth_ok=args.no_auth_ok)
+            server.component_delay = (args.test_delay or 0) / 1000
             server.run()

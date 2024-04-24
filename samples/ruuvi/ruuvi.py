@@ -118,6 +118,6 @@ system.visualize().place(
     "a": (gateway / ARP).visual().hide(),
 })
 
-system.run()
-
+if __name__ == "__main__":
+    system.run()
 

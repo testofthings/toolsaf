@@ -12,6 +12,8 @@ class Protocol(enum.Enum):
 
     ARP = "arp"
     DNS = "dns"
+    DHCP = "dhcp"
+    EAPOL = "eapol"
     ETHERNET = "eth"
     HTTP = "http"
     ICMP = "icmp"
@@ -20,6 +22,7 @@ class Protocol(enum.Enum):
     SSH = "ssh"
     TLS = "tls"  # or SSL
     UDP = "udp"
+    NTP = "ntp"
 
     BLE = "ble"
 
@@ -127,10 +130,16 @@ class Addresses:
     BLE_Ad = PseudoAddress("BLE_Ad", multicast=True, hardware=True)
 
     @classmethod
-    def get_prioritized(cls, addresses: Iterable[AnyAddress]) -> AnyAddress:
+    def get_prioritized(cls, addresses: Iterable[AnyAddress], ip=True, hw=True, dns=True) -> AnyAddress:
         """Get prioritized address"""
         add = None
         for a in addresses:
+            if not ip and isinstance(a, IPAddress):
+                continue
+            if not hw and isinstance(a, HWAddress):
+                continue
+            if not dns and isinstance(a, DNSName):
+                continue
             if add is None or add.priority() < a.priority():
                 add = a
         return add or IPAddresses.NULL

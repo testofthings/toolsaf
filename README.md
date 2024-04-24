@@ -40,11 +40,6 @@ Assuming your security statement is `statement.py`, you execute it as follows:
 
     $ python statement.py
 
-Security statement can be rendered into visual description using [tcsfw UI](https://github.com/ouspg/tcsfw-ui). The UI is simple Vue-project. The UI uses API provided by the framwork. The API is activated in following manner, with access token `xxx`. See UI documentation how it is set up.
-```
-$ TCSFW_SERVER_API_KEY=xxx python statement.py --http-server 8180
-```
-
 ## Providing tool data
 
 Once the security statement is defined, it can be verified.
@@ -68,6 +63,18 @@ $ curl -v -X POST --data-binary @<batch-file>.zip  \
 
 The framework has additional [command-line options](CommandLine.md).
 
+## API server
+
+The framework can run as [API server](APIServer.md).
+The server can only run a single security statement or it can dynamically load them by API calls.
+
+The servers are inteded to be run Docker containers.
+The containers can bundled into a deployment, see [tcsfw UI](https://github.com/ouspg/tcsfw-ui) documentation.
+
+# Client tool
+
+The API can be used by _client tool_ [tcsfw](ClientTool.md).
+
 ## Sample security statements
 
 A security statement for _Ruuvi gateway and tags_ (https://ruuvi.com/) was developed during research. The statement is in directory `samples/ruuvi/`. The data for verifying the security statement is available for academic research, please request it from Rauli. Remember to tell the goals of the research and the organization performing it. Right to refuse requests is reserved.
@@ -77,46 +84,6 @@ The security statement for Ruuvi is executed like this, assuming working directo
 $ python samples/ruuvi/ruuvi.py
 ```
 The command dumps some basic information about the security statement.
-## Docker container
-
-You can build a docker container with the security statement and run it stand-alone or in a simple deployment, see [tcsfw UI](https://github.com/ouspg/tcsfw-ui) documentation.
-
-Your `Dockerfile` should look something like this:
-```Dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-
-# install dependencies without caching
-COPY requirements.txt /app
-RUN pip install --no-cache-dir -r requirements.txt
-
-# install framework
-COPY tcsfw /app/tcsfw
-COPY setup.py /app
-RUN pip install --no-cache-dir -e .
-
-# copy security statements file(s)
-COPY statement.py /app
-
-# run the entry point
-# ENV TCSFW_SERVER_API_KEY= # set in compose etc.
-CMD ["python", "tcsfw/launcher.py", "--listen-port", "8180"]
-```
-
-This container is built and started as follows:
-
-    $ docker build -t tcsfw/api-server .
-    $ docker run -it -p 8180:8180 tcsfw/api-server
-
-Instead of the security statement `.py` file, the entry point to the container is _launcher_ `tcsfw/launcher.py`.
-Launcher accepts incoming requests and starts security statement instances with local DB.
-The request url must be `statement/` appended by the statement file path and name without `.py`.
-Each new statement runs in separate process in different local API port from range 10000-19999.
-For example, the following accesses the security statement from above example:
-http://localhost:8180/statements/statement.
-
-See instructions in [tcsfw UI](https://github.com/ouspg/tcsfw-ui) documentation how to use the container with _Docker compose_.
 
 ## License
 

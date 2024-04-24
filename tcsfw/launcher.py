@@ -16,6 +16,7 @@ import aiofiles
 from aiohttp import web
 
 from tcsfw.client_api import APIRequest
+from tcsfw.command_basics import get_authorization
 
 # pylint: disable=duplicate-code  # web server code is similar in two places
 
@@ -39,6 +40,7 @@ class Launcher:
         self.clients: Set[int] = set()
         self.connected: Dict[Tuple[str, str], int] = {}  # key: user, app
         self.api_keys: Dict[str, str] = {}
+        self.api_key_reverse: Dict[str, str] = {}
 
         self.db_base_dir = None if args.no_db else pathlib.Path("app-dbs")  # create sqlite DBs here
 
@@ -56,7 +58,9 @@ class Launcher:
         """Start the Web server"""
         app = web.Application()
         app.add_routes([
-            web.get('/login/{tail:.+}', self.handle_login),
+            web.get('/api1/ping', self.handle_ping),             # ping for health check
+            web.get('/login/{tail:.+}', self.handle_login),      # login
+            web.get('/api1/proxy/{tail:.+}', self.handle_login), # query proxy configuration
         ])
         rr = web.AppRunner(app)
         await rr.setup()
@@ -64,25 +68,44 @@ class Launcher:
         self.logger.info("HTTP server running at %s:%s...", self.host or "*", self.port)
         await site.start()
 
-    async def handle_login(self, request):
+    async def handle_ping(self, _request: web.Request):
+        """Handle ping request"""
+        return web.Response(text="{}")
+
+    async def handle_login(self, request: web.Request):
         """Handle login and loading new endpoint"""
         try:
             if request.method != "GET":
                 raise NotImplementedError("Unexpected method")
-            if not request.path.startswith("/login/statement/"):
+            use_api_key = False
+            if request.path.startswith("/login/statement/"):
+                app = request.path[17:]
+            elif request.path.startswith("/api1/proxy/statement/"):
+                app = request.path[22:]
+                use_api_key = True
+            else:
                 raise FileNotFoundError("Unexpected statement path")
 
-            user_name = request.headers.get("x-user", "").strip()
-            if not user_name:
-                raise PermissionError("No authenticated user name")
-            # API proxy should authenticate access to this endpoint, create a new API key, unless
-            # there is a valid one already
-            api_key = self.api_keys.get(user_name)
-            if not api_key:
-                self.logger.info("Generating new api_key for %s", user_name)
-                api_key = self.generate_api_key(user_name)
+            if use_api_key:
+                # API call with API key
+                api_key = get_authorization(request)
+                if api_key not in self.api_key_reverse:
+                    raise PermissionError("Invalid API key")
+                user_name = self.api_key_reverse[api_key]
+                self.logger.info("Login by valid API key for %s", user_name)
+            else:
+                # Login to new or logged in application
+                user_name = request.headers.get("x-user", "").strip()
+                if not user_name:
+                    raise PermissionError("No authenticated user name")
+                self.logger.info("Login for %s", user_name)
+                # API proxy should authenticate access to this endpoint, create a new API key, unless
+                # there is a valid one already
+                api_key = self.api_keys.get(user_name)
+                if not api_key:
+                    self.logger.info("Generating new api_key for %s", user_name)
+                    api_key = self.generate_api_key(user_name)
 
-            app = request.path[17:]
             api_req = APIRequest(request).parse(request.path_qs)
             explicit_key = api_req.parameters.get("instance-key")
             app_key = f"{app}/{explicit_key}" if explicit_key else app
@@ -90,8 +113,7 @@ class Launcher:
             api_port = await self.run_process(key, app, api_key=api_key)
             res = {"api_proxy": api_port}
 
-            auth_t = request.cookies.get("authorization", "").strip()
-            if auth_t != api_key:
+            if not use_api_key:
                 # return the generated API key
                 res = res.copy()
                 res.update({"api_key": api_key})
@@ -133,6 +155,9 @@ class Launcher:
         self.connected[key] = client_port
 
         python_app = f"{app}.py"
+        if not pathlib.Path(python_app).exists():
+            raise FileNotFoundError(f"App not found: {python_app}")
+
         args = [sys.executable, python_app, "--http-server", f"{client_port}"]
         if self.db_base_dir:
             # use sqlite DB for the app
@@ -181,6 +206,7 @@ class Launcher:
         # get secure random bytes
         key = secrets.token_urlsafe(32)
         self.api_keys[user_name] = key
+        self.api_key_reverse[key] = user_name
         return key
 
 if __name__ == "__main__":

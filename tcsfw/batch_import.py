@@ -99,14 +99,7 @@ class BatchImporter:
 
             # sort files to specified order, if any
             if info.file_load_order:
-                proc_files = {f.name: f for f in proc_list}
-                sorted_files = []
-                for fn in info.file_load_order:
-                    if fn in proc_files:
-                        sorted_files.append(proc_files[fn])
-                        del proc_files[fn]
-                sorted_files.extend(proc_files.values())
-                proc_list = sorted_files
+                proc_list = FileMetaInfo.sort_load_order(proc_list, info.file_load_order)
 
             # filter by label
             skip_processing = not self.label_filter.filter(info.label)
@@ -236,7 +229,6 @@ class BatchFileType(StrEnum):
                 return t
         raise ValueError(f"Unknown batch file type: {value}")
 
-
 class FileMetaInfo:
     """Batch file information."""
     def __init__(self, label="", file_type=BatchFileType.UNSPECIFIED):
@@ -278,6 +270,18 @@ class FileMetaInfo:
             policy = ExternalActivity[policy_n]
             r.source.activity_map[node] = policy
         return r
+
+    @classmethod
+    def sort_load_order(cls, files: List[pathlib.Path], load_order: List[str]) -> List[pathlib.Path]:
+        """Sort files according to load order"""
+        proc_files = {f.name: f for f in files}
+        sorted_files = []
+        for fn in load_order:
+            if fn in proc_files:
+                sorted_files.append(proc_files[fn])
+                del proc_files[fn]
+        sorted_files.extend(proc_files.values())
+        return sorted_files
 
     def __repr__(self) -> str:
         return f"file_type: {self.file_type}, label: {self.label}"

@@ -11,6 +11,11 @@ setup(
     packages=['tcsfw'],
     author="Rauli Kaksonen",
     author_email="rauli.kaksonen@gmail.com",
+    entry_points={
+        'console_scripts': [
+            'tcsfw=tcsfw.client_tool:main',
+        ],
+    },
     description='Tcsfw',
     long_description='Trasparent cyber security framework',
     url='https://github.com/ouspg/tcsfw',
