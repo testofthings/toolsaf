@@ -123,6 +123,8 @@ class ClientTool:
             # uploading from stdin
             if not meta_json:
                 raise ValueError("Missing upload meta-data")
+            if "from_pipe" not in meta_json:
+                meta_json["from_pipe"] = True  # tell server that file name carries no meaning
             self.logger.info("Uploading to %s...", url)
             self.upload_file(url, sys.stdin.buffer, meta_json)
         self.logger.info("upload complete")

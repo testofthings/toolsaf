@@ -19,6 +19,7 @@ from tcsfw.mitm_log_reader import MITMLogReader
 from tcsfw.model import EvidenceNetworkSource, IoTSystem
 from tcsfw.nmap_scan import NMAPScan
 from tcsfw.pcap_reader import PCAPReader
+from tcsfw.ping_command import PingCommand
 from tcsfw.releases import ReleaseReader
 from tcsfw.spdx_reader import SPDXReader
 from tcsfw.ssh_audit_scan import SSHAuditScan
@@ -57,12 +58,10 @@ class BatchImporter:
 
     def import_batch(self, file: pathlib.Path):
         """Import a batch of files from a directory or zip file recursively."""
-        if file.is_file() and file.suffix.lower() == ".zip":
-            raise NotImplementedError("Zip file import is not implemented yet.")
         if file.is_dir:
             self._import_batch(file)
         else:
-            raise ValueError(f"Expected directory or ZIP as : {file.as_posix()}")
+            raise ValueError(f"Expected directory, got {file.as_posix()}")
 
     def _import_batch(self, file: pathlib.Path):
         """Import a batch of files from a directory or zip file recursively."""
@@ -133,26 +132,34 @@ class BatchImporter:
 
         file_name = file_path.name
         file_ext = file_path.suffix.lower()
+
+        def ext(value: str) -> bool:
+            """Check extension"""
+            return info.from_pipe or file_ext == value
+
         try:
             reader = None
-            if file_ext == ".json" and info.file_type == BatchFileType.CAPTURE:
+            if ext(".json") and info.file_type == BatchFileType.CAPTURE:
                 reader = SimpleFlowTool(self.interface.get_system())
-            elif file_ext == ".pcap" and info.file_type in {BatchFileType.UNSPECIFIED, BatchFileType.CAPTURE}:
+            elif ext(".pcap") and info.file_type in {BatchFileType.UNSPECIFIED, BatchFileType.CAPTURE}:
                 # read flows from pcap
                 reader = PCAPReader(self.interface.get_system())
-            elif file_ext == ".json" and info.file_type == BatchFileType.CAPTURE_JSON:
+            elif ext(".json") and info.file_type == BatchFileType.CAPTURE_JSON:
                 # read flows from JSON pcap
                 reader = TSharkReader(self.interface.get_system())
-            elif file_ext == ".log" and info.file_type == BatchFileType.MITMPROXY:
+            elif ext(".log") and info.file_type == BatchFileType.MITMPROXY:
                 # read MITM from textual log
                 reader = MITMLogReader(self.interface.get_system())
-            elif file_ext == ".xml" and info.file_type == BatchFileType.NMAP:
+            elif ext(".xml") and info.file_type == BatchFileType.NMAP:
                 # read NMAP from xml
                 reader = NMAPScan(self.interface.get_system())
-            elif file_ext == ".http" and info.file_type == BatchFileType.HTTP_MESSAGE:
+            elif ext(".log") and info.file_type == BatchFileType.PING:
+                # read Ping output
+                reader = PingCommand(self.interface.get_system())
+            elif ext(".http") and info.file_type == BatchFileType.HTTP_MESSAGE:
                 # read messages from http content file
                 reader = WebChecker(self.interface.get_system())
-            elif file_ext == ".json" and info.file_type == BatchFileType.ZAP:
+            elif ext(".json") and info.file_type == BatchFileType.ZAP:
                 # read ZAP from json
                 reader = ZEDReader(self.interface.get_system())
 
@@ -211,6 +218,7 @@ class BatchFileType(StrEnum):
     HAR = "har"
     MITMPROXY = "mitmproxy"
     NMAP = "nmap"
+    PING = "ping"
     RELEASES = "github-releases"  # Github format
     SPDX = "spdx"
     SSH_AUDIT = "ssh-audit"
@@ -235,6 +243,7 @@ class FileMetaInfo:
         self.label = label
         self.file_load_order: List[str] = []
         self.file_type = file_type
+        self.from_pipe = False
         self.load_baseline = False
         self.default_include = True
         self.source = EvidenceNetworkSource(file_type)
@@ -250,6 +259,7 @@ class FileMetaInfo:
         label = str(json_data.get("label", directory_name))
         file_type = BatchFileType.parse(json_data.get("file_type")).value
         r = cls(label, file_type)
+        r.from_pipe = bool(json_data.get("from_pipe", False))
         r.load_baseline = bool(json_data.get("load_baseline", False))
         r.file_load_order = json_data.get("file_order", [])
         r.default_include = bool(json_data.get("include", True))

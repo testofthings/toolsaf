@@ -105,9 +105,9 @@ class RequestContext:
 
 class ClientAPI(ModelListener):
     """Client API implementation"""
-    def __init__(self, registry: Registry, claims: RequirementClaimMapper):
+    def __init__(self, registry: Registry, claims: RequirementClaimMapper = None):
         self.registry = registry
-        self.claim_coverage = claims
+        self.claim_coverage = RequirementClaimMapper(self.registry.system) if claims is None else claims
         self.logger = logging.getLogger("api")
         self.api_listener: List[Tuple[APIListener, APIRequest]] = []
         registry.system.model_listeners.append(self)
