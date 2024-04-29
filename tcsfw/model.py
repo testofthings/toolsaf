@@ -416,6 +416,14 @@ class Service(Addressable):
         """Is an encrypted service?"""
         return self.protocol in {Protocol.TLS, Protocol.SSH}
 
+    def get_port(self) -> int:
+        """Resolve port number, return -1 if not found"""
+        for a in self.addresses:
+            app = a.get_protocol_port()
+            if app:
+                return app[1]
+        return -1
+
     def __repr__(self):
         return f"{self.status_string()} {self.parent.long_name()} {self.name}"
 

@@ -184,10 +184,11 @@ class ClientTool:
                     continue
                 # skip too large files
                 file_size_mb = file.stat().st_size // (1024 * 1024)
-                if file_size_mb > 16:
-                    self.logger.warning("File too large: %s (%d > 16 M)", file.as_posix(), file_size_mb)
+                if file_size_mb > 1024:
+                    self.logger.warning("File too large: %s (%d > 1024 M)", file.as_posix(), file_size_mb)
                     continue
                 # write content
+                self.logger.info("Adding %s", file.as_posix())
                 zip_info = zipfile.ZipInfo(file.name)
                 with file.open("rb") as file_data:
                     with zip_file.open(zip_info, "w") as of:
