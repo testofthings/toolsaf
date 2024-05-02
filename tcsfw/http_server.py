@@ -5,6 +5,7 @@ import hmac
 import json
 import logging
 import pathlib
+import sys
 import tempfile
 import traceback
 from typing import BinaryIO, Dict, Optional, Tuple, List
@@ -76,6 +77,7 @@ class HTTPServerRunner:
             web.get('/api1/ping', self.handle_ping),             # ping for health check
             web.get('/api1/proxy/{tail:.+}', self.handle_login), # query proxy configuration
             web.get('/api1/{tail:.+}', self.handle_http),
+            web.post('/api1/reload/{tail:.+}', self.handle_reload), # reload, kill the process
             web.post('/api1/{tail:.+}', self.handle_http),
         ])
         rr = web.AppRunner(app)
@@ -115,7 +117,7 @@ class HTTPServerRunner:
         """Handle ping request"""
         return web.Response(text="{}")
 
-    async def handle_http(self, request):
+    async def handle_http(self, request: web.Request):
         """Handle normal HTTP GET or POST request"""
         try:
             self.check_permission(request)
@@ -200,7 +202,7 @@ class HTTPServerRunner:
             res = self.api.api_post_file(api_request, pathlib.Path(temp_dir))
         return res
 
-    async def handle_ws(self, request):
+    async def handle_ws(self, request: web.Request):
         """Handle websocket HTTP request"""
         assert request.path_qs.startswith("/api1/ws/")
         req = APIRequest.parse(request.path_qs[9:])
@@ -245,7 +247,7 @@ class HTTPServerRunner:
             self.channels.remove(channel)
         return ws
 
-    async def handle_login(self, request):
+    async def handle_login(self, request: web.Request):
         """Handle login or proxy query, which is launcher job. This should only be used in development."""
         req = APIRequest.parse(request.path_qs)
         try:
@@ -257,6 +259,26 @@ class HTTPServerRunner:
         except Exception:  # pylint: disable=broad-except
             traceback.print_exc()
             return web.Response(status=500)
+
+    async def handle_reload(self, request: web.Request):
+        """Handle reload request"""
+        self.check_permission(request)
+        req = APIRequest.parse(request.path_qs)
+        data = await request.content.read() if request.content else b""
+        res = self.api.api_exit(req, data)
+        exit_delay = int(res.get("exit_delay", 1000))
+        res = {}  # do not return the parameters
+
+        # reload means exiting this process, delay it for response to be sent
+        def do_exit():
+            # return code 0 for successful exit
+            sys.exit(0)  # pylint: disable=consider-using-sys-exit
+
+        if exit_delay > 0:
+            self.loop.call_later(exit_delay / 1000, do_exit)
+        else:
+            do_exit()  # no response will be sent
+        return web.Response(text=json.dumps(res))
 
     def dump_model(self, channel: WebsocketChannel):
         """Dump the whole model into channel"""

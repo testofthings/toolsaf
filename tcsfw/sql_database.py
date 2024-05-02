@@ -1,7 +1,10 @@
 """SQL database by SQLAlchemy"""
 
 import json
+import os
+import pathlib
 from typing import Any, Iterator, List, Optional, Dict, Tuple, Set
+from urllib.parse import urlparse
 
 from sqlalchemy import Boolean, Column, Integer, String, create_engine, delete, select
 from sqlalchemy.ext.declarative import declarative_base
@@ -50,6 +53,7 @@ class SQLDatabase(EntityDatabase, ModelListener):
     """Use SQL database for storage"""
     def __init__(self, db_uri: str):
         super().__init__()
+        self.db_uri = db_uri
         self.engine = create_engine(db_uri)
         Base.metadata.create_all(self.engine)
         self.db_conn = self.engine.connect()
@@ -69,6 +73,16 @@ class SQLDatabase(EntityDatabase, ModelListener):
         self.pending_offset = 0
         self.pending_batch = []
         self.pending_source_ids = set()
+
+    def clear_database(self):
+        # check if DB is a local file
+        self.engine.dispose()
+        u = urlparse(self.db_uri)
+        if u.scheme.startswith("sqlite") and u.path:
+            path = pathlib.Path(u.path[1:]) if u.path.startswith("/") else pathlib.Path(u.path)
+            self.logger.info("Deleting DB file %s if it exists", path)
+            if path.exists():
+                os.remove(path)
 
     def _fill_cache(self):
         """Fill entity cache from database"""

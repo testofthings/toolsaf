@@ -3,4 +3,5 @@ censys
 aiohttp
 aiofiles
 sqlalchemy
+watchdog
 prompt_toolkit

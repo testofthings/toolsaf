@@ -143,6 +143,9 @@ class ClientAPI(ModelListener):
             self.system_reset(param.get("evidence", {}), include_all=param.get("include_all", False))
             if param.get("dump_all", False):
                 r = {"events": list(self.api_iterate_all(request.change_path(".")))}
+        elif path == "reload":
+            # reload is actually exit
+            self.api_exit(request, data)
         elif path.startswith("event/"):
             e_name = path[6:]
             e_type = EventMap.get_event_class(e_name)
@@ -154,6 +157,14 @@ class ClientAPI(ModelListener):
         else:
             raise FileNotFoundError("Unknown API endpoint")
         return r
+
+    def api_exit(self, _request: APIRequest, data: bytes) -> Dict:
+        """Reload model"""
+        param = json.loads(data) if data else {}
+        clear_db = bool(param.get("clear_db", False))
+        if clear_db:
+            self.registry.clear_database()
+        return param
 
     def api_post_file(self, request: APIRequest, data_file: pathlib.Path) -> Dict:
         """Post API data in ZIP file"""

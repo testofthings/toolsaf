@@ -37,6 +37,9 @@ class EntityDatabase:
         """Store an event"""
         raise NotImplementedError()
 
+    def clear_database(self):
+        """Clear the database, from the disk"""
+
 
 class InMemoryDatabase(EntityDatabase):
     """Store and retrieve events, later entities, etc."""

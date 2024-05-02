@@ -65,6 +65,11 @@ class Registry(EventInterface):
         self.logging.reset()
         return self
 
+    def clear_database(self) -> Self:
+        """Clear the database, from the disk"""
+        self.database.clear_database()
+        return self
+
     def apply_all_events(self) -> Self:
         """Apply all stored events, after reset"""
         while True:
