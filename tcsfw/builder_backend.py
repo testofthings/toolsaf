@@ -5,21 +5,20 @@ import io
 import ipaddress
 import json
 import logging
-import os
 import pathlib
 import sys
 from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union
 
 from tcsfw.address import (Addresses, AnyAddress, DNSName, EndpointAddress, HWAddress,
                            HWAddresses, IPAddress, IPAddresses, Protocol)
+from tcsfw.address_resolver import AddressResolver
 from tcsfw.basics import ConnectionType, ExternalActivity, HostType, Status
 from tcsfw.batch_import import BatchImporter, LabelFilter
 from tcsfw.claim_coverage import RequirementClaimMapper
 from tcsfw.client_api import APIRequest, ClientPrompt
-from tcsfw.command_basics import read_env_file
 from tcsfw.components import CookieData, Cookies, DataReference, DataStorages, Software
 from tcsfw.coverage_result import CoverageReport
-from tcsfw.entity import ClaimAuthority, Entity, SafeNameMap
+from tcsfw.entity import ClaimAuthority, Entity
 from tcsfw.event_interface import PropertyEvent
 from tcsfw.release_info import ReleaseInfo
 from tcsfw.http_server import HTTPServerRunner
@@ -56,7 +55,7 @@ class SystemBackend(SystemBuilder):
         self.visualizer = Visualizer()
         self.loaders: List[EvidenceLoader] = []
         self.protocols: Dict[Any, 'ProtocolBackend'] = {}
-        self.safe_names = SafeNameMap(prefix="SUT_")
+        self.address_resolver = AddressResolver()
 
     def network(self, mask: str) -> Self:
         self.network_masks.append(ipaddress.ip_network(mask))
@@ -126,14 +125,7 @@ class SystemBackend(SystemBuilder):
         return self
 
     def require(self, addresses_for: List['NodeBuilder']):
-        env = read_env_file()
-        for nb in addresses_for:
-            env_name = self.safe_names.get_env_name(nb.entity)
-            value = env.get(env_name) or os.environ.get(env_name)
-            if not value:
-                raise ConfigurationException(f"Environment variable {env_name} not defined for {nb.entity.long_name()}")
-            address = DNSName.name_or_ip(value)
-            nb.entity.addresses.add(address)
+        self.address_resolver.addresses_for.extend(addresses_for)
 
     def visualize(self) -> 'VisualizerBackend':
         return VisualizerBackend(self.visualizer)
@@ -183,8 +175,10 @@ class SystemBackend(SystemBuilder):
 
     def finish_(self):
         """Finish the model"""
+        # get the missing addresses
+        self.address_resolver.require()
+
         # We want to have a authenticator related to each authenticated service
-        return
         # NOTE: Not ready to go into this level now...
         # auth_map = DataUsage.map_authenticators(self.system, {})
         # for hb in self.hosts_by_name.values():
