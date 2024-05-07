@@ -65,6 +65,10 @@ class SystemBuilder:
         """Document online resource"""
         raise NotImplementedError()
 
+    def require(self, addresses_for: List['NodeBuilder']):
+        """Require definition of these addresses"""
+        raise NotImplementedError()
+
     def visualize(self) -> 'VisualizerBuilder':
         """Model visualization"""
         raise NotImplementedError()
