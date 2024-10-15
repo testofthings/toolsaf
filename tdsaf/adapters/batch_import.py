@@ -12,7 +12,7 @@ from tdsaf.core.address import Addresses
 from tdsaf.core.basics import ExternalActivity
 from tdsaf.base.event_interface import EventInterface
 from tdsaf.base.model import EvidenceNetworkSource, IoTSystem
-from tdsaf.tool_finder import ToolDepiction, ToolFinder
+from tdsaf.adapters.tool_finder import ToolDepiction, ToolFinder
 from tdsaf.core.traffic import EvidenceSource
 
 

@@ -6,7 +6,7 @@ from tdsaf.base.event_interface import PropertyEvent
 from tdsaf.base.model import EvidenceNetworkSource
 from tdsaf.core.property import Properties
 from tdsaf.base.registry import Registry, Inspector
-from tdsaf.sql_database import SQLDatabase
+from tdsaf.base.sql_database import SQLDatabase
 from tdsaf.core.traffic import NO_EVIDENCE, Evidence, EvidenceSource, IPFlow
 
 

@@ -7,7 +7,7 @@ import urllib
 from typing import Dict, List, Tuple, Any, Iterable, BinaryIO, Optional
 
 from tdsaf.core.basics import Status
-from tdsaf.batch_import import BatchImporter
+from tdsaf.adapters.batch_import import BatchImporter
 from tdsaf.core.verdict import Verdict
 from tdsaf.core.entity import Entity
 from tdsaf.base.event_interface import EventMap

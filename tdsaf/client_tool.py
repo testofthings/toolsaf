@@ -16,7 +16,7 @@ import zipfile
 import requests
 import urllib3
 
-from tdsaf.batch_import import FileMetaInfo
+from tdsaf.adapters.batch_import import FileMetaInfo
 from tdsaf.command_basics import API_KEY_FILE_NAME, get_api_key
 
 class ClientTool:

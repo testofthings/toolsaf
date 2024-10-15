@@ -4,7 +4,7 @@ from typing import Any, List, Dict, Tuple, Self, Optional
 
 from tdsaf.core.address import AnyAddress, HWAddress, IPAddress, Protocol
 from tdsaf.core.basics import ExternalActivity
-from tdsaf.batch_import import LabelFilter
+from tdsaf.adapters.batch_import import LabelFilter
 from tdsaf.base.event_interface import PropertyEvent
 from tdsaf.main import EvidenceBuilder, FlowBuilder, TrafficDataBuilder, NodeBuilder, SystemBuilder
 from tdsaf.base.requirement import SelectorContext

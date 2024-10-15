@@ -13,7 +13,7 @@ from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union
 from tdsaf.core.address import (AddressAtNetwork, Addresses, AnyAddress, DNSName, EndpointAddress, EntityTag, HWAddress,
                            HWAddresses, IPAddress, IPAddresses, Network, Protocol)
 from tdsaf.core.basics import ConnectionType, ExternalActivity, HostType, Status
-from tdsaf.batch_import import BatchImporter, LabelFilter
+from tdsaf.adapters.batch_import import BatchImporter, LabelFilter
 from tdsaf.client_api import APIRequest
 from tdsaf.base.components import CookieData, Cookies, DataReference, StoredData, OperatingSystem, Software
 from tdsaf.core.entity import ClaimAuthority, Entity
@@ -34,7 +34,7 @@ from tdsaf.base.inspector import Inspector
 from tdsaf.base.result import Report
 from tdsaf.base.selector import RequirementSelector
 from tdsaf.base.services import DHCPService, DNSService
-from tdsaf.sql_database import SQLDatabase
+from tdsaf.base.sql_database import SQLDatabase
 from tdsaf.core.traffic import Evidence, EvidenceSource
 from tdsaf.core.verdict import Verdict
 from tdsaf.visualizer import Visualizer, VisualizerAPI
