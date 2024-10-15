@@ -2,9 +2,9 @@ from tdsaf.core.verdict import Verdict
 from tdsaf.builder_backend import SystemBackend
 from test_inspector import simple_setup_3
 from test_model import simple_setup_1
-from tdsaf.inspector import Inspector
+from tdsaf.base.inspector import Inspector
 from tdsaf.main import DHCP
-from tdsaf.registry import Registry
+from tdsaf.base.registry import Registry
 from tdsaf.core.traffic import IPFlow, NO_EVIDENCE
 from tdsaf.core.basics import Status
 

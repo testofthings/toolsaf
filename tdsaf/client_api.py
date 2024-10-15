@@ -16,13 +16,13 @@ from tdsaf.core.basics import Status
 from tdsaf.batch_import import BatchImporter
 from tdsaf.text_tables import TableView
 from tdsaf.core.verdict import Verdict
-from tdsaf.claim_coverage import RequirementClaimMapper
-from tdsaf.coverage_result import CoverageReport
+from tdsaf.base.claim_coverage import RequirementClaimMapper
+from tdsaf.base.coverage_result import CoverageReport
 from tdsaf.core.entity import Entity
-from tdsaf.event_interface import EventMap
-from tdsaf.model import Addressable, NetworkNode, Connection, Host, Service, ModelListener, IoTSystem, NodeComponent
+from tdsaf.base.event_interface import EventMap
+from tdsaf.base.model import Addressable, NetworkNode, Connection, Host, Service, ModelListener, IoTSystem, NodeComponent
 from tdsaf.core.property import Properties, PropertyKey, PropertySetValue, PropertyVerdictValue
-from tdsaf.registry import Registry
+from tdsaf.base.registry import Registry
 from tdsaf.specifications import Specifications
 from tdsaf.core.traffic import NO_EVIDENCE
 from tdsaf.core.verdict import Verdictable

@@ -17,9 +17,9 @@ from framing.frames import Frames
 from framing.raw_data import Raw, RawData
 
 from tdsaf.core.address import DNSName, HWAddress, Protocol, IPAddress
-from tdsaf.event_interface import EventInterface
-from tdsaf.model import Connection, IoTSystem
-from tdsaf.services import NameEvent, DNSService
+from tdsaf.base.event_interface import EventInterface
+from tdsaf.base.model import Connection, IoTSystem
+from tdsaf.base.services import NameEvent, DNSService
 from tdsaf.adapters.tools import SystemWideTool
 from tdsaf.core.traffic import IPFlow, EvidenceSource, Evidence, EthernetFlow, Flow
 

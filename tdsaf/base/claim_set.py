@@ -5,10 +5,10 @@ from typing import List, Optional, Tuple, Self, Dict, Set, Callable, Iterable, U
 from tdsaf.core.address import Protocol
 from tdsaf.core.basics import HostType
 from tdsaf.core.claim import AbstractClaim
-from tdsaf.components import DataReference, Software
+from tdsaf.base.components import DataReference, Software
 from tdsaf.core.entity import Entity, ClaimStatus, ExplainableClaim, ClaimAuthority
 from tdsaf.core.release_info import ReleaseInfo
-from tdsaf.model import IoTSystem, Connection, Host, Service, NetworkNode
+from tdsaf.base.model import IoTSystem, Connection, Host, Service, NetworkNode
 from tdsaf.core.property import Properties, PropertyKey, PropertyVerdictValue, \
     PropertySetValue
 from tdsaf.core.verdict import Verdict, Verdictable

@@ -5,8 +5,8 @@ import json
 from typing import Dict
 
 from tdsaf.core.address import AnyAddress, Protocol
-from tdsaf.event_interface import PropertyAddressEvent, EventInterface
-from tdsaf.model import Service, IoTSystem, NetworkNode
+from tdsaf.base.event_interface import PropertyAddressEvent, EventInterface
+from tdsaf.base.model import Service, IoTSystem, NetworkNode
 from tdsaf.core.property import Properties, PropertyKey
 from tdsaf.adapters.tools import EndpointTool
 from tdsaf.core.traffic import Evidence, EvidenceSource

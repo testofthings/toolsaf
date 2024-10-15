@@ -4,11 +4,11 @@ import logging
 import textwrap
 from typing import TextIO, Tuple, Dict, Optional, List
 
-from tdsaf.claim_coverage import RequirementClaimMapper, ClaimMapping, RequirementStatus
+from tdsaf.base.claim_coverage import RequirementClaimMapper, ClaimMapping, RequirementStatus
 from tdsaf.core.entity import Entity, ClaimStatus, ClaimAuthority
-from tdsaf.event_logger import EventLogger
+from tdsaf.base.event_logger import EventLogger
 from tdsaf.core.property import PropertyKey, Properties
-from tdsaf.requirement import Specification, Requirement
+from tdsaf.base.requirement import Specification, Requirement
 from tdsaf.core.traffic import EvidenceSource
 from tdsaf.core.verdict import Verdict
 

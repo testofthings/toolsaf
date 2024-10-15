@@ -5,9 +5,9 @@ from typing import Dict, Optional, Type, Callable, Any, Tuple
 from tdsaf.core.address import Addresses, AnyAddress
 from tdsaf.core.verdict import Verdict
 from tdsaf.core.entity import Entity
-from tdsaf.model import IoTSystem
+from tdsaf.base.model import IoTSystem
 from tdsaf.core.property import PropertyKey
-from tdsaf.services import NameEvent
+from tdsaf.base.services import NameEvent
 from tdsaf.core.traffic import ServiceScan, HostScan, Event, Flow, IPFlow, EthernetFlow, BLEAdvertisementFlow, Evidence
 from tdsaf.core.verdict import Verdictable
 

@@ -1,7 +1,7 @@
 import pathlib
 from tdsaf.core.address import HWAddress, IPAddress
 from tdsaf.batch_import import BatchImporter, FileMetaInfo, LabelFilter
-from tdsaf.inspector import Inspector
+from tdsaf.base.inspector import Inspector
 from tests.test_model import Setup, simple_setup_1
 
 class Setup_1(Setup):

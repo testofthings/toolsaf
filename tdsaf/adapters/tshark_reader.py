@@ -8,9 +8,9 @@ import pathlib
 from typing import Dict, Optional, Self
 
 from tdsaf.core.address import HWAddress
-from tdsaf.event_interface import EventInterface
-from tdsaf.inspector import Inspector
-from tdsaf.model import IoTSystem
+from tdsaf.base.event_interface import EventInterface
+from tdsaf.base.inspector import Inspector
+from tdsaf.base.model import IoTSystem
 from tdsaf.adapters.tools import SystemWideTool
 from tdsaf.core.traffic import EvidenceSource, BLEAdvertisementFlow, Evidence
 

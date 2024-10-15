@@ -3,9 +3,9 @@ import pathlib
 from tdsaf.core.address import EntityTag, IPAddress, DNSName, Protocol
 from tdsaf.core.verdict import Verdict
 from tdsaf.builder_backend import SystemBackend
-from tdsaf.inspector import Inspector
+from tdsaf.base.inspector import Inspector
 from tdsaf.main import DNS
-from tdsaf.matcher import SystemMatcher
+from tdsaf.base.matcher import SystemMatcher
 from tdsaf.adapters.pcap_reader import PCAPReader
 from tdsaf.core.traffic import IPFlow
 from tdsaf.core.basics import Status

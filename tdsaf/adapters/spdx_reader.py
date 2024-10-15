@@ -5,9 +5,9 @@ import json
 from datetime import datetime
 from typing import cast
 
-from tdsaf.components import Software, SoftwareComponent
-from tdsaf.event_interface import PropertyEvent, EventInterface
-from tdsaf.model import IoTSystem, NodeComponent
+from tdsaf.base.components import Software, SoftwareComponent
+from tdsaf.base.event_interface import PropertyEvent, EventInterface
+from tdsaf.base.model import IoTSystem, NodeComponent
 from tdsaf.core.property import Properties, PropertyKey
 from tdsaf.adapters.tools import NodeComponentTool
 from tdsaf.core.traffic import EvidenceSource, Evidence

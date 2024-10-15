@@ -19,7 +19,7 @@ from tdsaf.adapters.tshark_reader import TSharkReader
 from tdsaf.adapters.vulnerability_reader import VulnerabilityReader
 from tdsaf.adapters.web_checker import WebChecker
 from tdsaf.adapters.zed_reader import ZEDReader
-from tdsaf.model import IoTSystem
+from tdsaf.base.model import IoTSystem
 
 
 class ToolDepiction:

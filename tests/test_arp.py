@@ -1,6 +1,6 @@
 from tdsaf.core.address import Protocol
 from tdsaf.builder_backend import SystemBackend
-from tdsaf.inspector import Inspector
+from tdsaf.base.inspector import Inspector
 from tdsaf.main import ARP
 from tdsaf.core.basics import ExternalActivity
 from tdsaf.core.traffic import EthernetFlow

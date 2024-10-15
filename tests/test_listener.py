@@ -3,9 +3,9 @@ from tdsaf.core.entity import Entity
 from tdsaf.core.property import PropertyKey
 from test_model import simple_setup_1
 from tdsaf.core.address import AnyAddress, EndpointAddress, IPAddress, Protocol
-from tdsaf.inspector import Inspector
-from tdsaf.model import ModelListener, IoTSystem, Host, Connection, Service
-from tdsaf.registry import Registry
+from tdsaf.base.inspector import Inspector
+from tdsaf.base.model import ModelListener, IoTSystem, Host, Connection, Service
+from tdsaf.base.registry import Registry
 from tdsaf.core.traffic import Flow, IPFlow
 
 

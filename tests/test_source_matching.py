@@ -1,6 +1,6 @@
 from tdsaf.builder_backend import SystemBackend
 from tdsaf.main import HTTP, UDP
-from tdsaf.matcher import SystemMatcher
+from tdsaf.base.matcher import SystemMatcher
 from tdsaf.core.traffic import IPFlow, Evidence
 
 

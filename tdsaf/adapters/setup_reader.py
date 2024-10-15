@@ -3,9 +3,9 @@ import csv
 
 from io import BytesIO, TextIOWrapper
 from tdsaf.core.address import DNSName, EntityTag
-from tdsaf.event_interface import EventInterface
-from tdsaf.model import IoTSystem
-from tdsaf.services import NameEvent
+from tdsaf.base.event_interface import EventInterface
+from tdsaf.base.model import IoTSystem
+from tdsaf.base.services import NameEvent
 from tdsaf.adapters.tools import ToolAdapter
 from tdsaf.core.traffic import Evidence, EvidenceSource
 

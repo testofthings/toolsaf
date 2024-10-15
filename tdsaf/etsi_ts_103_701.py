@@ -10,16 +10,16 @@ from typing import List, Dict, Optional, Iterable, Tuple, Set
 from tdsaf.core.basics import HostType
 
 from tdsaf.core.claim import AbstractClaim
-from tdsaf.claim_set import RequirementClaim, AuthenticationClaim, NoUnexpectedServices, \
+from tdsaf.base.claim_set import RequirementClaim, AuthenticationClaim, NoUnexpectedServices, \
     AvailabilityClaim, Claim, UserInterfaceClaim, ContentClaim, \
     MITMClaim, ProtocolClaim, FuzzingClaim, PropertyClaim, \
     PhysicalManipulationClaim, NamedClaim
 from tdsaf.core.entity import Entity
-from tdsaf.model import IoTSystem, Host, Service, Connection
+from tdsaf.base.model import IoTSystem, Host, Service, Connection
 from tdsaf.core.property import Properties, PropertyKey
-from tdsaf.requirement import Specification, Requirement, SelectorContext, SpecificationSelectorContext, \
+from tdsaf.base.requirement import Specification, Requirement, SelectorContext, SpecificationSelectorContext, \
     EntitySelector
-from tdsaf.selector import Select, ServiceSelector, UpdateConnectionSelector, RequirementSelector
+from tdsaf.base.selector import Select, ServiceSelector, UpdateConnectionSelector, RequirementSelector
 
 
 class IXIT_Section:  # pylint: disable=invalid-name

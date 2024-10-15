@@ -2,10 +2,10 @@ import tempfile
 from tdsaf.core.address import HWAddress, IPAddress
 from tdsaf.core.basics import ExternalActivity
 from tdsaf.builder_backend import SystemBackend
-from tdsaf.event_interface import PropertyEvent
-from tdsaf.model import EvidenceNetworkSource
+from tdsaf.base.event_interface import PropertyEvent
+from tdsaf.base.model import EvidenceNetworkSource
 from tdsaf.core.property import Properties
-from tdsaf.registry import Registry, Inspector
+from tdsaf.base.registry import Registry, Inspector
 from tdsaf.sql_database import SQLDatabase
 from tdsaf.core.traffic import NO_EVIDENCE, Evidence, EvidenceSource, IPFlow
 

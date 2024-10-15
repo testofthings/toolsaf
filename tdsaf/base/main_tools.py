@@ -5,14 +5,14 @@ from typing import Any, List, Dict, Tuple, Self, Optional
 from tdsaf.core.address import AnyAddress, HWAddress, IPAddress, Protocol
 from tdsaf.core.basics import ExternalActivity
 from tdsaf.batch_import import LabelFilter
-from tdsaf.claim_coverage import RequirementClaimMapper
-from tdsaf.event_interface import PropertyEvent
+from tdsaf.base.claim_coverage import RequirementClaimMapper
+from tdsaf.base.event_interface import PropertyEvent
 from tdsaf.main import EvidenceBuilder, FlowBuilder, TrafficDataBuilder, NodeBuilder, SystemBuilder
-from tdsaf.requirement import SelectorContext
-from tdsaf.selector import Select
-from tdsaf.model import EvidenceNetworkSource
+from tdsaf.base.requirement import SelectorContext
+from tdsaf.base.selector import Select
+from tdsaf.base.model import EvidenceNetworkSource
 from tdsaf.core.property import PropertyKey
-from tdsaf.registry import Registry
+from tdsaf.base.registry import Registry
 from tdsaf.core.traffic import NO_EVIDENCE, Evidence, Flow, IPFlow
 
 

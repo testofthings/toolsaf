@@ -4,10 +4,10 @@ from io import BytesIO, TextIOWrapper
 import re
 
 from tdsaf.core.address import DNSName, HWAddresses
-from tdsaf.event_interface import EventInterface
-from tdsaf.model import IoTSystem
+from tdsaf.base.event_interface import EventInterface
+from tdsaf.base.model import IoTSystem
 from tdsaf.core.property import Properties
-from tdsaf.services import NameEvent
+from tdsaf.base.services import NameEvent
 from tdsaf.adapters.tools import SystemWideTool
 from tdsaf.core.traffic import EvidenceSource, Evidence, IPFlow
 from tdsaf.core.verdict import Verdict

@@ -1,7 +1,7 @@
 """Available requirement specifications"""
 
 from typing import List
-from tdsaf.requirement import Specification
+from tdsaf.base.requirement import Specification
 from tdsaf.default_requirements import DEFAULT
 from tdsaf.etsi_ts_103_701 import ETSI_TS_103_701, ETSI_TS_103_701_FIN
 

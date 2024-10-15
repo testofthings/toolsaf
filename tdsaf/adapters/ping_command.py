@@ -5,8 +5,8 @@ from io import BytesIO, TextIOWrapper
 import re
 from typing import Optional, Tuple
 from tdsaf.core.address import IPAddress
-from tdsaf.event_interface import EventInterface, PropertyAddressEvent
-from tdsaf.model import IoTSystem
+from tdsaf.base.event_interface import EventInterface, PropertyAddressEvent
+from tdsaf.base.model import IoTSystem
 from tdsaf.core.property import Properties
 from tdsaf.adapters.tools import SystemWideTool
 from tdsaf.core.traffic import Evidence, EvidenceSource

@@ -14,12 +14,12 @@ from tdsaf.core.address import (AddressAtNetwork, Addresses, AnyAddress, DNSName
                            HWAddresses, IPAddress, IPAddresses, Network, Protocol)
 from tdsaf.core.basics import ConnectionType, ExternalActivity, HostType, Status
 from tdsaf.batch_import import BatchImporter, LabelFilter
-from tdsaf.claim_coverage import RequirementClaimMapper
+from tdsaf.base.claim_coverage import RequirementClaimMapper
 from tdsaf.client_api import APIRequest, ClientPrompt
-from tdsaf.components import CookieData, Cookies, DataReference, StoredData, OperatingSystem, Software
-from tdsaf.coverage_result import CoverageReport
+from tdsaf.base.components import CookieData, Cookies, DataReference, StoredData, OperatingSystem, Software
+from tdsaf.base.coverage_result import CoverageReport
 from tdsaf.core.entity import ClaimAuthority, Entity
-from tdsaf.event_interface import PropertyEvent
+from tdsaf.base.event_interface import PropertyEvent
 from tdsaf.core.release_info import ReleaseInfo
 from tdsaf.http_server import HTTPServerRunner
 from tdsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP, IP, TLS,
@@ -28,14 +28,14 @@ from tdsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP, I
                         ConfigurationException, OSBuilder, ProtocolConfigurer, ProtocolType,
                         SensitiveDataBuilder, ServiceBuilder, ServiceGroupBuilder, ServiceOrGroup,
                         SoftwareBuilder, SystemBuilder, VisualizerBuilder)
-from tdsaf.main_tools import EvidenceLoader, NodeManipulator, SubLoader, ToolPlanLoader
-from tdsaf.model import Addressable, Connection, Host, IoTSystem, SensitiveData, Service
+from tdsaf.base.main_tools import EvidenceLoader, NodeManipulator, SubLoader, ToolPlanLoader
+from tdsaf.base.model import Addressable, Connection, Host, IoTSystem, SensitiveData, Service
 from tdsaf.core.property import Properties, PropertyKey
-from tdsaf.registry import Registry
-from tdsaf.inspector import Inspector
-from tdsaf.result import Report
-from tdsaf.selector import RequirementSelector
-from tdsaf.services import DHCPService, DNSService
+from tdsaf.base.registry import Registry
+from tdsaf.base.inspector import Inspector
+from tdsaf.base.result import Report
+from tdsaf.base.selector import RequirementSelector
+from tdsaf.base.services import DHCPService, DNSService
 from tdsaf.specifications import Specifications
 from tdsaf.sql_database import SQLDatabase
 from tdsaf.core.traffic import Evidence, EvidenceSource

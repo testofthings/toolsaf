@@ -1,7 +1,7 @@
 from tdsaf.core.address import Addresses, IPAddress
 from tdsaf.builder_backend import SystemBackend
-from tdsaf.matcher import SystemMatcher
-from tdsaf.model import EvidenceNetworkSource
+from tdsaf.base.matcher import SystemMatcher
+from tdsaf.base.model import EvidenceNetworkSource
 from tdsaf.core.traffic import Evidence, IPFlow
 from tdsaf.core.basics import Status
 

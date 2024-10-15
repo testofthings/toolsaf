@@ -2,7 +2,7 @@
 
 import logging
 from typing import Any, Iterable, Optional, Dict, List
-from tdsaf.event_interface import EventInterface
+from tdsaf.base.event_interface import EventInterface
 from tdsaf.core.traffic import Event, EvidenceSource
 
 

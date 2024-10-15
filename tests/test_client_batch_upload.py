@@ -4,9 +4,9 @@ import tempfile
 
 from tdsaf.builder_backend import SystemBackend
 from tdsaf.client_api import APIRequest, ClientAPI
-from tdsaf.inspector import Inspector
-from tdsaf.matcher import SystemMatcher
-from tdsaf.registry import Registry
+from tdsaf.base.inspector import Inspector
+from tdsaf.base.matcher import SystemMatcher
+from tdsaf.base.registry import Registry
 from tdsaf.core.verdict import Verdict
 
 

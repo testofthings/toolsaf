@@ -2,11 +2,11 @@
 
 from typing import List, Dict, Tuple
 
-from tdsaf.claim_coverage import RequirementClaimMapper
+from tdsaf.base.claim_coverage import RequirementClaimMapper
 from tdsaf.client_api import ClientAPI, RequestContext
 from tdsaf.main import ConfigurationException
-from tdsaf.model import NetworkNode, Connection, Host
-from tdsaf.registry import Registry
+from tdsaf.base.model import NetworkNode, Connection, Host
+from tdsaf.base.registry import Registry
 
 
 class Visualizer:

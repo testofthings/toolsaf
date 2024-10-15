@@ -7,9 +7,9 @@ from datetime import datetime
 from typing import cast
 
 from tdsaf.core.address import EndpointAddress, DNSName, Protocol
-from tdsaf.components import Cookies, CookieData
-from tdsaf.event_interface import PropertyAddressEvent, PropertyEvent, EventInterface
-from tdsaf.model import Host, IoTSystem, NetworkNode
+from tdsaf.base.components import Cookies, CookieData
+from tdsaf.base.event_interface import PropertyAddressEvent, PropertyEvent, EventInterface
+from tdsaf.base.model import Host, IoTSystem, NetworkNode
 from tdsaf.core.property import PropertyKey, Properties
 from tdsaf.adapters.tools import NetworkNodeTool
 from tdsaf.core.traffic import EvidenceSource, Evidence

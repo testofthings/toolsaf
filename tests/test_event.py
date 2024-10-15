@@ -1,10 +1,10 @@
 from tdsaf.core.address import Addresses, DNSName, EndpointAddress, Protocol
 from tdsaf.core.verdict import Verdict
 from tdsaf.builder_backend import SystemBackend
-from tdsaf.event_interface import PropertyAddressEvent, PropertyEvent
+from tdsaf.base.event_interface import PropertyAddressEvent, PropertyEvent
 from tdsaf.main import DNS
 from tdsaf.core.property import Properties, PropertyKey
-from tdsaf.services import NameEvent
+from tdsaf.base.services import NameEvent
 from tdsaf.core.traffic import Evidence, EvidenceSource, IPFlow
 
 

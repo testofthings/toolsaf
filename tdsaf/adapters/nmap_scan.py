@@ -5,8 +5,8 @@ from io import BytesIO
 from xml.etree import ElementTree
 
 from tdsaf.core.address import IPAddress, HWAddress, EndpointAddress, Protocol
-from tdsaf.event_interface import EventInterface
-from tdsaf.model import IoTSystem, Host
+from tdsaf.base.event_interface import EventInterface
+from tdsaf.base.model import IoTSystem, Host
 from tdsaf.adapters.tools import SystemWideTool
 from tdsaf.core.traffic import EvidenceSource, Evidence, ServiceScan, HostScan
 

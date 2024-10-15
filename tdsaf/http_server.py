@@ -15,7 +15,7 @@ from aiohttp import web, WSMsgType
 
 from tdsaf.client_api import ClientAPI, APIRequest, APIListener
 from tdsaf.command_basics import get_api_key, get_authorization
-from tdsaf.model import IoTSystem
+from tdsaf.base.model import IoTSystem
 
 
 class WebsocketChannel(APIListener):

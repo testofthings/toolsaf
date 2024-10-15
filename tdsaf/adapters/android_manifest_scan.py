@@ -4,9 +4,9 @@ from io import BytesIO
 from typing import cast
 from xml.etree import ElementTree
 
-from tdsaf.components import Software
-from tdsaf.event_interface import PropertyEvent, EventInterface
-from tdsaf.model import IoTSystem, NodeComponent
+from tdsaf.base.components import Software
+from tdsaf.base.event_interface import PropertyEvent, EventInterface
+from tdsaf.base.model import IoTSystem, NodeComponent
 from tdsaf.core.property import Properties, PropertyKey
 from tdsaf.adapters.tools import NodeComponentTool
 from tdsaf.core.traffic import EvidenceSource, Evidence

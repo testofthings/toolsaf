@@ -3,7 +3,7 @@
 import pathlib
 
 from tdsaf.batch_import import BatchImporter
-from tdsaf.components import OperatingSystem
+from tdsaf.base.components import OperatingSystem
 from tdsaf.core.property import PropertyKey
 from tdsaf.core.verdict import Verdict
 from tests.test_model import Setup

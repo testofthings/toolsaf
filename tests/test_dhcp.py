@@ -2,10 +2,10 @@ import pathlib
 from tdsaf.core.address import EntityTag, HWAddress, IPAddress
 from tdsaf.core.verdict import Verdict
 from tdsaf.builder_backend import SystemBackend
-from tdsaf.event_logger import EventLogger
-from tdsaf.inspector import Inspector
+from tdsaf.base.event_logger import EventLogger
+from tdsaf.base.inspector import Inspector
 from tdsaf.main import DHCP, UDP
-from tdsaf.matcher import SystemMatcher
+from tdsaf.base.matcher import SystemMatcher
 from tdsaf.adapters.pcap_reader import PCAPReader
 from tdsaf.core.traffic import IPFlow
 from tdsaf.core.basics import Status

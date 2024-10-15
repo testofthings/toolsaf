@@ -4,12 +4,12 @@ import logging
 from typing import Optional, Dict, Self, Any, Set
 
 from tdsaf.core.entity import Entity
-from tdsaf.entity_database import EntityDatabase, InMemoryDatabase
-from tdsaf.event_interface import EventInterface, PropertyAddressEvent, PropertyEvent
-from tdsaf.event_logger import EventLogger
-from tdsaf.inspector import Inspector
-from tdsaf.model import IoTSystem, Connection, Host, Service
-from tdsaf.services import NameEvent
+from tdsaf.base.entity_database import EntityDatabase, InMemoryDatabase
+from tdsaf.base.event_interface import EventInterface, PropertyAddressEvent, PropertyEvent
+from tdsaf.base.event_logger import EventLogger
+from tdsaf.base.inspector import Inspector
+from tdsaf.base.model import IoTSystem, Connection, Host, Service
+from tdsaf.base.services import NameEvent
 from tdsaf.core.traffic import ServiceScan, HostScan, Event, EvidenceSource, Flow
 
 

@@ -6,8 +6,8 @@ from datetime import datetime
 from typing import List, Set
 
 from tdsaf.core.address import EndpointAddress, Protocol, DNSName
-from tdsaf.event_interface import EventInterface, PropertyAddressEvent
-from tdsaf.model import IoTSystem
+from tdsaf.base.event_interface import EventInterface, PropertyAddressEvent
+from tdsaf.base.model import IoTSystem
 from tdsaf.core.property import Properties, PropertyKey
 from tdsaf.adapters.tools import SystemWideTool
 from tdsaf.core.traffic import EvidenceSource, Evidence

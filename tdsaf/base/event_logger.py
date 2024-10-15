@@ -7,11 +7,11 @@ from tdsaf.core.address import AnyAddress
 from tdsaf.core.verdict import Verdict
 
 from tdsaf.core.entity import Entity
-from tdsaf.event_interface import EventInterface, PropertyEvent, PropertyAddressEvent
-from tdsaf.inspector import Inspector
-from tdsaf.model import IoTSystem, Connection, Host, ModelListener, Service
+from tdsaf.base.event_interface import EventInterface, PropertyEvent, PropertyAddressEvent
+from tdsaf.base.inspector import Inspector
+from tdsaf.base.model import IoTSystem, Connection, Host, ModelListener, Service
 from tdsaf.core.property import Properties, PropertyKey
-from tdsaf.services import NameEvent
+from tdsaf.base.services import NameEvent
 from tdsaf.core.traffic import EvidenceSource, HostScan, ServiceScan, Flow, Event
 
 

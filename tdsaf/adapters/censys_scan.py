@@ -9,8 +9,8 @@ import pathlib
 from censys.search import CensysHosts
 
 from tdsaf.core.address import Protocol, EndpointAddress, AnyAddress
-from tdsaf.event_interface import PropertyAddressEvent, EventInterface
-from tdsaf.model import IoTSystem, NetworkNode, Host
+from tdsaf.base.event_interface import PropertyAddressEvent, EventInterface
+from tdsaf.base.model import IoTSystem, NetworkNode, Host
 from tdsaf.core.property import Properties
 from tdsaf.adapters.tools import EndpointTool
 from tdsaf.core.traffic import EvidenceSource, ServiceScan, Evidence, HostScan

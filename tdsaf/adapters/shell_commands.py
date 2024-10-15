@@ -4,11 +4,11 @@ from io import BytesIO, TextIOWrapper
 import re
 from typing import Any, Dict, List, Set, Tuple
 from tdsaf.core.address import AddressEnvelope, Addresses, AnyAddress, EndpointAddress, HWAddresses, IPAddress
-from tdsaf.components import OperatingSystem
-from tdsaf.event_interface import EventInterface, PropertyEvent
-from tdsaf.model import IoTSystem
+from tdsaf.base.components import OperatingSystem
+from tdsaf.base.event_interface import EventInterface, PropertyEvent
+from tdsaf.base.model import IoTSystem
 from tdsaf.core.property import PropertyKey
-from tdsaf.services import NameEvent
+from tdsaf.base.services import NameEvent
 from tdsaf.adapters.tools import EndpointTool
 from tdsaf.core.traffic import Evidence, EvidenceSource, IPFlow, Protocol, ServiceScan
 from tdsaf.core.verdict import Verdict

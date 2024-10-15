@@ -5,8 +5,8 @@ from typing import Any, Dict, List, TextIO, Tuple
 
 from tdsaf.core.basics import Status
 from tdsaf.core.entity import Entity
-from tdsaf.model import Host, IoTSystem, NetworkNode, Service
-from tdsaf.registry import Registry
+from tdsaf.base.model import Host, IoTSystem, NetworkNode, Service
+from tdsaf.base.registry import Registry
 
 
 class BaseTable:

@@ -4,9 +4,9 @@ import logging
 from typing import TextIO, List, Dict
 
 from tdsaf.core.basics import ConnectionType
-from tdsaf.model import Host, Service, NetworkNode
+from tdsaf.base.model import Host, Service, NetworkNode
 from tdsaf.core.property import Properties
-from tdsaf.registry import Registry
+from tdsaf.base.registry import Registry
 
 # Keywords for verdicts
 FAIL = "fail"

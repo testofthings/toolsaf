@@ -6,9 +6,9 @@ import json
 from statistics import mean
 from typing import Tuple, List, cast
 
-from tdsaf.components import Software
-from tdsaf.event_interface import EventInterface, PropertyEvent
-from tdsaf.model import IoTSystem, NetworkNode, NodeComponent
+from tdsaf.base.components import Software
+from tdsaf.base.event_interface import EventInterface, PropertyEvent
+from tdsaf.base.model import IoTSystem, NetworkNode, NodeComponent
 from tdsaf.adapters.tools import NodeComponentTool
 from tdsaf.core.traffic import EvidenceSource, Evidence
 from tdsaf.core.release_info import ReleaseInfo

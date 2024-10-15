@@ -4,7 +4,7 @@ from typing import Any, Callable, Dict, List, Set, Optional
 
 from tdsaf.core.address import DNSName, EndpointAddress, EntityTag, Protocol, IPAddress
 from tdsaf.core.basics import ConnectionType, HostType
-from tdsaf.model import Service, NetworkNode, Connection, Host, Addressable
+from tdsaf.base.model import Service, NetworkNode, Connection, Host, Addressable
 from tdsaf.core.traffic import IPFlow, Flow, Event, Evidence
 
 

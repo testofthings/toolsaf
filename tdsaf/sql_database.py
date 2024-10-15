@@ -10,9 +10,9 @@ from sqlalchemy import Boolean, Column, Integer, String, create_engine, delete, 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 
-from tdsaf.entity_database import EntityDatabase
-from tdsaf.event_interface import EventInterface, EventMap
-from tdsaf.model import Addressable, Connection, EvidenceNetworkSource, Host, ModelListener, NodeComponent, Service
+from tdsaf.base.entity_database import EntityDatabase
+from tdsaf.base.event_interface import EventInterface, EventMap
+from tdsaf.base.model import Addressable, Connection, EvidenceNetworkSource, Host, ModelListener, NodeComponent, Service
 from tdsaf.core.traffic import Event, Evidence, EvidenceSource
 
 Base = declarative_base()

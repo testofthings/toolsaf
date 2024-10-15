@@ -5,7 +5,7 @@ from tdsaf.core.basics import ConnectionType, HostType
 
 from tdsaf.core.claim import AbstractClaim
 from tdsaf.core.entity import Entity
-from tdsaf.model import Host, Connection, Service, IoTSystem
+from tdsaf.base.model import Host, Connection, Service, IoTSystem
 from tdsaf.core.property import PropertyKey
 
 
