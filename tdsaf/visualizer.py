@@ -2,7 +2,6 @@
 
 from typing import List, Dict, Tuple
 
-from tdsaf.base.claim_coverage import RequirementClaimMapper
 from tdsaf.client_api import ClientAPI, RequestContext
 from tdsaf.main import ConfigurationException
 from tdsaf.base.model import NetworkNode, Connection, Host
@@ -58,8 +57,8 @@ class Visualizer:
 
 class VisualizerAPI(ClientAPI):
     """Extend ClientAPI with coordinates and images"""
-    def __init__(self, registry: Registry, claim_coverage: RequirementClaimMapper, visualizer: Visualizer):
-        super().__init__(registry, claim_coverage)
+    def __init__(self, registry: Registry, visualizer: Visualizer):
+        super().__init__(registry)
         self.visualizer = visualizer
 
     def get_entity(self, parent: NetworkNode, context: RequestContext) -> Tuple[NetworkNode, Dict]:

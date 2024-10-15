@@ -5,10 +5,10 @@ from typing import Dict, List, Optional, TypeVar, Generic, Iterator
 from tdsaf.core.address import Addresses, Protocol
 from tdsaf.core.basics import HostType
 from tdsaf.base.components import StoredData, Software, DataReference
-from tdsaf.core.entity import Entity, ExplainableClaim
+from tdsaf.core.entity import Entity
 from tdsaf.base.model import Addressable, Host, IoTSystem, NetworkNode, NodeComponent, Service, Connection
 from tdsaf.core.property import Properties, PropertyKey
-from tdsaf.base.requirement import Requirement, EntitySelector, SelectorContext
+from tdsaf.base.requirement import EntitySelector, SelectorContext
 from tdsaf.core.basics import Status
 
 S = TypeVar("S", bound='EntitySelector')
@@ -23,11 +23,6 @@ class RequirementSelector(EntitySelector):
 
     def __add__(self, other: 'RequirementSelector') -> 'RequirementSelector':
         return AlternativeSelectors([self, other])
-
-    def __xor__(self, other: ExplainableClaim) -> Requirement:
-        """Add the claim"""
-        assert isinstance(other, ExplainableClaim), f"Expected claim, got: {other}"
-        return Requirement(("", ""), other.description, self, other)
 
 
 class NamedSelector(RequirementSelector):

@@ -5,7 +5,6 @@ from typing import Any, List, Dict, Tuple, Self, Optional
 from tdsaf.core.address import AnyAddress, HWAddress, IPAddress, Protocol
 from tdsaf.core.basics import ExternalActivity
 from tdsaf.batch_import import LabelFilter
-from tdsaf.base.claim_coverage import RequirementClaimMapper
 from tdsaf.base.event_interface import PropertyEvent
 from tdsaf.main import EvidenceBuilder, FlowBuilder, TrafficDataBuilder, NodeBuilder, SystemBuilder
 from tdsaf.base.requirement import SelectorContext
@@ -69,7 +68,7 @@ class SubLoader:
         s.model_override = True
         return s
 
-    def load(self, registry: Registry, coverage: RequirementClaimMapper, label_filter: LabelFilter):
+    def load(self, registry: Registry, label_filter: LabelFilter):
         """Load evidence"""
 
 
@@ -107,7 +106,7 @@ class FabricationLoader(SubLoader, TrafficDataBuilder):
         self.flows.append(f)
         return self
 
-    def load(self, registry: Registry, coverage: RequirementClaimMapper, label_filter: LabelFilter):
+    def load(self, registry: Registry, label_filter: LabelFilter):
         if not label_filter.filter(self.source_label):
             return
         evi = Evidence(self.get_source())
@@ -125,7 +124,7 @@ class ToolPlanLoader(SubLoader):
         self.properties: Dict[PropertyKey, Any] = {}
         self.groups = ["planning", group[0]]
 
-    def load(self, registry: Registry, coverage: RequirementClaimMapper, label_filter: LabelFilter):
+    def load(self, registry: Registry, label_filter: LabelFilter):
         for g in self.groups:
             if g in label_filter.excluded:
                 return  # explicitly excluded

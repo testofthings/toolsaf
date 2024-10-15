@@ -1,12 +1,8 @@
 """Client API implementation"""
 
-import io
 import json
 import logging
-import os
 import pathlib
-import shutil
-import traceback
 import urllib
 from typing import Dict, List, Tuple, Any, Iterable, BinaryIO, Optional
 
@@ -14,14 +10,11 @@ from tdsaf.core.basics import Status
 from tdsaf.batch_import import BatchImporter
 from tdsaf.text_tables import TableView
 from tdsaf.core.verdict import Verdict
-from tdsaf.base.claim_coverage import RequirementClaimMapper
-from tdsaf.base.coverage_result import CoverageReport
 from tdsaf.core.entity import Entity
 from tdsaf.base.event_interface import EventMap
 from tdsaf.base.model import Addressable, NetworkNode, Connection, Host, Service, ModelListener, IoTSystem, NodeComponent
 from tdsaf.core.property import Properties, PropertyKey, PropertySetValue, PropertyVerdictValue
 from tdsaf.base.registry import Registry
-from tdsaf.specifications import Specifications
 from tdsaf.core.traffic import NO_EVIDENCE
 from tdsaf.core.verdict import Verdictable
 
@@ -109,9 +102,8 @@ class RequestContext:
 
 class ClientAPI(ModelListener):
     """Client API implementation"""
-    def __init__(self, registry: Registry, claims: RequirementClaimMapper = None):
+    def __init__(self, registry: Registry,):
         self.registry = registry
-        self.claim_coverage = RequirementClaimMapper(self.registry.system) if claims is None else claims
         self.logger = logging.getLogger("api")
         self.api_listener: List[Tuple[APIListener, APIRequest]] = []
         registry.system.model_listeners.append(self)
@@ -130,8 +122,6 @@ class ClientAPI(ModelListener):
         if path == "all":
             request.get_connections = False
             r = {"events" : list(self.api_iterate_all(request.change_path(".")))}
-        elif path.startswith("coverage"):
-            r = self.get_coverage(context.change_path(path[8:]))
         elif path.startswith("host/"):
             _, r = self.get_entity(self.registry.system, context.change_path(path[5:]))
         elif path.startswith("log"):
@@ -369,17 +359,6 @@ class ClientAPI(ModelListener):
             if ev.timestamp is not None:
                 sr["time_s"] = ev.timestamp.strftime(FORMAT_YEAR_MONTH_DAY)
         return r
-
-    def get_coverage(self, context: RequestContext) -> Dict:
-        """Get coverage data as JSON"""
-        path = context.request.path
-        spec_name = path[1:] if path.startswith("/") else ""
-        spec = Specifications.get_specification(spec_name)
-        report = CoverageReport(self.registry.logging, self.claim_coverage)
-        js = report.json(specification=spec)
-        js["system"] = self.get_system_info(context)
-        return js
-
 
     def _yield_property_update(self, entity: Entity) -> Iterable[Dict]:
         """Yield property update, if properites to show"""

@@ -14,10 +14,8 @@ from tdsaf.core.address import (AddressAtNetwork, Addresses, AnyAddress, DNSName
                            HWAddresses, IPAddress, IPAddresses, Network, Protocol)
 from tdsaf.core.basics import ConnectionType, ExternalActivity, HostType, Status
 from tdsaf.batch_import import BatchImporter, LabelFilter
-from tdsaf.base.claim_coverage import RequirementClaimMapper
 from tdsaf.client_api import APIRequest
 from tdsaf.base.components import CookieData, Cookies, DataReference, StoredData, OperatingSystem, Software
-from tdsaf.base.coverage_result import CoverageReport
 from tdsaf.core.entity import ClaimAuthority, Entity
 from tdsaf.base.event_interface import PropertyEvent
 from tdsaf.core.release_info import ReleaseInfo
@@ -36,7 +34,6 @@ from tdsaf.base.inspector import Inspector
 from tdsaf.base.result import Report
 from tdsaf.base.selector import RequirementSelector
 from tdsaf.base.services import DHCPService, DNSService
-from tdsaf.specifications import Specifications
 from tdsaf.sql_database import SQLDatabase
 from tdsaf.core.traffic import Evidence, EvidenceSource
 from tdsaf.core.verdict import Verdict
@@ -992,8 +989,7 @@ class ClaimBackend(ClaimBuilder):
                 super().__init__("Manual checks")
                 self.source_label = this.source.label
 
-            def load(self, registry: Registry, coverage: RequirementClaimMapper,
-                     label_filter: LabelFilter):
+            def load(self, registry: Registry, label_filter: LabelFilter):
                 if not label_filter.filter(self.source_label):
                     return
                 evidence = Evidence(this.source)
@@ -1103,7 +1099,6 @@ class SystemBackendRunner(SystemBackend):
         self.finish_()
 
         registry = Registry(Inspector(self.system))
-        cc = RequirementClaimMapper(self.system)
 
         log_events = args.log_events
         if log_events:
@@ -1143,12 +1138,12 @@ class SystemBackendRunner(SystemBackend):
 
         # load product claims, then explicit loaders (if any)
         for sub in self.claim_set.finish_loaders():
-            sub.load(registry, cc, label_filter=label_filter)
+            sub.load(registry, label_filter=label_filter)
         for ln in self.loaders:
             for sub in ln.subs:
-                sub.load(registry, cc, label_filter=label_filter)
+                sub.load(registry, label_filter=label_filter)
 
-        api = VisualizerAPI(registry, cc, self.visualizer)
+        api = VisualizerAPI(registry, self.visualizer)
         if args.test_post:
             res, data = args.test_post
             request = APIRequest.parse(res)
@@ -1178,13 +1173,6 @@ class SystemBackendRunner(SystemBackend):
             # default text output
             report = Report(registry)
             report.print_report(sys.stdout)
-        elif out_form and out_form.startswith("coverage"):
-            # coverage report in text
-            cmd, _, spec_id = out_form.partition(":")
-            cmd = cmd[8:]
-            report = CoverageReport(registry.logging, cc)
-            spec = Specifications.get_specification(spec_id)
-            report.print_summary(sys.stdout, spec, cmd.strip("- "))
         else:
             raise ConfigurationException(f"Unknown output format '{out_form}'")
 
