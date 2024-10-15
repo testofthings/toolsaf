@@ -15,7 +15,7 @@ from tdsaf.core.address import (AddressAtNetwork, Addresses, AnyAddress, DNSName
 from tdsaf.core.basics import ConnectionType, ExternalActivity, HostType, Status
 from tdsaf.batch_import import BatchImporter, LabelFilter
 from tdsaf.base.claim_coverage import RequirementClaimMapper
-from tdsaf.client_api import APIRequest, ClientPrompt
+from tdsaf.client_api import APIRequest
 from tdsaf.base.components import CookieData, Cookies, DataReference, StoredData, OperatingSystem, Software
 from tdsaf.base.coverage_result import CoverageReport
 from tdsaf.core.entity import ClaimAuthority, Entity
@@ -1075,8 +1075,6 @@ class SystemBackendRunner(SystemBackend):
         parser.add_argument("--db", type=str, help="Connect to SQL database")
         parser.add_argument("--http-server", type=int,
                             help="Listen HTTP requests at port")
-        parser.add_argument("--prompt", action="store_true",
-                            help="Run test prompt loop")
         parser.add_argument("--test-delay", type=int,
                             help="HTTP request artificial test delay, ms")
         parser.add_argument("--no-auth-ok", action="store_true",
@@ -1189,10 +1187,6 @@ class SystemBackendRunner(SystemBackend):
             report.print_summary(sys.stdout, spec, cmd.strip("- "))
         else:
             raise ConfigurationException(f"Unknown output format '{out_form}'")
-
-        if args.prompt:
-            prompt = ClientPrompt(api)
-            prompt.prompt_loop()
 
         if args.http_server:
             server = HTTPServerRunner(

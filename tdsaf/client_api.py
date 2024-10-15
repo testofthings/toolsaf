@@ -9,8 +9,6 @@ import shutil
 import traceback
 import urllib
 from typing import Dict, List, Tuple, Any, Iterable, BinaryIO, Optional
-import prompt_toolkit
-from prompt_toolkit.history import FileHistory
 
 from tdsaf.core.basics import Status
 from tdsaf.batch_import import BatchImporter
@@ -517,79 +515,3 @@ class ClientAPI(ModelListener):
         if isinstance(entity, Service):
             # check if parent verdict changed, too
             self._find_verdict_changes(entity.get_parent_host())
-
-class ClientPrompt(APIListener):
-    """A prompt to interact with the model"""
-    def __init__(self, api: ClientAPI):
-        self.api = api
-        # find out screen dimensions
-        self.screen_height = shutil.get_terminal_size()[1]
-        # iterate all entities to create IDs for them (yes, a hack)
-        list(api.api_iterate_all(APIRequest(".")))
-        # session with history
-        history_file = os.path.expanduser("~/.tdsaf_prompt_history")
-        self.session = prompt_toolkit.PromptSession(history=FileHistory(history_file))
-        # current output buffer
-        self.buffer = []
-        self.buffer_index = 0
-        # listen for events
-        api.api_listener.append((self, APIRequest(".")))
-
-    def prompt_loop(self):
-        """Prompt loop"""
-
-        def print_lines(start_line: int) -> int:
-            start_line = max(0, start_line)
-            show_lines = min(self.screen_height - 1, len(self.buffer) - start_line)
-            print("\n".join(self.buffer[start_line:start_line + show_lines]))
-            return start_line + show_lines
-
-        while True:
-            # read a line from stdin
-            line = self.session.prompt("tdsaf> ").strip()
-            if not line:
-                continue
-            if line in {"quit", "q"}:
-                break
-            if line in {"next", "n"}:
-                self.buffer_index = print_lines(self.buffer_index)
-                continue
-            if line in {"prev", "p"}:
-                self.buffer_index = print_lines(self.buffer_index - 2 * (self.screen_height + 1))
-                continue
-            if line in {"top", "t"}:
-                self.buffer_index = print_lines(0)
-                continue
-            if line in {"end", "e"}:
-                self.buffer_index = print_lines(len(self.buffer) - self.screen_height + 1)
-                continue
-            try:
-                # format method and arguments
-                parts = line.partition(" ")
-                method = parts[0].lower()
-                args = parts[2]
-                self.buffer.clear() # collect new output
-                if method in {"get", "g"}:
-                    req = APIRequest.parse(args)
-                    self.buffer = []
-                    out = self.api.api_get(req, pretty=True)
-                elif method in {"post", "p"}:
-                    parts = args.partition(" ")
-                    req = APIRequest.parse(parts[0])
-                    data = parts[2] if parts[2] else None
-                    bin_data = None if data is None else io.BytesIO(data.encode())
-                    self.buffer = []
-                    out = json.dumps(self.api.api_post(req, bin_data), indent=2)
-                else:
-                    print(f"Unknown method {method}")
-                    continue
-                self.buffer.extend(out.split("\n"))
-                show_lines = min(self.screen_height - 1, len(self.buffer))
-                print("\n".join(self.buffer[:show_lines]))
-                self.buffer_index = show_lines
-            except Exception:  # pylint: disable=broad-except
-                # print full stack trace
-                traceback.print_exc()
-
-    def note_event(self, data: Dict):
-        self.buffer.extend(json.dumps(data).split("\n"))
