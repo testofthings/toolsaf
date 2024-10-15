@@ -6,17 +6,17 @@ import ipaddress
 import json
 import logging
 import pathlib
+import shutil
 import sys
 from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union
 
-from tcsfw.address import (Addresses, AnyAddress, DNSName, EndpointAddress, HWAddress,
-                           HWAddresses, IPAddress, IPAddresses, Protocol)
-from tcsfw.address_resolver import AddressResolver
+from tcsfw.address import (AddressAtNetwork, Addresses, AnyAddress, DNSName, EndpointAddress, EntityTag, HWAddress,
+                           HWAddresses, IPAddress, IPAddresses, Network, Protocol)
 from tcsfw.basics import ConnectionType, ExternalActivity, HostType, Status
 from tcsfw.batch_import import BatchImporter, LabelFilter
 from tcsfw.claim_coverage import RequirementClaimMapper
 from tcsfw.client_api import APIRequest, ClientPrompt
-from tcsfw.components import CookieData, Cookies, DataReference, DataStorages, Software
+from tcsfw.components import CookieData, Cookies, DataReference, StoredData, OperatingSystem, Software
 from tcsfw.coverage_result import CoverageReport
 from tcsfw.entity import ClaimAuthority, Entity
 from tcsfw.event_interface import PropertyEvent
@@ -24,8 +24,8 @@ from tcsfw.release_info import ReleaseInfo
 from tcsfw.http_server import HTTPServerRunner
 from tcsfw.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP, IP, TLS,
                         BLEAdvertisement, ClaimBuilder, ClaimSetBuilder, ConnectionBuilder,
-                        CookieBuilder, HostBuilder, NodeBuilder, NodeVisualBuilder,
-                        ConfigurationException, ProtocolConfigurer, ProtocolType,
+                        CookieBuilder, HostBuilder, NetworkBuilder, NodeBuilder, NodeVisualBuilder,
+                        ConfigurationException, OSBuilder, ProtocolConfigurer, ProtocolType,
                         SensitiveDataBuilder, ServiceBuilder, ServiceGroupBuilder, ServiceOrGroup,
                         SoftwareBuilder, SystemBuilder, VisualizerBuilder)
 from tcsfw.main_tools import EvidenceLoader, NodeManipulator, SubLoader, ToolPlanLoader
@@ -49,18 +49,21 @@ class SystemBackend(SystemBuilder):
     def __init__(self, name="Unnamed system"):
         self.system = IoTSystem(name)
         self.hosts_by_name: Dict[str, 'HostBackend'] = {}
-        self.entity_by_address: Dict[AnyAddress, 'NodeBackend'] = {}
-        self.network_masks = []
+        self.entity_by_address: Dict[AddressAtNetwork, 'NodeBackend'] = {}
         self.claim_set = ClaimSetBackend(self)
+        self.attachments: List[pathlib.Path] = []
         self.visualizer = Visualizer()
         self.loaders: List[EvidenceLoader] = []
         self.protocols: Dict[Any, 'ProtocolBackend'] = {}
-        self.address_resolver = AddressResolver()
 
-    def network(self, mask: str) -> Self:
-        self.network_masks.append(ipaddress.ip_network(mask))
-        self.system.ip_networks = self.network_masks
-        return self
+    def network(self, subnet="", ip_mask: Optional[str] = None) -> 'NetworkBuilder':
+        if subnet:
+            nb = NetworkBackend(self, subnet)
+        else:
+            nb = NetworkBackend(self)
+        if ip_mask:
+            nb.mask(ip_mask)
+        return nb
 
     def device(self, name="") -> 'HostBackend':
         name = name or self._free_host_name("Device")
@@ -124,8 +127,17 @@ class SystemBackend(SystemBuilder):
         self.system.online_resources[key] = url
         return self
 
-    def require(self, addresses_for: List['NodeBuilder']):
-        self.address_resolver.addresses_for.extend(addresses_for)
+    def attach_file(self, file_path: str, relative_to: Optional[str] = None) -> Self:
+        if relative_to:
+            rel_to = pathlib.Path(relative_to)
+            if not rel_to.is_dir():
+                rel_to = rel_to.parent
+            p = rel_to / file_path
+        else:
+            p = pathlib.Path(file_path)
+        assert p.exists(), f"File not found: {p}"
+        self.attachments.append(p.absolute())
+        return self
 
     def visualize(self) -> 'VisualizerBackend':
         return VisualizerBackend(self.visualizer)
@@ -145,7 +157,7 @@ class SystemBackend(SystemBuilder):
         """Get or create a host"""
         hb = self.hosts_by_name.get(name)
         if hb is None:
-            h = Host(self.system, name)
+            h = Host(self.system, name, tag=EntityTag.new(name))  # tag is not renamed, name can be
             h.description = description
             h.match_priority = 10
             hb = HostBackend(h, self)
@@ -175,8 +187,10 @@ class SystemBackend(SystemBuilder):
 
     def finish_(self):
         """Finish the model"""
-        # get the missing addresses
-        self.address_resolver.require()
+        # each real host must have software
+        for h in self.system.get_hosts():
+            if not h.any_host and h.host_type != HostType.BROWSER:
+                Software.ensure_default_software(h)
 
         # We want to have a authenticator related to each authenticated service
         # NOTE: Not ready to go into this level now...
@@ -213,10 +227,13 @@ class NodeBackend(NodeBuilder, NodeManipulator):
 
     def dns(self, name: str) -> Self:
         dn = DNSName(name)
-        if dn in self.system.entity_by_address:
-            raise ConfigurationException(f"Using name many times: {dn}")
-        self.system.entity_by_address[dn] = self
+        networks = self.entity.get_networks_for(dn)
+        assert len(networks) == 1, "DNS name must be in one network"
         self.entity.addresses.add(dn)
+        key = AddressAtNetwork(dn, networks[0])
+        if key in self.system.entity_by_address:
+            raise ConfigurationException(f"Using name many times: {dn}")
+        self.system.entity_by_address[key] = self
         return self
 
     def describe(self, text: str) -> Self:
@@ -226,6 +243,12 @@ class NodeBackend(NodeBuilder, NodeManipulator):
 
     def external_activity(self, value: ExternalActivity) -> Self:
         self.entity.set_external_activity(value)
+        return self
+
+    def in_networks(self, *network: NetworkBuilder) -> Self:
+        if any(a.get_ip_address() for a in self.entity.addresses):
+            raise ConfigurationException(f"Cannot set network after IP addresses for {self.entity.name}")
+        self.entity.networks = [n.network for n in network]
         return self
 
     def software(self, name: Optional[str] = None) -> 'SoftwareBackend':
@@ -258,12 +281,17 @@ class NodeBackend(NodeBuilder, NodeManipulator):
 
     def new_address_(self, address: AnyAddress) -> AnyAddress:
         """Add new address to the entity"""
-        old = self.system.entity_by_address.get(address)
-        if old:
-            raise ConfigurationException(
-                f"Duplicate address {address}, reserved by: {old.entity.name}")
+        networks = self.entity.get_networks_for(address)
+        if not networks:
+            raise ConfigurationException(f"Address {address} not in any network range of {self.entity.name}")
         self.entity.addresses.add(address)
-        self.system.entity_by_address[address] = self
+        for nw in networks:
+            key = AddressAtNetwork(address, nw)
+            old = self.system.entity_by_address.get(key)
+            if old:
+                raise ConfigurationException(
+                    f"Duplicate address {address}, reserved by: {old.entity.name}")
+            self.system.entity_by_address[key] = self
         return address
 
     def new_service_(self, name: str, port=-1):
@@ -378,6 +406,9 @@ class HostBackend(NodeBackend, HostBuilder):
             self / p  # pylint: disable=pointless-statement
         return self
 
+    def os(self) -> OSBuilder:
+        return OSBackend(self)
+
     def __lshift__(self, multicast: ServiceBackend) -> 'ConnectionBackend':
         mc = multicast.entity
         assert mc.is_multicast(), "Can only receive multicast"
@@ -390,10 +421,8 @@ class HostBackend(NodeBackend, HostBuilder):
         return CookieBackend(self)
 
     def use_data(self, *data: 'SensitiveDataBackend') -> Self:
-        usage = DataStorages.get_storages(self.entity, add=True)
         for db in data:
-            for d in db.data:
-                usage.sub_components.append(DataReference(usage, d))
+            db.used_by(hosts=[self])
         return self
 
     def __truediv__(self, protocol: ProtocolType) -> ServiceBackend:
@@ -418,13 +447,20 @@ class SensitiveDataBackend(SensitiveDataBuilder):
         self.parent = parent
         self.data = data
         # all sensitive data lives at least in system
-        usage = DataStorages.get_storages(parent.system, add=True)
+        usage = StoredData.get_data(parent.system)
         for d in data:
-            usage.sub_components.append(DataReference(usage, d))
+            usage.sub_components.append(DataReference(parent.system, d))
+        self.default_location = True
 
-    def used_by(self, *host: HostBackend) -> Self:
-        for h in host:
-            h.use_data(self)
+    def used_by(self, hosts: List[HostBuilder]) -> Self:
+        if self.default_location:
+            # default location is overriden
+            self.default_location = False
+            StoredData.get_data(self.parent.system).sub_components = []
+        for h in hosts:
+            storage = StoredData.get_data(h.entity)
+            for d in self.data:
+                storage.sub_components.append(DataReference(h.entity, d))
         return self
 
 
@@ -442,6 +478,21 @@ class ConnectionBackend(ConnectionBuilder):
 
     def __repr__(self):
         return self.connection.__repr__()
+
+
+class NetworkBackend(NetworkBuilder):
+    """Network or subnet backend"""
+    def __init__(self, parent: SystemBackend, name=""):
+        super().__init__(Network(name) if name else parent.system.get_default_network())
+        self.parent = parent
+        self.name = name
+
+    def mask(self, mask: str) -> Self:
+        self.network.ip_network = ipaddress.ip_network(mask)
+        return self
+
+    def __repr__(self) -> str:
+        return self.name
 
 
 class SoftwareBackend(SoftwareBuilder):
@@ -558,6 +609,8 @@ class ProtocolBackend:
         if pt_cre is None:
             raise ValueError(f"No backend mapped for {pt}")
         be = pt_cre(configurer)
+        be.networks = [n.network for n in configurer.networks]
+        be.specific_address = configurer.address or Addresses.ANY
         return be
 
     def __init__(self, transport: Optional[Protocol] = None, protocol: Protocol = Protocol.ANY, name="", port=-1):
@@ -569,6 +622,8 @@ class ProtocolBackend:
         self.host_type = HostType.GENERIC
         self.con_type = ConnectionType.UNKNOWN
         self.authentication = False
+        self.networks: List[Network] = []
+        self.specific_address: AnyAddress = Addresses.ANY
         self.external_activity: Optional[ExternalActivity.BANNED] = None
         self.critical_parameter: List[SensitiveData] = []
 
@@ -590,8 +645,8 @@ class ProtocolBackend:
         parent.entity.children.append(b.entity)
         if not b.entity.addresses:
             # E.g. DHCP service fills this oneself
-            b.entity.addresses.add(EndpointAddress(
-                Addresses.ANY, self.transport, self.service_port))
+            ep_add = EndpointAddress(self.specific_address, self.transport, self.service_port)
+            b.entity.addresses.add(ep_add)
         if self.critical_parameter:
             # critical protocol parameters
             parent.use_data(SensitiveDataBackend(
@@ -608,6 +663,7 @@ class ProtocolBackend:
         if self.external_activity is not None:
             s.entity.external_activity = self.external_activity
         s.entity.protocol = self.protocol
+        s.entity.networks = self.networks
         return s
 
     def __repr__(self):
@@ -848,6 +904,15 @@ class ProtocolConfigurers:
     }
 
 
+class OSBackend(OSBuilder):
+    """OS builder backend"""
+    def __init__(self, parent: HostBackend):
+        self.component = OperatingSystem.get_os(parent.entity)
+
+    def processes(self, owner_process: Dict[str, List[str]]) -> 'OSBuilder':
+        self.component.process_map.update(owner_process)
+
+
 class ClaimBackend(ClaimBuilder):
     """Claim builder"""
 
@@ -988,7 +1053,7 @@ class ClaimSetBackend(ClaimSetBuilder):
 class SystemBackendRunner(SystemBackend):
     """Backend for system builder"""
 
-    def _parse_arguments(self) -> argparse.Namespace:
+    def _parse_arguments(self, custom_arguments: Optional[List[str]]) -> argparse.Namespace:
         """Parse command line arguments"""
         parser = argparse.ArgumentParser()
         parser.add_argument("--read", "-r", action="append",
@@ -1024,14 +1089,14 @@ class SystemBackendRunner(SystemBackend):
         parser.add_argument(
             "--log-events", action="store_true", help="Log events")
 
-        args = parser.parse_args()
+        args = parser.parse_args(custom_arguments)
         logging.basicConfig(format='%(message)s', level=getattr(
             logging, args.log_level or 'INFO'))
         return args
 
-    def run(self):
+    def run(self, custom_arguments: Optional[List[str]] = None):
         """Model is ready, run the checks"""
-        args = self._parse_arguments()
+        args = self._parse_arguments(custom_arguments)
         if args.dhcp:
             self.any().serve(DHCP)
         if args.dns:
@@ -1097,9 +1162,18 @@ class SystemBackendRunner(SystemBackend):
                 api.logger.info("POST file %s", data)
                 resp = api.api_post_file(request, pathlib.Path(data))
             print(json.dumps(resp, indent=4))
+            return
         if args.test_get:
+            wid, hei = shutil.get_terminal_size()[0], 0  # only width specified
             for res in args.test_get:
-                print(json.dumps(api.api_get(APIRequest.parse(res)), indent=4))
+                api_req = APIRequest.parse(res)
+                api_req.set_param("screen", f"{wid}x{hei}")
+                print(api.api_get(api_req, pretty=True))
+            return
+
+        if custom_arguments is not None:
+            # custom arguments, return without 'running' anything
+            return
 
         out_form = args.output
         if not out_form:

@@ -5,7 +5,9 @@ from getpass import getpass
 import json
 import logging
 import pathlib
+import shutil
 import sys
+import time
 from typing import BinaryIO, Dict, List
 import tempfile
 from urllib.parse import urlparse, urlunparse
@@ -51,15 +53,21 @@ class ClientTool:
         upload_parser.add_argument("--read", "-r", help="Path to file or directory to upload, default stdin")
         upload_parser.add_argument("--meta", "-m", help="Meta-data in JSON format")
         upload_parser.add_argument("--url", "-u", default="", help="Server URL")
-        upload_parser.add_argument("--api-key", help="API key for server (avoiding providing by command line)")
+        upload_parser.add_argument("--api-key", help="API key for server (avoid providing by command line)")
         upload_parser.add_argument("--force-upload", "-f", action="store_true", help="Force upload for all files")
         upload_parser.add_argument("--dry-run", action="store_true", help="Only print files to be uploaded")
 
         # Subcommand: reload statement
         reload_parser = subparsers.add_parser("reload", help="Reset statement")
         reload_parser.add_argument("--url", "-u", help="Server URL")
-        reload_parser.add_argument("--api-key", help="API key for server (avoiding providing by command line)")
+        reload_parser.add_argument("--api-key", help="API key for server (avoid providing by command line)")
         reload_parser.add_argument("--param", help="Specify reload parameters by JSON")
+
+        # Subcommand: views
+        show_parser = subparsers.add_parser("show", help="Show view")
+        show_parser.add_argument("view", help="Name of the view")
+        show_parser.add_argument("--url", "-u", help="Server URL")
+        show_parser.add_argument("--api-key", help="API key for server (avoid providing by command line)")
 
         args = parser.parse_args()
         logging.basicConfig(format='%(message)s', level=getattr(
@@ -72,6 +80,8 @@ class ClientTool:
             self.run_get_key(args)
         elif args.command == "reload":
             self.run_reload(args)
+        elif args.command == "show":
+            self.run_show(args)
         else:
             self.run_upload(args)
 
@@ -185,7 +195,7 @@ class ClientTool:
 
     def upload_directory(self, url: str, path: pathlib.Path):
         """Upload directory"""
-        files = sorted(path.iterdir())
+        files = sorted(path.iterdir(), key=lambda f: (f.is_dir(), f.name))  # files first
 
         meta_file = path / "00meta.json"
         if meta_file.exists():
@@ -275,6 +285,27 @@ class ClientTool:
         resp = requests.post(upload_url, files=multipart, headers=headers, timeout=self.timeout, verify=self.secure)
         resp.raise_for_status()
 
+    def run_show(self, args: argparse.Namespace):
+        """Textual views"""
+        view = args.view
+        url = args.url.strip()
+        if not url:
+            raise ValueError("Missing server URL")
+        api_url = self.resolve_api_url(url)
+        table_url = f"{api_url}/table/{view}"
+        headers = {}
+        if self.auth_token:
+            headers["X-Authorization"] = self.auth_token
+
+        while True:
+            wid, hei = shutil.get_terminal_size()
+            use_url = f"{table_url}?screen={wid}x{hei}"
+            resp = requests.get(use_url, timeout=self.timeout, headers=headers, verify=self.secure)
+            resp.raise_for_status()
+            print('\033[2J\033[H', end='')  # clear screen and move cursor to top
+            print(resp.text)
+            time.sleep(1)
+
     def resolve_api_url(self, url: str) -> str:
         """Query server for API URL"""
         # split URL into host and statement
@@ -323,6 +354,8 @@ class ClientTool:
         """Mark file as uploaded"""
         p = path.parent / f".{path.name}.up"
         p.touch()
+
+
 
 def main():
     """Main entry point"""

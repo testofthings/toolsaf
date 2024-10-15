@@ -2,7 +2,7 @@ from tcsfw.basics import ExternalActivity, Status
 from tcsfw.builder_backend import SystemBackend
 from tcsfw.services import NameEvent
 import test_model
-from tcsfw.address import EndpointAddress, Protocol, IPAddress
+from tcsfw.address import DNSName, EndpointAddress, Protocol, IPAddress
 from tcsfw.inspector import Inspector
 from tcsfw.main import DHCP, DNS, UDP, TCP
 from tcsfw.traffic import NO_EVIDENCE, IPFlow, Evidence, EvidenceSource, ServiceScan, HostScan
@@ -196,7 +196,7 @@ def test_learn_dns_name():
     i.connection(flow_0)
 
     # event about DNS naming
-    ev = NameEvent(NO_EVIDENCE, dns.entity, "Aname.org", IPAddress.new("12.0.0.2"))
+    ev = NameEvent(NO_EVIDENCE, dns.entity, name=DNSName("Aname.org"), address=IPAddress.new("12.0.0.2"))
     i.name(ev)
 
     flow = IPFlow.UDP("1:0:0:0:0:1", "22.0.0.1", 1100) >> ("1:0:0:0:0:2", "12.0.0.2", 1234)
@@ -220,7 +220,7 @@ def test_learn_dns_name_expected_connection():
     i.connection(flow_0)
 
     # event about DNS naming
-    ev = NameEvent(NO_EVIDENCE, dns.entity, "Aname.org", IPAddress.new("12.0.0.2"))
+    ev = NameEvent(NO_EVIDENCE, dns.entity, name=DNSName("Aname.org"), address=IPAddress.new("12.0.0.2"))
     i.name(ev)
 
     flow = IPFlow.UDP("1:0:0:0:0:1", "192.168.0.2", 1100) >> ("1:0:0:0:0:2", "12.0.0.2", 1234)

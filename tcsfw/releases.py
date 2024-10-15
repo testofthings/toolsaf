@@ -9,22 +9,22 @@ from typing import Tuple, List, cast
 from tcsfw.components import Software
 from tcsfw.event_interface import EventInterface, PropertyEvent
 from tcsfw.model import IoTSystem, NetworkNode, NodeComponent
-from tcsfw.tools import ComponentCheckTool
+from tcsfw.tools import NodeComponentTool
 from tcsfw.traffic import EvidenceSource, Evidence
 from tcsfw.release_info import ReleaseInfo
 
 
-class ReleaseReader(ComponentCheckTool):
-    """Read release data aquired from GitLab API"""
+class ReleaseReader(NodeComponentTool):
+    """Read release data aquired from GitHub API"""
     def __init__(self, system: IoTSystem):
-        super().__init__("gitlab-releases", ".json", system)
-        self.tool.name = "GitLab releases"
+        super().__init__("github-releases", ".json", system)
+        self.tool.name = "GitHub releases"
 
     def filter_component(self, component: NetworkNode) -> bool:
         """Filter checked entities"""
         return isinstance(component, Software)
 
-    def process_stream(self, component: NodeComponent, data_file: BytesIO, interface: EventInterface,
+    def process_component(self, component: NodeComponent, data_file: BytesIO, interface: EventInterface,
                        source: EvidenceSource):
         software = cast(Software, component)
 

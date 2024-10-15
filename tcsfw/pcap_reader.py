@@ -16,15 +16,15 @@ from framing.frame_types.udp_frames import UDP
 from framing.frames import Frames
 from framing.raw_data import Raw, RawData
 
-from tcsfw.address import HWAddress, Protocol, IPAddress
+from tcsfw.address import DNSName, HWAddress, Protocol, IPAddress
 from tcsfw.event_interface import EventInterface
 from tcsfw.model import Connection, IoTSystem
 from tcsfw.services import NameEvent, DNSService
-from tcsfw.tools import BaseFileCheckTool
+from tcsfw.tools import SystemWideTool
 from tcsfw.traffic import IPFlow, EvidenceSource, Evidence, EthernetFlow, Flow
 
 
-class PCAPReader(BaseFileCheckTool):
+class PCAPReader(SystemWideTool):
     """PCAP reading tool"""
     def __init__(self, system: IoTSystem, name="PCAP reader"):
         super().__init__("pcap", system)
@@ -169,14 +169,14 @@ class PCAPReader(BaseFileCheckTool):
             name = dns_frames.DNSName.string(rd, dns_frames.DNSQuestion.QNAME)
             if name not in self.dns_names:
                 self.dns_names[name] = None
-                events.append(NameEvent(evidence, service, name, peers=peers))
+                events.append(NameEvent(evidence, service, name=DNSName(name), peers=peers))
 
         def learn_name(name: str, ip: IPAddress):
             old = self.dns_names.get(ip)
             if old == name:
                 return
             self.dns_names[ip] = name
-            n = NameEvent(evidence, service, name, IPAddress(ip), peers=peers)
+            n = NameEvent(evidence, service, name=DNSName(name), address=IPAddress(ip), peers=peers)
             events.append(n)
 
         rd_frames = []

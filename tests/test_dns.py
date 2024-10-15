@@ -1,6 +1,6 @@
 import pathlib
 
-from tcsfw.address import IPAddress, DNSName, Protocol
+from tcsfw.address import EntityTag, IPAddress, DNSName, Protocol
 from tcsfw.verdict import Verdict
 from tcsfw.builder_backend import SystemBackend
 from tcsfw.inspector import Inspector
@@ -23,7 +23,7 @@ def test_dns():
     sb.system.learn_named_address(DNSName("name1.local"), IPAddress.new("1.0.0.1"))
 
     assert f1 == c1.connection
-    assert dev1.entity.addresses == {IPAddress.new("1.0.0.1"), DNSName("name1.local")}
+    assert dev1.entity.addresses == {EntityTag("Device"), IPAddress.new("1.0.0.1"), DNSName("name1.local")}
 
 
 def test_dns_pcap():

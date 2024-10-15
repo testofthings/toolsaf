@@ -133,15 +133,16 @@ class HTTPServerRunner:
                     # JSON data
                     with tempfile.TemporaryFile() as tmp:
                         data = await self.read_stream_to_file(request, tmp)
-                        res = self.api.api_post(req, data)
+                        res_js = self.api.api_post(req, data)
                 elif request.content_type in {"application/zip", "multipart/form-data"}:
                     # ZIP file
-                    res = await self.api_post_zip(req, request)
+                    res_js = await self.api_post_zip(req, request)
                 else:
                     raise ValueError("Unexpected content-type")
+                res = json.dumps(res_js)
             else:
                 raise NotImplementedError("Unexpected method/path")
-            return web.Response(text=json.dumps(res))
+            return web.Response(text=res)
         except NotImplementedError:
             return web.Response(status=400)
         except FileNotFoundError:

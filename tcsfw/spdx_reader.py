@@ -9,12 +9,12 @@ from tcsfw.components import Software, SoftwareComponent
 from tcsfw.event_interface import PropertyEvent, EventInterface
 from tcsfw.model import IoTSystem, NodeComponent
 from tcsfw.property import Properties, PropertyKey
-from tcsfw.tools import ComponentCheckTool
+from tcsfw.tools import NodeComponentTool
 from tcsfw.traffic import EvidenceSource, Evidence
 from tcsfw.verdict import Verdict
 
 
-class SPDXReader(ComponentCheckTool):
+class SPDXReader(NodeComponentTool):
     """Read SPDX component description for a software"""
     def __init__(self, system: IoTSystem):
         super().__init__("spdx", ".json", system)
@@ -23,7 +23,7 @@ class SPDXReader(ComponentCheckTool):
     def filter_component(self, component: NodeComponent) -> bool:
         return isinstance(component, Software)
 
-    def process_stream(self, component: NodeComponent, data_file: BytesIO, interface: EventInterface,
+    def process_component(self, component: NodeComponent, data_file: BytesIO, interface: EventInterface,
                        source: EvidenceSource):
         software = cast(Software, component)
 

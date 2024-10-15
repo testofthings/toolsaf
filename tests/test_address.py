@@ -1,4 +1,5 @@
-from tcsfw.address import Addresses, DNSName, EndpointAddress, HWAddress, HWAddresses, IPAddress, IPAddresses, Protocol
+from ipaddress import IPv4Network
+from tcsfw.address import AddressEnvelope, Addresses, DNSName, EndpointAddress, HWAddress, HWAddresses, IPAddress, IPAddresses, Network, Protocol
 
 
 def test_hw_address():
@@ -84,3 +85,30 @@ def test_hw_address_generation():
     ip = IPAddress.new("192.168.0.2")
     hw = HWAddress.from_ip(ip)
     assert hw == HWAddress('40:00:c0:a8:00:02')
+
+
+def test_parse_address_envelope():
+    a = Addresses.parse_address("1.2.3.4(weird.com|name)")
+    assert isinstance(a, AddressEnvelope)
+    assert a.address == IPAddress.new("1.2.3.4")
+    assert a.content == DNSName("weird.com")
+
+
+def test_parse_endpoint_address_envelope():
+    a = Addresses.parse_endpoint("example.com|name(1.2.3.4/udp:1234)")
+    assert isinstance(a, AddressEnvelope)
+    assert a.address == DNSName("example.com")
+    assert a.content == EndpointAddress.ip("1.2.3.4", Protocol.UDP, 1234)
+
+
+def test_ip_network_matching():
+    nw = Network("net", ip_network=IPv4Network("22.33.0.0/16"))
+    assert not nw.is_local(IPAddress.new("22.2.3.4"))
+    assert nw.is_local(IPAddress.new("22.33.3.4"))
+    assert nw.is_local(IPAddress.new("22.33.33.4"))
+
+    nw = Network("net", ip_network=IPv4Network("0.0.0.0/0"))
+    assert nw.is_local(IPAddress.new("22.33.3.4"))
+    assert nw.is_local(IPAddress.new("22.2.3.4"))
+    assert nw.is_local(IPAddress.new("22.33.3.4"))
+    assert nw.is_local(IPAddress.new("22.33.33.4"))

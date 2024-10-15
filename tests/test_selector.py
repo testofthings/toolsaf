@@ -57,7 +57,7 @@ def test_select_data():
     assert len(h) == 0
 
     data = sb.data(["A data", "B data"], personal=True)
-    data.used_by(sb.device("Device 1"))
+    data.used_by(hosts=[sb.device("Device 1")])
 
     h = list(Select.data().select(sb.system, ctx))
     assert len(h) == 2

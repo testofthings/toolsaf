@@ -14,6 +14,7 @@ from prompt_toolkit.history import FileHistory
 
 from tcsfw.basics import Status
 from tcsfw.batch_import import BatchImporter
+from tcsfw.text_tables import TableView
 from tcsfw.verdict import Verdict
 from tcsfw.claim_coverage import RequirementClaimMapper
 from tcsfw.coverage_result import CoverageReport
@@ -49,6 +50,11 @@ class APIRequest:
             req.parameters[k] = "".join(vs)
         req.get_visual = "visual" in qs  # Assumes we have VisualAPI
         return req
+
+    def set_param(self, key: str, value: str) -> 'APIRequest':
+        """Set parameter"""
+        self.parameters[key] = value
+        return self
 
     def change_path(self, path: str) -> 'APIRequest':
         """Change the path"""
@@ -116,23 +122,26 @@ class ClientAPI(ModelListener):
         # local IDs strings for entities and connections
         self.ids: Dict[Any, str] = {}
 
-    def api_get(self, request: APIRequest) -> Dict:
+    def api_get(self, request: APIRequest, pretty=False)  -> str:
         """Get API data"""
         context = RequestContext(request, self)
         path = request.path
+        if path.startswith("table/"):
+            text = TableView.get_print(self.registry, path[6:], parameters=request.parameters)
+            return text
         if path == "all":
             request.get_connections = False
-            return {"events" : list(self.api_iterate_all(request.change_path(".")))}
-        if path.startswith("coverage"):
-            return self.get_coverage(context.change_path(path[8:]))
-        if path.startswith("host/"):
+            r = {"events" : list(self.api_iterate_all(request.change_path(".")))}
+        elif path.startswith("coverage"):
+            r = self.get_coverage(context.change_path(path[8:]))
+        elif path.startswith("host/"):
             _, r = self.get_entity(self.registry.system, context.change_path(path[5:]))
-            return r
-        if path.startswith("log"):
+        elif path.startswith("log"):
             ps = request.parameters
             r = self.get_log(ps.get("entity", ""), ps.get("key", ""))
-            return r
-        raise FileNotFoundError("Bad API request")
+        else:
+            raise FileNotFoundError("Bad API request")
+        return json.dumps(r, indent=4 if pretty else None)
 
     def api_post(self, request: APIRequest, data: Optional[BinaryIO]) -> Dict:
         """Post API data"""
@@ -563,7 +572,7 @@ class ClientPrompt(APIListener):
                 if method in {"get", "g"}:
                     req = APIRequest.parse(args)
                     self.buffer = []
-                    out = json.dumps(self.api.api_get(req), indent=2)
+                    out = self.api.api_get(req, pretty=True)
                 elif method in {"post", "p"}:
                     parts = args.partition(" ")
                     req = APIRequest.parse(parts[0])

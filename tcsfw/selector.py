@@ -1,12 +1,12 @@
 """Requirement selectors"""
 
-from typing import List, TypeVar, Generic, Iterator
+from typing import Dict, List, Optional, TypeVar, Generic, Iterator
 
-from tcsfw.address import Protocol
+from tcsfw.address import Addresses, Protocol
 from tcsfw.basics import HostType
-from tcsfw.components import DataStorages, Software, DataReference
+from tcsfw.components import StoredData, Software, DataReference
 from tcsfw.entity import Entity, ExplainableClaim
-from tcsfw.model import Host, IoTSystem, NetworkNode, Service, Connection
+from tcsfw.model import Addressable, Host, IoTSystem, NetworkNode, NodeComponent, Service, Connection
 from tcsfw.property import Properties, PropertyKey
 from tcsfw.requirement import Requirement, EntitySelector, SelectorContext
 from tcsfw.basics import Status
@@ -67,6 +67,27 @@ class HostSelector(RequirementSelector):
             for c in entity.get_children():
                 yield from self.select(c, context)
 
+    def only_concrete(self) -> 'HostSelector':
+        """Select only concrete hosts"""
+        parent = self
+
+        class Selector(HostSelector):
+            """The modified selector"""
+            def select(self, entity: Entity, context: SelectorContext) -> Iterator[Host]:
+                return (c for c in parent.select(entity, context) if c.is_concrete())
+        return Selector()
+
+    def only_server(self) -> 'HostSelector':
+        """Select only server hosts"""
+        parent = self
+
+        class Selector(HostSelector):
+            """The modified selector"""
+            def select(self, entity: Entity, context: SelectorContext) -> Iterator[Host]:
+                return (c for c in parent.select(entity, context) if c.host_type in {
+                    HostType.DEVICE, HostType.GENERIC, HostType.REMOTE})
+        return Selector()
+
     def type_of(self, *host_type: HostType) -> 'HostSelector':
         """Select by host types"""
         parent = self
@@ -104,6 +125,16 @@ class ServiceSelector(RequirementSelector):
         elif entity.is_host_reachable():
             for c in entity.get_children():
                 yield from self.select(c, context)
+
+    def only_concrete(self) -> 'ServiceSelector':
+        """Select services only in concrete hosts"""
+        parent = self
+
+        class Selector(ServiceSelector):
+            """The modified selector"""
+            def select(self, entity: Entity, context: SelectorContext) -> Iterator[Service]:
+                return (c for c in parent.select(entity, context) if c.get_parent_host().is_concrete())
+        return Selector()
 
     def authenticated(self, value=True) -> 'ServiceSelector':
         """Select authenticated services"""
@@ -235,8 +266,10 @@ class DataSelector(RequirementSelector):
         if not isinstance(entity, NetworkNode):
             return
         for c in entity.components:
-            if isinstance(c, DataStorages):
+            if isinstance(c, StoredData):
                 yield from c.sub_components
+        for ch in entity.children:
+            yield from self.select(ch, _context)
 
     def personal(self, value=True) -> 'DataSelector':
         """Select personal data"""
@@ -340,3 +373,76 @@ class Select:
 
     SYSTEM_SINGLE = SystemSelector()
     SOFTWARE_SINGLE = SoftwareSelector()
+
+
+class Finder:
+    """Find entities by specifiers"""
+
+    @classmethod
+    def find(cls, system: IoTSystem, specifier: Dict) -> Optional[Entity]:
+        """Find entity by JSON specifier"""
+        entity = None
+        addr_s = specifier.get("system")
+        if addr_s:
+            entity = system
+        if not entity:
+            addr_s = specifier.get("address")
+            if addr_s:
+                addr = Addresses.parse_endpoint(addr_s)
+                entity = system.find_endpoint(addr)
+                if not entity:
+                    raise ValueError(f"Cannot find entity: {addr_s}")
+        if not entity:
+            add_r = specifier.get("connection")
+            if add_r:
+                addrs = [Addresses.parse_endpoint(a) for a in add_r]
+                s = system.find_endpoint(addrs[0])
+                if not s:
+                    raise ValueError(f"Cannot find connection source: {add_r}")
+                t = system.find_endpoint(addrs[1])
+                if not t:
+                    raise ValueError(f"Cannot find connection target: {add_r}")
+                entity = s.find_connection(t)
+        comp_s = specifier.get("software")
+        if comp_s:
+            if not entity:
+                raise ValueError(f"Cannot find software without entity: {comp_s}")
+            entity = Software.get_software(entity, comp_s)
+            if not entity:
+                raise ValueError(f"Cannot find software: {comp_s}")
+            return entity
+        data_s = specifier.get("data")
+        if data_s:
+            if not entity:
+                raise ValueError(f"Cannot find data without entity: {comp_s}")
+            store = StoredData.find_data(entity)
+            entity = next(r for r in store.sub_components if r.data.name == data_s)
+            if not entity:
+                raise ValueError(f"Cannot find data: {comp_s}")
+            return entity
+        # NOTE: OS and oter components - needs unified way to access
+        return entity
+
+    @classmethod
+    def specify(cls, entity: Entity) -> Dict:
+        """Create JSON specifier for entity"""
+        r = {}
+        ent = entity
+        if isinstance(entity, NodeComponent):
+            ent = entity.entity
+            r[entity.concept_name] = entity.name
+        if isinstance(ent, IoTSystem):
+            r["system"] = True
+        elif isinstance(ent, Addressable):
+            tag = ent.get_tag()
+            if tag is None:
+                raise ValueError(f"Cannot specify entity without tag: {ent}")
+            r["address"] = tag.get_parseable_value()
+        elif isinstance(ent, Connection):
+            tag = ent.get_tag()
+            if tag is None:
+                raise ValueError(f"Cannot specify connection without both tags: {ent}")
+            r["connection"] = [t.get_parseable_value() for t in tag]
+        else:
+            raise ValueError(f"Cannot specify entity: {entity}")
+        return r

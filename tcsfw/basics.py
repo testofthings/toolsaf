@@ -5,7 +5,7 @@ import enum
 
 class HostType(enum.Enum):
     """Host types"""
-    GENERIC = ""               # default, assumed plaintext data
+    GENERIC = ""               # default, unspecified kind of host
     DEVICE = "Device"          # local device
     MOBILE = "Mobile"          # mobile (application)
     REMOTE = "Remote"          # remote, youngsters call it "cloud"

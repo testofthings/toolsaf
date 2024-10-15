@@ -7,12 +7,12 @@ import urllib
 from tcsfw.event_interface import PropertyEvent, EventInterface
 from tcsfw.model import IoTSystem
 from tcsfw.property import Properties
-from tcsfw.tools import BaseFileCheckTool
+from tcsfw.tools import SystemWideTool
 from tcsfw.traffic import EvidenceSource, Evidence
 from tcsfw.verdict import Verdict
 
 
-class WebChecker(BaseFileCheckTool):
+class WebChecker(SystemWideTool):
     """Check web pages tool"""
     def __init__(self, system: IoTSystem):
         super().__init__("web", system)  # no extension really

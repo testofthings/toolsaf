@@ -7,11 +7,11 @@ from xml.etree import ElementTree
 from tcsfw.address import IPAddress, HWAddress, EndpointAddress, Protocol
 from tcsfw.event_interface import EventInterface
 from tcsfw.model import IoTSystem, Host
-from tcsfw.tools import BaseFileCheckTool
+from tcsfw.tools import SystemWideTool
 from tcsfw.traffic import EvidenceSource, Evidence, ServiceScan, HostScan
 
 
-class NMAPScan(BaseFileCheckTool):
+class NMAPScan(SystemWideTool):
     """Parse Nmap scan XML output"""
     def __init__(self, system: IoTSystem):
         super().__init__("nmap", system)

@@ -2,4 +2,4 @@
 max-line-length=120
 
 [MESSAGES CONTROL]
-disable=too-few-public-methods,too-many-arguments,too-many-public-methods,too-many-locals,too-many-instance-attributes,too-many-branches,too-many-statements,too-many-lines
+disable=too-few-public-methods,too-many-arguments,too-many-public-methods,too-many-locals,too-many-instance-attributes,too-many-branches,too-many-statements,too-many-lines,too-many-positional-arguments

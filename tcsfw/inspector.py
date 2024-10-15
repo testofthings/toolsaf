@@ -3,7 +3,7 @@
 import logging
 from typing import Dict, Optional, Set
 
-from tcsfw.address import DNSName, AnyAddress
+from tcsfw.address import AnyAddress
 from tcsfw.basics import ExternalActivity, Status
 from tcsfw.entity import Entity
 from tcsfw.event_interface import EventInterface, PropertyAddressEvent, PropertyEvent
@@ -151,7 +151,7 @@ class Inspector(EventInterface):
         address = event.address
         if event.service and event.service.captive_portal and event.address in event.service.parent.addresses:
             address = None  # it is just redirecting to itself
-        name = DNSName(event.name)
+        name = event.tag or event.name
         h, changes = self.system.learn_named_address(name, address)
         if h not in self.known_entities:
             # new host

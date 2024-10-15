@@ -1,11 +1,35 @@
-from tcsfw.address import EndpointAddress, Protocol, DNSName, IPAddress, HWAddress
+from tcsfw.address import AddressEnvelope, EndpointAddress, EntityTag, Protocol, DNSName, IPAddress, HWAddress
+from tcsfw.inspector import Inspector
+from tcsfw.model import Host, IoTSystem
 from tcsfw.verdict import Verdict
 from tcsfw.builder_backend import SystemBackend
-from tcsfw.main import UDP, SSH
+from tcsfw.main import TCP, UDP, SSH
 from tcsfw.matcher import SystemMatcher
 from tcsfw.basics import ExternalActivity
 from tcsfw.traffic import IPFlow
 from tcsfw.basics import Status
+
+
+class Setup:
+    """Testing setup"""
+    def __init__(self):
+        self.system = SystemBackend()
+
+    def get_system(self) -> IoTSystem:
+        """Get system"""
+        return self.system.system
+
+    def get_inspector(self):
+        """Get inspector"""
+        return Inspector(self.get_system())
+
+    def get_hosts(self):
+        """Get hosts"""
+        return [c for c in self.get_system().children if isinstance(c, Host)]
+
+    def get_connections(self):
+        """Get connections"""
+        return self.get_system().get_connections()
 
 
 def simple_setup_1(external=False) -> SystemBackend:
@@ -29,6 +53,26 @@ def simple_setup_2() -> SystemBackend:
     return sb
 
 
+def test_tags():
+    su = Setup()
+    dev1 = su.system.device().hw("1:0:0:0:0:1")
+    assert EntityTag("Device") in dev1.entity.addresses
+    assert dev1.entity.get_tag() == EntityTag("Device")
+
+    dev2 = su.system.device().hw("1:0:0:0:0:2")
+    assert EntityTag("Device") in dev1.entity.addresses
+    assert EntityTag("Device_2") in dev2.entity.addresses
+    assert dev2.entity.get_tag() == EntityTag("Device_2")
+
+    dev3 = su.system.device("Doe Hot")
+    assert EntityTag("Doe_Hot") in dev3.entity.addresses
+    assert dev3.entity.get_tag() == EntityTag("Doe_Hot")
+
+    c0 = dev1 >> dev3 / TCP(1234)
+    c0_tag = c0.connection.get_tag()
+    assert c0_tag == (EntityTag("Device"), EndpointAddress(EntityTag("Doe_Hot"), Protocol.TCP, 1234))
+
+
 def test_connection_match():
     sb = simple_setup_1()
     m = SystemMatcher(sb.system)
@@ -45,7 +89,8 @@ def test_connection_match():
     assert cs.source.name == "Device 1"
     assert cs.target.name == "UDP:1234"
 
-    cs = m.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1100) >> ("1:0:0:0:0:3", "1.0.0.3", 1234))
+    flow = IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1100) >> ("1:0:0:0:0:3", "1.0.0.3", 1234)
+    cs = m.connection(flow)
     assert cs is not None
     assert cs.status == Status.UNEXPECTED
     assert cs.source.name == "Device 1"
@@ -199,7 +244,8 @@ def test_host_merging():
 
     key = EndpointAddress(HWAddress.new("1:0:0:0:0:1"), Protocol.UDP, 1100), \
         EndpointAddress.ip("1.0.0.2", Protocol.UDP, 1234)
-    assert sb.system.connections[key] == cs
+    connections = sb.system.connections
+    assert connections[key] == cs
 
     # ...but we learn it is known
     sb.system.learn_named_address(DNSName("target.org"), IPAddress.new("1.0.0.2"))
@@ -419,3 +465,39 @@ def test_reply_misinterpretation():
     assert c0 != c1
 
 
+def test_pick_service_from_subnet():
+    su = Setup()
+    net1 = su.system.network("VPN", "169.254.0.0/16")
+    dev1 = su.system.device().in_networks(net1, su.system.network()).ip("192.168.4.5")
+
+    ins = su.get_inspector()
+    addr = AddressEnvelope(
+        address=IPAddress.new("192.168.4.5"),
+        content=EndpointAddress.ip("169.254.6.7", Protocol.UDP, 1234))
+
+
+def test_unknown_service_in_subnet():
+    su = Setup()
+    net1 = su.system.network("VPN", "169.254.0.0/16")
+    dev1 = su.system.device().in_networks(net1, su.system.network()).ip("192.168.4.5")
+    ser1_1 = dev1 / TCP(8686).in_network(net1)
+    system = su.get_system()
+
+    # the known service with envelope address
+    addr = AddressEnvelope(
+        address=IPAddress.new("192.168.4.5"),
+        content=EndpointAddress.ip("169.254.6.7", Protocol.TCP, 8686))
+    s0 = system.get_endpoint(addr)
+    assert s0 == ser1_1.entity
+    assert s0.get_parent_host() == dev1.entity
+
+    # right host, but service in different subnet
+    addr = EndpointAddress.ip("192.168.4.5", Protocol.TCP, 8686)
+    s0 = system.get_endpoint(addr)
+    assert s0 != ser1_1.entity
+
+    # address like in subnet, but actully for host
+    assert s0.get_parent_host() == dev1.entity
+    addr = EndpointAddress.ip("169.254.6.7", Protocol.TCP, 8686)
+    s0 = system.get_endpoint(addr)
+    assert s0.get_parent_host() != dev1.entity

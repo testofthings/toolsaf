@@ -1,4 +1,4 @@
-from tcsfw.address import Addresses, EndpointAddress, Protocol
+from tcsfw.address import Addresses, DNSName, EndpointAddress, Protocol
 from tcsfw.verdict import Verdict
 from tcsfw.builder_backend import SystemBackend
 from tcsfw.event_interface import PropertyAddressEvent, PropertyEvent
@@ -74,7 +74,7 @@ def test_name_event():
     }
     ent_reverse = {v: k for k, v in entities.items()}
 
-    p = NameEvent(evi, service.entity, "www.example.com")
+    p = NameEvent(evi, service.entity, name=DNSName("www.example.com"))
     js = p.get_data_json(entities.get)
     assert js == {
         'service': 12,
@@ -83,7 +83,7 @@ def test_name_event():
 
     p2 = NameEvent.decode_data_json(evi, js, ent_reverse.get)
     assert p2.service == service.entity
-    assert p2.name == "www.example.com"
+    assert p2.name == DNSName("www.example.com")
     assert p == p2
 
 

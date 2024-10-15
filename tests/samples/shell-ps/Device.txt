@@ -1,0 +1,8 @@
+USER         PID TTxxx      START CMD
+root      576460 ?          08:36 [kworker/0:0-events_long]
+100070      2595 ?          May06 postgres: diip daap
+root        2597 ?          May06 /opt/venv.d/production/bin/python jeejee joojoo
+root        2597 ?          May16 highball -a -b -c
+root      575582 ?          08:19 [kworker/u4:2-events_unbound]
+john       23232 /dev/pts2  Apr01 acommand
+root         202 ?          08:22 ps ax -o user,pid,tty,start_time,cmd --sort start_time

@@ -11,21 +11,21 @@ from tcsfw.components import Cookies, CookieData
 from tcsfw.event_interface import PropertyAddressEvent, PropertyEvent, EventInterface
 from tcsfw.model import Host, IoTSystem, NetworkNode
 from tcsfw.property import PropertyKey, Properties
-from tcsfw.tools import NodeCheckTool
+from tcsfw.tools import NetworkNodeTool
 from tcsfw.traffic import EvidenceSource, Evidence
 from tcsfw.verdict import Verdict
 
 
-class HARScan(NodeCheckTool):
+class HARScan(NetworkNodeTool):
     """HAR JSON tool"""
     def __init__(self, system: IoTSystem):
         super().__init__("har", ".json", system)
         self.tool.name = "HAR"
 
-    def filter_component(self, node: NetworkNode) -> bool:
+    def filter_node(self, node: NetworkNode) -> bool:
         return isinstance(node, Host)
 
-    def process_stream(self, node: NetworkNode, data_file: BytesIO, interface: EventInterface, source: EvidenceSource):
+    def process_node(self, node: NetworkNode, data_file: BytesIO, interface: EventInterface, source: EvidenceSource):
         host = cast(Host, node)
 
         component = Cookies.cookies_for(host)

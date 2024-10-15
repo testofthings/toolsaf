@@ -2,7 +2,7 @@
 
 from typing import Any, Callable, Dict, List, Set, Optional
 
-from tcsfw.address import EndpointAddress, Protocol, IPAddress
+from tcsfw.address import DNSName, EndpointAddress, EntityTag, Protocol, IPAddress
 from tcsfw.basics import ConnectionType, HostType
 from tcsfw.model import Service, NetworkNode, Connection, Host, Addressable
 from tcsfw.traffic import IPFlow, Flow, Event, Evidence
@@ -42,22 +42,27 @@ class DNSService(Service):
 
 
 class NameEvent(Event):
-    """DNS name event"""
-    def __init__(self, evidence: Evidence, service: Optional[DNSService], name: str,
-                 address: Optional[IPAddress] = None, peers: List[NetworkNode] = None):
+    """Name or tag and address event"""
+    def __init__(self, evidence: Evidence, service: Optional[DNSService], name: Optional[DNSName] = None,
+                 tag: Optional[EntityTag] = None, address: Optional[IPAddress] = None,
+                 peers: List[NetworkNode] = None):
         super().__init__(evidence)
+        assert bool(name) != bool(tag), "Name or tag must be set"
         self.service = service
         self.name = name
+        self.tag = tag
         self.address = address
         self.peers = [] if peers is None else peers  # The communicating peers
 
     def get_value_string(self) -> str:
-        return f"{self.name}={self.address}" if self.address else self.name
+        return f"{self.name or self.tag}={self.address}" if self.address else str(self.name or self.tag)
 
     def get_data_json(self, id_resolver: Callable[[Any], Any]) -> Dict:
-        r = {
-            "name": self.name,
-        }
+        r = {}
+        if self.name:
+            r["name"] = self.name.name
+        if self.tag:
+            r["tag"] = self.tag.tag
         if self.service:
             r["service"] = id_resolver(self.service)
         if self.address:
@@ -69,13 +74,14 @@ class NameEvent(Event):
     @classmethod
     def decode_data_json(cls, evidence: Evidence, data: Dict, entity_resolver: Callable[[Any], Any]):
         """Decode event from JSON"""
-        name = data["name"]
+        name = DNSName(data.get("name")) if "name" in data else None
+        tag = EntityTag(data.get("tag")) if "tag" in data else None
         service = entity_resolver(data.get("service")) if "service" in data else None
         assert service is None or isinstance(service, DNSService), f"Bad service {service.__class__.__name__}"
         address = IPAddress.new(data.get("address")) if "address" in data else None
         peers = [entity_resolver(p) for p in data.get("peers", [])]
         assert all(p for p in peers)
-        return NameEvent(evidence, service, name, address, peers)
+        return NameEvent(evidence, service, name, tag, address, peers)
 
     def __eq__(self, other):
         if not isinstance(other, NameEvent):
@@ -83,7 +89,7 @@ class NameEvent(Event):
         return self.service == other.service and self.name == other.name and self.address == other.address
 
     def __hash__(self):
-        return self.name.__hash__() ^ (self.address.__hash__() if self.address else 0)
+        return hash(self.name) ^ hash(self.tag) ^ hash(self.address)
 
     def __repr__(self):
-        return f"{self.address}" + (f" '{self.name}'" if self.name else "")
+        return self.get_value_string()

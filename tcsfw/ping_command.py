@@ -8,12 +8,12 @@ from tcsfw.address import IPAddress
 from tcsfw.event_interface import EventInterface, PropertyAddressEvent
 from tcsfw.model import IoTSystem
 from tcsfw.property import Properties
-from tcsfw.tools import BaseFileCheckTool
+from tcsfw.tools import SystemWideTool
 from tcsfw.traffic import Evidence, EvidenceSource
 from tcsfw.verdict import Verdict
 
 
-class PingCommand(BaseFileCheckTool):
+class PingCommand(SystemWideTool):
     """Ping command"""
     def __init__(self, system: IoTSystem):
         super().__init__("ping", system)

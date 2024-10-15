@@ -12,12 +12,12 @@ from tcsfw.address import Protocol, EndpointAddress, AnyAddress
 from tcsfw.event_interface import PropertyAddressEvent, EventInterface
 from tcsfw.model import IoTSystem, NetworkNode, Host
 from tcsfw.property import Properties
-from tcsfw.tools import EndpointCheckTool
+from tcsfw.tools import EndpointTool
 from tcsfw.traffic import EvidenceSource, ServiceScan, Evidence, HostScan
 from tcsfw.verdict import Verdict
 
 
-class CensysScan(EndpointCheckTool):
+class CensysScan(EndpointTool):
     """Censys scan tool"""
     def __init__(self, system: IoTSystem):
         super().__init__("censys", ".json", system)
@@ -26,7 +26,8 @@ class CensysScan(EndpointCheckTool):
     def filter_node(self, node: NetworkNode) -> bool:
         return isinstance(node, Host)
 
-    def process_stream(self, endpoint: AnyAddress, stream: BytesIO, interface: EventInterface, source: EvidenceSource):
+    def process_endpoint(self, endpoint: AnyAddress, stream: BytesIO, interface: EventInterface,
+                         source: EvidenceSource):
         raw = json.load(stream)
 
         evidence = Evidence(source)

@@ -3,10 +3,11 @@
 import ipaddress
 import itertools
 import re
-from typing import List, Set, Optional, Tuple, TypeVar, Callable, Dict, Any, Self, Iterable, Iterator
+from typing import List, Set, Optional, Tuple, TypeVar, Callable, Dict, Any, Self, Iterable, Iterator, Union
 from urllib.parse import urlparse
 
-from tcsfw.address import AnyAddress, Addresses, EndpointAddress, Protocol, IPAddress, HWAddress, DNSName
+from tcsfw.address import AnyAddress, Addresses, EndpointAddress, EntityTag, Network, Protocol, IPAddress, \
+    HWAddress, DNSName
 from tcsfw.basics import ConnectionType, ExternalActivity, HostType, Status
 from tcsfw.entity import Entity
 from tcsfw.property import PropertyKey
@@ -23,17 +24,30 @@ class Connection(Entity):
         self.target = target
         self.con_type = ConnectionType.UNKNOWN
 
+    def get_tag(self) -> Optional[Tuple[AnyAddress, AnyAddress]]:
+        """Get tag addresses, if any"""
+        s = self.source.get_tag()
+        t = self.target.get_tag()
+        if s and t:
+            return s, t
+        return None
+
     def is_original(self) -> bool:
         """Is this entity originally defined in the model?"""
         system = self.source.get_system()
         return self in system.originals
 
+    def is_admin(self) -> bool:
+        return self.target.is_admin()
+
     def is_relevant(self, ignore_ends=False) -> bool:
         """Is this connection relevant, i.e. not placeholder or external?"""
-        if self.status in {Status.EXPECTED, Status.UNEXPECTED}:
-            return True
         if self.status == Status.PLACEHOLDER:
             return False  # placeholder is never relevant
+        if self.status in {Status.EXPECTED, Status.UNEXPECTED}:
+            return True
+        if self.get_expected_verdict() == Verdict.FAIL:
+            return True  # the dirt must be seen
         if ignore_ends:
             return False
         return self.source.is_relevant() or self.target.is_relevant()
@@ -122,6 +136,7 @@ class NetworkNode(Entity):
         self.visual = False  # show visual image?
         self.children: List[Addressable] = []
         self.components: List[NodeComponent] = []
+        self.networks: List[Network] = []  # empty means 'same as parent'
         self.external_activity = ExternalActivity.BANNED
 
     def get_children(self) -> Iterable['Entity']:
@@ -160,6 +175,23 @@ class NetworkNode(Entity):
     def is_relevant(self) -> bool:
         return self.status in {Status.EXPECTED, Status.UNEXPECTED}
 
+    def is_admin(self) -> bool:
+        return self.host_type == HostType.ADMINISTRATIVE
+
+    def get_networks(self) -> List[Network]:
+        """Get effective networks"""
+        return self.networks
+
+    def get_networks_for(self, address: AnyAddress) -> List[Network]:
+        """Resolve network for an address"""
+        if address.get_ip_address() is None:
+            return [self.get_system().get_default_network()]
+        ns = []
+        for nw in self.networks:
+            if nw.is_local(address):
+                ns.append(nw)
+        return ns
+
     def get_connections(self, relevant_only=True) -> List[Connection]:
         """Get relevant conneciions"""
         cs = []
@@ -176,19 +208,6 @@ class NetworkNode(Entity):
         self.external_activity = value
         for c in self.children:
             c.external_activity = value
-        return self
-
-    def merge_in(self, entity: 'NetworkNode', mappings: Dict['NetworkNode', 'NetworkNode']) -> Self:
-        """Merge an another entity here, return mapping to replace entities"""
-        mappings[entity] = self
-        c_map = {c.name: c for c in self.children}
-        for c in entity.children:
-            self_c = c_map.get(c.name)
-            if self_c:
-                self_c.merge_in(c, mappings)
-            else:
-                c.parent = self
-                self.children.append(c)
         return self
 
     def create_service(self, address: EndpointAddress) -> 'Service':
@@ -219,8 +238,12 @@ class NetworkNode(Entity):
                 return c
         return None
 
-    def get_endpoint(self, address: AnyAddress) -> 'Addressable':
+    def get_endpoint(self, address: AnyAddress, at_network: Optional[Network] = None) -> 'Addressable':
         """Get or create a new endpoint, service or host"""
+        raise NotImplementedError()
+
+    def find_endpoint(self, address: AnyAddress, at_network: Optional[Network] = None) -> Optional['Addressable']:
+        """Find existing endpoint, service or host"""
         raise NotImplementedError()
 
     def add_component(self, component: 'NodeComponent') -> 'NodeComponent':
@@ -262,8 +285,23 @@ class Addressable(NetworkNode):
         self.addresses: Set[AnyAddress] = set()
         self.any_host = False  # can be one or many hosts
 
+    def get_tag(self) -> Optional[AnyAddress]:
+        """Get tag address, if any"""
+        raise NotImplementedError()
+
     def create_service(self, address: EndpointAddress) -> 'Service':
-        s = Service(Service.make_name(f"{address.protocol.value.upper()}", address.port), self)
+        s_name = Service.make_name(f"{address.protocol.value.upper()}", address.port)
+        nw = []
+        if address.get_ip_address():
+            nw = self.get_networks_for(address.get_ip_address())
+            if len(nw) == 1 and nw[0] == self.get_system().get_default_network():
+                nw = []  # default network not explicitlyt specified
+            # update name with network, if non-default
+            if len(nw) == 1:
+                s_name = f"{s_name}@{nw[0].name}"
+        s = Service(s_name, self)
+        if nw:
+            s.networks = nw  # specific network
         s.addresses.add(address.change_host(Addresses.ANY))
         if self.status == Status.EXTERNAL:
             s.status = Status.EXTERNAL  # only external propagates, otherwise unexpected
@@ -282,6 +320,17 @@ class Addressable(NetworkNode):
             return True
         return self.addresses and any(a.is_multicast() for a in self.addresses)
 
+    def get_networks(self) -> List[Network]:
+        """Get networks"""
+        if self.networks:
+            return self.networks
+        return self.parent.get_networks()
+
+    def get_networks_for(self, address: AnyAddress) -> List[Network]:
+        if not self.networks:
+            return self.parent.get_networks_for(address)  # follow parent
+        return super().get_networks_for(address)
+
     def get_addresses(self, ads: Set[AnyAddress] = None) -> Set[AnyAddress]:
         """Get all addresses"""
         ads = set() if ads is None else ads
@@ -296,17 +345,28 @@ class Addressable(NetworkNode):
             c.get_addresses(ads)
         return ads
 
-    def get_endpoint(self, address: AnyAddress) -> 'Addressable':
+    def get_endpoint(self, address: AnyAddress, at_network: Optional[Network] = None) -> 'Addressable':
+        ep = self.find_endpoint(address, at_network)
+        if ep:
+            return ep
+        assert isinstance(address, EndpointAddress), "Bad address for service"
+        return self.create_service(address)
+
+    def find_endpoint(self, address: AnyAddress, at_network: Optional[Network] = None) -> Optional['Addressable']:
+        # assuming network matched on parent
         for c in self.children:
             if address in c.addresses:
-                return c
+                return c  # exact address - match without network checks
             for a in c.addresses:
                 if a.is_wildcard():
+                    if c.networks:
+                        # wildcard match with network check
+                        if not all(n.is_local(address) for n in c.networks):
+                            continue
                     ac = a.change_host(address.get_host())
                     if ac == address:
                         return c
-        assert isinstance(address, EndpointAddress), "Bad address for service"
-        return self.create_service(address)
+        return None
 
     def new_connection(self, connection: Connection, flow: Flow, target: bool):
         """New connection with this entity either as source or target"""
@@ -328,13 +388,21 @@ class Addressable(NetworkNode):
 
 class Host(Addressable):
     """A host"""
-    def __init__(self, parent: 'IoTSystem', name: str):
+    def __init__(self, parent: 'IoTSystem', name: str, tag: Optional[EntityTag] = None):
         super().__init__(name)
+        if tag:
+            self.addresses.add(tag)
         self.concept_name = "node"
         self.parent = parent
+        self.networks = [] # follow parent
         self.visual = True
         self.ignore_name_requests: Set[DNSName] = set()
         self.connections: List[Connection] = []  # connections initiated here
+
+    def is_concrete(self) -> bool:
+        """Is a concrete host, not any host, multicast or client side entity"""
+        return self.host_type not in {HostType.MOBILE, HostType.BROWSER} and not self.any_host \
+            and not self.is_multicast()
 
     def get_connections(self, relevant_only=True) -> List[Connection]:
         """Get relevant connections"""
@@ -344,6 +412,13 @@ class Host(Addressable):
                 cs.append(c)
         cs.extend(super().get_connections(relevant_only))
         return cs
+
+    def find_connection(self, target: 'Addressable') -> Optional[Connection]:
+        """Find connection to target"""
+        for c in self.connections:
+            if c.target == target:
+                return c
+        return None
 
     def get_parent_host(self) -> 'Host':
         return self
@@ -373,6 +448,9 @@ class Host(Addressable):
         cache[self] = rv
         return rv
 
+    def get_tag(self) -> Optional[EntityTag]:
+        return Addresses.get_tag(self.addresses)
+
 
 class Service(Addressable):
     """A service"""
@@ -380,6 +458,7 @@ class Service(Addressable):
         super().__init__(name)
         self.concept_name = "service"
         self.parent = parent
+        self.networks = [] # follow parent
         self.protocol: Optional[Protocol] = None  # known protocol
         self.host_type = parent.host_type
         self.con_type = ConnectionType.UNKNOWN
@@ -399,10 +478,24 @@ class Service(Addressable):
         """Get authentication flag for services or none"""
         return entity.authentication if isinstance(entity, Service) else None
 
+    def is_service(self) -> bool:
+        return True
+
     def long_name(self):
         if self.parent.name != self.name:
             return f"{self.parent.name} {self.name}"
         return self.name
+
+    def get_tag(self) -> Optional[EndpointAddress]:
+        """Get tag and endpoint address, if any"""
+        tag = Addresses.get_tag(self.get_parent_host().addresses)
+        if tag is None:
+            return None
+        for a in self.addresses:
+            app = a.get_protocol_port()
+            if app:
+                return EndpointAddress(tag, app[0], app[1])
+        return None
 
     def is_tcp_service(self):
         """Is a TCP-based service"""
@@ -435,7 +528,7 @@ class IoTSystem(NetworkNode):
         self.concept_name = "system"
         self.status = Status.EXPECTED
         # network mask(s)
-        self.ip_networks = [ipaddress.ip_network("192.168.0.0/16")]  # reasonable default
+        self.networks = [Network("local", ip_network=ipaddress.ip_network("192.168.0.0/16"))]  # reasonable default
         # online resources
         self.online_resources: Dict[str, str] = {}
         # original entities and connections
@@ -465,38 +558,33 @@ class IoTSystem(NetworkNode):
 
     def is_external(self, address: AnyAddress) -> bool:
         """Is an external network address?"""
-        h = address.get_host()
-        if h.is_global():
-            return True
-        if h.is_multicast() or h.is_null() or not isinstance(h, IPAddress):
-            return False
-        # FIXME: Broadcast for IPv6 not implemented  pylint: disable=fixme
-        for m in self.ip_networks:
-            if h.data in m:
+        for nw in self.networks:
+            if nw.is_local(address):
                 return False
         return True
 
-    def learn_named_address(self, name: DNSName, address: Optional[AnyAddress]) -> Tuple[Host, bool]:
-        """Learn DNS named addresses, return named host and if any changes"""
+    def learn_named_address(self, name: Union[DNSName, EntityTag], address: Optional[AnyAddress]) -> Tuple[Host, bool]:
+        """Learn addresses for host, return the named host and if any changes"""
         # pylint: disable=too-many-return-statements
 
-        # check for reverse DNS
-        if name.name.endswith(".arpa") and len(name.name) > 5:
-            # reverse DNS from IP addresss to name
-            nn = name.name[:-5]
-            if nn.endswith(".in-addr") and len(nn) > 8:
-                address = IPAddress.new(nn[:-8])
-            elif nn.endswith(".ip6") and len(nn) > 4:
-                nn = nn[:-4].replace(".", "")[::-1]
-                nn = ":".join(re.findall("....", nn))
-                address = IPAddress.new(nn)
-            else:
-                # E.g. _dns.resolver.arpa - leave as name!
-                address = None
-            if address:
-                add = self.get_endpoint(address)
-                assert isinstance(add, Host)
-                return add, False  # Did not add name to host (why?)
+        if isinstance(name, DNSName):
+            # check for reverse DNS
+            if name.name.endswith(".arpa") and len(name.name) > 5:
+                # reverse DNS from IP addresss to name
+                nn = name.name[:-5]
+                if nn.endswith(".in-addr") and len(nn) > 8:
+                    address = IPAddress.new(nn[:-8])
+                elif nn.endswith(".ip6") and len(nn) > 4:
+                    nn = nn[:-4].replace(".", "")[::-1]
+                    nn = ":".join(re.findall("....", nn))
+                    address = IPAddress.new(nn)
+                else:
+                    # E.g. _dns.resolver.arpa - leave as name!
+                    address = None
+                if address:
+                    add = self.get_endpoint(address)
+                    assert isinstance(add, Host)
+                    return add, False  # Did not add name to host (why?)
 
         # find relevant hosts
         named = None
@@ -525,6 +613,8 @@ class IoTSystem(NetworkNode):
             return add, True
 
         if named is None:
+            if isinstance(name, EntityTag):
+                return None, False  # do not create hosts for unknown tags
             named = self.get_endpoint(name)
 
         if not add:
@@ -565,13 +655,16 @@ class IoTSystem(NetworkNode):
     def get_system(self) -> 'IoTSystem':
         return self
 
-    def get_endpoint(self, address: AnyAddress) -> Addressable:
-        """Get or create a new endpoint, service or host"""
+    def get_endpoint(self, address: AnyAddress, at_network: Optional[Network] = None) -> Addressable:
         h_add = address.get_host()
+        e_add = address.open_envelope()  # scan from inside is in envelope
+        network = at_network or self.get_default_network()
         for e in self.children:
+            if e.networks and network not in e.networks:
+                continue  # not in the right network
             if h_add in e.addresses:
-                if isinstance(address, EndpointAddress):
-                    e = e.get_endpoint(address) or e
+                if isinstance(e_add, EndpointAddress):
+                    e = e.get_endpoint(e_add) or e
                 break
         else:
             # create new host and possibly service
@@ -584,8 +677,23 @@ class IoTSystem(NetworkNode):
             e.addresses.add(h_add)
             e.external_activity = ExternalActivity.UNLIMITED  # we know nothing about its behavior
             self.children.append(e)
-        if isinstance(address, EndpointAddress) and e.is_host():
-            e = e.create_service(address)
+        if isinstance(e_add, EndpointAddress) and e.is_host():
+            e = e.create_service(e_add)
+        return e
+
+    def find_endpoint(self, address: AnyAddress, at_network: Optional[Network] = None) -> Optional['Addressable']:
+        h_add = address.get_host()
+        e_add = address.open_envelope()  # scan from inside is in envelope
+        network = at_network or self.get_default_network()
+        for e in self.children:
+            if e.networks and network not in e.networks:
+                continue  # not in the right network
+            if h_add in e.addresses:
+                if isinstance(e_add, EndpointAddress):
+                    e = e.find_endpoint(e_add)
+                break
+        else:
+            e = None
         return e
 
     def new_connection(self, source: Tuple[Addressable, AnyAddress],
@@ -607,6 +715,27 @@ class IoTSystem(NetworkNode):
         for c in self.children:
             c.get_addresses(ads)
         return ads
+
+    def get_network_by_name(self, name: str) -> Network:
+        """Get network by its name"""
+        for nw in self.networks:
+            if nw.name == name:
+                return nw
+        for c in self.children:
+            for nw in c.networks:
+                if nw.name == name:
+                    return nw
+        raise ValueError(f"Network {name} not found")
+
+    def get_networks_for(self, address: AnyAddress) -> List[Network]:
+        ns = super().get_networks_for(address)
+        if not ns:
+            return [self.get_default_network()]
+        return ns
+
+    def get_default_network(self) -> Network:
+        """Get default network for address type"""
+        return self.networks[0]
 
     def create_service(self, address: EndpointAddress) -> Service:
         return NotImplementedError()
@@ -679,13 +808,14 @@ class EvidenceNetworkSource(EvidenceSource):
         self.address_map = address_map or {}
         self.activity_map = activity_map or {}
 
-    def rename(self, name: Optional[str] = None, base_ref: Optional[str] = None,
+    def rename(self, name: Optional[str] = None, target: Optional[str] = None, base_ref: Optional[str] = None,
                label: Optional[str] = None) -> Self:
         s = EvidenceNetworkSource(
             self.name if name is None else name,
             self.base_ref if base_ref is None else base_ref,
             self.label if label is None else label,
             self.address_map, self.activity_map)
+        s.target = self.target if target is None else target
         s.model_override = self.model_override
         return s
 

@@ -3,7 +3,7 @@
 import logging
 from typing import Any, Iterable, Optional, Dict, List
 from tcsfw.event_interface import EventInterface
-from tcsfw.traffic import Event
+from tcsfw.traffic import Event, EvidenceSource
 
 
 class EntityDatabase:
@@ -39,6 +39,10 @@ class EntityDatabase:
 
     def clear_database(self):
         """Clear the database, from the disk"""
+
+    def get_souces(self) -> List[EvidenceSource]:
+        """Get evidence sources"""
+        return []
 
 
 class InMemoryDatabase(EntityDatabase):
@@ -80,3 +84,9 @@ class InMemoryDatabase(EntityDatabase):
         self.trail.append(event)
         source = event.evidence.source
         self.trail_filter.setdefault(source.label, True)
+
+    def get_souces(self) -> List[EvidenceSource]:
+        sources = {}
+        for e in self.trail:
+            sources.setdefault(e.evidence.source, e)
+        return list(sources.keys())

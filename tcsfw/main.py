@@ -1,7 +1,7 @@
 """Model builder"""
 
 from typing import Dict, List, Optional, Self, Tuple, Type, Union
-from tcsfw.address import HWAddress, HWAddresses, IPAddress, IPAddresses
+from tcsfw.address import AnyAddress, HWAddress, HWAddresses, IPAddress, IPAddresses, Network
 from tcsfw.selector import RequirementSelector
 from tcsfw.basics import ConnectionType, HostType, ExternalActivity
 from tcsfw.verdict import Verdict
@@ -21,8 +21,8 @@ class ConfigurationException(Exception):
 
 class SystemBuilder:
     """System model builder"""
-    def network(self, mask: str) -> Self:
-        """Configure network mask"""
+    def network(self, subnet="") -> 'NetworkBuilder':
+        """Configure network or subnetwork"""
         raise NotImplementedError()
 
     def device(self, name="") -> 'HostBuilder':
@@ -65,8 +65,8 @@ class SystemBuilder:
         """Document online resource"""
         raise NotImplementedError()
 
-    def require(self, addresses_for: List['NodeBuilder']):
-        """Require definition of these addresses"""
+    def attach_file(self, file_path: str, relative_to: Optional[str] = None) -> Self:
+        """Attach a file to the model"""
         raise NotImplementedError()
 
     def visualize(self) -> 'VisualizerBuilder':
@@ -101,6 +101,10 @@ class NodeBuilder:
 
     def external_activity(self, value: ExternalActivity) -> Self:
         """Define external activity"""
+        raise NotImplementedError()
+
+    def in_networks(self, *network: 'NetworkBuilder') -> Self:
+        """Set networks this node interfaces with"""
         raise NotImplementedError()
 
     def software(self, name: Optional[str] = None) -> 'SoftwareBuilder':
@@ -165,6 +169,10 @@ class HostBuilder(NodeBuilder):
         """This host uses some sensitive data"""
         raise NotImplementedError()
 
+    def os(self) -> 'OSBuilder':
+        """Operating System definitions"""
+        raise NotImplementedError()
+
     def __truediv__(self, protocol: ProtocolType) -> ServiceBuilder:
         """Pick or add the configured protocol"""
         raise NotImplementedError()
@@ -183,7 +191,7 @@ class SensitiveDataBuilder:
     def __init__(self, parent: SystemBuilder):
         self.parent = parent
 
-    def used_by(self, *host: HostBuilder) -> Self:
+    def used_by(self, hosts: List[HostBuilder]) -> Self:
         """This data used/stored in a host"""
         raise NotImplementedError()
 
@@ -192,6 +200,16 @@ class ConnectionBuilder:
     """Connection builder"""
     def logical_only(self) -> Self:
         """Only a logical link"""
+        raise NotImplementedError()
+
+
+class NetworkBuilder:
+    """Network or subnet builder"""
+    def __init__(self, network: Network):
+        self.network = network
+
+    def mask(self, mask: str) -> Self:
+        """Set network mask(s)"""
         raise NotImplementedError()
 
 
@@ -247,6 +265,18 @@ class ProtocolConfigurer:
     """Protocol configurer base class"""
     def __init__(self, name: str):
         self.name = name
+        self.networks = []
+        self.address: Optional[AnyAddress] = None
+
+    def in_network(self, *network: NetworkBuilder) -> Self:
+        """Specify networks for the service"""
+        self.networks.extend(network)
+        return self
+
+    def at_address(self, address: str) -> Self:
+        """Service in a specific address"""
+        self.address = IPAddress.new(address)
+        return self
 
     def __repr__(self) -> str:
         return self.name
@@ -263,6 +293,11 @@ class DHCP(ProtocolConfigurer):
     def __init__(self, port=67):
         ProtocolConfigurer.__init__(self, "DHCP")
         self.port = port
+
+    @classmethod
+    def client(cls, port=68) -> 'UDP':
+        """DHCP client port"""
+        return UDP(port, name="DHCP client", administrative=True)
 
 
 class DNS(ProtocolConfigurer):
@@ -351,6 +386,13 @@ class BLEAdvertisement(ProtocolConfigurer):
     def __init__(self, event_type: int):
         ProtocolConfigurer.__init__(self, "BLE Ad")
         self.event_type = event_type
+
+
+class OSBuilder:
+    """Operating System builder"""
+    def processes(self, owner_process: Dict[str, List[str]]) -> 'OSBuilder':
+        """Define processes: mapping from owner to list of processes"""
+        raise NotImplementedError()
 
 
 class ClaimBuilder:

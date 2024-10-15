@@ -83,7 +83,8 @@ cookies.set({
 make_claims(system, gateway, tags, user, mobile, backend_1, backend_2, web_1, web_2, web_3, ble_ad)
 
 # Concrete addresses
-system.network("192.168.0.0/16").network("10.10.0.0/24")
+system.network().mask("192.168.0.0/16")
+system.network().mask("10.10.0.0/24")
 gateway.hw("30:c6:f7:52:db:5c")
 tags.hw("fd:5b:e3:39:f7:24")
 mobile.hw("c2:77:15:ab:b5:b0")

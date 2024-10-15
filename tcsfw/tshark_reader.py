@@ -11,11 +11,11 @@ from tcsfw.address import HWAddress
 from tcsfw.event_interface import EventInterface
 from tcsfw.inspector import Inspector
 from tcsfw.model import IoTSystem
-from tcsfw.tools import BaseFileCheckTool
+from tcsfw.tools import SystemWideTool
 from tcsfw.traffic import EvidenceSource, BLEAdvertisementFlow, Evidence
 
 
-class TSharkReader(BaseFileCheckTool):
+class TSharkReader(SystemWideTool):
     """Read in TShark JSON input"""
     def __init__(self, system: IoTSystem):
         super().__init__("pcap-tshark", system)

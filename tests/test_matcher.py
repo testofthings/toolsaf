@@ -1,5 +1,4 @@
 from tcsfw.address import Addresses, IPAddress
-from tcsfw.verdict import Verdict
 from tcsfw.builder_backend import SystemBackend
 from tcsfw.matcher import SystemMatcher
 from tcsfw.model import EvidenceNetworkSource
@@ -75,3 +74,34 @@ def test_target_ip():
     con = m.connection(flow)
     assert con.source.status == Status.EXTERNAL  # changed earlier to UNEXPECTED (not optimal)
     assert con.target == dev0.entity
+
+
+def test_subnet():
+    sb = SystemBackend()
+    na = sb.network("NET_A", ip_mask="22.0.0.0/24")
+    nb = sb.network("NET_B", ip_mask="23.0.0.0/24")
+    dev1 = sb.device().ip("21.0.0.2")
+    dev2 = sb.device().in_networks(na).ip("22.0.0.2")
+    dev3 = sb.device().in_networks(nb).ip("23.0.0.2")
+    m = SystemMatcher(sb.system)
+
+    flow = (IPFlow.UDP("1:0:0:0:0:1", "22.0.0.1", 1100) >> ("1:0:0:0:0:2", "22.0.0.2", 1234)).at_network(na.network)
+    conn = m.connection(flow)
+    assert conn.target == dev2.entity
+
+    flow = (IPFlow.UDP("1:0:0:0:0:1", "22.0.0.1", 1100) >> ("1:0:0:0:0:2", "21.0.0.2", 1234)).at_network(na.network)
+    conn = m.connection(flow)
+    assert conn.target != dev2.entity
+
+    flow = (IPFlow.UDP("1:0:0:0:0:1", "23.0.0.2", 1100) >> ("1:0:0:0:0:2", "21.0.0.2", 1234)).at_network(na.network)
+    conn = m.connection(flow)
+    assert conn.source != dev3.entity
+
+    flow = (IPFlow.UDP("1:0:0:0:0:1", "23.0.0.2", 1100) >> ("1:0:0:0:0:2", "21.0.0.2", 1234)).at_network(nb.network)
+    conn = m.connection(flow)
+    assert conn.source == dev3.entity
+
+    flow = IPFlow.UDP("1:0:0:0:0:1", "22.0.0.1", 1100) >> ("1:0:0:0:0:2", "21.0.0.2", 1234)
+    conn = m.connection(flow)
+    assert conn.target == dev1.entity
+    # assert Addresses.get_prioritized(dev0.entity.addresses).is_global()
