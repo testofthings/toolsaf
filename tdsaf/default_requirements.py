@@ -1,7 +1,7 @@
 """Default requirements as claims"""
 
 from tdsaf.claim_set import Claim
-from tdsaf.basics import HostType
+from tdsaf.core.basics import HostType
 from tdsaf.requirement import Specification
 from tdsaf.selector import Select
 

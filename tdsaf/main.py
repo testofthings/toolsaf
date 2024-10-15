@@ -1,10 +1,10 @@
 """Model builder"""
 
 from typing import Dict, List, Optional, Self, Tuple, Type, Union
-from tdsaf.address import AnyAddress, HWAddress, HWAddresses, IPAddress, IPAddresses, Network
+from tdsaf.core.address import AnyAddress, HWAddress, HWAddresses, IPAddress, IPAddresses, Network
 from tdsaf.selector import RequirementSelector
-from tdsaf.basics import ConnectionType, HostType, ExternalActivity
-from tdsaf.verdict import Verdict
+from tdsaf.core.basics import ConnectionType, HostType, ExternalActivity
+from tdsaf.core.verdict import Verdict
 
 
 ProtocolType = Union['ProtocolConfigurer', Type['ProtocolConfigurer']]

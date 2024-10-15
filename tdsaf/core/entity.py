@@ -3,12 +3,12 @@
 import enum
 import re
 from typing import Dict, Optional, Self, List, Any, Tuple, Iterable, Iterator
-from tdsaf.basics import Status
-from tdsaf.verdict import Verdict
+from tdsaf.core.basics import Status
+from tdsaf.core.verdict import Verdict
 
-from tdsaf.claim import AbstractClaim
-from tdsaf.property import Properties, PropertyKey
-from tdsaf.verdict import Verdictable
+from tdsaf.core.claim import AbstractClaim
+from tdsaf.core.property import Properties, PropertyKey
+from tdsaf.core.verdict import Verdictable
 
 
 class Entity:

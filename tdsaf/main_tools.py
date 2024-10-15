@@ -2,8 +2,8 @@
 
 from typing import Any, List, Dict, Tuple, Self, Optional
 
-from tdsaf.address import AnyAddress, HWAddress, IPAddress, Protocol
-from tdsaf.basics import ExternalActivity
+from tdsaf.core.address import AnyAddress, HWAddress, IPAddress, Protocol
+from tdsaf.core.basics import ExternalActivity
 from tdsaf.batch_import import LabelFilter
 from tdsaf.claim_coverage import RequirementClaimMapper
 from tdsaf.event_interface import PropertyEvent
@@ -11,9 +11,9 @@ from tdsaf.main import EvidenceBuilder, FlowBuilder, TrafficDataBuilder, NodeBui
 from tdsaf.requirement import SelectorContext
 from tdsaf.selector import Select
 from tdsaf.model import EvidenceNetworkSource
-from tdsaf.property import PropertyKey
+from tdsaf.core.property import PropertyKey
 from tdsaf.registry import Registry
-from tdsaf.traffic import NO_EVIDENCE, Evidence, Flow, IPFlow
+from tdsaf.core.traffic import NO_EVIDENCE, Evidence, Flow, IPFlow
 
 
 class NodeManipulator:

@@ -5,12 +5,12 @@ import textwrap
 from typing import TextIO, Tuple, Dict, Optional, List
 
 from tdsaf.claim_coverage import RequirementClaimMapper, ClaimMapping, RequirementStatus
-from tdsaf.entity import Entity, ClaimStatus, ClaimAuthority
+from tdsaf.core.entity import Entity, ClaimStatus, ClaimAuthority
 from tdsaf.event_logger import EventLogger
-from tdsaf.property import PropertyKey, Properties
+from tdsaf.core.property import PropertyKey, Properties
 from tdsaf.requirement import Specification, Requirement
-from tdsaf.traffic import EvidenceSource
-from tdsaf.verdict import Verdict
+from tdsaf.core.traffic import EvidenceSource
+from tdsaf.core.verdict import Verdict
 
 
 class CoverageReport:

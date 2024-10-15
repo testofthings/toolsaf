@@ -10,8 +10,8 @@ from tdsaf.components import Software
 from tdsaf.event_interface import EventInterface, PropertyEvent
 from tdsaf.model import IoTSystem, NetworkNode, NodeComponent
 from tdsaf.adapters.tools import NodeComponentTool
-from tdsaf.traffic import EvidenceSource, Evidence
-from tdsaf.release_info import ReleaseInfo
+from tdsaf.core.traffic import EvidenceSource, Evidence
+from tdsaf.core.release_info import ReleaseInfo
 
 
 class ReleaseReader(NodeComponentTool):

@@ -1,12 +1,12 @@
 """Requirements and specifications"""
 
 from typing import Tuple, List, Dict, Set, Callable, Iterator, Optional, Iterable, Any
-from tdsaf.basics import ConnectionType, HostType
+from tdsaf.core.basics import ConnectionType, HostType
 
-from tdsaf.claim import AbstractClaim
-from tdsaf.entity import Entity
+from tdsaf.core.claim import AbstractClaim
+from tdsaf.core.entity import Entity
 from tdsaf.model import Host, Connection, Service, IoTSystem
-from tdsaf.property import PropertyKey
+from tdsaf.core.property import PropertyKey
 
 
 class EntitySelector:

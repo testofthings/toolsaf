@@ -6,13 +6,13 @@ import re
 from typing import List, Set, Optional, Tuple, TypeVar, Callable, Dict, Any, Self, Iterable, Iterator, Union
 from urllib.parse import urlparse
 
-from tdsaf.address import AnyAddress, Addresses, EndpointAddress, EntityTag, Network, Protocol, IPAddress, \
+from tdsaf.core.address import AnyAddress, Addresses, EndpointAddress, EntityTag, Network, Protocol, IPAddress, \
     HWAddress, DNSName
-from tdsaf.basics import ConnectionType, ExternalActivity, HostType, Status
-from tdsaf.entity import Entity
-from tdsaf.property import PropertyKey
-from tdsaf.traffic import Flow, EvidenceSource
-from tdsaf.verdict import Verdict
+from tdsaf.core.basics import ConnectionType, ExternalActivity, HostType, Status
+from tdsaf.core.entity import Entity
+from tdsaf.core.property import PropertyKey
+from tdsaf.core.traffic import Flow, EvidenceSource
+from tdsaf.core.verdict import Verdict
 
 
 class Connection(Entity):

@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from tdsaf.entity_database import EntityDatabase
 from tdsaf.event_interface import EventInterface, EventMap
 from tdsaf.model import Addressable, Connection, EvidenceNetworkSource, Host, ModelListener, NodeComponent, Service
-from tdsaf.traffic import Event, Evidence, EvidenceSource
+from tdsaf.core.traffic import Event, Evidence, EvidenceSource
 
 Base = declarative_base()
 

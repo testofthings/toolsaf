@@ -4,13 +4,13 @@
 from io import BytesIO, TextIOWrapper
 import re
 from typing import Optional, Tuple
-from tdsaf.address import IPAddress
+from tdsaf.core.address import IPAddress
 from tdsaf.event_interface import EventInterface, PropertyAddressEvent
 from tdsaf.model import IoTSystem
-from tdsaf.property import Properties
+from tdsaf.core.property import Properties
 from tdsaf.adapters.tools import SystemWideTool
-from tdsaf.traffic import Evidence, EvidenceSource
-from tdsaf.verdict import Verdict
+from tdsaf.core.traffic import Evidence, EvidenceSource
+from tdsaf.core.verdict import Verdict
 
 
 class PingCommand(SystemWideTool):

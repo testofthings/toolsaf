@@ -2,12 +2,12 @@
 import csv
 
 from io import BytesIO, TextIOWrapper
-from tdsaf.address import DNSName, EntityTag
+from tdsaf.core.address import DNSName, EntityTag
 from tdsaf.event_interface import EventInterface
 from tdsaf.model import IoTSystem
 from tdsaf.services import NameEvent
 from tdsaf.adapters.tools import ToolAdapter
-from tdsaf.traffic import Evidence, EvidenceSource
+from tdsaf.core.traffic import Evidence, EvidenceSource
 
 
 class SetupCSVReader(ToolAdapter):

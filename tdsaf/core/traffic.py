@@ -3,9 +3,9 @@
 import datetime
 from typing import Any, Callable, Tuple, Set, Optional, Self, Dict
 
-from tdsaf.address import HWAddress, IPAddress, HWAddresses, IPAddresses, Network, Protocol, EndpointAddress, \
+from tdsaf.core.address import HWAddress, IPAddress, HWAddresses, IPAddresses, Network, Protocol, EndpointAddress, \
     AnyAddress, Addresses
-from tdsaf.property import PropertyKey
+from tdsaf.core.property import PropertyKey
 
 
 class EvidenceSource:

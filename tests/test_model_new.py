@@ -1,9 +1,9 @@
-from tdsaf.address import DNSName, EntityTag, HWAddress, IPAddress
-from tdsaf.basics import Status
+from tdsaf.core.address import DNSName, EntityTag, HWAddress, IPAddress
+from tdsaf.core.basics import Status
 from tdsaf.main import SSH
 from tdsaf.services import NameEvent
-from tdsaf.traffic import NO_EVIDENCE, IPFlow
-from tdsaf.verdict import Verdict
+from tdsaf.core.traffic import NO_EVIDENCE, IPFlow
+from tdsaf.core.verdict import Verdict
 from tests.test_model import Setup
 
 

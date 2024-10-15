@@ -8,10 +8,10 @@ from typing import cast
 from tdsaf.components import Software, SoftwareComponent
 from tdsaf.event_interface import PropertyEvent, EventInterface
 from tdsaf.model import IoTSystem, NodeComponent
-from tdsaf.property import Properties, PropertyKey
+from tdsaf.core.property import Properties, PropertyKey
 from tdsaf.adapters.tools import NodeComponentTool
-from tdsaf.traffic import EvidenceSource, Evidence
-from tdsaf.verdict import Verdict
+from tdsaf.core.traffic import EvidenceSource, Evidence
+from tdsaf.core.verdict import Verdict
 
 
 class SPDXReader(NodeComponentTool):

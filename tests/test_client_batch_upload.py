@@ -7,7 +7,7 @@ from tdsaf.client_api import APIRequest, ClientAPI
 from tdsaf.inspector import Inspector
 from tdsaf.matcher import SystemMatcher
 from tdsaf.registry import Registry
-from tdsaf.verdict import Verdict
+from tdsaf.core.verdict import Verdict
 
 
 def test_ping_upload():

@@ -2,11 +2,11 @@
 
 import pathlib
 
-from tdsaf.address import EntityTag, IPAddress
-from tdsaf.basics import ExternalActivity, Status
+from tdsaf.core.address import EntityTag, IPAddress
+from tdsaf.core.basics import ExternalActivity, Status
 from tdsaf.batch_import import BatchImporter
 from tdsaf.main import DHCP, SSH, UDP, TCP
-from tdsaf.verdict import Verdict
+from tdsaf.core.verdict import Verdict
 from tests.test_model import Setup
 
 

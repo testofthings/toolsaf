@@ -2,14 +2,14 @@
 
 from typing import Dict, List, Optional, TypeVar, Generic, Iterator
 
-from tdsaf.address import Addresses, Protocol
-from tdsaf.basics import HostType
+from tdsaf.core.address import Addresses, Protocol
+from tdsaf.core.basics import HostType
 from tdsaf.components import StoredData, Software, DataReference
-from tdsaf.entity import Entity, ExplainableClaim
+from tdsaf.core.entity import Entity, ExplainableClaim
 from tdsaf.model import Addressable, Host, IoTSystem, NetworkNode, NodeComponent, Service, Connection
-from tdsaf.property import Properties, PropertyKey
+from tdsaf.core.property import Properties, PropertyKey
 from tdsaf.requirement import Requirement, EntitySelector, SelectorContext
-from tdsaf.basics import Status
+from tdsaf.core.basics import Status
 
 S = TypeVar("S", bound='EntitySelector')
 

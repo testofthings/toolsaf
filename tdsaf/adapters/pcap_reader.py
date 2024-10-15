@@ -16,12 +16,12 @@ from framing.frame_types.udp_frames import UDP
 from framing.frames import Frames
 from framing.raw_data import Raw, RawData
 
-from tdsaf.address import DNSName, HWAddress, Protocol, IPAddress
+from tdsaf.core.address import DNSName, HWAddress, Protocol, IPAddress
 from tdsaf.event_interface import EventInterface
 from tdsaf.model import Connection, IoTSystem
 from tdsaf.services import NameEvent, DNSService
 from tdsaf.adapters.tools import SystemWideTool
-from tdsaf.traffic import IPFlow, EvidenceSource, Evidence, EthernetFlow, Flow
+from tdsaf.core.traffic import IPFlow, EvidenceSource, Evidence, EthernetFlow, Flow
 
 
 class PCAPReader(SystemWideTool):

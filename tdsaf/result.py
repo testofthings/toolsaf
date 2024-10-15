@@ -3,9 +3,9 @@
 import logging
 from typing import TextIO, List, Dict
 
-from tdsaf.basics import ConnectionType
+from tdsaf.core.basics import ConnectionType
 from tdsaf.model import Host, Service, NetworkNode
-from tdsaf.property import Properties
+from tdsaf.core.property import Properties
 from tdsaf.registry import Registry
 
 # Keywords for verdicts

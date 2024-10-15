@@ -3,14 +3,14 @@
 import logging
 from typing import Dict, Set, Tuple
 
-from tdsaf.claim import AbstractClaim
+from tdsaf.core.claim import AbstractClaim
 from tdsaf.claim_set import RequirementClaim, ClaimContext
-from tdsaf.entity import Entity, ClaimStatus, ClaimAuthority
+from tdsaf.core.entity import Entity, ClaimStatus, ClaimAuthority
 from tdsaf.model import IoTSystem
-from tdsaf.property import PropertyKey
+from tdsaf.core.property import PropertyKey
 from tdsaf.requirement import Specification, Requirement, SelectorContext
-from tdsaf.traffic import Tool
-from tdsaf.verdict import Verdict
+from tdsaf.core.traffic import Tool
+from tdsaf.core.verdict import Verdict
 
 
 class RequirementStatus:

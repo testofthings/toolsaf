@@ -5,12 +5,12 @@ import json
 import logging
 from typing import Optional, Dict
 
-from tdsaf.address import DNSName, IPAddress, AnyAddress
-from tdsaf.entity import ClaimAuthority
+from tdsaf.core.address import DNSName, IPAddress, AnyAddress
+from tdsaf.core.entity import ClaimAuthority
 from tdsaf.event_interface import EventInterface
 from tdsaf.model import NetworkNode, Addressable, IoTSystem, NodeComponent
-from tdsaf.traffic import Evidence, EvidenceSource, Tool, IPFlow
-from tdsaf.basics import Status
+from tdsaf.core.traffic import Evidence, EvidenceSource, Tool, IPFlow
+from tdsaf.core.basics import Status
 
 
 class ToolAdapter:

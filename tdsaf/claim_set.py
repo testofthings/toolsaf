@@ -2,16 +2,16 @@
 
 from typing import List, Optional, Tuple, Self, Dict, Set, Callable, Iterable, Union, Any
 
-from tdsaf.address import Protocol
-from tdsaf.basics import HostType
-from tdsaf.claim import AbstractClaim
+from tdsaf.core.address import Protocol
+from tdsaf.core.basics import HostType
+from tdsaf.core.claim import AbstractClaim
 from tdsaf.components import DataReference, Software
-from tdsaf.entity import Entity, ClaimStatus, ExplainableClaim, ClaimAuthority
-from tdsaf.release_info import ReleaseInfo
+from tdsaf.core.entity import Entity, ClaimStatus, ExplainableClaim, ClaimAuthority
+from tdsaf.core.release_info import ReleaseInfo
 from tdsaf.model import IoTSystem, Connection, Host, Service, NetworkNode
-from tdsaf.property import Properties, PropertyKey, PropertyVerdictValue, \
+from tdsaf.core.property import Properties, PropertyKey, PropertyVerdictValue, \
     PropertySetValue
-from tdsaf.verdict import Verdict, Verdictable
+from tdsaf.core.verdict import Verdict, Verdictable
 
 
 class ClaimContext:

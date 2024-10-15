@@ -1,4 +1,4 @@
-from tdsaf.basics import HostType
+from tdsaf.core.basics import HostType
 from test_model import simple_setup_1
 from tdsaf.model import IoTSystem, Host
 from tdsaf.requirement import SelectorContext

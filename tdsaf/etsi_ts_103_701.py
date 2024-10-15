@@ -7,16 +7,16 @@ import re
 import textwrap
 from dataclasses import dataclass
 from typing import List, Dict, Optional, Iterable, Tuple, Set
-from tdsaf.basics import HostType
+from tdsaf.core.basics import HostType
 
-from tdsaf.claim import AbstractClaim
+from tdsaf.core.claim import AbstractClaim
 from tdsaf.claim_set import RequirementClaim, AuthenticationClaim, NoUnexpectedServices, \
     AvailabilityClaim, Claim, UserInterfaceClaim, ContentClaim, \
     MITMClaim, ProtocolClaim, FuzzingClaim, PropertyClaim, \
     PhysicalManipulationClaim, NamedClaim
-from tdsaf.entity import Entity
+from tdsaf.core.entity import Entity
 from tdsaf.model import IoTSystem, Host, Service, Connection
-from tdsaf.property import Properties, PropertyKey
+from tdsaf.core.property import Properties, PropertyKey
 from tdsaf.requirement import Specification, Requirement, SelectorContext, SpecificationSelectorContext, \
     EntitySelector
 from tdsaf.selector import Select, ServiceSelector, UpdateConnectionSelector, RequirementSelector

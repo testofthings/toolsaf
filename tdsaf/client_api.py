@@ -12,20 +12,20 @@ from typing import Dict, List, Tuple, Any, Iterable, BinaryIO, Optional
 import prompt_toolkit
 from prompt_toolkit.history import FileHistory
 
-from tdsaf.basics import Status
+from tdsaf.core.basics import Status
 from tdsaf.batch_import import BatchImporter
 from tdsaf.text_tables import TableView
-from tdsaf.verdict import Verdict
+from tdsaf.core.verdict import Verdict
 from tdsaf.claim_coverage import RequirementClaimMapper
 from tdsaf.coverage_result import CoverageReport
-from tdsaf.entity import Entity
+from tdsaf.core.entity import Entity
 from tdsaf.event_interface import EventMap
 from tdsaf.model import Addressable, NetworkNode, Connection, Host, Service, ModelListener, IoTSystem, NodeComponent
-from tdsaf.property import Properties, PropertyKey, PropertySetValue, PropertyVerdictValue
+from tdsaf.core.property import Properties, PropertyKey, PropertySetValue, PropertyVerdictValue
 from tdsaf.registry import Registry
 from tdsaf.specifications import Specifications
-from tdsaf.traffic import NO_EVIDENCE
-from tdsaf.verdict import Verdictable
+from tdsaf.core.traffic import NO_EVIDENCE
+from tdsaf.core.verdict import Verdictable
 
 # format strings
 FORMAT_YEAR_MONTH_DAY = "%Y-%m-%d"

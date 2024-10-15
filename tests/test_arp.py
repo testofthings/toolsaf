@@ -1,10 +1,10 @@
-from tdsaf.address import Protocol
+from tdsaf.core.address import Protocol
 from tdsaf.builder_backend import SystemBackend
 from tdsaf.inspector import Inspector
 from tdsaf.main import ARP
-from tdsaf.basics import ExternalActivity
-from tdsaf.traffic import EthernetFlow
-from tdsaf.basics import Status
+from tdsaf.core.basics import ExternalActivity
+from tdsaf.core.traffic import EthernetFlow
+from tdsaf.core.basics import Status
 
 
 def test_serve_arp():

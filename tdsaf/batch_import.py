@@ -8,12 +8,12 @@ import pathlib
 import io
 from typing import Dict, List
 
-from tdsaf.address import Addresses
-from tdsaf.basics import ExternalActivity
+from tdsaf.core.address import Addresses
+from tdsaf.core.basics import ExternalActivity
 from tdsaf.event_interface import EventInterface
 from tdsaf.model import EvidenceNetworkSource, IoTSystem
 from tdsaf.tool_finder import ToolDepiction, ToolFinder
-from tdsaf.traffic import EvidenceSource
+from tdsaf.core.traffic import EvidenceSource
 
 
 class BatchImporter:

@@ -5,7 +5,7 @@ from tdsaf.matcher import SystemMatcher
 from tdsaf.model import IoTSystem
 from tdsaf.adapters.pcap_reader import PCAPReader
 from tdsaf.registry import Registry
-from tdsaf.traffic import IPFlow
+from tdsaf.core.traffic import IPFlow
 
 
 def test_pcap():

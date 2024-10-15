@@ -1,12 +1,12 @@
 from typing import Any, List, Tuple
-from tdsaf.entity import Entity
-from tdsaf.property import PropertyKey
+from tdsaf.core.entity import Entity
+from tdsaf.core.property import PropertyKey
 from test_model import simple_setup_1
-from tdsaf.address import AnyAddress, EndpointAddress, IPAddress, Protocol
+from tdsaf.core.address import AnyAddress, EndpointAddress, IPAddress, Protocol
 from tdsaf.inspector import Inspector
 from tdsaf.model import ModelListener, IoTSystem, Host, Connection, Service
 from tdsaf.registry import Registry
-from tdsaf.traffic import Flow, IPFlow
+from tdsaf.core.traffic import Flow, IPFlow
 
 
 class AModelListener(ModelListener):
