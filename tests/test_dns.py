@@ -6,7 +6,7 @@ from tdsaf.builder_backend import SystemBackend
 from tdsaf.inspector import Inspector
 from tdsaf.main import DNS
 from tdsaf.matcher import SystemMatcher
-from tdsaf.pcap_reader import PCAPReader
+from tdsaf.adapters.pcap_reader import PCAPReader
 from tdsaf.traffic import IPFlow
 from tdsaf.basics import Status
 

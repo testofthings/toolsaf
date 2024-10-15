@@ -6,7 +6,7 @@ from tdsaf.address import DNSName, EntityTag
 from tdsaf.event_interface import EventInterface
 from tdsaf.model import IoTSystem
 from tdsaf.services import NameEvent
-from tdsaf.tools import ToolAdapter
+from tdsaf.adapters.tools import ToolAdapter
 from tdsaf.traffic import Evidence, EvidenceSource
 
 

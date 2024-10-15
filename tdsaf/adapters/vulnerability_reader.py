@@ -8,7 +8,7 @@ from tdsaf.components import Software
 from tdsaf.event_interface import PropertyEvent, EventInterface
 from tdsaf.model import IoTSystem, NodeComponent
 from tdsaf.property import Properties, PropertyKey
-from tdsaf.tools import NodeComponentTool
+from tdsaf.adapters.tools import NodeComponentTool
 from tdsaf.traffic import EvidenceSource, Evidence
 from tdsaf.verdict import Verdict
 

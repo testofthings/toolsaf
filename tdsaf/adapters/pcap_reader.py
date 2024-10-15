@@ -20,7 +20,7 @@ from tdsaf.address import DNSName, HWAddress, Protocol, IPAddress
 from tdsaf.event_interface import EventInterface
 from tdsaf.model import Connection, IoTSystem
 from tdsaf.services import NameEvent, DNSService
-from tdsaf.tools import SystemWideTool
+from tdsaf.adapters.tools import SystemWideTool
 from tdsaf.traffic import IPFlow, EvidenceSource, Evidence, EthernetFlow, Flow
 
 

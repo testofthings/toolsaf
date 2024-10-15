@@ -1,25 +1,25 @@
 """Tool factory"""
 
 from typing import Dict, List, Optional, Type, Union
-from tdsaf.android_manifest_scan import AndroidManifestScan
-from tdsaf.censys_scan import CensysScan
-from tdsaf.har_scan import HARScan
-from tdsaf.mitm_log_reader import MITMLogReader
+from tdsaf.adapters.android_manifest_scan import AndroidManifestScan
+from tdsaf.adapters.censys_scan import CensysScan
+from tdsaf.adapters.har_scan import HARScan
+from tdsaf.adapters.mitm_log_reader import MITMLogReader
+from tdsaf.adapters.nmap_scan import NMAPScan
+from tdsaf.adapters.pcap_reader import PCAPReader
+from tdsaf.adapters.ping_command import PingCommand
+from tdsaf.adapters.releases import ReleaseReader
+from tdsaf.adapters.setup_reader import SetupCSVReader
+from tdsaf.adapters.shell_commands import ShellCommandPs, ShellCommandSs
+from tdsaf.adapters.spdx_reader import SPDXReader
+from tdsaf.adapters.ssh_audit_scan import SSHAuditScan
+from tdsaf.adapters.testsslsh_scan import TestSSLScan
+from tdsaf.adapters.tools import ToolAdapter, SimpleFlowTool
+from tdsaf.adapters.tshark_reader import TSharkReader
+from tdsaf.adapters.vulnerability_reader import VulnerabilityReader
+from tdsaf.adapters.web_checker import WebChecker
+from tdsaf.adapters.zed_reader import ZEDReader
 from tdsaf.model import IoTSystem
-from tdsaf.nmap_scan import NMAPScan
-from tdsaf.pcap_reader import PCAPReader
-from tdsaf.ping_command import PingCommand
-from tdsaf.releases import ReleaseReader
-from tdsaf.setup_reader import SetupCSVReader
-from tdsaf.shell_commands import ShellCommandPs, ShellCommandSs
-from tdsaf.spdx_reader import SPDXReader
-from tdsaf.ssh_audit_scan import SSHAuditScan
-from tdsaf.testsslsh_scan import TestSSLScan
-from tdsaf.tools import ToolAdapter, SimpleFlowTool
-from tdsaf.tshark_reader import TSharkReader
-from tdsaf.vulnerability_reader import VulnerabilityReader
-from tdsaf.web_checker import WebChecker
-from tdsaf.zed_reader import ZEDReader
 
 
 class ToolDepiction:

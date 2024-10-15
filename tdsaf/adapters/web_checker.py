@@ -7,7 +7,7 @@ import urllib
 from tdsaf.event_interface import PropertyEvent, EventInterface
 from tdsaf.model import IoTSystem
 from tdsaf.property import Properties
-from tdsaf.tools import SystemWideTool
+from tdsaf.adapters.tools import SystemWideTool
 from tdsaf.traffic import EvidenceSource, Evidence
 from tdsaf.verdict import Verdict
 

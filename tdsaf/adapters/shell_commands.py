@@ -9,7 +9,7 @@ from tdsaf.event_interface import EventInterface, PropertyEvent
 from tdsaf.model import IoTSystem
 from tdsaf.property import PropertyKey
 from tdsaf.services import NameEvent
-from tdsaf.tools import EndpointTool
+from tdsaf.adapters.tools import EndpointTool
 from tdsaf.traffic import Evidence, EvidenceSource, IPFlow, Protocol, ServiceScan
 from tdsaf.verdict import Verdict
 

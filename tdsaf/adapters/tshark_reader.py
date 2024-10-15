@@ -11,7 +11,7 @@ from tdsaf.address import HWAddress
 from tdsaf.event_interface import EventInterface
 from tdsaf.inspector import Inspector
 from tdsaf.model import IoTSystem
-from tdsaf.tools import SystemWideTool
+from tdsaf.adapters.tools import SystemWideTool
 from tdsaf.traffic import EvidenceSource, BLEAdvertisementFlow, Evidence
 
 

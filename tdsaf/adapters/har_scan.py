@@ -11,7 +11,7 @@ from tdsaf.components import Cookies, CookieData
 from tdsaf.event_interface import PropertyAddressEvent, PropertyEvent, EventInterface
 from tdsaf.model import Host, IoTSystem, NetworkNode
 from tdsaf.property import PropertyKey, Properties
-from tdsaf.tools import NetworkNodeTool
+from tdsaf.adapters.tools import NetworkNodeTool
 from tdsaf.traffic import EvidenceSource, Evidence
 from tdsaf.verdict import Verdict
 

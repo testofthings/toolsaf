@@ -8,7 +8,7 @@ from tdsaf.address import AnyAddress, Protocol
 from tdsaf.event_interface import PropertyAddressEvent, EventInterface
 from tdsaf.model import Service, IoTSystem, NetworkNode
 from tdsaf.property import Properties, PropertyKey
-from tdsaf.tools import EndpointTool
+from tdsaf.adapters.tools import EndpointTool
 from tdsaf.traffic import Evidence, EvidenceSource
 from tdsaf.verdict import Verdict
 

@@ -9,7 +9,7 @@ from typing import Tuple, List, cast
 from tdsaf.components import Software
 from tdsaf.event_interface import EventInterface, PropertyEvent
 from tdsaf.model import IoTSystem, NetworkNode, NodeComponent
-from tdsaf.tools import NodeComponentTool
+from tdsaf.adapters.tools import NodeComponentTool
 from tdsaf.traffic import EvidenceSource, Evidence
 from tdsaf.release_info import ReleaseInfo
 

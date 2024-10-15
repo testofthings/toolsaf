@@ -7,7 +7,7 @@ from xml.etree import ElementTree
 from tdsaf.address import IPAddress, HWAddress, EndpointAddress, Protocol
 from tdsaf.event_interface import EventInterface
 from tdsaf.model import IoTSystem, Host
-from tdsaf.tools import SystemWideTool
+from tdsaf.adapters.tools import SystemWideTool
 from tdsaf.traffic import EvidenceSource, Evidence, ServiceScan, HostScan
 
 
