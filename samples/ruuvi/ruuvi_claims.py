@@ -1,6 +1,6 @@
-from tcsfw.basics import HostType
-from tcsfw.selector import Select
-from tcsfw.main import TLS, HTTP, SSH, SystemBuilder
+from tdsaf.basics import HostType
+from tdsaf.selector import Select
+from tdsaf.main import TLS, HTTP, SSH, SystemBuilder
 
 
 def make_claims(system: SystemBuilder, gateway, tags, user, mobile, backend_1, backend_2, web_1, web_2, web_3, ble_ad):

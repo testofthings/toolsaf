@@ -1,5 +1,5 @@
-from tcsfw.components import StoredData
-from tcsfw.selector import Finder
+from tdsaf.components import StoredData
+from tdsaf.selector import Finder
 from tests.test_model import Setup
 
 

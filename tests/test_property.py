@@ -1,4 +1,4 @@
-from tcsfw.property import Properties, PropertyKey
+from tdsaf.property import Properties, PropertyKey
 
 
 def test_property_equality():

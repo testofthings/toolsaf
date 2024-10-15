@@ -1,8 +1,8 @@
-from tcsfw.basics import HostType
+from tdsaf.basics import HostType
 from test_model import simple_setup_1
-from tcsfw.model import IoTSystem, Host
-from tcsfw.requirement import SelectorContext
-from tcsfw.selector import Select
+from tdsaf.model import IoTSystem, Host
+from tdsaf.requirement import SelectorContext
+from tdsaf.selector import Select
 
 
 def test_iterate():

@@ -1,11 +1,11 @@
-from tcsfw.address import Addresses, DNSName, EndpointAddress, Protocol
-from tcsfw.verdict import Verdict
-from tcsfw.builder_backend import SystemBackend
-from tcsfw.event_interface import PropertyAddressEvent, PropertyEvent
-from tcsfw.main import DNS
-from tcsfw.property import Properties, PropertyKey
-from tcsfw.services import NameEvent
-from tcsfw.traffic import Evidence, EvidenceSource, IPFlow
+from tdsaf.address import Addresses, DNSName, EndpointAddress, Protocol
+from tdsaf.verdict import Verdict
+from tdsaf.builder_backend import SystemBackend
+from tdsaf.event_interface import PropertyAddressEvent, PropertyEvent
+from tdsaf.main import DNS
+from tdsaf.property import Properties, PropertyKey
+from tdsaf.services import NameEvent
+from tdsaf.traffic import Evidence, EvidenceSource, IPFlow
 
 
 def test_property_event():

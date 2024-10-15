@@ -2,12 +2,12 @@ import json
 import pathlib
 import tempfile
 
-from tcsfw.builder_backend import SystemBackend
-from tcsfw.client_api import APIRequest, ClientAPI
-from tcsfw.inspector import Inspector
-from tcsfw.matcher import SystemMatcher
-from tcsfw.registry import Registry
-from tcsfw.verdict import Verdict
+from tdsaf.builder_backend import SystemBackend
+from tdsaf.client_api import APIRequest, ClientAPI
+from tdsaf.inspector import Inspector
+from tdsaf.matcher import SystemMatcher
+from tdsaf.registry import Registry
+from tdsaf.verdict import Verdict
 
 
 def test_ping_upload():

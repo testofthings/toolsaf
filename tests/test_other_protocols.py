@@ -1,10 +1,10 @@
-from tcsfw.address import HWAddress, Protocol, HWAddresses
-from tcsfw.verdict import Verdict
-from tcsfw.builder_backend import SystemBackend
-from tcsfw.inspector import Inspector
-from tcsfw.main import ICMP, UDP, ARP, EAPOL
-from tcsfw.traffic import IPFlow, EthernetFlow, NO_EVIDENCE
-from tcsfw.basics import Status
+from tdsaf.address import HWAddress, Protocol, HWAddresses
+from tdsaf.verdict import Verdict
+from tdsaf.builder_backend import SystemBackend
+from tdsaf.inspector import Inspector
+from tdsaf.main import ICMP, UDP, ARP, EAPOL
+from tdsaf.traffic import IPFlow, EthernetFlow, NO_EVIDENCE
+from tdsaf.basics import Status
 
 
 def test_icmp():

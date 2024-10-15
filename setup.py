@@ -6,19 +6,19 @@ with open('requirements.txt', encoding="utf-8") as f:
     requirements = f.read().splitlines()
 
 setup(
-    name='tcsfw',
+    name='tdsaf',
     version='0.0',
-    packages=['tcsfw'],
+    packages=['tdsaf'],
     author="Rauli Kaksonen",
-    author_email="rauli.kaksonen@gmail.com",
+    author_email="rauli.kaksonen@testofthings.com",
     entry_points={
         'console_scripts': [
-            'tcsfw=tcsfw.client_tool:main',
+            'tdsaf=tdsaf.client_tool:main',
         ],
     },
-    description='Tcsfw',
-    long_description='Trasparent cyber security framework',
-    url='https://github.com/ouspg/tcsfw',
+    description='TDSA Framework',
+    long_description='Tool-Driven Security Assessment Framework',
+    url='https://github.com/testofthings/tdsaf',
     install_requires=requirements,
     classifiers=[
         "Programming Language :: Python :: 3",

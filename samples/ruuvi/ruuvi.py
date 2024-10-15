@@ -5,7 +5,7 @@
 # pylint: disable=pointless-statement
 
 from ruuvi_claims import make_claims
-from tcsfw.main import Builder, ARP, ICMP, EAPOL, HTTP, BLEAdvertisement, TLS, SSH, DHCP, NTP, DNS
+from tdsaf.main import Builder, ARP, ICMP, EAPOL, HTTP, BLEAdvertisement, TLS, SSH, DHCP, NTP, DNS
 
 system = Builder.new("Ruuvi Gateway & Tags")
 

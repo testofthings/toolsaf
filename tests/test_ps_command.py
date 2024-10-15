@@ -2,10 +2,10 @@
 
 import pathlib
 
-from tcsfw.batch_import import BatchImporter
-from tcsfw.components import OperatingSystem
-from tcsfw.property import PropertyKey
-from tcsfw.verdict import Verdict
+from tdsaf.batch_import import BatchImporter
+from tdsaf.components import OperatingSystem
+from tdsaf.property import PropertyKey
+from tdsaf.verdict import Verdict
 from tests.test_model import Setup
 
 
