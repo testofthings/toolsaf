@@ -8,7 +8,6 @@ from typing import Dict, List, Tuple, Any, Iterable, BinaryIO, Optional
 
 from tdsaf.core.basics import Status
 from tdsaf.batch_import import BatchImporter
-from tdsaf.text_tables import TableView
 from tdsaf.core.verdict import Verdict
 from tdsaf.core.entity import Entity
 from tdsaf.base.event_interface import EventMap
@@ -116,9 +115,6 @@ class ClientAPI(ModelListener):
         """Get API data"""
         context = RequestContext(request, self)
         path = request.path
-        if path.startswith("table/"):
-            text = TableView.get_print(self.registry, path[6:], parameters=request.parameters)
-            return text
         if path == "all":
             request.get_connections = False
             r = {"events" : list(self.api_iterate_all(request.change_path(".")))}
