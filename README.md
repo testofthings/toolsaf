@@ -1,24 +1,24 @@
-# Tcsfw
+# Tool-Driven Security Assessment Framework
 
 This is **early version** of the _Tool-driven security assessment_ (TDSA) framework.
 The framework is intended to support automated security assessment of _Internet of Things_ (IoT) and other systems by running common security tools.
-(The name is acronym from _Transparent Cybersecurity Framework_, which is name used in a research paper, but things have developed and the name is TDSA now.)
 
-The project is part of the upcoming PhD thesis of the author.
+This is open-source project driven by [Test of Things](https://testofthings.com).
+It has been developed based on the PhD thesis of Rauli Kaksonen.
 Orginally, the project was created to demonstrate the TDSA approach for research purposes, but the goal is to make it a real-world usable security assessment 
 framework.
-The research will be published in the PhD disseration, which is under works.
-On the mean time, there are two published research papers:
 
-> Kaksonen, R., Halunen, K., Laakso, M., & Röning, J. (2023). Transparent Security Method for Automating IoT Security Assessments. In The 18th International Conference on Information Security Practice and Experience (ISPEC). Springer International Publishing.
+The framework has two main functions:
 
-> Kaksonen, R., Halunen, K., Laakso, M., & Röning, J. (2024). Automating IoT Security Standard Testing by Common Security Tools. In ICISSP - 10th International Conference on Information Systems Security and Privacy. (p. 42-53). SciTePres
+  1. Creation of _security statement_ for an IoT/IT product or system
+  1. Verification of the statement using output from supported tools
 
-The functionality of the framework is currently limited to reading output of several different "security" tools, mapping them into _security statement_ and _claims_, and given verdicts for the claims. Security statement describes relevant portions of a system, e.g. attack surface and security controls. Claim (requirement, test) is security-relevant assertion which can be verified. The verification is done by running [supported tools](Tools.md), which output is them used to pass verdict for the claim.
+The security statement is now created by Python-based _Domain-Specific Language_ (DSL).
+The verification is done by running [supported tools](Tools.md), which output is them used to pass verdicts for security statement properties.
 
 ## Future plans
 
-On the long run the framework is intended to cover the collection of the tool outputs and provide more rich processing options and API for the claim verdicts.
+On the long run the framework is intended to support JSON-based security statement descripitons and cover more different tools.
 Check the [roadmap](Roadmap.md) for upcoming features.
 
 ## Usage
@@ -29,12 +29,12 @@ Thus, the first thing is to create a Python application project. I recommend cre
 
     $ mkdir my_ss
     $ cd my_ss
-    $ python 3.11 -m venv .venv
+    $ python3.12 -m venv .venv
     $ source .venv/bin/activate
 
 After that, you must [install](Install.md) the framework from _Github_.
 Then you can start working with you security statement using your favorite editor or IDE.
-The framework comes with sample security statements in directory `samples/`. The security statements description are in a [Domain Specific Language (DSL)](DSLIntro.md).
+The framework comes with sample security statements in directory `samples/`. The security statements description are in a [DSL](DSLIntro.md).
 
 Assuming your security statement is `statement.py`, you execute it as follows:
 
@@ -73,13 +73,13 @@ The containers can bundled into a deployment, see [tcsfw UI](https://github.com/
 
 # Client tool
 
-The API can be used by _client tool_ [tcsfw](ClientTool.md).
+The API can be used by _client tool_ [tdsaf](ClientTool.md).
 
 ## Sample security statements
 
-A security statement for _Ruuvi gateway and tags_ (https://ruuvi.com/) was developed during research. The statement is in directory `samples/ruuvi/`. The data for verifying the security statement is available for academic research, please request it from Rauli. Remember to tell the goals of the research and the organization performing it. Right to refuse requests is reserved.
+A security statement for _Ruuvi gateway and tags_ (https://ruuvi.com/) was developed during the PhD research. The statement is in directory `samples/ruuvi/`. The data for verifying the security statement is available for academic research, please request it from Rauli. Remember to tell the goals of the research and the organization performing it. Right to refuse requests is reserved.
 
-The security statement for Ruuvi is executed like this, assuming working directory is the Tcsfw root:
+The security statement for Ruuvi is executed like this, assuming working directory is the Tdsaf root:
 ```
 $ python samples/ruuvi/ruuvi.py
 ```
@@ -88,4 +88,3 @@ The command dumps some basic information about the security statement.
 ## License
 
 The project is published with [MIT license](LICENSE).
-

@@ -3,14 +3,14 @@
 Framework can run API server, either for single security statement or it can load statements dynamically
 by _launcher_.
 
-The API is used by [tcsfw UI](https://github.com/ouspg/tcsfw-ui). The UI is simple Vue-project. The UI uses the API server as backend.
+The API is used by the research prototype [tcsfw UI](https://github.com/ouspg/tcsfw-ui). The UI is simple Vue-project. The UI uses the API server as backend.
 Note that using UI with the launcher requires _Nginx_ proxy setup, see UI documentation.
 
 ## One statement server
 
- The API for single security statemnt is activated by argument `--http-server`.  The following starts the server to port 81880 with access token `xxx`.
+ The API for single security statement is activated by argument `--http-server`.  The following starts the server to port 81880 with access token `xxx`.
 
-    $ TCSFW_SERVER_API_KEY=xxx python statement.py --http-server 8180
+    $ TDSAF_SERVER_API_KEY=xxx python statement.py --http-server 8180
 
 You can combine in `--read` and other command-line options to have content to serve.
 
@@ -18,7 +18,7 @@ You can combine in `--read` and other command-line options to have content to se
 
 The launcher is started in the following manner to default port 8180.
 
-    $ python tcsfw/launcher.py
+    $ python tdsaf/launcher.py
 
 Launcher accepts incoming requests and starts security statement instances with local DB.
 The request url must be `statement/` appended by the statement file path and name without `.py`.
@@ -33,7 +33,7 @@ proxy setup, see [UI](https://github.com/ouspg/tcsfw-ui) documentation.
 
 A `Dockerfile` hosting one or more security statements should look something like this:
 ```Dockerfile
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
@@ -42,7 +42,7 @@ COPY requirements.txt /app
 RUN pip install --no-cache-dir -r requirements.txt
 
 # install framework
-COPY tcsfw /app/tcsfw
+COPY tdsaf /app/tdsaf
 COPY setup.py /app
 RUN pip install --no-cache-dir -e .
 
@@ -50,15 +50,15 @@ RUN pip install --no-cache-dir -e .
 COPY statement.py /app
 
 # run the entry point
-# ENV TCSFW_SERVER_API_KEY= # set in compose etc.
-CMD ["python", "tcsfw/launcher.py", "--listen-port", "8180"]
+# ENV TDSAF_SERVER_API_KEY= # set in compose etc.
+CMD ["python", "tdsaf/launcher.py", "--listen-port", "8180"]
 ```
 
 This container is built and started as follows:
 
-    $ docker build -t tcsfw/api-server .
-    $ docker run -it -p 8180:8180 tcsfw/api-server
+    $ docker build -t tdsaf/api-server .
+    $ docker run -it -p 8180:8180 tdsaf/api-server
 
-Instead of the security statement `.py` file, the entry point to the container is _launcher_ `tcsfw/launcher.py`.
+Instead of the security statement `.py` file, the entry point to the container is _launcher_ `tdsaf/launcher.py`.
 
 See instructions in [tcsfw UI](https://github.com/ouspg/tcsfw-ui) documentation how to use the container with _Docker compose_.

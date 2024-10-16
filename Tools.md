@@ -1,11 +1,11 @@
 # Tools
 
-The tcsfw can read output from several different tools to verify the security statement and claims.
-The tool output is read from a directly structure, which root must be provided to the framework by `--read <directory>` command-line arguement.
+The tdsaf can read output from several different tools to verify the security statement and claims.
+The tool output is read from a directory structure, which root must be provided to the framework by `--read <directory>` command-line arguement.
 
 ## Batch files and directories
 
-The back directory structure can be arbitarily deep. Each directory which contains data files, must have special metafile `00meta.json`. The metafile must always contain at least `file_type` of the data files. For example, consider the following metafile `00meta.json` for NMAP output data files.
+The batch directory structure can be arbitarily deep. Each directory which contains data files, must have special metafile `00meta.json`. The metafile must always contain at least `file_type` of the data files. For example, consider the following metafile `00meta.json` for NMAP output data files.
 
 ```json
 {
@@ -76,7 +76,7 @@ Example metafile `00meta.json`:
 
 Use of Censys API requires an account with suitable permissions. Once account has been set up property, the framework utility can be used to fetch the JSON through API:
 ```
-$ python tcsfw/censys_scan <address>
+$ python tdsaf/censys_scan <address>
 ```
 
 ### Github releses
