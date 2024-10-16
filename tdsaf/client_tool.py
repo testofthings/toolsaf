@@ -1,4 +1,4 @@
-"""Clinet tool for TCSFW"""
+"""Client tool for TDSA framework"""
 
 import argparse
 from getpass import getpass

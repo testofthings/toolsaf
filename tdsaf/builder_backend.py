@@ -1074,7 +1074,7 @@ class SystemBackendRunner(SystemBackend):
         parser.add_argument("--test-delay", type=int,
                             help="HTTP request artificial test delay, ms")
         parser.add_argument("--no-auth-ok", action="store_true",
-                            help="Skip check for auth token in TCSFW_SERVER_API_KEY")
+                            help="Skip check for auth token in TDSAF_SERVER_API_KEY")
 
         parser.add_argument("--test-get", action="append",
                             help="Test API GET, repeat for many")

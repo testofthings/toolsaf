@@ -7,7 +7,7 @@ from typing import Dict
 from aiohttp import web
 
 
-API_KEY_NAME = "TCSFW_SERVER_API_KEY"
+API_KEY_NAME = "TDSAF_SERVER_API_KEY"
 
 API_KEY_FILE_NAME = ".tdsaf_api_key"
 

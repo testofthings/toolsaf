@@ -21,7 +21,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 
 from tdsaf.client_api import APIRequest
-from tdsaf.command_basics import get_authorization
+from tdsaf.command_basics import API_KEY_NAME, get_authorization
 
 # pylint: disable=duplicate-code  # web server code is similar in two places
 
@@ -178,7 +178,7 @@ class Launcher:
             args.extend(["--db", f"sqlite:///{db_file.as_posix()}"])
 
         env = os.environ.copy()
-        env["TCSFW_SERVER_API_KEY"] = api_key
+        env[API_KEY_NAME] = api_key
 
         # schedule process execution by asyncio and return the port
         process = await asyncio.create_subprocess_exec(*args,

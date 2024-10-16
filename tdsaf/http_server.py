@@ -14,7 +14,7 @@ import zipfile
 from aiohttp import web, WSMsgType
 
 from tdsaf.client_api import ClientAPI, APIRequest, APIListener
-from tdsaf.command_basics import get_api_key, get_authorization
+from tdsaf.command_basics import API_KEY_NAME, get_api_key, get_authorization
 from tdsaf.core.model import IoTSystem
 
 
@@ -53,7 +53,7 @@ class HTTPServerRunner:
         self.port = port
         self.auth_token = get_api_key()
         if not self.auth_token and not no_auth_ok:
-            raise ValueError("No TCSFW_SERVER_API_KEY (use --no-auth-ok to skip check)")
+            raise ValueError(f"No {API_KEY_NAME} (use --no-auth-ok to skip check)")
         if self.auth_token:
             self.host = None  # allow all hosts, when token is present
         self.component_delay = 0
