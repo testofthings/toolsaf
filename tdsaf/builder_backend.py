@@ -32,7 +32,7 @@ from tdsaf.common.property import Properties, PropertyKey
 from tdsaf.core.registry import Registry
 from tdsaf.core.inspector import Inspector
 from tdsaf.core.result import Report
-from tdsaf.core.selector import RequirementSelector
+from tdsaf.core.selector import AbstractSelector
 from tdsaf.core.services import DHCPService, DNSService
 from tdsaf.core.sql_database import SQLDatabase
 from tdsaf.common.traffic import Evidence, EvidenceSource
@@ -1025,7 +1025,7 @@ class ClaimSetBackend(ClaimSetBuilder):
     def ignore(self, explanation="") -> ClaimBackend:
         return ClaimBackend(self, explanation, Verdict.IGNORE, self.base_label)
 
-    def plan_tool(self, tool_name: str, group: Tuple[str, str], location: RequirementSelector,
+    def plan_tool(self, tool_name: str, group: Tuple[str, str], location: AbstractSelector,
                   *key: Tuple[str, ...]) -> ToolPlanLoader:
         sl = ToolPlanLoader(group)
         sl.location = location

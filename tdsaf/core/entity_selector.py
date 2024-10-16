@@ -1,4 +1,4 @@
-"""Requirements and specifications"""
+"""Entity selector and context"""
 
 from typing import Iterator
 

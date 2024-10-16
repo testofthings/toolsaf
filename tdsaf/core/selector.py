@@ -8,24 +8,24 @@ from tdsaf.core.components import StoredData, Software, DataReference
 from tdsaf.common.entity import Entity
 from tdsaf.core.model import Addressable, Host, IoTSystem, NetworkNode, NodeComponent, Service, Connection
 from tdsaf.common.property import Properties, PropertyKey
-from tdsaf.core.requirement import EntitySelector, SelectorContext
+from tdsaf.core.entity_selector import EntitySelector, SelectorContext
 from tdsaf.common.basics import Status
 
 S = TypeVar("S", bound='EntitySelector')
 
 
-class RequirementSelector(EntitySelector):
-    """Selector for a requirement"""
+class AbstractSelector(EntitySelector):
+    """Abstract selector"""
     def __truediv__(self, other: S) -> S:
         """Add more specific location"""
-        assert isinstance(other, RequirementSelector), f"Expected location selector, got: {other}"
+        assert isinstance(other, AbstractSelector), f"Expected location selector, got: {other}"
         return SequenceSelector([self], other)
 
-    def __add__(self, other: 'RequirementSelector') -> 'RequirementSelector':
+    def __add__(self, other: 'AbstractSelector') -> 'AbstractSelector':
         return AlternativeSelectors([self, other])
 
 
-class NamedSelector(RequirementSelector):
+class NamedSelector(AbstractSelector):
     """A named selector"""
     def __init__(self, name: str, sub: EntitySelector):
         assert sub is not None, f"Naming null to {name}"
@@ -39,14 +39,14 @@ class NamedSelector(RequirementSelector):
         return self.name
 
 
-class SystemSelector(RequirementSelector):
+class SystemSelector(AbstractSelector):
     """Select system"""
     def select(self, entity: Entity, _context: SelectorContext) -> Iterator[IoTSystem]:
         if isinstance(entity, IoTSystem):
             yield entity
 
 
-class HostSelector(RequirementSelector):
+class HostSelector(AbstractSelector):
     """Select hosts"""
     def __init__(self, with_unexpected=False):
         self.with_unexpected = with_unexpected
@@ -105,7 +105,7 @@ class HostSelector(RequirementSelector):
         return Selector()
 
 
-class ServiceSelector(RequirementSelector):
+class ServiceSelector(AbstractSelector):
     """Select services"""
     def __init__(self, with_unexpected=False):
         self.with_unexpected = with_unexpected
@@ -164,7 +164,7 @@ class ServiceSelector(RequirementSelector):
         return Selector()
 
 
-class ConnectionSelector(RequirementSelector):
+class ConnectionSelector(AbstractSelector):
     """Select connections"""
     def __init__(self, with_unexpected=False):
         self.with_unexpected = with_unexpected
@@ -225,7 +225,7 @@ class ConnectionSelector(RequirementSelector):
                         yield c
         return Selector()
 
-    def endpoint(self, endpoint: RequirementSelector) -> 'ConnectionSelector':
+    def endpoint(self, endpoint: AbstractSelector) -> 'ConnectionSelector':
         """Select connections by endpoint"""
         parent = self
 
@@ -247,7 +247,7 @@ class UpdateConnectionSelector(ConnectionSelector):
             yield from sw.update_connections
 
 
-class SoftwareSelector(RequirementSelector):
+class SoftwareSelector(AbstractSelector):
     """Select software entities"""
     def select(self, entity: Entity, context: SelectorContext) -> Iterator[Software]:
         for h in HostSelector().select(entity, context):
@@ -255,7 +255,7 @@ class SoftwareSelector(RequirementSelector):
                 yield from Software.list_software(h)
 
 
-class DataSelector(RequirementSelector):
+class DataSelector(AbstractSelector):
     """Select data components"""
     def select(self, entity: Entity, _context: SelectorContext) -> Iterator[DataReference]:
         if not isinstance(entity, NetworkNode):
@@ -295,9 +295,9 @@ class DataSelector(RequirementSelector):
 SS = TypeVar("SS", bound='EntitySelector')
 
 
-class SequenceSelector(Generic[SS], RequirementSelector):
+class SequenceSelector(Generic[SS], AbstractSelector):
     """Sequence of selectors"""
-    def __init__(self, pre: List[RequirementSelector], sub: SS):
+    def __init__(self, pre: List[AbstractSelector], sub: SS):
         super().__init__()
         self.pre = pre
         self.sub = sub
@@ -320,13 +320,13 @@ class SequenceSelector(Generic[SS], RequirementSelector):
         return SequenceSelector(pre, other)
 
 
-class AlternativeSelectors(RequirementSelector):
+class AlternativeSelectors(AbstractSelector):
     """Alternative selectors"""
-    def __init__(self, sub: List[RequirementSelector]):
+    def __init__(self, sub: List[AbstractSelector]):
         super().__init__()
         self.sub = sub
 
-    def __add__(self, other: RequirementSelector) -> 'AlternativeSelectors':
+    def __add__(self, other: AbstractSelector) -> 'AlternativeSelectors':
         return AlternativeSelectors(self.sub + [other])
 
     def select(self, entity: Entity, context: SelectorContext) -> Iterator[Entity]:

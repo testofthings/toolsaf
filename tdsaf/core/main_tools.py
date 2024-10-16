@@ -7,7 +7,7 @@ from tdsaf.common.basics import ExternalActivity
 from tdsaf.adapters.batch_import import LabelFilter
 from tdsaf.core.event_interface import PropertyEvent
 from tdsaf.main import EvidenceBuilder, FlowBuilder, TrafficDataBuilder, NodeBuilder, SystemBuilder
-from tdsaf.core.requirement import SelectorContext
+from tdsaf.core.entity_selector import SelectorContext
 from tdsaf.core.selector import Select
 from tdsaf.core.model import EvidenceNetworkSource
 from tdsaf.common.property import PropertyKey

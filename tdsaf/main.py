@@ -2,7 +2,7 @@
 
 from typing import Dict, List, Optional, Self, Tuple, Type, Union
 from tdsaf.common.address import AnyAddress, HWAddress, HWAddresses, IPAddress, IPAddresses, Network
-from tdsaf.core.selector import RequirementSelector
+from tdsaf.core.selector import AbstractSelector
 from tdsaf.common.basics import ConnectionType, HostType, ExternalActivity
 from tdsaf.common.verdict import Verdict
 
@@ -444,7 +444,7 @@ class ClaimSetBuilder:
         """Ignore claims or requirements"""
         raise NotImplementedError()
 
-    def plan_tool(self, tool_name: str, group: Tuple[str, str], location: RequirementSelector,
+    def plan_tool(self, tool_name: str, group: Tuple[str, str], location: AbstractSelector,
                   *key: Tuple[str, ...]):
         """Plan use of a tool using the property keys it is supposed to set"""
         raise NotImplementedError()
