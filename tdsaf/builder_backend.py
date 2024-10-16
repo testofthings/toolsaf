@@ -10,7 +10,7 @@ import shutil
 import sys
 from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union
 
-from tdsaf.common.address import (AddressAtNetwork, Addresses, AnyAddress, DNSName, EndpointAddress, EntityTag, 
+from tdsaf.common.address import (AddressAtNetwork, Addresses, AnyAddress, DNSName, EndpointAddress, EntityTag,
                                   HWAddress, HWAddresses, IPAddress, IPAddresses, Network, Protocol)
 from tdsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status
 from tdsaf.adapters.batch_import import BatchImporter, LabelFilter
