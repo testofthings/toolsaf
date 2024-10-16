@@ -1,11 +1,11 @@
 import pathlib
-from tcsfw.inspector import Inspector
+from tdsaf.core.inspector import Inspector
 
-from tcsfw.matcher import SystemMatcher
-from tcsfw.model import IoTSystem
-from tcsfw.pcap_reader import PCAPReader
-from tcsfw.registry import Registry
-from tcsfw.traffic import IPFlow
+from tdsaf.core.matcher import SystemMatcher
+from tdsaf.core.model import IoTSystem
+from tdsaf.adapters.pcap_reader import PCAPReader
+from tdsaf.core.registry import Registry
+from tdsaf.common.traffic import IPFlow
 
 
 def test_pcap():

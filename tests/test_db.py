@@ -1,13 +1,13 @@
 import tempfile
-from tcsfw.address import HWAddress, IPAddress
-from tcsfw.basics import ExternalActivity
-from tcsfw.builder_backend import SystemBackend
-from tcsfw.event_interface import PropertyEvent
-from tcsfw.model import EvidenceNetworkSource
-from tcsfw.property import Properties
-from tcsfw.registry import Registry, Inspector
-from tcsfw.sql_database import SQLDatabase
-from tcsfw.traffic import NO_EVIDENCE, Evidence, EvidenceSource, IPFlow
+from tdsaf.common.address import HWAddress, IPAddress
+from tdsaf.common.basics import ExternalActivity
+from tdsaf.builder_backend import SystemBackend
+from tdsaf.core.event_interface import PropertyEvent
+from tdsaf.core.model import EvidenceNetworkSource
+from tdsaf.common.property import Properties
+from tdsaf.core.registry import Registry, Inspector
+from tdsaf.core.sql_database import SQLDatabase
+from tdsaf.common.traffic import NO_EVIDENCE, Evidence, EvidenceSource, IPFlow
 
 
 def test_db_id_storage():

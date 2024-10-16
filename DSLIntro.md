@@ -6,11 +6,11 @@ The following assumes basic understanding of the Python language.
 
 ## DSL essentials
 
-Consider the following very simple model called "Basic a".
+Consider the following very simple model called "Basic A".
 The model is in file `samples/basic-a/system.py`.
 
 ```python
-from tcsfw.main import Builder, TLS
+from tdsaf.main import Builder, TLS
 
 system = Builder.new("Basic A")
 device = system.device()
@@ -44,16 +44,9 @@ system.visualize().place(
 The letters "A", "B", and "C" stand for the application, backend, and device.
 Thei positions are determined in the `place` method.
 
-## Claims
-
-Claims are made for the model and verified by tool outputs.
-Claims are still very unmature concept.
-The description of the claims also employs [a DSL](ClaimIntro.md), but that is very much unfinalized at the moment.
-
-
 ## DSL reference
 
-The interface code for the DSL is in Python module `tcsfw.main`.
-DSLs can use definitions from `tcsfw.basics`, as well.
+The interface code for the DSL is in Python module `tdsaf.main`.
+DSLs can use definitions from `tdsaf.common.basics`, as well.
 The source code in these files provides for the authorative reference code.
 

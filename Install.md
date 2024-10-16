@@ -1,12 +1,12 @@
 # Installation
 
 At the moment there is no _PyPi_ package, so you must pull sources manually.
-Pull the sources outside of your security statement project, and then install TCSFE to the environment.
+Pull the sources outside of your security statement project, and then install tdsaf to the environment.
 For example like this (assuming you are in your security statement project directory).
 
     $ mkdir ../external
-    $ (cd ../external; git clone git@github.com:ouspg/tcsfw.git)
-    $ pip install -e ../external/tcsfw
+    $ (cd ../external; git clone git@github.com:testofthings/tdsaf.git)
+    $ pip install -e ../external/tdsaf
 
 ## Unit tests
 
@@ -25,12 +25,7 @@ Python code can be linted by _pylint_
 
     $ pip install pylint
 
-Samples and tests are not lint-ready
+Samples and tests are not lint-compatible.
 
-    $ pylint tcsfw/
-
-
-
-
-
+    $ pylint tdsaf/
 

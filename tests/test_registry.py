@@ -1,12 +1,12 @@
-from tcsfw.verdict import Verdict
-from tcsfw.builder_backend import SystemBackend
+from tdsaf.common.verdict import Verdict
+from tdsaf.builder_backend import SystemBackend
 from test_inspector import simple_setup_3
 from test_model import simple_setup_1
-from tcsfw.inspector import Inspector
-from tcsfw.main import DHCP
-from tcsfw.registry import Registry
-from tcsfw.traffic import IPFlow, NO_EVIDENCE
-from tcsfw.basics import Status
+from tdsaf.core.inspector import Inspector
+from tdsaf.main import DHCP
+from tdsaf.core.registry import Registry
+from tdsaf.common.traffic import IPFlow, NO_EVIDENCE
+from tdsaf.common.basics import Status
 
 
 def test_reset():

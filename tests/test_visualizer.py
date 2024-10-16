@@ -1,7 +1,7 @@
 from test_inspector import simple_setup_3
-from tcsfw.address import IPAddress
-from tcsfw.model import Host
-from tcsfw.visualizer import Visualizer
+from tdsaf.common.address import IPAddress
+from tdsaf.core.model import Host
+from tdsaf.visualizer import Visualizer
 
 
 def test_model_events():

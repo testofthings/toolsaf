@@ -1,7 +1,7 @@
-from tcsfw.builder_backend import SystemBackend
-from tcsfw.main import HTTP, UDP
-from tcsfw.matcher import SystemMatcher
-from tcsfw.traffic import IPFlow, Evidence
+from tdsaf.builder_backend import SystemBackend
+from tdsaf.main import HTTP, UDP
+from tdsaf.core.matcher import SystemMatcher
+from tdsaf.common.traffic import IPFlow, Evidence
 
 
 def test_source_matching():

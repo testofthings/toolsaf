@@ -1,14 +1,14 @@
 import pathlib
 
-from tcsfw.address import EntityTag, IPAddress, DNSName, Protocol
-from tcsfw.verdict import Verdict
-from tcsfw.builder_backend import SystemBackend
-from tcsfw.inspector import Inspector
-from tcsfw.main import DNS
-from tcsfw.matcher import SystemMatcher
-from tcsfw.pcap_reader import PCAPReader
-from tcsfw.traffic import IPFlow
-from tcsfw.basics import Status
+from tdsaf.common.address import EntityTag, IPAddress, DNSName, Protocol
+from tdsaf.common.verdict import Verdict
+from tdsaf.builder_backend import SystemBackend
+from tdsaf.core.inspector import Inspector
+from tdsaf.main import DNS
+from tdsaf.core.matcher import SystemMatcher
+from tdsaf.adapters.pcap_reader import PCAPReader
+from tdsaf.common.traffic import IPFlow
+from tdsaf.common.basics import Status
 
 
 def test_dns():

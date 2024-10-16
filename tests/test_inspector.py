@@ -1,12 +1,12 @@
-from tcsfw.basics import ExternalActivity, Status
-from tcsfw.builder_backend import SystemBackend
-from tcsfw.services import NameEvent
+from tdsaf.common.basics import ExternalActivity, Status
+from tdsaf.builder_backend import SystemBackend
+from tdsaf.core.services import NameEvent
 import test_model
-from tcsfw.address import DNSName, EndpointAddress, Protocol, IPAddress
-from tcsfw.inspector import Inspector
-from tcsfw.main import DHCP, DNS, UDP, TCP
-from tcsfw.traffic import NO_EVIDENCE, IPFlow, Evidence, EvidenceSource, ServiceScan, HostScan
-from tcsfw.verdict import Verdict
+from tdsaf.common.address import DNSName, EndpointAddress, Protocol, IPAddress
+from tdsaf.core.inspector import Inspector
+from tdsaf.main import DHCP, DNS, UDP, TCP
+from tdsaf.common.traffic import NO_EVIDENCE, IPFlow, Evidence, EvidenceSource, ServiceScan, HostScan
+from tdsaf.common.verdict import Verdict
 
 
 def simple_setup_3(tcp=False) -> SystemBackend:
