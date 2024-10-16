@@ -11,7 +11,8 @@ from tdsaf.adapters.batch_import import BatchImporter
 from tdsaf.core.verdict import Verdict
 from tdsaf.core.entity import Entity
 from tdsaf.base.event_interface import EventMap
-from tdsaf.base.model import Addressable, NetworkNode, Connection, Host, Service, ModelListener, IoTSystem, NodeComponent
+from tdsaf.base.model import Addressable, NetworkNode, Connection, Host, Service, ModelListener, IoTSystem, \
+    NodeComponent
 from tdsaf.core.property import Properties, PropertyKey, PropertySetValue, PropertyVerdictValue
 from tdsaf.base.registry import Registry
 from tdsaf.core.traffic import NO_EVIDENCE
