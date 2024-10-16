@@ -3,14 +3,14 @@
 from io import BytesIO, TextIOWrapper
 import re
 
-from tdsaf.core.address import DNSName, HWAddresses
-from tdsaf.base.event_interface import EventInterface
-from tdsaf.base.model import IoTSystem
-from tdsaf.core.property import Properties
-from tdsaf.base.services import NameEvent
+from tdsaf.common.address import DNSName, HWAddresses
+from tdsaf.core.event_interface import EventInterface
+from tdsaf.core.model import IoTSystem
+from tdsaf.common.property import Properties
+from tdsaf.core.services import NameEvent
 from tdsaf.adapters.tools import SystemWideTool
-from tdsaf.core.traffic import EvidenceSource, Evidence, IPFlow
-from tdsaf.core.verdict import Verdict
+from tdsaf.common.traffic import EvidenceSource, Evidence, IPFlow
+from tdsaf.common.verdict import Verdict
 
 
 class MITMLogReader(SystemWideTool):

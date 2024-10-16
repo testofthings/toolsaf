@@ -1,13 +1,13 @@
-from tdsaf.core.address import AddressEnvelope, EndpointAddress, EntityTag, Protocol, DNSName, IPAddress, HWAddress
-from tdsaf.base.inspector import Inspector
-from tdsaf.base.model import Host, IoTSystem
-from tdsaf.core.verdict import Verdict
+from tdsaf.common.address import AddressEnvelope, EndpointAddress, EntityTag, Protocol, DNSName, IPAddress, HWAddress
+from tdsaf.core.inspector import Inspector
+from tdsaf.core.model import Host, IoTSystem
+from tdsaf.common.verdict import Verdict
 from tdsaf.builder_backend import SystemBackend
 from tdsaf.main import TCP, UDP, SSH
-from tdsaf.base.matcher import SystemMatcher
-from tdsaf.core.basics import ExternalActivity
-from tdsaf.core.traffic import IPFlow
-from tdsaf.core.basics import Status
+from tdsaf.core.matcher import SystemMatcher
+from tdsaf.common.basics import ExternalActivity
+from tdsaf.common.traffic import IPFlow
+from tdsaf.common.basics import Status
 
 
 class Setup:

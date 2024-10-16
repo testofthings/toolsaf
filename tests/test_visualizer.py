@@ -1,6 +1,6 @@
 from test_inspector import simple_setup_3
-from tdsaf.core.address import IPAddress
-from tdsaf.base.model import Host
+from tdsaf.common.address import IPAddress
+from tdsaf.core.model import Host
 from tdsaf.visualizer import Visualizer
 
 

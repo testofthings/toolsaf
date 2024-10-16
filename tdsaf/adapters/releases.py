@@ -6,12 +6,12 @@ import json
 from statistics import mean
 from typing import Tuple, List, cast
 
-from tdsaf.base.components import Software
-from tdsaf.base.event_interface import EventInterface, PropertyEvent
-from tdsaf.base.model import IoTSystem, NetworkNode, NodeComponent
+from tdsaf.core.components import Software
+from tdsaf.core.event_interface import EventInterface, PropertyEvent
+from tdsaf.core.model import IoTSystem, NetworkNode, NodeComponent
 from tdsaf.adapters.tools import NodeComponentTool
-from tdsaf.core.traffic import EvidenceSource, Evidence
-from tdsaf.core.release_info import ReleaseInfo
+from tdsaf.common.traffic import EvidenceSource, Evidence
+from tdsaf.common.release_info import ReleaseInfo
 
 
 class ReleaseReader(NodeComponentTool):

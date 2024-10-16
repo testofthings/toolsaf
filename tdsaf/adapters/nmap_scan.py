@@ -4,11 +4,11 @@ import datetime
 from io import BytesIO
 from xml.etree import ElementTree
 
-from tdsaf.core.address import IPAddress, HWAddress, EndpointAddress, Protocol
-from tdsaf.base.event_interface import EventInterface
-from tdsaf.base.model import IoTSystem, Host
+from tdsaf.common.address import IPAddress, HWAddress, EndpointAddress, Protocol
+from tdsaf.core.event_interface import EventInterface
+from tdsaf.core.model import IoTSystem, Host
 from tdsaf.adapters.tools import SystemWideTool
-from tdsaf.core.traffic import EvidenceSource, Evidence, ServiceScan, HostScan
+from tdsaf.common.traffic import EvidenceSource, Evidence, ServiceScan, HostScan
 
 
 class NMAPScan(SystemWideTool):

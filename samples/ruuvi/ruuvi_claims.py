@@ -1,5 +1,5 @@
-from tdsaf.core.basics import HostType
-from tdsaf.base.selector import Select
+from tdsaf.common.basics import HostType
+from tdsaf.core.selector import Select
 from tdsaf.main import TLS, HTTP, SSH, SystemBuilder
 
 

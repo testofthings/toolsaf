@@ -3,7 +3,7 @@
 import datetime
 from typing import Optional
 
-from tdsaf.core.property import PropertyKey
+from tdsaf.common.property import PropertyKey
 
 
 class ReleaseInfo:

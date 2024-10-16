@@ -3,9 +3,9 @@
 import pathlib
 
 from tdsaf.adapters.batch_import import BatchImporter
-from tdsaf.base.components import OperatingSystem
-from tdsaf.core.property import PropertyKey
-from tdsaf.core.verdict import Verdict
+from tdsaf.core.components import OperatingSystem
+from tdsaf.common.property import PropertyKey
+from tdsaf.common.verdict import Verdict
 from tests.test_model import Setup
 
 

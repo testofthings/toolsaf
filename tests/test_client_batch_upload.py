@@ -4,10 +4,10 @@ import tempfile
 
 from tdsaf.builder_backend import SystemBackend
 from tdsaf.client_api import APIRequest, ClientAPI
-from tdsaf.base.inspector import Inspector
-from tdsaf.base.matcher import SystemMatcher
-from tdsaf.base.registry import Registry
-from tdsaf.core.verdict import Verdict
+from tdsaf.core.inspector import Inspector
+from tdsaf.core.matcher import SystemMatcher
+from tdsaf.core.registry import Registry
+from tdsaf.common.verdict import Verdict
 
 
 def test_ping_upload():

@@ -4,8 +4,8 @@ from typing import List, Dict, Tuple
 
 from tdsaf.client_api import ClientAPI, RequestContext
 from tdsaf.main import ConfigurationException
-from tdsaf.base.model import NetworkNode, Connection, Host
-from tdsaf.base.registry import Registry
+from tdsaf.core.model import NetworkNode, Connection, Host
+from tdsaf.core.registry import Registry
 
 
 class Visualizer:

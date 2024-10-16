@@ -3,15 +3,15 @@
 from io import BytesIO, TextIOWrapper
 import re
 from typing import Any, Dict, List, Set, Tuple
-from tdsaf.core.address import AddressEnvelope, Addresses, AnyAddress, EndpointAddress, HWAddresses, IPAddress
-from tdsaf.base.components import OperatingSystem
-from tdsaf.base.event_interface import EventInterface, PropertyEvent
-from tdsaf.base.model import IoTSystem
-from tdsaf.core.property import PropertyKey
-from tdsaf.base.services import NameEvent
+from tdsaf.common.address import AddressEnvelope, Addresses, AnyAddress, EndpointAddress, HWAddresses, IPAddress
+from tdsaf.core.components import OperatingSystem
+from tdsaf.core.event_interface import EventInterface, PropertyEvent
+from tdsaf.core.model import IoTSystem
+from tdsaf.common.property import PropertyKey
+from tdsaf.core.services import NameEvent
 from tdsaf.adapters.tools import EndpointTool
-from tdsaf.core.traffic import Evidence, EvidenceSource, IPFlow, Protocol, ServiceScan
-from tdsaf.core.verdict import Verdict
+from tdsaf.common.traffic import Evidence, EvidenceSource, IPFlow, Protocol, ServiceScan
+from tdsaf.common.verdict import Verdict
 
 
 class ShellCommandPs(EndpointTool):

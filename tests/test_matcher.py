@@ -1,9 +1,9 @@
-from tdsaf.core.address import Addresses, IPAddress
+from tdsaf.common.address import Addresses, IPAddress
 from tdsaf.builder_backend import SystemBackend
-from tdsaf.base.matcher import SystemMatcher
-from tdsaf.base.model import EvidenceNetworkSource
-from tdsaf.core.traffic import Evidence, IPFlow
-from tdsaf.core.basics import Status
+from tdsaf.core.matcher import SystemMatcher
+from tdsaf.core.model import EvidenceNetworkSource
+from tdsaf.common.traffic import Evidence, IPFlow
+from tdsaf.common.basics import Status
 
 
 def test_source_ip():

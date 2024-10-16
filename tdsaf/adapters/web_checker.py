@@ -4,12 +4,12 @@ from io import BytesIO, TextIOWrapper
 import re
 import urllib
 
-from tdsaf.base.event_interface import PropertyEvent, EventInterface
-from tdsaf.base.model import IoTSystem
-from tdsaf.core.property import Properties
+from tdsaf.core.event_interface import PropertyEvent, EventInterface
+from tdsaf.core.model import IoTSystem
+from tdsaf.common.property import Properties
 from tdsaf.adapters.tools import SystemWideTool
-from tdsaf.core.traffic import EvidenceSource, Evidence
-from tdsaf.core.verdict import Verdict
+from tdsaf.common.traffic import EvidenceSource, Evidence
+from tdsaf.common.verdict import Verdict
 
 
 class WebChecker(SystemWideTool):

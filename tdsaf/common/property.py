@@ -2,9 +2,9 @@
 
 from dataclasses import dataclass
 from typing import Set, Dict, Any, Optional, Tuple, Self
-from tdsaf.core.verdict import Verdict
+from tdsaf.common.verdict import Verdict
 
-from tdsaf.core.verdict import Verdictable
+from tdsaf.common.verdict import Verdictable
 
 class PropertyKey:
     """Property key"""

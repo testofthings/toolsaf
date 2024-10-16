@@ -6,14 +6,14 @@ import urllib.parse
 from datetime import datetime
 from typing import cast
 
-from tdsaf.core.address import EndpointAddress, DNSName, Protocol
-from tdsaf.base.components import Cookies, CookieData
-from tdsaf.base.event_interface import PropertyAddressEvent, PropertyEvent, EventInterface
-from tdsaf.base.model import Host, IoTSystem, NetworkNode
-from tdsaf.core.property import PropertyKey, Properties
+from tdsaf.common.address import EndpointAddress, DNSName, Protocol
+from tdsaf.core.components import Cookies, CookieData
+from tdsaf.core.event_interface import PropertyAddressEvent, PropertyEvent, EventInterface
+from tdsaf.core.model import Host, IoTSystem, NetworkNode
+from tdsaf.common.property import PropertyKey, Properties
 from tdsaf.adapters.tools import NetworkNodeTool
-from tdsaf.core.traffic import EvidenceSource, Evidence
-from tdsaf.core.verdict import Verdict
+from tdsaf.common.traffic import EvidenceSource, Evidence
+from tdsaf.common.verdict import Verdict
 
 
 class HARScan(NetworkNodeTool):

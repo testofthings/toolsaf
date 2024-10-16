@@ -5,13 +5,13 @@ import json
 from datetime import datetime
 from typing import cast
 
-from tdsaf.base.components import Software, SoftwareComponent
-from tdsaf.base.event_interface import PropertyEvent, EventInterface
-from tdsaf.base.model import IoTSystem, NodeComponent
-from tdsaf.core.property import Properties, PropertyKey
+from tdsaf.core.components import Software, SoftwareComponent
+from tdsaf.core.event_interface import PropertyEvent, EventInterface
+from tdsaf.core.model import IoTSystem, NodeComponent
+from tdsaf.common.property import Properties, PropertyKey
 from tdsaf.adapters.tools import NodeComponentTool
-from tdsaf.core.traffic import EvidenceSource, Evidence
-from tdsaf.core.verdict import Verdict
+from tdsaf.common.traffic import EvidenceSource, Evidence
+from tdsaf.common.verdict import Verdict
 
 
 class SPDXReader(NodeComponentTool):

@@ -3,12 +3,12 @@
 import itertools
 from typing import Self, Tuple, Dict, Optional, Set, List, Iterable
 
-from tdsaf.core.address import AddressAtNetwork, AnyAddress, EndpointAddress, IPAddress, Addresses, DNSName
-from tdsaf.core.basics import ExternalActivity, Status
-from tdsaf.base.model import IoTSystem, Connection, Host, Addressable, Service, EvidenceNetworkSource, ModelListener
-from tdsaf.core.property import Properties
-from tdsaf.core.traffic import Flow, EvidenceSource, IPFlow
-from tdsaf.core.verdict import Verdict
+from tdsaf.common.address import AddressAtNetwork, AnyAddress, EndpointAddress, IPAddress, Addresses, DNSName
+from tdsaf.common.basics import ExternalActivity, Status
+from tdsaf.core.model import IoTSystem, Connection, Host, Addressable, Service, EvidenceNetworkSource, ModelListener
+from tdsaf.common.property import Properties
+from tdsaf.common.traffic import Flow, EvidenceSource, IPFlow
+from tdsaf.common.verdict import Verdict
 
 
 class SystemMatcher(ModelListener):

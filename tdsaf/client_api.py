@@ -6,17 +6,17 @@ import pathlib
 import urllib
 from typing import Dict, List, Tuple, Any, Iterable, BinaryIO, Optional
 
-from tdsaf.core.basics import Status
+from tdsaf.common.basics import Status
 from tdsaf.adapters.batch_import import BatchImporter
-from tdsaf.core.verdict import Verdict
-from tdsaf.core.entity import Entity
-from tdsaf.base.event_interface import EventMap
-from tdsaf.base.model import Addressable, NetworkNode, Connection, Host, Service, ModelListener, IoTSystem, \
+from tdsaf.common.verdict import Verdict
+from tdsaf.common.entity import Entity
+from tdsaf.core.event_interface import EventMap
+from tdsaf.core.model import Addressable, NetworkNode, Connection, Host, Service, ModelListener, IoTSystem, \
     NodeComponent
-from tdsaf.core.property import Properties, PropertyKey, PropertySetValue, PropertyVerdictValue
-from tdsaf.base.registry import Registry
-from tdsaf.core.traffic import NO_EVIDENCE
-from tdsaf.core.verdict import Verdictable
+from tdsaf.common.property import Properties, PropertyKey, PropertySetValue, PropertyVerdictValue
+from tdsaf.core.registry import Registry
+from tdsaf.common.traffic import NO_EVIDENCE
+from tdsaf.common.verdict import Verdictable
 
 # format strings
 FORMAT_YEAR_MONTH_DAY = "%Y-%m-%d"

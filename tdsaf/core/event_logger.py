@@ -3,16 +3,16 @@
 from logging import Logger
 import logging
 from typing import Any, List, Set, Tuple, Dict, Optional, cast
-from tdsaf.core.address import AnyAddress
-from tdsaf.core.verdict import Verdict
+from tdsaf.common.address import AnyAddress
+from tdsaf.common.verdict import Verdict
 
-from tdsaf.core.entity import Entity
-from tdsaf.base.event_interface import EventInterface, PropertyEvent, PropertyAddressEvent
-from tdsaf.base.inspector import Inspector
-from tdsaf.base.model import IoTSystem, Connection, Host, ModelListener, Service
-from tdsaf.core.property import Properties, PropertyKey
-from tdsaf.base.services import NameEvent
-from tdsaf.core.traffic import EvidenceSource, HostScan, ServiceScan, Flow, Event
+from tdsaf.common.entity import Entity
+from tdsaf.core.event_interface import EventInterface, PropertyEvent, PropertyAddressEvent
+from tdsaf.core.inspector import Inspector
+from tdsaf.core.model import IoTSystem, Connection, Host, ModelListener, Service
+from tdsaf.common.property import Properties, PropertyKey
+from tdsaf.core.services import NameEvent
+from tdsaf.common.traffic import EvidenceSource, HostScan, ServiceScan, Flow, Event
 
 
 class LoggingEvent:

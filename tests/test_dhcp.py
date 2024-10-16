@@ -1,14 +1,14 @@
 import pathlib
-from tdsaf.core.address import EntityTag, HWAddress, IPAddress
-from tdsaf.core.verdict import Verdict
+from tdsaf.common.address import EntityTag, HWAddress, IPAddress
+from tdsaf.common.verdict import Verdict
 from tdsaf.builder_backend import SystemBackend
-from tdsaf.base.event_logger import EventLogger
-from tdsaf.base.inspector import Inspector
+from tdsaf.core.event_logger import EventLogger
+from tdsaf.core.inspector import Inspector
 from tdsaf.main import DHCP, UDP
-from tdsaf.base.matcher import SystemMatcher
+from tdsaf.core.matcher import SystemMatcher
 from tdsaf.adapters.pcap_reader import PCAPReader
-from tdsaf.core.traffic import IPFlow
-from tdsaf.core.basics import Status
+from tdsaf.common.traffic import IPFlow
+from tdsaf.common.basics import Status
 
 
 def test_dhcp():

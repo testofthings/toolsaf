@@ -1,5 +1,5 @@
 from ipaddress import IPv4Network
-from tdsaf.core.address import AddressEnvelope, Addresses, DNSName, EndpointAddress, HWAddress, HWAddresses, IPAddress, IPAddresses, Network, Protocol
+from tdsaf.common.address import AddressEnvelope, Addresses, DNSName, EndpointAddress, HWAddress, HWAddresses, IPAddress, IPAddresses, Network, Protocol
 
 
 def test_hw_address():
