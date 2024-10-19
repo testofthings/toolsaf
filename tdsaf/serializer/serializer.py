@@ -127,6 +127,7 @@ class ClassMapper(Generic[C]):
         self.register_call: Optional[Callable[[C], SerializerContext]] = None
         self.simple_attributes: Dict[str, str] = {}
         self.custom_writers: Dict[str, Callable[[SerializerContext], Any]] = {}
+        self.custom_readers: Dict[str, Callable[[SerializerContext, Any], None]] = {}
 
     def derive(self, *mapped_class: Type) -> Self:
         """Derive mappings from other class(es)"""
@@ -159,6 +160,11 @@ class ClassMapper(Generic[C]):
     def writer(self, attribute: str, function: Callable[[SerializerContext], Any]) -> Self:
         """Add custom attribute writer"""
         self.custom_writers[attribute] = function
+        return self
+
+    def reader(self, attribute: str, function: Callable[[SerializerContext, Any], None]) -> Self:
+        """Add custom attribute reader"""
+        self.custom_readers[attribute] = function
         return self
 
     def __enter__(self) -> 'ClassMapper':
@@ -198,23 +204,31 @@ class AbstractSerializer:
         for k, f in mapper.simple_attributes.items():
             if k in data:
                 setattr(body, f, data.get(k))
-
         if parent_id is None:
             # no parent
             self.control.allocate(body, identifier=read_id)
             if mapper.register_call:
-                mapper.register_call(body)
+                ctx = mapper.register_call(body)
             else:
-                SerializerContext(self.control, body, mapper)
+                ctx = SerializerContext(self.control, body, mapper)
+            self.call_custom_readers(mapper, ctx, data)
             return body
-
         context = self.control.contexts.get(parent)
         assert context, f"Parent {parent_id} not found"
-        context.add(body, identifier=read_id)
+        ctx = context.add(body, identifier=read_id)
+        self.call_custom_readers(mapper, ctx, data)
         sink = context.sinks.get(mapper.mapped_class)
         if sink is not None:
             sink.append(body)
         return body
+
+    def call_custom_readers(self, mapper: ClassMapper, context: SerializerContext, data: Dict):
+        """Call custom mappers"""
+        for k, func in mapper.custom_readers.items():
+            val = data.get(k)
+            if val is not None:
+                func(context, val)
+
 
 
 class SystemSerializer(AbstractSerializer):
