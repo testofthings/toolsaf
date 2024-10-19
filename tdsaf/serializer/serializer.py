@@ -2,7 +2,7 @@
 
 import json
 from typing import Any, Callable, Dict, Generic, Iterable, List, Optional, Self, Type, TypeVar
-from tdsaf.core.model import Host, IoTSystem, NetworkNode, Service
+from tdsaf.core.model import Addressable, Host, IoTSystem, NetworkNode, Service
 
 T = TypeVar('T')
 
@@ -229,10 +229,14 @@ class SystemSerializer(AbstractSerializer):
                 m.writer("long_name", lambda c: c.body.long_name())
             m.register(self.network_node)
 
-        with self.control(Host, "host").derive(NetworkNode) as m:
+        with self.control(Addressable).derive(NetworkNode) as m:
+            if not self.miniature:
+                m.writer("tag", lambda c: str(c.body.get_tag()))
+
+        with self.control(Host, "host").derive(Addressable) as m:
             m.new(lambda c: Host(c.parent, c["name"]))
 
-        with self.control(Service, "service").derive(NetworkNode) as m:
+        with self.control(Service, "service").derive(Addressable) as m:
             m.new(lambda c: Service(c["name"], c.parent))
 
         self.control(IoTSystem, "system").derive(NetworkNode)
