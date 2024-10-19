@@ -6,14 +6,14 @@ from tests.test_model_new import Setup_1
 def test_simple_model():
     su = Setup_1()
     su.system.system.name = "Test"
-    writer = SystemSerializer()
+    writer = SystemSerializer(miniature=True)
     writer.iot_system(su.get_system())
     js = list(writer.write_json())
     assert len(js) == 4
     assert js[0] == {"id": "1", "type": "system", "name": "Test"}
     assert js[1] == {"id": "2", "at": "1", "type": "host", "name": "Device 1"}
 
-    reader = SystemSerializer()
+    reader = SystemSerializer(miniature=True)
     r = []
     for j in js:
         obj = reader.read_json(j)

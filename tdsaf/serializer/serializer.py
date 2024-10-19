@@ -59,6 +59,8 @@ class SerializerContext:
             body_dict["at"] = self.control.reverse_ids[self.parent.body]
         for k, f in self.mapper.simple_attributes.items():
             body_dict[k] = getattr(self.body, f)
+        for k, func in self.mapper.custom_writers.items():
+            body_dict[k] = func(self)
         return body_dict
 
     def __repr__(self) -> str:
@@ -124,6 +126,7 @@ class ClassMapper(Generic[C]):
         self.new_call: Optional[Callable[[SerializerContext], C]] = None
         self.register_call: Optional[Callable[[C], SerializerContext]] = None
         self.simple_attributes: Dict[str, str] = {}
+        self.custom_writers: Dict[str, Callable[[SerializerContext], Any]] = {}
 
     def derive(self, *mapped_class: Type) -> Self:
         """Derive mappings from other class(es)"""
@@ -131,6 +134,7 @@ class ClassMapper(Generic[C]):
             m = self.controller.mappers.get(m_class)
             assert m is not None, f"Class {m_class} not found"
             self.simple_attributes.update(m.simple_attributes)
+            self.custom_writers.update(m.custom_writers)
             if not self.register_call:
                 # new call not derived
                 self.register_call = m.register_call
@@ -150,6 +154,11 @@ class ClassMapper(Generic[C]):
     def register(self, call: Callable[[C], SerializerContext]) -> Self:
         """Register data sinks"""
         self.register_call = call
+        return self
+
+    def writer(self, attribute: str, function: Callable[[SerializerContext], Any]) -> Self:
+        """Add custom attribute writer"""
+        self.custom_writers[attribute] = function
         return self
 
     def __enter__(self) -> 'ClassMapper':
@@ -210,11 +219,14 @@ class AbstractSerializer:
 
 class SystemSerializer(AbstractSerializer):
     """IoT system serializer"""
-    def __init__(self):
+    def __init__(self, miniature=False):
         super().__init__()
+        self.miniature = miniature  # keep unit tests minimal
 
         with self.control(NetworkNode) as m:
             m.default("name")
+            if not self.miniature:
+                m.writer("long_name", lambda c: c.body.long_name())
             m.register(self.network_node)
 
         with self.control(Host, "host").derive(NetworkNode) as m:
