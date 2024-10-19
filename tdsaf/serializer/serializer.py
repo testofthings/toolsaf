@@ -12,7 +12,7 @@ class SerializerContext:
     def __init__(self, control: 'SerializationController', body: Any, mapper: Optional['ClassMapper'] = None):
         self.control = control
         self.body = body
-        self.mapper = mapper or control.mappers.get(type(body))
+        self.mapper = mapper or control.get_mapper(type(body))
         assert self.mapper, f"Class {type(body)} not mapped"
         self.parent: Optional[SerializerContext] = None
         self.sinks: Dict[Type, List[Any]] = {}
@@ -34,8 +34,7 @@ class SerializerContext:
         ctx = self.control.contexts.get(body)
         if ctx is not None:
             return ctx
-        mapper = self.control.mappers.get(type(body))
-        assert mapper, f"Class {type(body)} not mapped"
+        mapper = self.control.get_mapper(type(body))
         if identifier is not None:
             # allocate before registering
             self.control.allocate(body, identifier)
@@ -75,6 +74,14 @@ class SerializationController:
         self.contexts: Dict[Any, SerializerContext] = {}
         self.identifiers: Dict[str, Any] = {}
         self.reverse_ids: Dict[Any, str] = {}
+
+    def get_mapper(self, for_type: Type) -> 'ClassMapper':
+        """Get mapper for a type"""
+        for cl in for_type.__mro__:
+            mapper = self.mappers.get(cl)
+            if mapper:
+                return mapper
+        assert False, f"Class {for_type.__name__} not mapped"
 
     def __call__(self, mapped_class: Type, type_name="") -> 'ClassMapper':
         """Map local data"""
