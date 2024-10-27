@@ -126,6 +126,7 @@ class ClassMapper(Generic[C]):
         self.new_call: Optional[Callable[[SerializerContext], C]] = None
         self.register_call: Optional[Callable[[C], SerializerContext]] = None
         self.simple_attributes: Dict[str, str] = {}
+        self.default_sub_type: Optional[Type] = None
         self.custom_writers: Dict[str, Callable[[SerializerContext], Any]] = {}
         self.custom_readers: Dict[str, Callable[[SerializerContext, Any], None]] = {}
 
@@ -192,9 +193,15 @@ class AbstractSerializer:
         """Read next object from JSON stream"""
         read_id = data["id"]
         parent_id = data.get("at")
-        class_str = data["type"]
         parent = self.control.identifiers.get(parent_id) if parent_id else None
-        mapper = self.control.mappers_by_names.get(class_str)
+        context = self.control.contexts.get(parent) if parent else None
+        class_str = data.get("type")
+        if not class_str:
+            if not context or not context.mapper.default_sub_type:
+                assert False, "No type specified and no default sub-type"
+            mapper = context.mapper.default_sub_type
+        else:
+            mapper = self.control.mappers_by_names.get(class_str)
         assert mapper, f"Class {class_str} not mapped"
         if mapper.new_call:
             con_data = ConstructionData(data, parent)
@@ -213,7 +220,6 @@ class AbstractSerializer:
                 ctx = SerializerContext(self.control, body, mapper)
             self.call_custom_readers(mapper, ctx, data)
             return body
-        context = self.control.contexts.get(parent)
         assert context, f"Parent {parent_id} not found"
         ctx = context.add(body, identifier=read_id)
         self.call_custom_readers(mapper, ctx, data)
