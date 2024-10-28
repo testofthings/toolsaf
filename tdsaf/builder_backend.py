@@ -72,6 +72,7 @@ class SystemBackend(SystemBuilder):
         name = name or self._free_host_name("Backend")
         b = self.get_host_(name, "Backend service over Internet")
         b.entity.host_type = HostType.REMOTE
+        b.entity.external_activity = ExternalActivity.OPEN
         return b
 
     def mobile(self, name="") -> 'HostBackend':
