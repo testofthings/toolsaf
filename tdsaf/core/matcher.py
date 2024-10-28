@@ -42,13 +42,23 @@ class SystemMatcher(ModelListener):
     def connection_w_ends(self, flow: Flow) -> Tuple[Connection, AnyAddress, AnyAddress, bool]:
         """Find the connection matching the given flow, return also endpoint addresses"""
         source = flow.evidence.source
+        engine = self._get_engine(source)
+        m = engine.get_connection(flow)
+        return m.connection, m.source.address, m.target.address, m.reply
+
+    def endpoint(self, address: AnyAddress, source: EvidenceSource) -> Addressable:
+        """Find endpoint by address"""
+        engine = self._get_engine(source)
+        e = engine.find_endpoint(address)
+        return e
+
+    def _get_engine(self, source: EvidenceSource) -> 'MatchEngine':
+        """Get engine for source"""
         engine = self.engines.get(source)
         if engine is None:
             engine = MatchEngine(self, source)
             self.engines[source] = engine
-        m = engine.get_connection(flow)
-        return m.connection, m.source.address, m.target.address, m.reply
-
+        return engine
 
 class MatchFlow:
     """Flow to match"""
@@ -328,6 +338,24 @@ class MatchEngine:
         src = src or self.new_endpoint(flow, target=False)
         tar = tar or self.new_endpoint(flow, target=True)
         return self.new_connection(src, tar)
+
+    def find_endpoint(self, address: AnyAddress) -> Addressable:
+        """Find endpoint by address"""
+        host = address.get_host()
+        for a, es in self.endpoints.items():
+            for end in es:
+                for nw in end.entity.get_networks_for(host):
+                    atn = AddressAtNetwork(host, nw)
+                    if atn == a:
+                        if not address.get_protocol_port():
+                            return end.entity
+                        # find service
+                        e = end.entity.get_endpoint(address, at_network=atn.network)
+                        return e
+        # not found, create a new host
+        e = self.system.system.get_endpoint(address)
+        self._add_host(e)
+        return e
 
     def find_connection(self, finder: ConnectionFinder, flow: Flow) -> Optional[ConnectionMatch]:
         """Match endpoints by given criteria"""

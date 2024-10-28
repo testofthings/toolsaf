@@ -11,7 +11,7 @@ from tdsaf.core.matcher import SystemMatcher
 from tdsaf.core.model import IoTSystem, Connection, Service, Host, Addressable
 from tdsaf.common.property import Properties
 from tdsaf.core.services import NameEvent
-from tdsaf.common.traffic import ServiceScan, HostScan, Flow, IPFlow
+from tdsaf.common.traffic import EvidenceSource, ServiceScan, HostScan, Flow, IPFlow
 from tdsaf.common.verdict import Verdict
 
 
@@ -191,7 +191,7 @@ class Inspector(EventInterface):
 
     def property_address_update(self, update: PropertyAddressEvent) -> Entity:
         add = update.address
-        s = self._get_seen_entity(add)
+        s = self._get_seen_entity(add, update.evidence.source)
         if s is None:
             raise NotImplementedError(f"Processing properties for {add} not implemented")
         if s.status in {Status.PLACEHOLDER, Status.UNEXPECTED}:
@@ -208,7 +208,7 @@ class Inspector(EventInterface):
 
     def service_scan(self, scan: ServiceScan) -> Service:
         """The given address has a service"""
-        s = self._get_seen_entity(scan.endpoint)
+        s = self._get_seen_entity(scan.endpoint, scan.evidence.source)
         assert isinstance(s, Service)
         host = s.get_parent_host()
         new_host = self._check_entity(host)
@@ -218,7 +218,7 @@ class Inspector(EventInterface):
         return s
 
     def host_scan(self, scan: HostScan) -> Host:
-        host = self.system.get_endpoint(scan.host)
+        host = self._get_seen_entity(scan.host, scan.evidence.source)
         assert isinstance(host, Host), f"Address {scan.host} is not for a Host"
         for c in host.children:
             if isinstance(c, Service):
@@ -238,9 +238,9 @@ class Inspector(EventInterface):
         self.system.call_listeners(lambda ln: ln.host_change(host))
         return host
 
-    def _get_seen_entity(self, endpoint: AnyAddress) -> Addressable:
+    def _get_seen_entity(self, endpoint: AnyAddress, source: EvidenceSource) -> Addressable:
         """Get entity by address, mark it seen"""
-        ent = self.system.get_endpoint(endpoint)
+        ent = self.matcher.endpoint(endpoint, source)
         change = ent.set_seen_now()
         if change and ent.status == Status.EXPECTED:
             value = Properties.EXPECTED, Properties.EXPECTED.get(ent.properties)
