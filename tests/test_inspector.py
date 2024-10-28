@@ -131,7 +131,7 @@ def test_foreign_connection():
     cs1_2 = i.connection(IPFlow.UDP(
         "20:0:0:0:0:1", "192.168.10.1", 2000) << ("1:0:0:0:0:2", "192.168.0.2", 1234))
     assert cs1 == cs1_2
-    assert cs1.status_verdict() == (Status.EXTERNAL, Verdict.INCON) 
+    assert cs1.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
     assert cs1.source.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
     assert cs1.source.get_parent_host().status_verdict() == (Status.EXTERNAL, Verdict.INCON)
     assert cs1.target.status_verdict() == (Status.EXPECTED, Verdict.PASS)
@@ -202,7 +202,7 @@ def test_learn_dns_name():
     flow = IPFlow.UDP("1:0:0:0:0:1", "22.0.0.1", 1100) >> ("1:0:0:0:0:2", "12.0.0.2", 1234)
     con = i.connection(flow)
 
-    assert con.get_expected_verdict() == Verdict.FAIL
+    assert con.status_verdict() == (Status.EXTERNAL, Verdict.INCON)  # backend and unknown source
     assert con.target == ser0.entity
 
 

@@ -279,8 +279,11 @@ class MatchEngine:
         assert conn not in target_h.connections, "Connection already added to target host"
         assert isinstance(n_service_ep, EndpointAddress), "Expected endpoint address from observation cache"
         # change connection to point the new service
-        n_service = target_h.create_service(n_service_ep)
-        if target_h.external_activity >= ExternalActivity.UNLIMITED and conn.status == Status.EXTERNAL:
+        n_service = target_h.get_endpoint(n_service_ep)  # NOTE: Network not specified - how can there be many?
+        if n_service is None:
+            n_service = target_h.create_service(n_service_ep)
+        if target_h.external_activity >= ExternalActivity.UNLIMITED and conn.status == Status.EXTERNAL \
+            and n_service.status == Status.UNEXPECTED:
             # host is free to provide unlisted services
             n_service.status = Status.EXTERNAL
         target_h.connections.append(conn)
@@ -383,6 +386,18 @@ class MatchEngine:
                         m = finder.add_matches([am], target)
                         if m:
                             return m
+
+        # Works in some cases, but not in others. Not needed if we drop learning addresses
+        # wild_match_address = {}
+        # for target, match_ads in match_address.items():
+        #     if not target:
+        #         wild_match_address.setdefault(target, []).append(ad)
+        #         continue
+        #     for ad in match_ads:
+        #         if ad in self.endpoints:
+        #             continue  # known address, wildcard matching not done
+        #         wild_match_address.setdefault(target, []).append(ad)
+        # match_address = wild_match_address
 
         # 3. match <any address> + service
         wild_ends = self.endpoints.get(
