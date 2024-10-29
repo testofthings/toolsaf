@@ -8,7 +8,7 @@ import pathlib
 import io
 from typing import Dict, List, Optional
 
-from tdsaf.common.address import Addresses, EntityTag
+from tdsaf.common.address import Addresses
 from tdsaf.common.basics import ExternalActivity
 from tdsaf.core.event_interface import EventInterface
 from tdsaf.core.model import EvidenceNetworkSource, IoTSystem
