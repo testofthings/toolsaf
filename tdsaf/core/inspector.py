@@ -11,7 +11,7 @@ from tdsaf.core.matcher import SystemMatcher
 from tdsaf.core.model import IoTSystem, Connection, Service, Host, Addressable
 from tdsaf.common.property import Properties
 from tdsaf.core.services import NameEvent
-from tdsaf.common.traffic import EvidenceSource, ServiceScan, HostScan, Flow, IPFlow
+from tdsaf.common.traffic import EvidenceSource, ServiceScan, HostScan, Flow
 from tdsaf.common.verdict import Verdict
 
 
@@ -77,7 +77,6 @@ class Inspector(EventInterface):
             return None  # old connection, old direction -> discard
 
         updated = set()   # entity which status updated
-        send = set()      # force to send entity update
 
         def update_seen_status(entity: Addressable):
             changed = []

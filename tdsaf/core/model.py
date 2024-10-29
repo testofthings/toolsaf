@@ -7,7 +7,7 @@ from typing import List, Set, Optional, Tuple, TypeVar, Callable, Dict, Any, Sel
 from urllib.parse import urlparse
 
 from tdsaf.common.address import AnyAddress, Addresses, EndpointAddress, EntityTag, Network, Protocol, IPAddress, \
-    HWAddress, DNSName
+    DNSName
 from tdsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status
 from tdsaf.common.entity import Entity
 from tdsaf.common.property import PropertyKey
