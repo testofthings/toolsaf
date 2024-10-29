@@ -1059,8 +1059,6 @@ class SystemBackendRunner(SystemBackend):
                             help="List tools read from batch")
         parser.add_argument("--def-loads", "-L", type=str,
                             help="Comma-separated list of tools to load")
-        parser.add_argument("--set-ip", action="append",
-                            help="Set DNS-name for entity, format 'name=ip, ...'")
         parser.add_argument("--output", "-o", help="Output format")
         parser.add_argument("--dhcp", action="store_true",
                             help="Add default DHCP server handling")
@@ -1113,15 +1111,6 @@ class SystemBackendRunner(SystemBackend):
             registry.database = SQLDatabase(db_conn)
         # finish loading after DB connection
         registry.finish_model_load()
-
-        for set_ip in args.set_ip or []:
-            name, _, ips = set_ip.partition("=")
-            h = self.system.get_entity(name) or self.system.get_endpoint(
-                DNSName.name_or_ip(name))
-            if not isinstance(h, Host) or not h.is_relevant():
-                raise ValueError(f"No such host '{name}'")
-            for ip in ips.split(","):
-                self.system.learn_ip_address(h, IPAddress.new(ip))
 
         label_filter = LabelFilter(args.def_loads or "")
 
