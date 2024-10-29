@@ -96,14 +96,7 @@ class Inspector(EventInterface):
             conn.set_seen_now()
             updated.add(conn)
             # what about learning local IP/HW address pairs
-            if isinstance(flow, IPFlow):
-                ends = (conn.target, conn.source) if reply else (conn.source, conn.target)
-                learn = ends[0].get_parent_host().learn_address_pair(flow.source[0], flow.source[1])
-                if learn:
-                    send.add(ends[0])
-                learn = ends[1].get_parent_host().learn_address_pair(flow.target[0], flow.target[1])
-                if learn:
-                    send.add(ends[1])
+            # - stopped learning, makes order of input important, not good
 
         if new_direction:
             # new direction, may be old connection
