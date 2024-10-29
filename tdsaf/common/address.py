@@ -105,13 +105,19 @@ class AnyAddress:
 class EntityTag(AnyAddress):
     """An unique tag for entity"""
     def __init__(self, tag: str):
+        assert tag and not tag[0].isdigit(), f"Tag '{tag}' must be non-empty and not start with digit"
         self.tag = tag
 
     @classmethod
     def new(cls, tag: str) -> 'EntityTag':
         """New tag, force allowed characters"""
         # replace not allowed characters by underscore
-        return EntityTag("".join(c if c.isalnum() or c in {"-", "_"} else "_" for c in tag))
+        t = "".join(c if c.isalnum() or c in {"-", "_"} else "_" for c in tag)
+        while "__" in t:
+            t = t.replace("__", "_")  # no double underscores
+        if not t[0].isalpha():
+            t = f"_{t}"
+        return EntityTag(t)
 
     def is_global(self) -> bool:
         return False  # tag does not make node global
@@ -126,7 +132,7 @@ class EntityTag(AnyAddress):
         return 3
 
     def get_parseable_value(self) -> str:
-        return f"{self.tag}|tag"
+        return f"{self.tag}"  # tag is the default
 
     def __eq__(self, other):
         if not isinstance(other, EntityTag):
@@ -203,19 +209,22 @@ class Addresses:
 
     @classmethod
     def parse_address(cls, address: str) -> AnyAddress:
-        """Parse any address type from string, type given as 'type|address'"""
+        """Parse any address type from string, type given as 'address|type'"""
         ad, _, con = address.partition("(")
         if con and con.endswith(")"):
             return AddressEnvelope(cls.parse_address(ad), cls.parse_address(con[:-1]))
         v, _, t = address.rpartition("|")
-        if v == "":
-            t, v = "ip", t  # default is IP
+        if v == "" and t:
+            # no type given
+            if t[0].isdigit():
+                return IPAddress.new(t)  # if starts with digit it is IP
+            return EntityTag(t)  # otherwise tag
+        if t == "tag":
+            return EntityTag(v)
         if t == "ip":
             return IPAddress.new(v)
         if t == "hw":
             return HWAddress.new(v)
-        if t == "tag":
-            return EntityTag(v)
         if t == "name":
             return DNSName(v)
         raise ValueError(f"Unknown address type '{t}', allowed are 'ip', 'hw', and 'name'")
@@ -334,7 +343,7 @@ class IPAddress(AnyAddress):
         return 2
 
     def get_parseable_value(self) -> str:
-        return f"{self.data}"  # IP is the default
+        return f"{self.data}"  # IP address is unambiguous
 
     def __eq__(self, other):
         if not isinstance(other, IPAddress):

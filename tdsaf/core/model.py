@@ -7,7 +7,7 @@ from typing import List, Set, Optional, Tuple, TypeVar, Callable, Dict, Any, Sel
 from urllib.parse import urlparse
 
 from tdsaf.common.address import AnyAddress, Addresses, EndpointAddress, EntityTag, Network, Protocol, IPAddress, \
-    HWAddress, DNSName
+    DNSName
 from tdsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status
 from tdsaf.common.entity import Entity
 from tdsaf.common.property import PropertyKey
@@ -234,7 +234,7 @@ class NetworkNode(Entity):
     def get_entity(self, name: str) -> Optional['Addressable']:
         """Get addressable entity by name, do not create new one"""
         for c in self.children:
-            if c.name == name and isinstance(c, Addressable):
+            if c.name == name:
                 return c
         return None
 
@@ -422,20 +422,6 @@ class Host(Addressable):
 
     def get_parent_host(self) -> 'Host':
         return self
-
-    def learn_address_pair(self, hw: HWAddress, ip: IPAddress) -> bool:
-        """Learn local address pair"""
-        if not self.addresses:
-            return False  # 'Any' target do not
-        if hw.is_null():
-            return False  # Null is not real address
-        if not self.get_system().is_external(ip) and not ip.is_multicast() and not ip.is_null():
-            # this should be unique address for me
-            if ip not in self.addresses or hw not in self.addresses:
-                self.addresses.add(ip)
-                self.addresses.add(hw)
-                return True
-        return False
 
     def get_verdict(self, cache: Dict[Entity, Verdict]) -> Verdict:
         if self in cache:
