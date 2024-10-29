@@ -40,8 +40,8 @@ def test_parse_from_json():
         "file_type": "capture",
         "include": True,
         "addresses": {
-            "1.2.3.4": "Device 1",
-            "1:2:3:4:5:6|hw": "Device 2"
+            "1.2.3.4": "Device",
+            "1:2:3:4:5:6|hw": "Device_2"
         }
     }
     sb = simple_setup_1()

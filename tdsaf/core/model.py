@@ -234,7 +234,7 @@ class NetworkNode(Entity):
     def get_entity(self, name: str) -> Optional['Addressable']:
         """Get addressable entity by name, do not create new one"""
         for c in self.children:
-            if c.name == name and isinstance(c, Addressable):
+            if c.name == name:
                 return c
         return None
 

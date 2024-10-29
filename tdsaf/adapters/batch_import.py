@@ -8,7 +8,7 @@ import pathlib
 import io
 from typing import Dict, List, Optional
 
-from tdsaf.common.address import Addresses
+from tdsaf.common.address import Addresses, EntityTag
 from tdsaf.common.basics import ExternalActivity
 from tdsaf.core.event_interface import EventInterface
 from tdsaf.core.model import EvidenceNetworkSource, IoTSystem
@@ -196,18 +196,20 @@ class FileMetaInfo:
         r.default_include = bool(json_data.get("include", True))
 
         # read batch-specific addresses
-        for add, ent in json_data.get("addresses", {}).items():
+        for add, ent_s in json_data.get("addresses", {}).items():
             address = Addresses.parse_address(add)
-            entity = system.get_entity(ent)
+            ent = Addresses.parse_address(ent_s)
+            entity = system.find_endpoint(ent)
             if not entity:
-                raise ValueError(f"Unknown entity {ent}")
+                raise ValueError(f"Unknown entity {ent_s}")
             r.source.address_map[address] = entity
 
         # read batch-specific external activity policies
-        for n, policy_n in json_data.get("external_activity", {}).items():
-            node = system.get_entity(n)
+        for ent_s, policy_n in json_data.get("external_activity", {}).items():
+            ent = Addresses.parse_address(ent_s)
+            node = system.find_endpoint(ent)
             if not node:
-                raise ValueError(f"Unknown entity '{n}'")
+                raise ValueError(f"Unknown entity '{ent_s}'")
             policy = ExternalActivity[policy_n]
             r.source.activity_map[node] = policy
         return r
