@@ -243,16 +243,17 @@ Example metafile `00meta.json`:
 
 See the tool manual for how to save scanning data.
 
-## Advanced metafile definitions
+## Other metafile definitions
 
-Sometimes IP or HW addresses change between tool runs.
+Addresses of the hosts can be defined in metafiles.
+Definitions in parent directories apply in sub-directory metafiles.
 The following shows how addresses can be customized per batch directory.
 ```json
 {
     "file_type": "mitmproxy",
     "addresses": {
-        "192.168.4.8": "Ruuvi app",
-        "30:c6:f7:52:db:5d|wd": "Ruuvi Gateway",
+        "192.168.4.8": "Ruuvi_app",
+        "30:c6:f7:52:db:5d|wd": "Ruuvi_Gateway",
     }
 }
 ```
@@ -263,7 +264,7 @@ The following shows how to allow UNLIMITED external connections if host is a rou
 {
     "file_type": "capture",
     "external_activity": {
-        "Ruuvi Gateway": "UNLIMITED"
+        "Ruuvi_Gateway": "UNLIMITED"
     }
 }
 ```

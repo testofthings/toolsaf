@@ -12,26 +12,26 @@ def test_finder():
     c0 = dev1 >> dev3 / TCP(1234)
 
     sp = Finder.specify(dev1.entity)
-    assert sp == {"address": "Device|tag"}
+    assert sp == {"address": "Device"}
     f = Finder.find(su.system.system, sp)
     assert f == dev1.entity
 
     sp = Finder.specify((dev2 / DHCP).entity)
-    assert sp == {"address": "Device_2|tag/udp:67"}  # Not optimal
+    assert sp == {"address": "Device_2/udp:67"}  # Not optimal
     f = Finder.find(su.system.system, sp)
     assert f.long_name() == "Device 2 DHCP"
 
     with pytest.raises(ValueError):
-        Finder.find(su.system.system, {"address": "Doe_Hot|tag", "software": "Doe Hot SW"})
+        Finder.find(su.system.system, {"address": "Doe_Hot", "software": "Doe Hot SW"})
     sw = dev3.software("Sw")
-    f = Finder.find(su.system.system, {"address": "Doe_Hot|tag", "software": "Sw"})
+    f = Finder.find(su.system.system, {"address": "Doe_Hot", "software": "Sw"})
     assert f == sw.sw
     sp = Finder.specify(sw.sw)
-    assert sp == {"address": "Doe_Hot|tag", "software": "Sw"}
+    assert sp == {"address": "Doe_Hot", "software": "Sw"}
 
     sp = Finder.specify(c0.connection)
-    assert sp == {"connection": ["Device|tag", "Doe_Hot|tag/tcp:1234"]}
-    f = Finder.find(su.system.system, {"connection": ["Device|tag", "Doe_Hot|tag/tcp:1234"]})
+    assert sp == {"connection": ["Device", "Doe_Hot/tcp:1234"]}
+    f = Finder.find(su.system.system, {"connection": ["Device|tag", "Doe_Hot/tcp:1234"]})
     assert f == c0.connection
 
     # Not implemented
