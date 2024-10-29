@@ -6,7 +6,7 @@ import json
 import logging
 import pathlib
 import io
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from tdsaf.common.address import Addresses
 from tdsaf.common.basics import ExternalActivity
@@ -32,13 +32,13 @@ class BatchImporter:
     def import_batch(self, file: pathlib.Path):
         """Import a batch of files from a directory or zip file recursively."""
         if file.is_dir:
-            self._import_batch(file)
+            self._import_batch(file, FileMetaInfo())
             if not self.meta_file_count:
                 self.logger.warning("No 00meta.json files found")
         else:
             raise ValueError(f"Expected directory, got {file.as_posix()}")
 
-    def _import_batch(self, file: pathlib.Path):
+    def _import_batch(self, file: pathlib.Path, parent_info: 'FileMetaInfo'):
         """Import a batch of files from a directory or zip file recursively."""
         self.logger.info("scanning %s", file.as_posix())
         if file.is_dir():
@@ -47,17 +47,17 @@ class BatchImporter:
             if meta_file.is_file():
                 # the directory has data files
                 if meta_file.stat().st_size == 0:
-                    info = FileMetaInfo(dir_name) # meta_file is empty
+                    info = FileMetaInfo(dir_name, parent=parent_info) # meta_file is empty
                 else:
                     try:
                         with meta_file.open("rb") as f:
-                            info = FileMetaInfo.parse_from_stream(f, dir_name, self.system)
+                            info = FileMetaInfo.parse_from_stream(f, dir_name, self.system, parent=parent_info)
                     except Exception as e:
                         raise ValueError(f"Error in {meta_file.as_posix()}") from e
                 self.evidence.setdefault(info.label, [])
                 self.meta_file_count += 1
             else:
-                info = FileMetaInfo()
+                info = FileMetaInfo(parent=parent_info)
 
             # get tool info by file type
             tool_dep = ToolFinder.by_file_type(info.file_type)
@@ -103,7 +103,7 @@ class BatchImporter:
                     with a_file.open("rb") as f:
                         self._do_process(f, a_file, info, tool_dep, skip_processing)
                 else:
-                    self._import_batch(a_file)
+                    self._import_batch(a_file, info)
 
     def _do_process(self, stream: io.BytesIO, file_path: pathlib.Path, info: 'FileMetaInfo', tool: ToolDepiction,
                     skip_processing: bool):
@@ -165,7 +165,7 @@ class BatchImporter:
 
 class FileMetaInfo:
     """Batch file information."""
-    def __init__(self, label="", file_type=""):
+    def __init__(self, label="", file_type="", parent: Optional['FileMetaInfo'] = None) -> None:
         self.label = label
         self.file_load_order: List[str] = []
         self.file_type = file_type
@@ -173,18 +173,23 @@ class FileMetaInfo:
         self.load_baseline = False
         self.default_include = True
         self.source = EvidenceNetworkSource(file_type)
+        if parent:
+            self.source.address_map.update(parent.source.address_map)
+            self.source.activity_map.update(parent.source.activity_map)
 
     @classmethod
-    def parse_from_stream(cls, stream: io.BytesIO, directory_name: str, system: IoTSystem) -> 'FileMetaInfo':
+    def parse_from_stream(cls, stream: io.BytesIO, directory_name: str, system: IoTSystem,
+                          parent: Optional['FileMetaInfo'] = None) -> 'FileMetaInfo':
         """Parse from stream"""
-        return cls.parse_from_json(json.load(stream), directory_name, system)
+        return cls.parse_from_json(json.load(stream), directory_name, system, parent)
 
     @classmethod
-    def parse_from_json(cls, json_data: Dict, directory_name: str, system: IoTSystem) -> 'FileMetaInfo':
+    def parse_from_json(cls, json_data: Dict, directory_name: str, system: IoTSystem,
+                          parent: Optional['FileMetaInfo'] = None) -> 'FileMetaInfo':
         """Parse from JSON"""
         label = str(json_data.get("label", directory_name))
         file_type = json_data.get("file_type", "")
-        r = cls(label, file_type)
+        r = cls(label, file_type, parent=parent)
         r.from_pipe = bool(json_data.get("from_pipe", False))
         r.load_baseline = bool(json_data.get("load_baseline", False))
         r.file_load_order = json_data.get("file_order", [])
