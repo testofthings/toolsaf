@@ -93,6 +93,13 @@ class SerializationController:
             self.mappers_by_names[type_name] = m
         return m
 
+    def __getitem__(self, body: Any) -> str:
+        """Get identifier for object"""
+        i = self.reverse_ids.get(body)
+        if i is None:
+            return self.allocate(body)
+        return i
+
     def allocate(self, body: Any, identifier: Optional[str] = None) -> str:
         """Allocate identifier for object"""
         i = str(len(self.contexts)) if identifier is None else identifier
