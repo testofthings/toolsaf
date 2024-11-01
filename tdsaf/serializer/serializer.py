@@ -20,7 +20,8 @@ class SerializerContext:
         self.control.contexts[body] = self
         if body not in self.control.reverse_ids:
             # allocate next identifier
-            self.control.allocate(body)
+            i = self.mapper.explicit_id(body) if self.mapper.explicit_id else None
+            self.control.allocate(body, identifier=i)
 
     def list(self, attribute: List[Any], types: Iterable[Type]) -> Self:
         """Register list callback"""
@@ -97,7 +98,10 @@ class SerializationController:
         """Get identifier for object"""
         i = self.reverse_ids.get(body)
         if i is None:
-            return self.allocate(body)
+            mapper = self.get_mapper(type(body))
+            assert mapper, f"Class {type(body)} not mapped"
+            i = mapper.explicit_id(body) if mapper.explicit_id else None
+            return self.allocate(body, identifier=i)
         return i
 
     def allocate(self, body: Any, identifier: Optional[str] = None) -> str:
@@ -130,6 +134,7 @@ class ClassMapper(Generic[C]):
         self.controller = controller
         self.mapped_class = mapped_class
         self.type_name = type_name
+        self.explicit_id: Optional[Callable[[Any], str]] = None  # explicit id resolver
         self.new_call: Optional[Callable[[SerializerContext], C]] = None
         self.register_call: Optional[Callable[[C], SerializerContext]] = None
         self.simple_attributes: Dict[str, str] = {}
