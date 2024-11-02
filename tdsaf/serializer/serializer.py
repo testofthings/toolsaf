@@ -2,7 +2,8 @@
 
 import json
 from typing import Any, Callable, Dict, Generic, Iterable, List, Optional, Self, Type, TypeVar
-from tdsaf.core.model import Addressable, Host, IoTSystem, NetworkNode, Service
+from tdsaf.core.components import Software
+from tdsaf.core.model import Addressable, Host, IoTSystem, NetworkNode, NodeComponent, Service
 
 T = TypeVar('T')
 
@@ -271,6 +272,14 @@ class SystemSerializer(AbstractSerializer):
         with self.control(Service, "service").derive(Addressable) as m:
             m.new(lambda c: Service(c["name"], c.parent))
 
+        with self.control(NodeComponent, "component") as m:
+            m.default("name")
+            if not self.miniature:
+                m.writer("long_name", lambda c: c.body.long_name())
+
+        with self.control(Software, "sw").derive(NodeComponent) as m:
+            m.new(lambda c: Software(c.parent, c["name"]))
+
         self.control(IoTSystem, "system").derive(NetworkNode)
 
     # pylint: disable=missing-function-docstring
@@ -278,6 +287,7 @@ class SystemSerializer(AbstractSerializer):
     def network_node(self, new: NetworkNode) -> SerializerContext:
         ctx = SerializerContext(self.control, new)
         ctx.list(new.children, {Host, Service})
+        ctx.list(new.components, {Software})
         return ctx
 
     def iot_system(self, new: IoTSystem) -> SerializerContext:
