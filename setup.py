@@ -8,7 +8,13 @@ with open('requirements.txt', encoding="utf-8") as f:
 setup(
     name='tdsaf',
     version='0.0',
-    packages=['tdsaf'],
+    packages=[
+        'tdsaf',
+        'tdsaf.adapters',
+        'tdsaf.common',
+        'tdsaf.core',
+        'tdsaf.serializer',
+    ],
     author="Rauli Kaksonen",
     author_email="rauli.kaksonen@testofthings.com",
     entry_points={
