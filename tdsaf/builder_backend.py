@@ -53,6 +53,10 @@ class SystemBackend(SystemBuilder):
         self.loaders: List[EvidenceLoader] = []
         self.protocols: Dict[Any, 'ProtocolBackend'] = {}
 
+    def run(self, custom_arguments: Optional[List[str]] = None) -> Registry:
+        """Model is ready, run the checks"""
+        raise NotImplementedError("Not implemented")
+
     def network(self, subnet="", ip_mask: Optional[str] = None) -> 'NetworkBuilder':
         if subnet:
             nb = NetworkBackend(self, subnet)
@@ -1087,8 +1091,7 @@ class SystemBackendRunner(SystemBackend):
             logging, args.log_level or 'INFO'))
         return args
 
-    def run(self, custom_arguments: Optional[List[str]] = None):
-        """Model is ready, run the checks"""
+    def run(self, custom_arguments: Optional[List[str]] = None) -> Registry:
         args = self._parse_arguments(custom_arguments)
         if args.dhcp:
             self.any().serve(DHCP)
@@ -1124,7 +1127,7 @@ class SystemBackendRunner(SystemBackend):
             for label, sl in sorted(batch_import.evidence.items()):
                 sl_s = ", ".join(sorted(set(s.name for s in sl)))
                 print(f"{label:<20} {sl_s}")
-            return
+            return registry
 
         # load product claims, then explicit loaders (if any)
         for sub in self.claim_set.finish_loaders():
@@ -1145,18 +1148,18 @@ class SystemBackendRunner(SystemBackend):
                 api.logger.info("POST file %s", data)
                 resp = api.api_post_file(request, pathlib.Path(data))
             print(json.dumps(resp, indent=4))
-            return
+            return registry
         if args.test_get:
             wid, hei = shutil.get_terminal_size()[0], 0  # only width specified
             for res in args.test_get:
                 api_req = APIRequest.parse(res)
                 api_req.set_param("screen", f"{wid}x{hei}")
                 print(api.api_get(api_req, pretty=True))
-            return
+            return registry
 
         if custom_arguments is not None:
             # custom arguments, return without 'running' anything
-            return
+            return registry
 
         out_form = args.output
         if not out_form:
@@ -1171,3 +1174,5 @@ class SystemBackendRunner(SystemBackend):
                 api, port=args.http_server, no_auth_ok=args.no_auth_ok)
             server.component_delay = (args.test_delay or 0) / 1000
             server.run()
+
+        return registry
