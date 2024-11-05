@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, Generic, Iterable, List, Optional, Self,
 
 from tdsaf.visualizer import Visualizer
 from tdsaf.core.components import Software
-from tdsaf.core.model import Addressable, Host, IoTSystem, NetworkNode, NodeComponent, Service
+from tdsaf.core.model import Addressable, Host, IoTSystem, NetworkNode, NodeComponent, Service, Connection
 
 T = TypeVar('T')
 
@@ -63,6 +63,11 @@ class SerializerContext:
             body_dict["at"] = self.control.reverse_ids[self.parent.body]
         for k, f in self.mapper.simple_attributes.items():
             body_dict[k] = getattr(self.body, f)
+        for k in self.mapper.references:
+            a = getattr(self.body, k)
+            if a is not None:
+                ids = self.control[a]
+                body_dict[k] = ids
         for k, func in self.mapper.custom_writers.items():
             body_dict[k] = func(self)
         return body_dict
@@ -117,12 +122,21 @@ class SerializationController:
 
 class ConstructionData:
     """Construction-time data"""
-    def __init__(self, fields: Dict[str, Any], parent: Optional[Any] = None):
+    def __init__(self, context: SerializerContext, fields: Dict[str, Any], parent: Optional[Any] = None):
+        self.context = context
         self.fields = fields
         self.parent = parent
 
     def __getitem__(self, key: str) -> Optional[Any]:
+        """Get JSON field value"""
         return self.fields.get(key)
+
+    def get_referenced(self, key: str) -> Optional[Any]:
+        """Get object referenced by field specified by key"""
+        ref = self.fields.get(key)
+        if ref is None:
+            return None
+        return self.context.control.identifiers.get(ref)
 
     def __repr__(self) -> str:
         return f"{json.dumps(self.fields)}"
@@ -141,6 +155,7 @@ class ClassMapper(Generic[C]):
         self.new_call: Optional[Callable[[SerializerContext], C]] = None
         self.register_call: Optional[Callable[[C], SerializerContext]] = None
         self.simple_attributes: Dict[str, str] = {}
+        self.references: List[str] = []
         self.default_sub_type: Optional[Type] = None
         self.custom_writers: Dict[str, Callable[[SerializerContext], Any]] = {}
         self.custom_readers: Dict[str, Callable[[SerializerContext, Any], None]] = {}
@@ -151,6 +166,7 @@ class ClassMapper(Generic[C]):
             m = self.controller.mappers.get(m_class)
             assert m is not None, f"Class {m_class} not found"
             self.simple_attributes.update(m.simple_attributes)
+            self.references.extend(m.references)
             self.custom_writers.update(m.custom_writers)
             if not self.register_call:
                 # new call not derived
@@ -161,6 +177,11 @@ class ClassMapper(Generic[C]):
         """Default handling for attribute(s)"""
         for a in attribute:
             self.simple_attributes[a] = a
+        return self
+
+    def reference(self, *attribute: str) -> Self:
+        """Handle attribute as reference"""
+        self.references.extend(attribute)
         return self
 
     def new(self, call: Callable[[ConstructionData], C]) -> Self:
@@ -219,7 +240,7 @@ class AbstractSerializer:
             mapper = self.control.mappers_by_names.get(class_str)
         assert mapper, f"Class {class_str} not mapped"
         if mapper.new_call:
-            con_data = ConstructionData(data, parent)
+            con_data = ConstructionData(context, data, parent)
             body = mapper.new_call(con_data)
         else:
             body = mapper.mapped_class()  # default constructor
@@ -283,10 +304,15 @@ class SystemSerializer(AbstractSerializer):
             if not self.miniature:
                 m.writer("long_name", lambda c: c.body.long_name())
 
+        with self.control(Connection, "connection") as m:
+            m.new(lambda c: Connection(c.get_referenced("source"), c.get_referenced("target")))
+            m.reference("source", "target")
+
         with self.control(Software, "sw").derive(NodeComponent) as m:
             m.new(lambda c: Software(c.parent, c["name"]))
 
         self.control(IoTSystem, "system").derive(NetworkNode)
+
 
     # pylint: disable=missing-function-docstring
 
@@ -297,4 +323,7 @@ class SystemSerializer(AbstractSerializer):
         return ctx
 
     def iot_system(self, new: IoTSystem) -> SerializerContext:
-        return self.network_node(new)
+        ctx = self.network_node(new)
+        cs = new.get_connections()
+        ctx.list(cs, {Connection})  # reading not supported
+        return ctx
