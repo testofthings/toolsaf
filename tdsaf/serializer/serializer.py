@@ -114,7 +114,7 @@ class SerializationController:
 
     def allocate(self, body: Any, identifier: Optional[str] = None) -> str:
         """Allocate identifier for object"""
-        i = str(len(self.contexts)) if identifier is None else identifier
+        i = f"id{len(self.contexts)}" if identifier is None else identifier
         self.identifiers[i] = body
         self.reverse_ids[body] = i
         return i
