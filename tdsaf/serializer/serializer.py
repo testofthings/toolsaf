@@ -2,6 +2,8 @@
 
 import json
 from typing import Any, Callable, Dict, Generic, Iterable, List, Optional, Self, Type, TypeVar
+
+from tdsaf.visualizer import Visualizer
 from tdsaf.core.components import Software
 from tdsaf.core.model import Addressable, Host, IoTSystem, NetworkNode, NodeComponent, Service
 
@@ -252,8 +254,9 @@ class AbstractSerializer:
 
 class SystemSerializer(AbstractSerializer):
     """IoT system serializer"""
-    def __init__(self, miniature=False):
+    def __init__(self, miniature=False, visualizer: Optional[Visualizer] = None):
         super().__init__()
+        self.visualizer = visualizer
         self.miniature = miniature  # keep unit tests minimal
 
         with self.control(NetworkNode) as m:
@@ -268,6 +271,9 @@ class SystemSerializer(AbstractSerializer):
 
         with self.control(Host, "host").derive(Addressable) as m:
             m.new(lambda c: Host(c.parent, c["name"]))
+            if self.visualizer:
+                # write xy-coordinates
+                m.writer("xy", lambda c: self.visualizer.place(c.body))
 
         with self.control(Service, "service").derive(Addressable) as m:
             m.new(lambda c: Service(c["name"], c.parent))
