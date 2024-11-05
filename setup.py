@@ -13,7 +13,6 @@ setup(
         'tdsaf.adapters',
         'tdsaf.common',
         'tdsaf.core',
-        'tdsaf.serializer',
     ],
     author="Rauli Kaksonen",
     author_email="rauli.kaksonen@testofthings.com",
