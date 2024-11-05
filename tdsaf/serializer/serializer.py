@@ -295,6 +295,7 @@ class SystemSerializer(AbstractSerializer):
             if self.visualizer:
                 # write xy-coordinates
                 m.writer("xy", lambda c: self.visualizer.place(c.body))
+                m.writer("image", lambda c: self.visualizer.images.get(c.body))
 
         with self.control(Service, "service").derive(Addressable) as m:
             m.new(lambda c: Service(c["name"], c.parent))
