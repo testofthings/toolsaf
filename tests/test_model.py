@@ -211,14 +211,14 @@ def test_match_local_and_remote():
 
     # known local first
     cs21 = m.connection(IPFlow.UDP("1:0:0:0:0:3", "192.168.0.3", 1001) >> ("1:0:0:0:0:1", "192.168.0.1", 2001))
-    cs22 = m.connection(IPFlow.UDP("1:0:0:0:0:3", "192.168.0.3", 1001) >> ("1:0:0:0:0:1", "19.168.0.2", 2002))
+    cs22 = m.connection(IPFlow.UDP("1:0:0:0:0:3", "192.168.0.3", 1001) >> ("1:0:0:0:0:1", "192.168.0.2", 2002))
 
     assert cs01.target.name == "01:00:00:00:03:01"
     assert cs02.target.name == "19.168.3.2"
     assert cs11.target.name == "19.168.2.2"
     assert cs12.target.name == "01:00:00:00:02:01"
     assert cs21.target.name == "Device 1"
-    assert cs22.target.name == "19.168.0.2"
+    assert cs22.target.name == "Device 1"
 
 
 def test_reverse_connection_first():

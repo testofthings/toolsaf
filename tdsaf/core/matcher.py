@@ -439,7 +439,13 @@ class MatchEngine:
         system = self.system.system
         stack = flow.stack(target)
         use_ad = stack[0]
+        am = self._match_existing_host(use_ad, flow, target)
+        if am:
+            return am  # not new host
         for ad in stack[1:]:
+            am = self._match_existing_host(ad, flow, target)
+            if am:
+                return am  # not new host
             if isinstance(ad, IPAddress) and (system.is_external(ad) or ad.is_multicast()):
                 use_ad = ad  # must use the IP address
                 break
@@ -449,6 +455,18 @@ class MatchEngine:
         # target address with port
         ad = EndpointAddress(use_ad, flow.protocol, flow.port(target))
         return AddressMatch(ad, self._add_host(host))
+
+    def _match_existing_host(self, address: AnyAddress, flow: Flow, target: bool) -> Optional[AddressMatch]:
+        """Match existing host as endpoint for unexpected conncetion, use also per-evidence source mappings"""
+        netw = flow.network or self.system.system.get_networks_for(address)[0]
+        ma = AddressAtNetwork(address, netw)
+        ends = self.endpoints.get(ma, ())
+        for end in ends:
+            if not end.entity.is_original():
+                continue  # unexpected stuff not matched
+            ad = EndpointAddress(address, flow.protocol, flow.port(target))
+            return AddressMatch(ad, end)
+        return None
 
     def new_connection(self, source: AddressMatch, target: AddressMatch) -> ConnectionMatch:
         """New connection, unexpected"""
