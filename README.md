@@ -17,7 +17,7 @@ The verification is done by running [supported tools](Tools.md), and using their
 
 
 ## Getting Started with TDSAF
-At the moment there is no _PyPi_ package for TDSAF, so it must be installed manually. Here's how to do that.
+At the moment there is no _PyPi_ package for TDSAF, so it must be installed manually. Here's how to do that:
 
 First, clone this repository.
 ```shell
@@ -39,10 +39,15 @@ Finally, TDSAF can be taken into use in the statement's directory with the follo
 pip install -e ../tdsaf/ --config-settings editable_mode=strict
 ```
 
-## Creating Security Statements
-Information on creating security statements with TDSAF can be found [here](documentation/CreatingSecurityStatements.md).
+Keep in mind that TDSAF and security statements should be stored in their own separate directories.
 
-## Verifying Security Statements
+## Working with Security Statements
+This sections explains how to create security statements for your devices and how to then verify these statements. The explanations also provide examples based on how we created a security statement for the _Deltaco Smart Outdoor Plug_.
+
+### Creating Security Statements
+Information on security statement creation is provided [here](documentation/CreatingSecurityStatements.md).
+
+### Verifying Security Statements
 Information on security statement verification is provided [here](documentation/VerifyingSecurityStatements.md).
 
 ## Usage
