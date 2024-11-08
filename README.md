@@ -1,29 +1,55 @@
 # Tool-Driven Security Assessment Framework
 
-This is **early version** of the _Tool-driven security assessment_ (TDSA) framework.
+This is an **early version** of the _Tool-driven security assessment_ (TDSA) framework.
 The framework is intended to support automated security assessment of _Internet of Things_ (IoT) and other systems by running common security tools.
 
-This is open-source project driven by [Test of Things](https://testofthings.com).
+This is an open-source project driven by [Test of Things](https://testofthings.com).
 It has been developed based on the PhD thesis of Rauli Kaksonen.
-Orginally, the project was created to demonstrate the TDSA approach for research purposes, but the goal is to make it a real-world usable security assessment 
-framework.
+Orginally, the project was created to demonstrate the TDSA approach for research purposes, but the goal is to make it a real-world usable security assessment framework.
 
 The framework has two main functions:
 
-  1. Creation of _security statement_ for an IoT/IT product or system
-  1. Verification of the statement using output from supported tools
+  1. _Security statement_ creation for an IoT/IT product or system
+  1. Statement verification using output from supported tools
 
-The security statement is now created by Python-based _Domain-Specific Language_ (DSL).
-The verification is done by running [supported tools](Tools.md), which output is them used to pass verdicts for security statement properties.
+Security statements are currently created with a Python-based _Domain-Specific Language_ (DSL).
+The verification is done by running [supported tools](Tools.md), and using their output to pass verdicts on security statement properties.
 
-## Future plans
+------------------------------------
+## Getting Started with TDSAF
+TODO (git clone, install TDSAF, install tools)
 
-On the long run the framework is intended to support JSON-based security statement descripitons and cover more different tools.
-Check the [roadmap](Roadmap.md) for upcoming features.
+
+## Creating Security Statements
+TODO
+
+### Project Structure
+TODO
+
+### Statement Contents
+TODO
+
+### Understanding the DSL
+TODO
+
+
+## Verifying Security Statements
+TODO
+
+### Collecting Tool Data
+TODO
+
+### Using Tool Data with TDSAF
+TODO (-r flag)
+
+### Checking TDSAF Output
+TODO (Pass or Failed)
+
+------------------------------------
 
 ## Usage
 
-Security statement are created by Python [Domain Specific Language (DSL)](DSLIntro.md). 
+Security statement are created by Python [Domain Specific Language (DSL)](DSLIntro.md).
 The idea is that security statement are created as Python applications, with one or several statements per application.
 Thus, the first thing is to create a Python application project. I recommend creating a _virtual environment_ for the project (there are many guides in the Internet). For example
 
@@ -84,6 +110,11 @@ The security statement for Ruuvi is executed like this, assuming working directo
 $ python samples/ruuvi/ruuvi.py
 ```
 The command dumps some basic information about the security statement.
+
+## Future plans
+
+On the long run the framework is intended to support JSON-based security statement descripitons and cover more different tools.
+Check the [roadmap](Roadmap.md) for upcoming features.
 
 ## License
 
