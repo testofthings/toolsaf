@@ -15,37 +15,35 @@ The framework has two main functions:
 Security statements are currently created with a Python-based _Domain-Specific Language_ (DSL).
 The verification is done by running [supported tools](Tools.md), and using their output to pass verdicts on security statement properties.
 
-------------------------------------
-## Getting Started with TDSAF
-TODO (git clone, install TDSAF, install tools)
 
+## Getting Started with TDSAF
+At the moment there is no _PyPi_ package for TDSAF, so it must be installed manually. Here's how to do that.
+
+First, clone this repository.
+```shell
+git clone https://github.com/testofthings/tdsaf.git # HTTPS
+# OR
+git clone git@github.com:testofthings/tdsaf.git     # SSH
+```
+
+Next, create a directory and a virtual environment for your security statement.
+```shell
+mkdir statement-device
+cd statement-device
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+Finally, TDSAF can be taken into use in the statement's directory with the following command.
+```shell
+pip install -e ../tdsaf/ --config-settings editable_mode=strict
+```
 
 ## Creating Security Statements
-TODO
-
-### Project Structure
-TODO
-
-### Statement Contents
-TODO
-
-### Understanding the DSL
-TODO
-
+Information on creating security statements with TDSAF can be found [here](documentation/CreatingSecurityStatements.md).
 
 ## Verifying Security Statements
-TODO
-
-### Collecting Tool Data
-TODO
-
-### Using Tool Data with TDSAF
-TODO (-r flag)
-
-### Checking TDSAF Output
-TODO (Pass or Failed)
-
-------------------------------------
+Information on security statement verification is provided [here](documentation/VerifyingSecurityStatements.md).
 
 ## Usage
 
