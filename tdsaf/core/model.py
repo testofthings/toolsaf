@@ -193,11 +193,14 @@ class NetworkNode(Entity):
         return ns
 
     def get_connections(self, relevant_only=True) -> List[Connection]:
-        """Get relevant conneciions"""
-        cs = []
+        """Get relevant conneciions, filter out dupes"""
+        cs = {}
         for c in self.children:
-            cs.extend(c.get_connections(relevant_only))
-        return cs
+            c_cs = c.get_connections(relevant_only)
+            for conn in c_cs:
+                if conn not in cs:
+                    cs[conn] = c
+        return list(cs.keys())
 
     def get_system(self) -> 'IoTSystem':
         """Access the system-level"""
@@ -397,7 +400,7 @@ class Host(Addressable):
         self.networks = [] # follow parent
         self.visual = True
         self.ignore_name_requests: Set[DNSName] = set()
-        self.connections: List[Connection] = []  # connections initiated here
+        self.connections: List[Connection] = []  # connections terminating here
 
     def is_concrete(self) -> bool:
         """Is a concrete host, not any host, multicast or client side entity"""
