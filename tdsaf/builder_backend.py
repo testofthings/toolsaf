@@ -1059,7 +1059,7 @@ class SystemBackendRunner(SystemBackend):
                             help="List tools read from batch")
         parser.add_argument("--def-loads", "-L", type=str,
                             help="Comma-separated list of tools to load")
-        parser.add_argument("--output", "-o", help="Output format")
+        parser.add_argument("--with-files", "-w", action="store_true", help="Show relevant result files for verdicts")
         parser.add_argument("--dhcp", action="store_true",
                             help="Add default DHCP server handling")
         parser.add_argument("--dns", action="store_true",
@@ -1158,13 +1158,10 @@ class SystemBackendRunner(SystemBackend):
             # custom arguments, return without 'running' anything
             return
 
-        out_form = args.output
-        if not out_form:
-            # default text output
-            report = Report(registry)
-            report.print_report(sys.stdout)
-        else:
-            raise ConfigurationException(f"Unknown output format '{out_form}'")
+        with_files = bool(args.with_files)
+        report = Report(registry)
+        report.source_count = 3 if with_files else 0
+        report.print_report(sys.stdout)
 
         if args.http_server:
             server = HTTPServerRunner(
