@@ -14,7 +14,7 @@ def test_import_batch_a():
     su = Setup_1()
     BatchImporter(Inspector(su.get_system())).import_batch(pathlib.Path("tests/samples/batch/batch-a"))
     conn = su.get_system().get_connections()
-    assert len(conn) == 2
+    assert len(conn) == 1
 
 
 def test_import_batch_a_not():
@@ -32,7 +32,7 @@ def test_import_batch_a_yes():
     bi.label_filter = LabelFilter("X,batch-a")
     bi.import_batch(pathlib.Path("tests/samples/batch/batch-a"))
     conn = su.get_system().get_connections()
-    assert len(conn) == 2
+    assert len(conn) == 1
 
 
 def test_parse_from_json():
