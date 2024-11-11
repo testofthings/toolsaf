@@ -69,7 +69,8 @@ Once the _system_ object is created, you can begin defining the various componen
 * Browser (`system.browser`): Browser application
 * Backend (`system.backend`): Backend services
 * Network (`system.network`): System networks
-* Any (`system.any`): Conseptual node for services provided by the environment, e.g. a network router
+* Any (`system.any`): Conceptual node for services provided by the environment, e.g. a network router
+* Broadcast (`system.broadcast`): TODO
 
 Each node must be assigned a name. It’s best to name them according to what they represent. For instance, if the system includes a smart plug, it should be added to the system like this:
 ```python3
@@ -94,6 +95,11 @@ backend_conn = backend / NTP / TLS
 devuce >> backend_conn
 mobile >> backend_conn
 ```
+
+#### TODO
+* Explain `<<` operator use
+* Info on `broadcast`
+
 
 ### TODO
 - In the future maybe add info on **Graphical View**
