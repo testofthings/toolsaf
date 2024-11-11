@@ -148,6 +148,7 @@ C = TypeVar('C')
 class ClassMapper(Generic[C]):
     """Local data mapper"""
     def __init__(self, controller: SerializationController, mapped_class: Type, type_name="") -> None:
+        self.abstract = False
         self.controller = controller
         self.mapped_class = mapped_class
         self.type_name = type_name
@@ -223,7 +224,14 @@ class AbstractSerializer:
     def write_json(self) -> Iterable[Dict]:
         """Write to JSON"""
         for ctx in self.control.contexts.values():
-            yield ctx.write_json()
+            if not ctx.mapper.abstract:
+                yield ctx.write_json()
+
+    def iterate_writable(self) -> Iterable[SerializerContext]:
+        """Iterate over all writable data"""
+        for ctx in self.control.contexts.values():
+            if not ctx.mapper.abstract:
+                yield ctx
 
     def read_json(self, data: Dict) -> Any:
         """Read next object from JSON stream"""
@@ -301,6 +309,7 @@ class SystemSerializer(AbstractSerializer):
             m.new(lambda c: Service(c["name"], c.parent))
 
         with self.control(NodeComponent, "component") as m:
+            m.abstract = True
             m.default("name")
             if not self.miniature:
                 m.writer("long_name", lambda c: c.body.long_name())
