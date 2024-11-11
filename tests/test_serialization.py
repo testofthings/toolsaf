@@ -10,9 +10,9 @@ def test_simple_model():
     writer.iot_system(su.get_system())
     js = list(writer.write_json())
     assert len(js) == 5
-    assert js[0] == {"id": "1", "type": "system", "name": "Test"}
-    assert js[1] == {"id": "2", "at": "1", "type": "host", "name": "Device 1"}
-    assert js[4] == {"id": "5", "at": "1", "type": "connection", "source": "4", "target": "3"}
+    assert js[0] == {"id": "id1", "type": "system", "name": "Test"}
+    assert js[1] == {"id": "id2", "at": "id1", "type": "host", "name": "Device 1"}
+    assert js[4] == {"id": "id5", "at": "id1", "type": "connection", "source": "id4", "target": "id3"}
 
     reader = SystemSerializer(miniature=True)
     r = []
