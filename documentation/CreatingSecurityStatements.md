@@ -29,8 +29,11 @@ TODO!!!!
 # Define external services
 any_host = system.any("Services")
 
-# Define devives
+# Define devices
 device = system.device("<Device name>")
+
+# Define open ports on the devices
+open_port_1 = device / SSH
 
 # Define any mobile apps
 mobile = system.mobile("<Mobile app name>")
