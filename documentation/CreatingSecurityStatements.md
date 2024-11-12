@@ -39,10 +39,10 @@ open_port_1 = device / SSH
 mobile = system.mobile("<Mobile app name>")
 
 # Define relevant backend services
-backend_1 = system.backend("<Service name>").serve(TLS(auth=True)).dns("<Service's DNS address>")
-backend_2 = system.backend("<Service name>").serve(NTP).dns("<Service's DNS address>")
+backend_1 = system.backend("<Service name>").serve(TLS(auth=True)).dns("<Service's DNS name>")
+backend_2 = system.backend("<Service name>").serve(NTP).dns("<Service's DNS name>")
 #...
-backend_n = system.backend("<Service name>").serve(NTP(port=124)).dns("<Service's DNS address>")
+backend_n = system.backend("<Service name>").serve(NTP(port=124)).dns("<Service's DNS name>")
 
 # Define connections and protocols from the device
 device >> backend_1 / TLS(auth=True)
@@ -52,6 +52,8 @@ device >> backend_2 / NTP
 mobile >> backend_1 / TLS(auth=True)
 
 ```
+The above example utilized the `tdsaf.main` Python module's interface code for our DSL. However, definitions from `tdsaf.common.basics` can also be used when creating security statements.
+
 
 #### TODO
 - Define networks in the above example
@@ -85,7 +87,9 @@ The code above creates a system backend called 'Code Repository' that supports H
 
 Connections from one system component to another are defined using the right and left shift operators `>>`, `<<`. The right shift operator indicates that a connection is sent from A to B. As an example, the statement `mobile >> backend_1` means that the mobile application initiates communications by connecting to backend service 1. On the other hand, the statement `mobile << backend_1` indicates that a connection is sent from B to A. So the statement's meaning becomes that communications between the mobile application and the backend service are initiated by the backend service.
 
-Statements using the shift operators are immediate followed by `/` and the top-level protocols used in the connections. If the mobile application uses `TLS` when connecting to the backend, the statement becomes:
+Connections between system components are defined using the right and left shift operators `>>` `<<`. The right shift operator indicates a connection from A to B. For example, the statement `mobile >> backend_1` means that the mobile application initiates a connection with backend service 1. Conversely, the left shift operator indicates a connection from B to A, so `mobile << backend_1` means that the backend service initiates communication with the mobile application.
+
+Statements using the shift operators are typically followed by `/` and the top-level protocols used in the connection. For instance, if the mobile application connects to the backend using `TLS`, the statement becomes:
 ```python3
 mobile >> backend_1 / TLS
 ```
@@ -103,8 +107,9 @@ mobile >> backend_conn
 ```
 
 #### TODO
-* Info on `broadcast`
+- Info on `broadcast`
 
 
 ### TODO
+- Mention claims
 - In the future maybe add info on **Graphical View**
