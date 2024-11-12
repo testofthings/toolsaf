@@ -53,7 +53,7 @@ mobile >> backend_1 / TLS(auth=True)
 
 ```
 
-### TODO
+#### TODO
 - Define networks in the above example
 - Example from Deltaco **here**
 
@@ -70,7 +70,7 @@ Once the _system_ object is created, you can begin defining the various componen
 * Backend (`system.backend`): Backend services
 * Network (`system.network`): System networks
 * Any (`system.any`): Conceptual node for services provided by the environment, e.g. a network router
-* Broadcast (`system.broadcast`): TODO
+* Broadcast (`system.broadcast`): **TODO**
 
 Each node must be assigned a name. It’s best to name them according to what they represent. For instance, if the system includes a smart plug, it should be added to the system like this:
 ```python3
@@ -83,21 +83,26 @@ code_repository = system.backend("Code Repository").serve(HTTP, TLS(auth=True)).
 ```
 The code above creates a system backend called 'Code Repository' that supports HTTP and authenticated TLS, with a DNS name of _github.com_. Note that adding a protocol like `TCP` to the `serve` call is only necessary if no higher-level protocol is used.
 
-Connections between system components are defined using the right shift operator `>>`. For example, `mobile >> backend_1` indicates that the mobile application communicates with backend service 1. This statement is then immediately followed by the top-level protocols used during communication. If the mobile application uses `NTP` and `TLS` to send requests to the backend, the statement becomes:
+Connections from one system component to another are defined using the right and left shift operators `>>`, `<<`. The right shift operator indicates that a connection is sent from A to B. As an example, the statement `mobile >> backend_1` means that the mobile application initiates communications by connecting to backend service 1. On the other hand, the statement `mobile << backend_1` indicates that a connection is sent from B to A. So the statement's meaning becomes that communications between the mobile application and the backend service are initiated by the backend service.
+
+Statements using the shift operators are immediate followed by `/` and the top-level protocols used in the connections. If the mobile application uses `TLS` when connecting to the backend, the statement becomes:
 ```python3
-mobile >> backend_1 / NTP / TLS
+mobile >> backend_1 / TLS
+```
+Additional protocols can be added to the statement by appending the statement with `/ <protocol>`.
+```python3
+mobile >> backend_1 / TLS / SSH
 ```
 
 Connection definitions can also be shortened as follows:
 ```python3
-backend_conn = backend / NTP / TLS
+backend_conn = backend / TLS / SSH
 
-devuce >> backend_conn
+device >> backend_conn
 mobile >> backend_conn
 ```
 
 #### TODO
-* Explain `<<` operator use
 * Info on `broadcast`
 
 
