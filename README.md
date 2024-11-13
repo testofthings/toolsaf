@@ -64,8 +64,8 @@ $ curl -v -X POST --data-binary @<batch-file>.zip  \
    http://localhost:8180/api1/batch
 ```
 
-## More options
-The framework has additional [command-line options](CommandLine.md).
+## Command Line Options
+The framework's command-line options are listed [here](documentation/CommandLineOptions.md).
 
 ## API server
 The framework can run as [API server](APIServer.md).
