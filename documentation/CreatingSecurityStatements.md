@@ -23,9 +23,6 @@ from tdsaf.main import Builder, TLS. NTP, ...
 
 system = Builder.new("<Product name>")
 
-# Define networks
-TODO!!!!
-
 # Define external services
 any_host = system.any("Services")
 
@@ -44,6 +41,9 @@ backend_2 = system.backend("<Service name>").serve(NTP).dns("<Service's DNS name
 #...
 backend_n = system.backend("<Service name>").serve(NTP(port=124)).dns("<Service's DNS name>")
 
+# Define connections from the environment
+any_host >> device / ARP
+
 # Define connections and protocols from the device
 device >> backend_1 / TLS(auth=True)
 device >> backend_2 / NTP
@@ -51,14 +51,79 @@ device >> backend_2 / NTP
 # Define connections and protocols from mobile apps
 mobile >> backend_1 / TLS(auth=True)
 
+if __name__ == '__main__':
+    system.run()
+
 ```
 The above example utilized the `tdsaf.main` Python module's interface code for our DSL. However, definitions from `tdsaf.common.basics` can also be used when creating security statements.
 
+#### Real World Example
+Now that we know the structure of a security statement, let's look at a real world example. Here is the security statement we created for the _Deltaco Smart Outdoor Plug_:
+```python3
+""" Security statement """
+from tdsaf.main import Builder, TLS, DNS, UDP, ARP, EAPOL, ICMP, TCP
 
-#### TODO
-- Define networks in the above example
-- Example from Deltaco **here**
+# Start modeling the IoT system
+system = Builder.new("Deltaco Smart Outdoor Plug")
 
+# Defining services by the environment (WiFi-hotspot)
+any_host = system.any("Services")
+
+# Defining the device
+smart_plug = system.device("Smart Plug")
+
+# Define open ports on the device
+smart_plub_tcp_port = smart_plug / TCP(port=6668)
+smart_plug_udp_port = smart_plug / UDP(port=63144)
+
+# Defining the mobile app
+mobile_app = system.mobile("Smart Home App")
+
+# Defining broadcasts
+udp_broadcast_1 = system.broadcast(UDP(port=6667))
+udp_broadcast_2 = system.broadcast(UDP(port=7000))
+udp_broadcast_3 = system.broadcast(UDP(port=30011))
+udp_broadcast_4 = system.broadcast(UDP(port=30012))
+
+# Defining relevant backend services
+tuya_1 = system.backend("Tuya Smart 1").serve(TLS(auth=True)).dns("a1.tuyaeu.com")
+tuya_2 = system.backend("Tuya Smart 2").serve(TLS(auth=True, port=8883)).dns("m1.tuyaeu.com")
+tuya_3 = system.backend("Tuya Smart 3").serve(TLS(auth=True)).dns("a3.tuyaeu.com")
+tuya_4 = system.backend("Tuya Smart 4").serve(TLS(auth=True, port=8886)).dns("m2.tuyaeu.com")
+tuya_images = system.backend("Tuya Images").serve().dns("images.tuyaeu.com")
+aws = system.backend("AWS").serve(TLS(auth=True)).dns("euimagesd2h2yqnfpu4gl5.cdn5th.com")
+aws_iot_dns = system.backend("AWS IoT DNS").serve(TLS(auth=True)).dns("h3.iot-dns.com")
+tencent = system.backend("Tencent Cloud Computing").serve(TCP(port=443)).dns("tencent.com")
+
+# Defining connections by the environment
+any_host >> smart_plug / ARP / EAPOL / ICMP
+any_host >> mobile_app / ARP
+
+# Defining connections from the device
+smart_plug >> any_host / DNS / ICMP
+smart_plug >> udp_broadcast_1
+smart_plug >> mobile_app / ARP
+smart_plug >> tencent / TCP(port=443)
+smart_plug >> tuya_3 / TLS(auth=True)
+smart_plug >> tuya_4 / TLS(auth=True, port=8886)
+smart_plug >> aws_iot_dns / TLS(auth=True)
+
+# Defining connections from the mobile application
+mobile_app >> udp_broadcast_2
+mobile_app >> udp_broadcast_3
+mobile_app >> udp_broadcast_4
+mobile_app >> any_host / DNS / ARP
+mobile_app >> smart_plub_tcp_port
+mobile_app >> tuya_1 / TLS(auth=True)
+mobile_app >> tuya_2 / TLS(auth=True, port=8883)
+mobile_app >> tuya_images / TLS(auth=True)
+mobile_app >> aws / TLS(auth=True)
+
+if __name__ == '__main__':
+    system.run()
+
+```
+As we do not know the inner working of the device, this statement was made based on the network traffic data we had collected.
 
 ### Understanding the DSL
 Since our DSL is built with Python, creating security statements is similar to writing Python scripts.
@@ -74,18 +139,16 @@ Once the _system_ object is created, you can begin defining the various componen
 * Any (`system.any`): Conceptual node for services provided by the environment, e.g. a network router
 * Broadcast (`system.broadcast`): **TODO**
 
-Each node must be assigned a name. It’s best to name them according to what they represent. For instance, if the system includes a smart plug, it should be added to the system like this:
+Each node must be assigned a name. It's best to name them according to what they represent. For instance, if the system includes a smart plug, it should be added to the system like this:
 ```python3
 smart_plug = system.device("Smart Plug")
 ```
 
-Nodes representing _backend_ services have an additional requirement. When defining them, you must specify the top-level protocols they serve and provide their DNS name. Here’s an example:"
+Nodes representing _backend_ services have an additional requirement. When defining them, you must specify the top-level protocols they serve and provide their DNS name. Here's an example:"
 ```python3
 code_repository = system.backend("Code Repository").serve(HTTP, TLS(auth=True)).dns("github.com")
 ```
 The code above creates a system backend called 'Code Repository' that supports HTTP and authenticated TLS, with a DNS name of _github.com_. Note that adding a protocol like `TCP` to the `serve` call is only necessary if no higher-level protocol is used.
-
-Connections from one system component to another are defined using the right and left shift operators `>>`, `<<`. The right shift operator indicates that a connection is sent from A to B. As an example, the statement `mobile >> backend_1` means that the mobile application initiates communications by connecting to backend service 1. On the other hand, the statement `mobile << backend_1` indicates that a connection is sent from B to A. So the statement's meaning becomes that communications between the mobile application and the backend service are initiated by the backend service.
 
 Connections between system components are defined using the right and left shift operators `>>` `<<`. The right shift operator indicates a connection from A to B. For example, the statement `mobile >> backend_1` means that the mobile application initiates a connection with backend service 1. Conversely, the left shift operator indicates a connection from B to A, so `mobile << backend_1` means that the backend service initiates communication with the mobile application.
 

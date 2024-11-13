@@ -42,7 +42,9 @@ pip install -e ../tdsaf/ --config-settings editable_mode=strict
 Keep in mind that TDSAF and security statements should be stored in their own separate directories.
 
 ## Working with Security Statements
-This sections explains how to create security statements for your devices and how to then verify these statements. The explanations also provide examples based on how we created a security statement for the _Deltaco Smart Outdoor Plug_.
+The following two subsections explain how to create security statements for your devices and then verify them. The explanations also provide examples based on how we created a security statement for the _Deltaco Smart Outdoor Plug_.
+
+If you’re a device manufacturer, begin with the creation section. If you’re less familiar with the inner workings of the device you want to test, start with the verification section, which covers data collection. A security statement can be created based on collected data <small>(as we did with the Smart Outdoor Plug)</small>.
 
 ### Creating Security Statements
 Information on security statement creation is provided [here](documentation/CreatingSecurityStatements.md).
