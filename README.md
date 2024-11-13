@@ -53,11 +53,6 @@ Information on security statement creation is provided [here](documentation/Crea
 Information on security statement verification is provided [here](documentation/VerifyingSecurityStatements.md).
 
 ## Providing tool data (TODO: Cleanup)
-The verification is tool-driven based on output from the tools. Tool results must be stored in a [batch directory](Tools.md) structure, which is specified by `--read` argument, e.g.
-```
-$ python statement.py --read <batch-dir>
-```
-
 The `--read` and `--http-server` arguments can be combined to inspecft the verification results using the UI.
 
 Batch files can be provided through API in a zip-file to endpoint `api1/batch`.

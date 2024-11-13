@@ -1,26 +1,35 @@
 # Tools
-
-The tdsaf can read output from several different tools to verify the security statement and claims.
-The tool output is read from a directory structure, which root must be provided to the framework by `--read <directory>` command-line arguement.
+TDSAF can read output from various tools to verify security statements and claims. Tool output is organized in a directory structure, with the root directory specified to the framework using the `--read <directory>` command-line argument.
 
 ## Batch files and directories
-
-The batch directory structure can be arbitarily deep. Each directory which contains data files, must have special metafile `00meta.json`. The metafile must always contain at least `file_type` of the data files. For example, consider the following metafile `00meta.json` for NMAP output data files.
-
+The batch directory structure can be arbitarily deep. Each directory containing data files must have a special metafile `00meta.json`. Metafiles must always contain at least the `file_type` of related data files. For example, consider the following `00meta.json` for NMAP output data files.
 ```json
 {
     "file_type": "nmap"
 }
 ```
-The data files have to usually be named according the template dictated by file type. The templates are discussed below with file types.
+The data files have to usually be named according to the template dictated by file type. The templates are discussed below with file types.
 
-Each batch directory has also _label_, which allows to filter the processed data.
-By default, label is the name of the directory, but it can be changed in the metafile, e.g. the following NMAP data is filtered by label `nmap-01`.
+Each batch directory also has a _label_, which allows TDSAF to filter the processed data. By default, the _label_ is the name of the directory, but it can be changed in the metafile, e.g. the following NMAP data is filtered by label `nmap-01`.
 ```json
 {
     "file_type": "nmap",
     "label": "nmap-01"
 }
+```
+
+Here is an exaple batch directory structure:
+```bash
+sample-data
+├── nmap-0
+│   ├── 00meta.json
+│   └── nmap_scan.xml
+├── pcap-0
+│   ├── 00meta.json
+│   └── capture.pcap
+└── pcap-1
+    ├── 00meta.json
+    └── capture.pcap
 ```
 
 See [end of this page](#advanced-metafile-definitions) for advanced options required with some data types.

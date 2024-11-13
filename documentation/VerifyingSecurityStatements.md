@@ -8,6 +8,8 @@ As an example of the data collection setup, here is an image of the system archi
 ![Data collection system architecture image](img/deltaco-smart-plug.png)
 In this setup, tools were operated by sending commands from the computer to the WiFi-hotspot over SSH. The tools we used were **_tcpdump_** and **_nmap_**.
 
+The collected data is stored to a [batch directory](../Tools.md#batch-files-and-directories).
+
 ## Notes on Collecting Different Types of Data
 ### Network Traffic
 When it comes to capturing network traffic with, e.g. tcpdump, start capturing packets before powering on the device or starting mobile applications. This ensures that all relevant data is captured.
@@ -17,7 +19,7 @@ TDSAF verifies security statements by comparing them to data collected from the 
 ```shell
 python3 product/statement.py -r ../sample-data/product/
 ```
-In this example, we have a directory called `sample-data` which holds the data collected for the system. TDSAF also requires that `00meta.json` files are also present in the data directory. More details on these JSON files are available [here](../Tools.md#batch-files-and-directories).
+In this example, we have a directory called `sample-data` <small>([batch directory](../Tools.md#batch-files-and-directories))</small> which holds the data collected from the system. TDSAF also requires that `00meta.json` files are also present in the data directory. More details on these JSON files are available [here](../Tools.md#batch-files-and-directories).
 
 ## Checking TDSAF Output
 Once a security statement file is run with either one of the _read_ flags, TDSAF outputs the statement's verification result. Here's an example to give you a rough idea what the results look like:
