@@ -1,7 +1,7 @@
-## Creating Security Statements
+# Creating Security Statements
 This document provides guidance on structuring your security statement project and details how you can fill in the statement using our Python DSL. Additionally, it outlines the various types of statements that can be created with the DSL.
 
-### Project Structure
+## Project Structure
 Security statements for each unique product should be placed in their own directory and treated as a standalone Python project. These directories can also function as individual Git repositories. Below is the expected structure for a security statement project:
 ```bash
 statement-product-name
@@ -14,7 +14,7 @@ _statement-product-name_ refers to a repository cloned from GitHub. Inside this 
 
 Note that security statements should not be placed inside the TDSAF directory.
 
-### Statement Contents
+## Statement Contents
 A security statement is structured as follows:
 ```python3
 """Security statement"""
@@ -57,7 +57,7 @@ if __name__ == '__main__':
 ```
 The above example utilized the `tdsaf.main` Python module's interface code for our DSL. However, definitions from `tdsaf.common.basics` can also be used when creating security statements.
 
-#### Real World Example
+### Real World Example
 Now that we know the structure of a security statement, let's look at a real world example. Here is the security statement we created for the _Deltaco Smart Outdoor Plug_:
 ```python3
 """ Security statement """
@@ -125,7 +125,7 @@ if __name__ == '__main__':
 ```
 As we do not know the inner working of the device, this statement was made based on the network traffic data we had collected.
 
-### Understanding the DSL
+## Understanding the DSL
 Since our DSL is built with Python, creating security statements is similar to writing Python scripts.
 
 As shown in the example at the beginning of the _**Statement Contents**_ section, building a security statement starts with a call to `Builder.new`. This call takes the system's name as an argument and returns a _system_ object, which represents the entire IoT system—from the _devices_, and _backend_ services to the _mobile apps_ and _networks_.
@@ -169,10 +169,17 @@ device >> backend_conn
 mobile >> backend_conn
 ```
 
-#### TODO
+## When the Statement is Defined
+To ensure that your statement is filled in properly, run the statement file with Python. This way you can be sure that its free of runtime errors.
+```shell
+python3 statement.py
+```
+Once the security statement is complete, it is ready for [verification](VerifyingSecurityStatements.md).
+
+### TODO
 - Info on `broadcast`
 
 
-### TODO
+## TODO
 - Mention claims
 - In the future maybe add info on **Graphical View**
