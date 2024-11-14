@@ -65,7 +65,7 @@ TDSAF lists out individual connections, displaying their source and target (`sou
 
 Connections are categorized as `Expected`, `Unexpected` or `External`. As with hosts, a connection is `Expected` when it is listed in the security statement and `Unexpected` when it's not. An exception to this are connections from mobile devices. They can be `External` when the communication source or target is not defined in the statement. This additional status was added as mobile devices make large amounts of connections to services unrelated to the system under test.
 
-Connection status is set to `Passed` if its definition in the security statement matches the tool output. **But sometimes it is just `Expected`, Why?**
+Connection status is set to `Pass` if it's defined in the security statement and found in the tool data.
 
 
 ## TODO
