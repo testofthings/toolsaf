@@ -180,5 +180,19 @@ Once the security statement is complete, it is ready for [verification](Verifyin
 - Info on `broadcast`
 
 
-## TODO
-- In the future maybe add info on **Graphical View**
+## Graphical view
+**UPDATE LATER ON**
+A visual representation of a model requires placing the network nodes into a canvas. The positions are controlled using DSL, like below.
+
+```python
+system.visualize().place(
+    "D   A",
+    "  B  ",
+) .where({
+    "D": device,
+    "B": backend,
+    "A": app
+})
+```
+The letters "A", "B", and "C" stand for the application, backend, and device.
+Their positions are determined in the `place` method.
