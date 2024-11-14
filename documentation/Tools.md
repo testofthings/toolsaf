@@ -1,5 +1,5 @@
 # Tools
-TDSAF can read output from various tools to verify security statements and claims. Tool output is organized in a directory structure, with the root directory specified to the framework using the `--read <directory>` command-line argument.
+TDSAF can read output from various tools to verify security statements. Tool output is organized in a directory structure, with the root directory specified to the framework using the `--read <directory>` command-line argument.
 
 ## Batch files and directories
 The batch directory structure can be arbitarily deep. Each directory containing data files must have a special metafile `00meta.json`. Metafiles must always contain at least the `file_type` of related data files. For example, consider the following `00meta.json` for NMAP output data files.

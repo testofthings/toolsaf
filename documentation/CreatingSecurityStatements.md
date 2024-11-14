@@ -181,5 +181,4 @@ Once the security statement is complete, it is ready for [verification](Verifyin
 
 
 ## TODO
-- Mention claims
 - In the future maybe add info on **Graphical View**

@@ -70,4 +70,3 @@ Connection status is set to `Pass` if it's defined in the security statement and
 
 ## TODO
 - Improve the TDSAF output explanation
-- Mention claims
