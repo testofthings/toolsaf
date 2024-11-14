@@ -191,7 +191,7 @@ class SystemBackend(SystemBuilder):
         """Finish the model"""
         # each real host must have software
         for h in self.system.get_hosts():
-            if not h.any_host and h.host_type != HostType.BROWSER:
+            if not h.any_host and h.host_type != HostType.BROWSER and not h.is_multicast():
                 Software.ensure_default_software(h)
 
         # We want to have a authenticator related to each authenticated service
