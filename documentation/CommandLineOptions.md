@@ -8,18 +8,32 @@ python tdsaf/main.py --help
 ```
 
 ## Reading Tool Output
-Tool output is read from a batch directory with `-r` or `--read`
+Tool output is read from a batch directory with `-r` or `--read`.
 ```bash
 python statements/statement.py -r ../sample-data
 ```
 
 ## Display Verdict Tool Data
-The lines, e.g. in a .pcap file, that effect verification verdicts can be printed out with `-w` or `--with-files`
+The lines/frames, e.g. in a _pcap_ file, that effect verification verdicts can be printed out with `-w` or `--with-files`.
 ```bash
 python statements/statement.py -r ../sample-data -w
 ```
+Example output showing that verdict was made based on a capture's frame 24078:
+```
+Device    ==> Backend 1 TLS:8886 [Expected/Pass]
+@../sample-data/device/pcap-1/capture.pcap:24078
+```
+
+## Display Batch Directory Data Type/Tool
+```
+python statements/statement.py -r ../sample-data --help-tools
+```
 Example output:
-**TODO**
+```
+nmap      Nmap scan
+pcap-0    PCAP reader
+pcap-1    PCAP reader
+```
 
 ## SQL Database
 Command line option `--db` connects to an SQL database.
@@ -34,15 +48,14 @@ For example, the following starts API server with content of the database.
 
      $ python statement --db sqlite:///test.db --http-server 8180
 
+## TODO:
 ```
---help-tools          List tools read from batch
 --def-loads DEF_LOADS, -L DEF_LOADS
                     Comma-separated list of tools to load
 --dhcp                Add default DHCP server handling
 --dns                 Add default DNS server handling
 -l {DEBUG,INFO,WARNING,ERROR,CRITICAL}, --log {DEBUG,INFO,WARNING,ERROR,CRITICAL}
                     Set the logging level
---db DB               Connect to SQL database
 --http-server HTTP_SERVER
                     Listen HTTP requests at port
 --test-delay TEST_DELAY
