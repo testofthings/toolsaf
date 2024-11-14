@@ -69,7 +69,9 @@ class SerializerContext:
                 ids = self.control[a]
                 body_dict[k] = ids
         for k, func in self.mapper.custom_writers.items():
-            body_dict[k] = func(self)
+            v = func(self)
+            if v is not None:
+                body_dict[k] = v
         return body_dict
 
     def __repr__(self) -> str:
@@ -314,8 +316,18 @@ class SystemSerializer(AbstractSerializer):
             if not self.miniature:
                 m.writer("long_name", lambda c: c.body.long_name())
 
+        def connection_name(connection: Connection) -> Optional[str]:
+            name = connection.target.name
+            # s = connection.source
+            # if isinstance(s, Service):
+            #     name = f"{s.name}-{name}"  # looks bad on ARP and DHCP
+            return name
+
         with self.control(Connection, "connection") as m:
             m.new(lambda c: Connection(c.get_referenced("source"), c.get_referenced("target")))
+            if not self.miniature:
+                m.writer("name", lambda c: connection_name(c.body))
+                m.writer("long_name", lambda c: c.body.long_name())
             m.reference("source", "target")
 
         with self.control(Software, "sw").derive(NodeComponent) as m:
