@@ -76,6 +76,6 @@ def test_shell_ss_two_networks():
     assert all([h.status_verdict() == (Status.EXPECTED, Verdict.PASS) for h in hs[0].children])
 
     assert len(co) == 3
-    assert co[0].status_verdict() == (Status.UNEXPECTED, Verdict.FAIL)
-    assert co[1].status_verdict() == (Status.UNEXPECTED, Verdict.FAIL)
-    assert co[2].status_verdict() == (Status.UNEXPECTED, Verdict.FAIL)
+    assert co[0].status_verdict() == (Status.EXTERNAL, Verdict.FAIL)
+    assert co[1].status_verdict() == (Status.EXTERNAL, Verdict.FAIL)
+    assert co[2].status_verdict() == (Status.EXTERNAL, Verdict.FAIL)

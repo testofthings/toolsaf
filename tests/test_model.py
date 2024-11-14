@@ -35,7 +35,7 @@ class Setup:
 def simple_setup_1(external=False) -> SystemBackend:
     sb = SystemBackend()
     dev1 = sb.device().hw("1:0:0:0:0:1")
-    dev2 = sb.device().ip("192.168.0.2")
+    dev2 = sb.device().ip("192.168.0.2").external_activity(ExternalActivity.BANNED)
     dev3 = sb.device()
     dev1 >> dev2 / UDP(port=1234)
     if external:
