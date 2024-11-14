@@ -66,6 +66,8 @@ class SystemBackend(SystemBuilder):
         name = name or self._free_host_name("Device")
         b = self.get_host_(name, "Internet Of Things device")
         b.entity.host_type = HostType.DEVICE
+        # E.g. ICMP ping is fine, but no reply unless in the model
+        b.entity.external_activity = ExternalActivity.PASSIVE
         return b
 
     def backend(self, name="") -> 'HostBackend':
