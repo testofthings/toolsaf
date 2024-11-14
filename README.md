@@ -12,7 +12,7 @@ The framework has two main functions:
   1. Statement verification using output from supported tools
 
 Security statements are currently created with a Python-based _Domain-Specific Language_ (DSL).
-The verification is done by running [supported tools](Tools.md), and using their output to pass verdicts on security statement properties.
+The verification is done by running [supported tools](documentation/Tools.md), and using their output to pass verdicts on security statement properties.
 
 ## Getting Started with TDSAF
 At the moment there is no _PyPi_ package for TDSAF, so it must be installed manually. Here's how to do that:
