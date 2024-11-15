@@ -1,5 +1,5 @@
 from tdsaf.core.model import Connection, IoTSystem
-from tdsaf.serializer.serializer import SystemSerializer
+from tdsaf.serializer.system_serializer import SystemSerializer
 from tests.test_model_new import Setup_1
 
 
