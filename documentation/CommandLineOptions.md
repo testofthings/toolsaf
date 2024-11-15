@@ -47,6 +47,12 @@ pcap-0    PCAP reader
 pcap-1    PCAP reader
 ```
 
+## Log Events
+By using `--log-events`, you can display all events in the tool data.
+```bash
+python statements/statement.py -r ../sample-data --log-events
+```
+
 ## SQL Database
 Command line option `--db` connects to an SQL database.
 At the moment, the only tested database is (Sqlite)[https://www.sqlite.org/].
@@ -74,5 +80,4 @@ For example, the following starts API server with content of the database.
 --test-get TEST_GET   Test API GET, repeat for many
 --test-post TEST_POST TEST_POST
                     Test API POST
---log-events          Log events
 ```
