@@ -2,7 +2,7 @@
 This document provides guidance on structuring your security statement project and details how you can fill in the statement using our Python DSL. Additionally, it outlines the various types of statements that can be created with the DSL.
 
 ## Project Structure
-Security statements for each product should be placed in their own directory in a Python project. Each project is recommended to be version controlled as a Git repository. 
+Security statements for each product should be placed in their own directory in a Python project. Each project is recommended to be version controlled as a Git repository.
 One respository can contain one or several products, each in own directory.
 Below is the expected structure for a security statement project:
 ```
@@ -143,12 +143,12 @@ Once the _system_ object is created, you can begin defining the various componen
 * Broadcast (`system.broadcast`): **FIXME**
 
 Each node can be assigned a name. It's best to name them according to what they represent. For instance, if the system includes a smart plug, it should be added to the system like this:
-```python3
+```python
 smart_plug = system.device("Smart Plug")
 ```
 
 Nodes representing _backend_ services have an additional requirement. When defining them, you must specify the top-level protocols they serve and provide their DNS name. Here's an example:"
-```python3
+```python
 code_repository = system.backend("Code Repository").serve(HTTP, TLS).dns("github.com")
 ```
 The code above creates a system backend called 'Code Repository' that supports HTTP and TLS, with a DNS name of _github.com_. Note that adding a protocol like `TCP` to the `serve` call is only necessary if no higher-level protocol is used.
@@ -156,16 +156,16 @@ The code above creates a system backend called 'Code Repository' that supports H
 Connections between system components are defined using the right and left shift operators `>>` `<<`. The right shift operator indicates a connection from A to B. For example, the statement `mobile >> backend_1` means that the mobile application initiates a connection with backend service 1. Conversely, the left shift operator indicates a connection from B to A, so `mobile << backend_1` means that the backend service initiates communication with the mobile application.
 
 Statements using the shift operators are typically followed by `/` and the top-level protocols used in the connection. For instance, if the mobile application connects to the backend using `TLS`, the statement becomes:
-```python3
+```python
 mobile >> backend_1 / TLS
 ```
 Additional protocols can be added to the statement by appending the statement with `/ <protocol>`.
-```python3
+```python
 mobile >> backend_1 / TLS / SSH
 ```
 
 Connection definitions can also be shortened as follows:
-```python3
+```python
 backend_conn = backend / TLS / SSH
 
 device >> backend_conn
