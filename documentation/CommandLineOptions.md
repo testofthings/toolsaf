@@ -13,6 +13,18 @@ Tool output is read from a batch directory with `-r` or `--read`.
 python statements/statement.py -r ../sample-data
 ```
 
+## Load Only Specific Data
+You can limit the sample data used for verification, by label or directory name, with `-L` and `--def-loads`. Use a comma-separated list.
+```bash
+# Only load data from pcap-0 and pcap-1
+python statements/statement.py -r ../sample-data -L pcap-0,pcap-1
+```
+By adding `^` to the statement you can exclude a specific set of data.
+```bash
+# Use everything but pcap-0
+python statements/statement.py -r ../sample-data -L ^pcap-0
+```
+
 ## Display Verdict Tool Data
 The lines/frames, e.g. in a _pcap_ file, that effect verification verdicts can be printed out with `-w` or `--with-files`.
 ```bash
@@ -48,10 +60,8 @@ For example, the following starts API server with content of the database.
 
      $ python statement --db sqlite:///test.db --http-server 8180
 
-## TODO:
+## FIXME:
 ```
---def-loads DEF_LOADS, -L DEF_LOADS
-                    Comma-separated list of tools to load
 --dhcp                Add default DHCP server handling
 --dns                 Add default DNS server handling
 -l {DEBUG,INFO,WARNING,ERROR,CRITICAL}, --log {DEBUG,INFO,WARNING,ERROR,CRITICAL}
