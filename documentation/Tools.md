@@ -19,7 +19,7 @@ Each batch directory also has a _label_, which allows TDSAF to filter the proces
 ```
 
 Here is an exaple batch directory structure:
-```bash
+```
 sample-data
 ├── nmap-0
 │   ├── 00meta.json
@@ -38,6 +38,8 @@ See [end of this page](#advanced-metafile-definitions) for advanced options requ
 
 The following lists the supported tools and formats and shortly describes what is actually supported.
 A sample command to capture the output in proper format is shown for command-line tools.
+
+**FIXME** Add actual list!
 
 ### Android Manifest
 

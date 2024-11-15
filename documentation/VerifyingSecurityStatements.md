@@ -1,8 +1,12 @@
 # Verifying Security Statements
+
+In verification, the correctness and coverage of the security statement is verified by inspecting by running tools which inspect the product.
+
 Security statement verification is a two-step tool-driven process. It starts with data collection using any of the [supported tools](Tools.md#list-of-supported-tools) and ends with running the statement's Python file with the `-r` or `--read` command-line flag. This document explains this process.
 
 ## Collecting Tool Data
-Data collection requires the Device Under Test (DUT) to be connected to a WiFi-hotspot from which data can be collected. The WiFi-hotspot must be able to access the system's backend services. Mobile devices running related applications should also be connected to the same hotspot as the DUT.
+
+Data collection requires the Device Under Test (DUT) to be connected to router or switch which allows capture of the data. This can be e.g. to a WiFi-hotspot. The WiFi-hotspot must be able to access the system's backend services. Mobile devices running related applications should also be connected to the same hotspot as the DUT.
 
 As an example of the data collection setup, here is an image of the system architecture from our Deltaco Smart Outdoor Plug security statement creation process.
 ![Data collection system architecture image](img/deltaco-smart-plug.png)

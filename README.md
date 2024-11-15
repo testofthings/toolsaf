@@ -35,6 +35,7 @@ touch __init__.py statement.py
 The above commands produce the [expected project structure](documentation/CreatingSecurityStatements.md#project-structure) for your statement.
 
 Finally, TDSAF can be taken into use in the statement's directory with the following command.
+(The option `--config-settings editable_mode=strict` is required by some tools to properly work with locally cloned module.)
 ```shell
 pip install -e ../tdsaf/ --config-settings editable_mode=strict
 ```
@@ -44,7 +45,7 @@ Keep in mind that TDSAF and security statements should be stored in their own se
 ## Working with Security Statements
 The following two subsections explain how to create security statements for your devices and then verify them. The explanations also provide examples based on how we created a security statement for the _Deltaco Smart Outdoor Plug_.
 
-If you’re a device manufacturer, begin with the creation section. If you’re less familiar with the inner workings of the device you want to test, start with the verification section, which covers data collection. A security statement can be created based on collected data <small>(as we did with the Smart Outdoor Plug)</small>.
+If you’re a device manufacturer, begin with the creation section. If you’re less familiar with the inner workings of the device you want to test, start with the verification section, which covers data collection. A security statement can be created based on collected data (as we did with the Smart Outdoor Plug).
 
 ### Creating Security Statements
 Information on security statement creation is provided [here](documentation/CreatingSecurityStatements.md).
@@ -52,7 +53,7 @@ Information on security statement creation is provided [here](documentation/Crea
 ### Verifying Security Statements
 Information on security statement verification is provided [here](documentation/VerifyingSecurityStatements.md).
 
-## Providing tool data (TODO: Cleanup)
+## Providing tool data (FIXME: Cleanup)
 The `--read` and `--http-server` arguments can be combined to inspecft the verification results using the UI.
 
 Batch files can be provided through API in a zip-file to endpoint `api1/batch`.
