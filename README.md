@@ -100,7 +100,7 @@ pytest tests/
 ## Linting
 To lint tdsaf code, install _pylint_
 ```shell
-pip install pytest
+pip install pylint
 ```
 then:
 ```shell
