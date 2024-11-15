@@ -111,7 +111,7 @@ def test_connection_match():
 
     c_list = m.system.get_connections()
     c_sts = [c.status for c in c_list]
-    assert c_sts == [Status.EXPECTED, Status.UNEXPECTED, Status.EXPECTED, Status.UNEXPECTED]
+    assert c_sts == [Status.EXPECTED, Status.UNEXPECTED, Status.UNEXPECTED]
 
 
 def test_match_mix_unknown():

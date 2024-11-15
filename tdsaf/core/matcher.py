@@ -381,7 +381,7 @@ class MatchEngine:
             for ad in match_ads:
                 ends = self.endpoints.get(ad, [])
                 for end in ends:
-                    if end.match_no_service:
+                    if not target or end.match_no_service:
                         am = AddressMatch(EndpointAddress(ad.address, flow.protocol, flow.port(target)), end)
                         m = finder.add_matches([am], target)
                         if m:
