@@ -47,6 +47,12 @@ pcap-0    PCAP reader
 pcap-1    PCAP reader
 ```
 
+## Set Log Level
+You can set the log level with `-l` or `--log-level`. Value can be `DEBUG`, `INFO`, `WARNING`, `ERROR` or `CRITICAL`.
+```bash
+python statements/statement.py -r ../sample-data -l INFO
+```
+
 ## Log Events
 By using `--log-events`, you can display all events in the tool data.
 ```bash
@@ -70,8 +76,6 @@ For example, the following starts API server with content of the database.
 ```
 --dhcp                Add default DHCP server handling
 --dns                 Add default DNS server handling
--l {DEBUG,INFO,WARNING,ERROR,CRITICAL}, --log {DEBUG,INFO,WARNING,ERROR,CRITICAL}
-                    Set the logging level
 --http-server HTTP_SERVER
                     Listen HTTP requests at port
 --test-delay TEST_DELAY
