@@ -37,6 +37,7 @@ from tdsaf.core.services import DHCPService, DNSService
 from tdsaf.core.sql_database import SQLDatabase
 from tdsaf.common.traffic import Evidence, EvidenceSource
 from tdsaf.common.verdict import Verdict
+from tdsaf.common.android import MobilePermissions
 from tdsaf.visualizer import Visualizer, VisualizerAPI
 
 
@@ -436,6 +437,15 @@ class HostBackend(NodeBackend, HostBuilder):
     def set_property(self, *key: str):
         p = PropertyKey.create(key).persistent()
         self.entity.set_property(p.verdict())  # inconclusive
+        return self
+
+    def set_permissions(self, *permissions: MobilePermissions) -> Self:
+        """Set permissions for a mobile application"""
+        if self.get_node().host_type != HostType.MOBILE:
+            raise NotImplementedError("set_permissions only supports mobile at the moment")
+        sw = self.get_software()
+        for permission in permissions:
+            sw.permissions.add(permission.value)
         return self
 
 
