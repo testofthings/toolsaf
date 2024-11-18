@@ -1,34 +1,41 @@
 """Tool to read Android manifest XML"""
 
 from io import BytesIO
-from typing import cast
 from xml.etree import ElementTree
 
+from tdsaf.main import ConfigurationException
+from tdsaf.common.basics import HostType
+from tdsaf.common.address import AnyAddress
 from tdsaf.core.components import Software
 from tdsaf.core.event_interface import PropertyEvent, EventInterface
-from tdsaf.core.model import IoTSystem, NodeComponent
+from tdsaf.core.model import IoTSystem
 from tdsaf.common.property import Properties, PropertyKey
-from tdsaf.adapters.tools import NodeComponentTool
+from tdsaf.adapters.tools import EndpointTool
 from tdsaf.common.traffic import EvidenceSource, Evidence
 from tdsaf.common.verdict import Verdict
 
 
-class AndroidManifestScan(NodeComponentTool):
+class AndroidManifestScan(EndpointTool):
     """Android manifest XML tool"""
     def __init__(self, system: IoTSystem):
         super().__init__("android", ".xml", system)
         self.tool.name = "Android Manifest"
 
-    def filter_component(self, component: NodeComponent) -> bool:
-        return isinstance(component, Software)
+    def process_endpoint(self, endpoint: AnyAddress, stream: BytesIO, interface: EventInterface,
+                         source: EvidenceSource):
+        node = self.system.get_endpoint(endpoint)
+        if node.host_type != HostType.MOBILE:
+            raise ConfigurationException(f"Endpoint {endpoint} is not a Mobile application!")
 
-    def process_component(self, component: NodeComponent, data_file: BytesIO, interface: EventInterface,
-                       source: EvidenceSource):
-        software = cast(Software, component)
+        software = Software.list_software(node)
+        if len(software) != 1:
+            raise ConfigurationException(
+                f"Endpoint {endpoint} needs to have 1 SW component only. Current number is {len(software)}!")
+        software = software[0]
 
         evidence = Evidence(source)
 
-        tree = ElementTree.parse(data_file)
+        tree = ElementTree.parse(stream)
         perm_set = set()
         key_set = set()
         for uses_p in tree.getroot().iter('uses-permission'):
