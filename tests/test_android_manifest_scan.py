@@ -8,6 +8,10 @@ from tdsaf.common.address import EntityTag
 from tdsaf.common.property import PropertyKey
 from tdsaf.common.verdict import Verdict
 from tdsaf.main import ConfigurationException
+from tdsaf.common.android import (
+    PHONE, LOCATION, STORAGE, NETWORK, ADMINISTRATIVE, SMS, SETTINGS,
+    BLUETOOTH, ACCOUNT, RECORDING, UNCATEGORIZED
+)
 from tests.test_model import Setup
 
 
@@ -32,19 +36,38 @@ def do_process(setup: Setup):
     scanner.process_endpoint(EntityTag("Mobile_App"), get_xml_data(), setup.get_inspector(), source)
 
 
+def test_link_permission_to_category():
+    setup = Setup()
+    scanner = AndroidManifestScan(setup.get_system())
+
+    assert scanner.link_permission_to_category("CALL_PHONE") == PHONE
+    assert scanner.link_permission_to_category("ACCESS_FINE_LOCATION") == LOCATION
+    assert scanner.link_permission_to_category("READ_MEDIA_VIDEO") == STORAGE
+    assert scanner.link_permission_to_category("INTERNET") == NETWORK
+    assert scanner.link_permission_to_category("TURN_SCREEN_ON") == ADMINISTRATIVE
+    assert scanner.link_permission_to_category("SEND_SMS") == SMS
+    assert scanner.link_permission_to_category("SET_TIME") == SETTINGS
+    assert scanner.link_permission_to_category("BLUETOOTH_CONNECT") == BLUETOOTH
+    assert scanner.link_permission_to_category("GET_ACCOUNTS") == ACCOUNT
+    assert scanner.link_permission_to_category("CAMERA") == RECORDING
+    assert scanner.link_permission_to_category("BODY_SENSORS") == UNCATEGORIZED
+    assert scanner.link_permission_to_category("FAKE_PERMISSION") == UNCATEGORIZED
+
+
 def test_process_endpoint():
     setup = Setup()
     system = setup.system
 
     mobile_app = system.mobile("Mobile App")
     mobile_app.software("Mobile App SW")
+    mobile_app.set_permissions(RECORDING)
 
     do_process(setup)
 
     sw = mobile_app.get_software()
     assert len(sw.properties) == 3 # Two permissions and 1 check
-    assert sw.properties[PropertyKey("permission", "INTERNET")].verdict == Verdict.FAIL
-    assert sw.properties[PropertyKey("permission", "CAMERA")].verdict == Verdict.FAIL
+    assert sw.properties[PropertyKey("permission", "Network")].verdict == Verdict.FAIL
+    assert sw.properties[PropertyKey("permission", "Recording")].verdict == Verdict.PASS
 
 
 def test_process_endpoint_fails_when_not_mobile_app():
