@@ -1,6 +1,8 @@
 """Tool to read Android manifest XML"""
 
+import json
 from io import BytesIO
+from pathlib import Path
 from xml.etree import ElementTree
 
 from tdsaf.main import ConfigurationException
@@ -13,6 +15,7 @@ from tdsaf.common.property import Properties, PropertyKey
 from tdsaf.adapters.tools import EndpointTool
 from tdsaf.common.traffic import EvidenceSource, Evidence
 from tdsaf.common.verdict import Verdict
+from tdsaf.common.android import MobilePermissions
 
 
 class AndroidManifestScan(EndpointTool):
@@ -20,6 +23,13 @@ class AndroidManifestScan(EndpointTool):
     def __init__(self, system: IoTSystem):
         super().__init__("android", ".xml", system)
         self.tool.name = "Android Manifest"
+        self.categories = self.load_categories()
+
+    def load_categories(self) -> dict:
+        """Load our Android permission category info from json"""
+        data_json_path = Path(__file__).parent / "data/android_permissions.json"
+        with open(data_json_path, "r", encoding="utf-8") as f:
+            return json.load(f)
 
     def process_endpoint(self, endpoint: AnyAddress, stream: BytesIO, interface: EventInterface,
                          source: EvidenceSource):
@@ -44,29 +54,29 @@ class AndroidManifestScan(EndpointTool):
                 name = name[name.rindex(".") + 1:]
             perm_set.add(name)
 
-            key = PropertyKey("permission", name)
-            val = key.get(software.properties)
+            category = self.link_permission_to_category(name)
+            key = PropertyKey("permission", category.value)
             key_set.add(key)
 
             if self.load_baseline:
                 software.permissions.add(name)
                 ver = Verdict.PASS
             else:
-                ver = Verdict.PASS if val else Verdict.FAIL
+                ver = Verdict.PASS if category.value in software.permissions else Verdict.FAIL
 
             if self.send_events:
                 ev = PropertyEvent(evidence, software, key.verdict(ver))
                 interface.property_update(ev)
 
-        unseen = software.permissions - perm_set
-        for name in sorted(unseen):
-            # unseen permissions are failures
-            if self.send_events:
-                key = PropertyKey("permission", name)
-                key_set.add(key)
-                ev = PropertyEvent(evidence, software, key.verdict(Verdict.FAIL))
-                interface.property_update(ev)
-
+        # FIXME: What if a permission is set in DSL, but its not present in the manifest?
         if self.send_events:
             ev = PropertyEvent(evidence, software, Properties.PERMISSIONS.value_set(key_set, self.tool.name))
             interface.property_update(ev)
+
+    def link_permission_to_category(self, permission: str) -> MobilePermissions:
+        """Connect given permission to one of our categories.
+           If no category is found, uncategorized is returned by default."""
+        for category, permissions in self.categories.items():
+            if permission in permissions:
+                return MobilePermissions(category)
+        return MobilePermissions.UNCATEGORIZED
