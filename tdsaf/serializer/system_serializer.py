@@ -14,27 +14,27 @@ class SystemSerializer(AbstractSerializer):
         self.visualizer = visualizer
         self.miniature = miniature  # keep unit tests minimal
 
-        with self.control(NetworkNode) as m:
+        with self.map_class(NetworkNode) as m:
             m.default("name")
             if not self.miniature:
                 m.writer("long_name", lambda c: c.body.long_name())
             m.register(self.network_node)
 
-        with self.control(Addressable).derive(NetworkNode) as m:
+        with self.map_class(Addressable).derive(NetworkNode) as m:
             if not self.miniature:
                 m.writer("tag", lambda c: str(c.body.get_tag()))
 
-        with self.control(Host, "host").derive(Addressable) as m:
+        with self.map_class(Host, "host").derive(Addressable) as m:
             m.new(lambda c: Host(c.parent, c["name"]))
             if self.visualizer:
                 # write xy-coordinates
                 m.writer("xy", lambda c: self.visualizer.place(c.body))
                 m.writer("image", lambda c: self.visualizer.images.get(c.body))
 
-        with self.control(Service, "service").derive(Addressable) as m:
+        with self.map_class(Service, "service").derive(Addressable) as m:
             m.new(lambda c: Service(c["name"], c.parent))
 
-        with self.control(NodeComponent, "component") as m:
+        with self.map_class(NodeComponent, "component") as m:
             m.abstract = True
             m.default("name")
             if not self.miniature:
@@ -47,23 +47,23 @@ class SystemSerializer(AbstractSerializer):
             #     name = f"{s.name}-{name}"  # looks bad on ARP and DHCP
             return name
 
-        with self.control(Connection, "connection") as m:
+        with self.map_class(Connection, "connection") as m:
             m.new(lambda c: Connection(c.get_referenced("source"), c.get_referenced("target")))
             if not self.miniature:
                 m.writer("name", lambda c: connection_name(c.body))
                 m.writer("long_name", lambda c: c.body.long_name())
             m.reference("source", "target")
 
-        with self.control(Software, "sw").derive(NodeComponent) as m:
+        with self.map_class(Software, "sw").derive(NodeComponent) as m:
             m.new(lambda c: Software(c.parent, c["name"]))
 
-        self.control(IoTSystem, "system").derive(NetworkNode)
+        self.map_class(IoTSystem, "system").derive(NetworkNode)
 
 
     # pylint: disable=missing-function-docstring
 
     def network_node(self, new: NetworkNode) -> SerializerContext:
-        ctx = SerializerContext(self.control, new)
+        ctx = SerializerContext(self.serializer_state, new)
         ctx.list(new.children, {Host, Service})
         ctx.list(new.components, {Software})
         return ctx

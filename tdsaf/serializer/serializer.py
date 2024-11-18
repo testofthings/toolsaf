@@ -8,20 +8,19 @@ T = TypeVar('T')
 
 
 class SerializerContext:
-    """Serializer context"""
-    def __init__(self, control: 'SerializationController', body: Any, mapper: Optional['ClassMapper'] = None):
-        self.control = control
+    """Serializer context for body object"""
+    def __init__(self, state: 'SerializerState', body: Any, mapper: Optional['ClassMapper'] = None):
+        self.state = state
         self.body = body
-        self.mapper = mapper or control.get_mapper(type(body))
+        self.mapper = mapper or state.get_mapper(type(body))
         assert self.mapper, f"Class {type(body)} not mapped"
         self.parent: Optional[SerializerContext] = None
         self.sinks: Dict[Type, List[Any]] = {}
-        # map from controller
-        self.control.contexts[body] = self
-        if body not in self.control.reverse_ids:
+        self.state.contexts[body] = self
+        if body not in self.state.reverse_ids:
             # allocate next identifier
             i = self.mapper.explicit_id(body) if self.mapper.explicit_id else None
-            self.control.allocate(body, identifier=i)
+            self.state.allocate(body, identifier=i)
 
     def list(self, attribute: List[Any], types: Iterable[Type]) -> Self:
         """Register list callback"""
@@ -32,17 +31,17 @@ class SerializerContext:
 
     def add(self, body: Any, identifier: Optional[str] = None) -> 'SerializerContext':
         """Add object to serialize"""
-        ctx = self.control.contexts.get(body)
+        ctx = self.state.contexts.get(body)
         if ctx is not None:
             return ctx
-        mapper = self.control.get_mapper(type(body))
+        mapper = self.state.get_mapper(type(body))
         if identifier is not None:
             # allocate before registering
-            self.control.allocate(body, identifier)
+            self.state.allocate(body, identifier)
         if mapper.register_call:
             ctx = mapper.register_call(body)
         else:
-            ctx = SerializerContext(self.control, body)
+            ctx = SerializerContext(self.state, body)
         ctx.parent = self
         return ctx
 
@@ -53,17 +52,17 @@ class SerializerContext:
     def write_json(self) -> Dict:
         """Convert to JSON. Internal method"""
         body_dict = {
-            "id": self.control.reverse_ids.get(self.body, "?"),
+            "id": self.state.reverse_ids.get(self.body, "?"),
             "type": self.mapper.type_name,
         }
         if self.parent:
-            body_dict["at"] = self.control.reverse_ids[self.parent.body]
+            body_dict["at"] = self.state.reverse_ids[self.parent.body]
         for k, f in self.mapper.simple_attributes.items():
             body_dict[k] = getattr(self.body, f)
         for k in self.mapper.references:
             a = getattr(self.body, k)
             if a is not None:
-                ids = self.control[a]
+                ids = self.state[a]
                 body_dict[k] = ids
         for k, func in self.mapper.custom_writers.items():
             v = func(self)
@@ -76,8 +75,8 @@ class SerializerContext:
         return json.dumps(d)
 
 
-class SerializationController:
-    """Serialization controller"""
+class SerializerState:
+    """Serializer state"""
     def __init__(self):
         self.mappers: Dict[Type, ClassMapper] = {}
         self.mappers_by_names: Dict[str, ClassMapper] = {}
@@ -93,8 +92,8 @@ class SerializationController:
                 return mapper
         assert False, f"Class {for_type.__name__} not mapped"
 
-    def __call__(self, mapped_class: Type, type_name="") -> 'ClassMapper':
-        """Map local data"""
+    def map_class(self, mapped_class: Type, type_name="") -> 'ClassMapper':
+        """Create new class mapper"""
         m = ClassMapper(self, mapped_class, type_name)
         self.mappers[mapped_class] = m
         if type_name:
@@ -135,7 +134,7 @@ class ConstructionData:
         ref = self.fields.get(key)
         if ref is None:
             return None
-        return self.context.control.identifiers.get(ref)
+        return self.context.state.identifiers.get(ref)
 
     def __repr__(self) -> str:
         return f"{json.dumps(self.fields)}"
@@ -145,10 +144,10 @@ C = TypeVar('C')
 
 
 class ClassMapper(Generic[C]):
-    """Local data mapper"""
-    def __init__(self, controller: SerializationController, mapped_class: Type, type_name="") -> None:
+    """Serializer data mapper"""
+    def __init__(self, state: SerializerState, mapped_class: Type, type_name="") -> None:
         self.abstract = False
-        self.controller = controller
+        self.state = state
         self.mapped_class = mapped_class
         self.type_name = type_name
         self.explicit_id: Optional[Callable[[Any], str]] = None  # explicit id resolver
@@ -163,7 +162,7 @@ class ClassMapper(Generic[C]):
     def derive(self, *mapped_class: Type) -> Self:
         """Derive mappings from other class(es)"""
         for m_class in mapped_class:
-            m = self.controller.mappers.get(m_class)
+            m = self.state.mappers.get(m_class)
             assert m is not None, f"Class {m_class} not found"
             self.simple_attributes.update(m.simple_attributes)
             self.references.extend(m.references)
@@ -218,17 +217,21 @@ class ClassMapper(Generic[C]):
 class AbstractSerializer:
     """Abstract serializer"""
     def __init__(self):
-        self.control = SerializationController()
+        self.serializer_state = SerializerState()
+
+    def map_class(self, mapped_class: Type, type_name="") -> ClassMapper:
+        """Create mapping for a class"""
+        return self.serializer_state.map_class(mapped_class, type_name)
 
     def write_json(self) -> Iterable[Dict]:
         """Write to JSON"""
-        for ctx in self.control.contexts.values():
+        for ctx in self.serializer_state.contexts.values():
             if not ctx.mapper.abstract:
                 yield ctx.write_json()
 
     def iterate_writable(self) -> Iterable[SerializerContext]:
         """Iterate over all writable data"""
-        for ctx in self.control.contexts.values():
+        for ctx in self.serializer_state.contexts.values():
             if not ctx.mapper.abstract:
                 yield ctx
 
@@ -236,15 +239,15 @@ class AbstractSerializer:
         """Read next object from JSON stream"""
         read_id = data["id"]
         parent_id = data.get("at")
-        parent = self.control.identifiers.get(parent_id) if parent_id else None
-        context = self.control.contexts.get(parent) if parent else None
+        parent = self.serializer_state.identifiers.get(parent_id) if parent_id else None
+        context = self.serializer_state.contexts.get(parent) if parent else None
         class_str = data.get("type")
         if not class_str:
             if not context or not context.mapper.default_sub_type:
                 assert False, "No type specified and no default sub-type"
             mapper = context.mapper.default_sub_type
         else:
-            mapper = self.control.mappers_by_names.get(class_str)
+            mapper = self.serializer_state.mappers_by_names.get(class_str)
         assert mapper, f"Class {class_str} not mapped"
         if mapper.new_call:
             con_data = ConstructionData(context, data, parent)
@@ -256,11 +259,11 @@ class AbstractSerializer:
                 setattr(body, f, data.get(k))
         if parent_id is None:
             # no parent
-            self.control.allocate(body, identifier=read_id)
+            self.serializer_state.allocate(body, identifier=read_id)
             if mapper.register_call:
                 ctx = mapper.register_call(body)
             else:
-                ctx = SerializerContext(self.control, body, mapper)
+                ctx = SerializerContext(self.serializer_state, body, mapper)
             self.call_custom_readers(mapper, ctx, data)
             return body
         assert context, f"Parent {parent_id} not found"
