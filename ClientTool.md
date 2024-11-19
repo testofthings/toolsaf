@@ -26,7 +26,7 @@ Supported tool output files can be uploaded with subcommand `upload`.
        --url http://192.168.1.1/samples/ruuvi/ruuvi
 
 
-The uploaded directories and files must stick with the [supported formats](Tools.md).
+The uploaded directories and files must stick with the [supported formats](documentation/Tools.md).
 
 ## Reload
 
