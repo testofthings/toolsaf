@@ -51,7 +51,9 @@ class SerializerStream:
         """Read from stream"""
         obj = start
         iterator = iter(data)
-        self.data = next(iterator)
+        self.data = next(iterator, None)
+        if self.data is None:
+            return
         self._read_object(serializer, obj)
         yield obj
 
