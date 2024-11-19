@@ -3,7 +3,7 @@ from tdsaf.builder_backend import SystemBackend
 from tdsaf.core.matcher import SystemMatcher
 from tdsaf.core.model import EvidenceNetworkSource
 from tdsaf.common.traffic import Evidence, IPFlow
-from tdsaf.common.basics import Status
+from tdsaf.common.basics import ExternalActivity, Status
 
 
 def test_source_ip():
@@ -51,7 +51,7 @@ def test_source_ip_2():
 
 def test_target_ip():
     sb = SystemBackend()
-    dev0 = sb.device().ip("12.0.0.2")
+    dev0 = sb.device().ip("12.0.0.2").external_activity(ExternalActivity.BANNED)
     assert Addresses.get_prioritized(dev0.entity.addresses).is_global()
 
     m = SystemMatcher(sb.system)
