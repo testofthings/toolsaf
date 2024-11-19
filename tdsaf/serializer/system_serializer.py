@@ -1,10 +1,12 @@
 # pylint: disable=missing-class-docstring
 """Serializing IoT system and related class"""
 
-from typing import Type
+from typing import Dict, Iterable, Optional, Type
+
+from tdsaf.visualizer import Visualizer
 
 from tdsaf.core.components import Software
-from tdsaf.serializer.serializer import Serializer, SerializerStream
+from tdsaf.serializer.serializer import Serializer, SerializerContext, SerializerStream
 
 from tdsaf.core.model import Addressable, Connection, Host, IoTSystem, NetworkNode, Service
 
@@ -23,7 +25,7 @@ class NetworkNodeSerializer(Serializer):
 
 
 class IoTSystemSerializer(NetworkNodeSerializer):
-    def __init__(self, system: IoTSystem, miniature=False):
+    def __init__(self, system: IoTSystem, visualizer: Optional[Visualizer] = None, miniature=False):
         super().__init__(IoTSystem, self)
         self.miniature = miniature
         self.config.type_name = "system"
@@ -32,6 +34,13 @@ class IoTSystemSerializer(NetworkNodeSerializer):
         self.config.map_new_class("connection", ConnectionSerializer(self))
         self.config.map_new_class("sw", SoftwareSerializer(self))
         self.system = system
+        self.visualizer = visualizer
+
+    def write_json(self, context: Optional[SerializerContext]) -> Iterable[Dict]:
+        """Write system to JSON"""
+        stream = SerializerStream(context=context)
+        return stream.write(self.system, self)
+
 
     def write(self, obj: IoTSystem, stream: SerializerStream):
         super().write(obj, stream)
@@ -55,6 +64,16 @@ class HostSerializer(AddressableSerializer):
 
     def new(self, stream: SerializerStream) -> Host:
         return Host(stream.resolve("at"), stream["name"])
+
+    def write(self, obj: Host, stream: SerializerStream):
+        super().write(obj, stream)
+        vis = self.root.visualizer
+        if vis:
+            stream.write_field("xy", vis.place(obj))
+            image = vis.images.get(obj.name)
+            if image:
+                stream.write_field("image", image)
+
 
 
 class ServiceSerializer(AddressableSerializer):
