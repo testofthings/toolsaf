@@ -3,9 +3,9 @@
 """The new serializer module"""
 
 import json
-from queue import Queue
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type
-from tdsaf.core.model import Addressable, Host, IoTSystem, NetworkNode, Service
+
+from tdsaf.core.model import Addressable, Connection, Host, IoTSystem, NetworkNode, Service
 
 
 class SerializerContext:
@@ -14,13 +14,15 @@ class SerializerContext:
         self.identifier_map: Dict[Any, str] = {}
         self.object_map: Dict[str, Any] = {}
 
-    def resolve_id(self, obj: Any) -> str:
+    def resolve_id(self, obj: Any, unique=False) -> str:
         """Resolve object id"""
         i = self.identifier_map.get(obj)
         if i is None:
             i = f"id{len(self.identifier_map) + 1}"
             self.identifier_map[obj] = i
             self.object_map[i] = obj
+        elif unique:
+            raise ValueError(f"Object {obj} (id={i}) already in context")
         return i
 
     def id_for(self, obj: Any) -> str:
@@ -35,17 +37,20 @@ class SerializerStream:
     """JSON serialization stream"""
     def __init__(self, context: Optional[SerializerContext] = None) -> None:
         self.context = SerializerContext() if context is None else context
-        self.queue: Queue[Tuple[Any, Any]] = Queue()
+        self.push_to: List[Tuple[Any, Any]] = []
         self.data = {}
 
     def write(self, start: Any, serializer: 'Serializer') -> Iterable[Dict]:
         """Write to stream"""
         self.push_object(start)
-        while not self.queue.empty():
-            o, at = self.queue.get()
+        queue = self.push_to
+        while queue:
+            o, at = queue[0]
+            self.push_to = []
             self.data = {}
             self._write_object(o, at, serializer)
             yield self.data
+            queue = self.push_to + queue[1:] # depth first order
 
     def read(self, start: Any, serializer: 'Serializer', data: Iterable[Dict]) -> Iterable[Any]:
         """Read from stream"""
@@ -73,7 +78,7 @@ class SerializerStream:
 
     def push_object(self, obj: Any, at_object: Any = None):
         """Push object to queue"""
-        self.queue.put((obj, at_object))
+        self.push_to.append((obj, at_object))
 
     def _write_object(self, obj: Any, at_object: Any, serializer: 'Serializer'):
         """Write object"""
@@ -84,7 +89,7 @@ class SerializerStream:
             serial = serializer.config.class_map.get(obj_type)
         if not serial:
             raise ValueError(f"Serializer not found for {type(obj)}")
-        ref = self.context.resolve_id(obj)
+        ref = self.context.resolve_id(obj, unique=True)
         self.data["id"] = ref
         if at_object:
             self.data["at"] = self.context.id_for(at_object)
@@ -94,7 +99,10 @@ class SerializerStream:
         for field in serial.config.simple_fields:
             self.write_field(field, getattr(obj, field))
         # class specific write
+        queue = self.push_to
+        self.push_to = []
         serial.write(obj, self)
+        self.push_to = self.push_to + queue  # depth first order
 
     def write_field(self, field_name: str, value: Any):
         """Write custom field"""
@@ -124,7 +132,10 @@ class SerializerStream:
         return self.context.object_map.get(ref)
 
     def __repr__(self) -> str:
-        return json.dumps(self.data)
+        r = [json.dumps(self.data)]
+        for e in self.push_to:
+            r.append(f"  {e[0].name}")
+        return "\n".join(r)
 
 class SerializerConfiguration:
     """Serializer configuration"""
@@ -215,10 +226,33 @@ class ServiceSerializer(AddressableSerializer):
         return Service(stream["name"], stream.resolve("at"))
 
 
+class ConnectionSerializer(Serializer):
+    def __init__(self, miniature=False):
+        super().__init__(Connection)
+        self.miniature = miniature
+
+    def write(self, obj: Connection, stream: SerializerStream):
+        stream.write_field("source", stream.context.id_for(obj.source))
+        stream.write_field("target", stream.context.id_for(obj.target))
+        if not self.miniature:
+            stream.write_field("name", obj.target.name)
+            stream.write_field("long_name", obj.long_name())
+
+
+    def read(self, obj: Connection, stream: SerializerStream):
+        obj.source = stream.resolve("source")
+        obj.target = stream.resolve("target")
+
 class IoTSystemSerializer(NetworkNodeSerializer):
     def __init__(self, system: IoTSystem, miniature=False):
         super().__init__(IoTSystem)
         self.config.type_name = "system"
         self.config.map_new_class("host", HostSerializer(miniature))
         self.config.map_new_class("service", ServiceSerializer(miniature))
+        self.config.map_new_class("connection", ConnectionSerializer(miniature))
         self.system = system
+
+    def write(self, obj: IoTSystem, stream: SerializerStream):
+        super().write(obj, stream)
+        for c in obj.get_connections():
+            stream.push_object(c, at_object=obj)

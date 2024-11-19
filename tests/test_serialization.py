@@ -40,10 +40,10 @@ def test_simple_model_2():
     ser = IoTSystemSerializer(su.system.system, miniature=True)
     stream = SerializerStream()
     js = list(stream.write(ser.system, ser))
-    assert len(js) == 4
+    assert len(js) == 5
     assert js[0] == {"id": "id1", "type": "system", "name": "Test"}
     assert js[1] == {"id": "id2", "at": "id1", "type": "host", "name": "Device 1"}
-    # assert js[4] == {"id": "id5", "at": "id1", "type": "connection", "source": "id4", "target": "id3"}
+    assert js[4] == {"id": "id5", "at": "id1", "type": "connection", "source": "id4", "target": "id3"}
 
     ser = IoTSystemSerializer(su.system.system, miniature=True)
     stream = SerializerStream()
