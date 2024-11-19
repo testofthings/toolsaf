@@ -1,4 +1,4 @@
-# pylint disable=missing-docstring
+# pylint: disable=missing-class-docstring
 """Serializing IoT system and related class"""
 
 from typing import Type
