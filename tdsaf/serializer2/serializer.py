@@ -1,8 +1,8 @@
-# pylint disable=missing-docstring
-# pylint disable=missing-class-docstring
+# pylint disable=missing-docstring, pylint disable=missing-class-docstring
 
 """The new serializer module"""
 
+import json
 from queue import Queue
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type
 from tdsaf.core.model import Addressable, Host, IoTSystem, NetworkNode, Service
@@ -47,32 +47,29 @@ class SerializerStream:
             self._write_object(o, at, serializer)
             yield self.data
 
-    def read(self, start: Any, data: Iterable[Dict]) -> Iterable[Any]:
+    def read(self, start: Any, serializer: 'Serializer', data: Iterable[Dict]) -> Iterable[Any]:
         """Read from stream"""
-        serial = self.context.config.name_map.get(type(start))
-        if not serial:
-            raise ValueError(f"Serializer not found for {type(start)}")
         obj = start
         iterator = iter(data)
         self.data = next(iterator)
-        self._read_object(serial, obj)
+        self._read_object(serializer, obj)
 
         # read the rest...
-        self.data = next(iterator, default=None)
+        self.data = next(iterator, None)
         while self.data is not None:
             type_name = self.data.get("type", "")
-            serial = self.context.config.name_map.get(type_name)
+            serial = serializer.config.name_map.get(type_name)
             if not serial:
                 raise ValueError(f"Serializer not found for {type_name}")
             obj = serial.new(self)
             if obj is None:
                 raise ValueError(f"Serializer {serial} does not support new objects")
-            post_process = self.context.config.post_process.get(serial)
+            post_process = serializer.config.post_process.get(serial)
             if post_process:
                 post_process(obj)
             self._read_object(serial, obj)
             yield obj
-            self.data = next(iterator, default=None)
+            self.data = next(iterator, None)
 
     def push_object(self, obj: Any, at_object: Any = None):
         """Push object to queue"""
@@ -112,12 +109,6 @@ class SerializerStream:
         if id_s:
             self.context.object_map[id_s] = obj
             self.context.identifier_map[obj] = id_s
-        at_s = self.data.get("at")
-        if at_s:
-            at = self.context.object_map.get(at_s)
-            if not at:
-                raise ValueError(f"Object {at_s} not found")
-            self.queue.put((obj, at))
 
     def __getitem__(self, field_name: str) -> Any:
         """Get attribute by key"""
@@ -132,6 +123,8 @@ class SerializerStream:
         ref = self.data[field_name]
         return self.context.object_map.get(ref)
 
+    def __repr__(self) -> str:
+        return json.dumps(self.data)
 
 class SerializerConfiguration:
     """Serializer configuration"""
@@ -157,10 +150,8 @@ class SerializerConfiguration:
         if post_process:
             self.post_process[serializer] = post_process
 
-    def new(self, _stream: SerializerStream) -> Any:
-        """Create new object"""
-        return self.class_type()
-
+    def __repr__(self) -> str:
+        return self.class_type.__name__
 
 class Serializer:
     """Class serializer base class"""
@@ -171,11 +162,18 @@ class Serializer:
     def initialize(self):
         """Initialize after construction"""
 
+    def write(self, obj: NetworkNode, stream: SerializerStream):
+        """Write object"""
+
+    def new(self, stream: SerializerStream) -> Any:
+        """Create new object"""
+        return self.config.class_type(stream)
+
     def read(self, obj: Any, stream: SerializerStream):
         """Read new object"""
 
-    def write(self, obj: NetworkNode, stream: SerializerStream):
-        """Write object"""
+    def __repr__(self) -> str:
+        return str(self.config)
 
 
 class NetworkNodeSerializer(Serializer):
@@ -188,10 +186,6 @@ class NetworkNodeSerializer(Serializer):
         for c in obj.children:
             stream.push_object(c, at_object=obj)
 
-    def read(self, obj: NetworkNode, stream: SerializerStream):
-        obj.parent = stream.resolve("at")
-        obj.parent.children.append(obj)
-
 
 class AddressableSerializer(NetworkNodeSerializer):
     def write(self, obj: Addressable, stream: SerializerStream):
@@ -199,6 +193,10 @@ class AddressableSerializer(NetworkNodeSerializer):
         if not self.miniature:
             stream.write_field("long_name", obj.long_name())
             stream.write_field("tag", obj.get_tag())
+
+    def read(self, obj: Addressable, stream: SerializerStream):
+        obj.parent = stream.resolve("at")
+        obj.parent.children.append(obj)
 
 
 class HostSerializer(AddressableSerializer):
