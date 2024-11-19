@@ -49,6 +49,8 @@ class LoggingEvent:
         ev = self.event
         if isinstance(ev, (PropertyEvent, PropertyAddressEvent)):
             r.add(ev.key_value[0])
+        if not r:
+            r.add(Properties.EXPECTED)  # default property
         return r
 
     def __repr__(self):

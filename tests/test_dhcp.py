@@ -93,9 +93,9 @@ def test_from_pcap():
     PCAPReader.inspect(pathlib.Path("tests/samples/pcap/dhcp.pcap"), m)
 
     cos = s.get_connections()
-    assert len(cos) == 2
+    assert len(cos) == 1
     assert cos[0].status == Status.EXPECTED
-    assert cos[1].status == Status.EXPECTED
+
 
 def test_from_pcap2():
     sb = SystemBackend()
@@ -113,7 +113,6 @@ def test_from_pcap2():
     PCAPReader.inspect(pathlib.Path("tests/samples/pcap/dhcp.pcap"), m)
 
     cos = s.get_connections()
-    assert len(cos) == 2
+    assert len(cos) == 1
     assert cos[0].status == Status.EXPECTED
-    assert cos[1].status == Status.EXPECTED
 

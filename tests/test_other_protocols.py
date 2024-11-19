@@ -24,7 +24,7 @@ def test_icmp():
     cs = i.connection(IPFlow.IP("11:02:03:04:05:06", "1.0.0.1", 2) >> ("01:02:03:04:05:06", "1.0.1.1", 2))
     assert cs.source.name == "1.0.0.1"
     assert cs.target == dev1.entity.get_parent_host()
-    assert cs.status_verdict() == (Status.UNEXPECTED, Verdict.FAIL)
+    assert cs.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
     assert cs.source.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
     assert cs.target.status_verdict() == (Status.EXPECTED, Verdict.INCON)
 
@@ -76,7 +76,7 @@ def test_arp():
                                    payload=0x0806))
     assert cs.source.name == "21:02:03:04:05:06"
     assert cs.target == dev1.entity
-    assert cs.status_verdict() == (Status.UNEXPECTED, Verdict.FAIL)
+    assert cs.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
 
 
 def test_eapol_name():

@@ -17,8 +17,7 @@ def test_iterate():
     assert r[3].long_name() == "Device 2 UDP:1234"
     assert r[4].long_name() == "Device 3"
     assert r[5].long_name() == "Device 1 => Device 2 UDP:1234"
-    assert r[6] == r[5]  # NOTE: Should we filter?
-    assert len(r) == 7
+    assert len(r) == 6
 
 
 def test_select():

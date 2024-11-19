@@ -1,5 +1,5 @@
 from tdsaf.common.address import DNSName, EntityTag, HWAddress, IPAddress
-from tdsaf.common.basics import Status
+from tdsaf.common.basics import ExternalActivity, Status
 from tdsaf.main import SSH
 from tdsaf.core.services import NameEvent
 from tdsaf.common.traffic import NO_EVIDENCE, IPFlow
@@ -11,7 +11,7 @@ class Setup_1(Setup):
     """Setup for tests here"""
     def __init__(self):
         super().__init__()
-        self.device1 = self.system.device().hw("10:0:0:0:0:1")
+        self.device1 = self.system.device().hw("10:0:0:0:0:1").external_activity(ExternalActivity.BANNED)
         self.device2 = self.system.device().name("some.local")
         self.ssh = self.device1 / SSH
         self.ssh_connectoin = self.device2 >> self.ssh

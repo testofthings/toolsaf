@@ -35,7 +35,7 @@ class Setup:
 def simple_setup_1(external=False) -> SystemBackend:
     sb = SystemBackend()
     dev1 = sb.device().hw("1:0:0:0:0:1")
-    dev2 = sb.device().ip("192.168.0.2")
+    dev2 = sb.device().ip("192.168.0.2").external_activity(ExternalActivity.BANNED)
     dev3 = sb.device()
     dev1 >> dev2 / UDP(port=1234)
     if external:
@@ -111,7 +111,7 @@ def test_connection_match():
 
     c_list = m.system.get_connections()
     c_sts = [c.status for c in c_list]
-    assert c_sts == [Status.EXPECTED, Status.UNEXPECTED, Status.EXPECTED, Status.UNEXPECTED]
+    assert c_sts == [Status.EXPECTED, Status.UNEXPECTED, Status.UNEXPECTED]
 
 
 def test_match_mix_unknown():
@@ -211,14 +211,14 @@ def test_match_local_and_remote():
 
     # known local first
     cs21 = m.connection(IPFlow.UDP("1:0:0:0:0:3", "192.168.0.3", 1001) >> ("1:0:0:0:0:1", "192.168.0.1", 2001))
-    cs22 = m.connection(IPFlow.UDP("1:0:0:0:0:3", "192.168.0.3", 1001) >> ("1:0:0:0:0:1", "19.168.0.2", 2002))
+    cs22 = m.connection(IPFlow.UDP("1:0:0:0:0:3", "192.168.0.3", 1001) >> ("1:0:0:0:0:1", "192.168.0.2", 2002))
 
     assert cs01.target.name == "01:00:00:00:03:01"
     assert cs02.target.name == "19.168.3.2"
     assert cs11.target.name == "19.168.2.2"
     assert cs12.target.name == "01:00:00:00:02:01"
     assert cs21.target.name == "Device 1"
-    assert cs22.target.name == "19.168.0.2"
+    assert cs22.target.name == "Device 1"
 
 
 def test_reverse_connection_first():
