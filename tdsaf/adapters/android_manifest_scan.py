@@ -46,20 +46,18 @@ class AndroidManifestScan(EndpointTool):
         evidence = Evidence(source)
 
         tree = ElementTree.parse(stream)
-        perm_set = set()
         key_set = set()
         for uses_p in tree.getroot().iter('uses-permission'):
             name = uses_p.attrib.get("{http://schemas.android.com/apk/res/android}name")
             if "." in name:
                 name = name[name.rindex(".") + 1:]
-            perm_set.add(name)
 
             category = self.link_permission_to_category(name)
             key = PropertyKey("permission", category.value)
             key_set.add(key)
 
             if self.load_baseline:
-                software.permissions.add(name)
+                software.permissions.add(category.value)
                 ver = Verdict.PASS
             else:
                 ver = Verdict.PASS if category.value in software.permissions else Verdict.FAIL
@@ -68,11 +66,13 @@ class AndroidManifestScan(EndpointTool):
                 ev = PropertyEvent(evidence, software, key.verdict(ver))
                 interface.property_update(ev)
 
+        # Set verdict for permissions that were only present in the statement
         for permission in software.permissions:
             key = PropertyKey("permission", permission)
             if key not in key_set:
                 key_set.add(key)
-                ev = PropertyEvent(evidence, software, key.verdict(Verdict.FAIL))
+                ver = Verdict.FAIL if not self.load_baseline else Verdict.PASS
+                ev = PropertyEvent(evidence, software, key.verdict(ver))
                 interface.property_update(ev)
 
         if self.send_events:
