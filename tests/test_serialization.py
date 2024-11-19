@@ -8,16 +8,16 @@ def test_simple_model():
     su = Setup_1()
     su.system.system.name = "Test"
     ser = IoTSystemSerializer(su.system.system, miniature=True)
-    stream = SerializerStream()
-    js = list(stream.write(ser.system, ser))
+    stream = SerializerStream(ser)
+    js = list(stream.write(ser.system))
     assert len(js) == 5
     assert js[0] == {"id": "id1", "type": "system", "name": "Test"}
     assert js[1] == {"id": "id2", "at": "id1", "type": "host", "name": "Device 1"}
     assert js[4] == {"id": "id5", "at": "id1", "type": "connection", "source": "id4", "target": "id3"}
 
     ser = IoTSystemSerializer(IoTSystem(), miniature=True)
-    stream = SerializerStream()
-    r = list(stream.read(ser.system, ser, js))
+    stream = SerializerStream(ser)
+    r = list(stream.read(ser.system, js))
     assert len(r) == 5
     assert isinstance(r[0], IoTSystem)
     assert r[0].name == "Test"

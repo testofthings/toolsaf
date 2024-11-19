@@ -51,7 +51,7 @@ class AddressableSerializer(NetworkNodeSerializer):
     def write(self, obj: Addressable, stream: SerializerStream):
         super().write(obj, stream)
         if not self.root.miniature:
-            stream.write_field("tag", obj.get_tag())
+            stream.write_field("tag", obj.get_tag().get_parseable_value())
 
     def read(self, obj: Addressable, stream: SerializerStream):
         obj.parent = stream.resolve("at")

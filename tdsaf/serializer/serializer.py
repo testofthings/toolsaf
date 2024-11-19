@@ -30,12 +30,13 @@ class SerializerContext:
 
 class SerializerStream:
     """JSON serialization stream"""
-    def __init__(self, context: Optional[SerializerContext] = None) -> None:
+    def __init__(self, serializer: 'Serializer', context: Optional[SerializerContext] = None) -> None:
+        self.serializer = serializer
         self.context = SerializerContext() if context is None else context
         self.push_to: List[Tuple[Any, Any]] = []
         self.data = {}
 
-    def write(self, start: Any, serializer: 'Serializer') -> Iterable[Dict]:
+    def write(self, start: Any) -> Iterable[Dict]:
         """Write to stream"""
         self.push_object(start)
         queue = self.push_to
@@ -43,25 +44,25 @@ class SerializerStream:
             o, at = queue[0]
             self.push_to = []
             self.data = {}
-            self._write_object(o, at, serializer)
+            self._write_object(o, at, self.serializer)
             yield self.data
             queue = self.push_to + queue[1:] # depth first order
 
-    def read(self, start: Any, serializer: 'Serializer', data: Iterable[Dict]) -> Iterable[Any]:
+    def read(self, start: Any, data: Iterable[Dict]) -> Iterable[Any]:
         """Read from stream"""
         obj = start
         iterator = iter(data)
         self.data = next(iterator, None)
         if self.data is None:
             return
-        self._read_object(serializer, obj)
+        self._read_object(self.serializer, obj)
         yield obj
 
         # read the rest...
         self.data = next(iterator, None)
         while self.data is not None:
             type_name = self.data.get("type", "")
-            serial = serializer.config.name_map.get(type_name)
+            serial = self.serializer.config.name_map.get(type_name)
             if not serial:
                 raise ValueError(f"Serializer not found for {type_name}")
             obj = serial.new(self)
@@ -81,9 +82,7 @@ class SerializerStream:
         if obj_type == serializer.config.class_type:
             serial = serializer
         else:
-            serial = serializer.config.class_map.get(obj_type)
-        if not serial:
-            raise ValueError(f"Serializer not found for {type(obj)}")
+            serial = serializer.config.find_serializer(obj_type)
         ref = self.context.resolve_id(obj, unique=True)
         self.data["id"] = ref
         if at_object:
@@ -161,6 +160,8 @@ class SerializerConfiguration:
         serializer.config.type_name = type_name
         if serializer.config.class_type:
             self.class_map[serializer.config.class_type] = serializer
+            for sb in serializer.config.class_type.__subclasses__():
+                self.class_map[sb] = serializer
 
     def add_decorator(self, decorator: 'Serializer', sub_type: Optional[Type] = None):
         """Add decorator"""
@@ -172,6 +173,13 @@ class SerializerConfiguration:
             for t, s in self.class_map.items():
                 if issubclass(t, sub_type):
                     s.add_post_processor(decorator)
+
+    def find_serializer(self, for_type: Type) -> 'Serializer':
+        """Find serializer for type"""
+        ser = self.class_map.get(for_type)
+        if ser:
+            return ser
+        raise ValueError(f"Serializer not found for {for_type}")
 
     def __repr__(self) -> str:
         return self.class_type.__name__
