@@ -1,75 +1,101 @@
-"""System serializer"""
+# pylint disable=missing-docstring
+"""Serializing IoT system and related class"""
 
-from typing import Optional
+from typing import Type
+
 from tdsaf.core.components import Software
-from tdsaf.core.model import Addressable, Connection, Host, IoTSystem, NetworkNode, NodeComponent, Service
-from tdsaf.serializer.serializer import AbstractSerializer, SerializerContext
-from tdsaf.visualizer import Visualizer
+from tdsaf.serializer.serializer import Serializer, SerializerStream
+
+from tdsaf.core.model import Addressable, Connection, Host, IoTSystem, NetworkNode, Service
 
 
-class SystemSerializer(AbstractSerializer):
-    """IoT system serializer"""
-    def __init__(self, miniature=False, visualizer: Optional[Visualizer] = None):
-        super().__init__()
-        self.visualizer = visualizer
-        self.miniature = miniature  # keep unit tests minimal
+class NetworkNodeSerializer(Serializer):
+    def __init__(self, class_type: Type, miniature=False):
+        super().__init__(class_type)
+        self.miniature = miniature
+        self.config.map_simple_fields("name")
 
-        with self.map_class(NetworkNode) as m:
-            m.default("name")
-            if not self.miniature:
-                m.writer("long_name", lambda c: c.body.long_name())
-            m.register(self.network_node)
-
-        with self.map_class(Addressable).derive(NetworkNode) as m:
-            if not self.miniature:
-                m.writer("tag", lambda c: str(c.body.get_tag()))
-
-        with self.map_class(Host, "host").derive(Addressable) as m:
-            m.new(lambda c: Host(c.parent, c["name"]))
-            if self.visualizer:
-                # write xy-coordinates
-                m.writer("xy", lambda c: self.visualizer.place(c.body))
-                m.writer("image", lambda c: self.visualizer.images.get(c.body))
-
-        with self.map_class(Service, "service").derive(Addressable) as m:
-            m.new(lambda c: Service(c["name"], c.parent))
-
-        with self.map_class(NodeComponent, "component") as m:
-            m.abstract = True
-            m.default("name")
-            if not self.miniature:
-                m.writer("long_name", lambda c: c.body.long_name())
-
-        def connection_name(connection: Connection) -> Optional[str]:
-            name = connection.target.name
-            # s = connection.source
-            # if isinstance(s, Service):
-            #     name = f"{s.name}-{name}"  # looks bad on ARP and DHCP
-            return name
-
-        with self.map_class(Connection, "connection") as m:
-            m.new(lambda c: Connection(c.get_referenced("source"), c.get_referenced("target")))
-            if not self.miniature:
-                m.writer("name", lambda c: connection_name(c.body))
-                m.writer("long_name", lambda c: c.body.long_name())
-            m.reference("source", "target")
-
-        with self.map_class(Software, "sw").derive(NodeComponent) as m:
-            m.new(lambda c: Software(c.parent, c["name"]))
-
-        self.map_class(IoTSystem, "system").derive(NetworkNode)
+    def write(self, obj: NetworkNode, stream: SerializerStream):
+        if not self.miniature:
+            stream.write_field("long_name", obj.long_name())
+        for c in obj.children:
+            stream.push_object(c, at_object=obj)
 
 
-    # pylint: disable=missing-function-docstring
+class AddressableSerializer(NetworkNodeSerializer):
+    def write(self, obj: Addressable, stream: SerializerStream):
+        super().write(obj, stream)
+        if not self.miniature:
+            stream.write_field("tag", obj.get_tag())
 
-    def network_node(self, new: NetworkNode) -> SerializerContext:
-        ctx = SerializerContext(self.serializer_state, new)
-        ctx.list(new.children, {Host, Service})
-        ctx.list(new.components, {Software})
-        return ctx
+    def read(self, obj: Addressable, stream: SerializerStream):
+        obj.parent = stream.resolve("at")
+        obj.parent.children.append(obj)
 
-    def iot_system(self, new: IoTSystem) -> SerializerContext:
-        ctx = self.network_node(new)
-        cs = new.get_connections()
-        ctx.list(cs, {Connection})  # reading not supported
-        return ctx
+
+class HostSerializer(AddressableSerializer):
+    def __init__(self, miniature=False):
+        super().__init__(Host, miniature)
+
+    def new(self, stream: SerializerStream) -> Host:
+        return Host(stream.resolve("at"), stream["name"])
+
+
+class ServiceSerializer(AddressableSerializer):
+    def __init__(self, miniature=False):
+        super().__init__(Service, miniature)
+        self.config.map_simple_fields("name")
+
+    def new(self, stream: SerializerStream) -> Service:
+        return Service(stream["name"], stream.resolve("at"))
+
+
+class ConnectionSerializer(Serializer):
+    def __init__(self, miniature=False):
+        super().__init__(Connection)
+        self.miniature = miniature
+
+    def new(self, stream: SerializerStream) -> Connection:
+        return Connection(stream.resolve("source"), stream.resolve("target"))
+
+    def write(self, obj: Connection, stream: SerializerStream):
+        stream.write_field("source", stream.id_for(obj.source))
+        stream.write_field("target", stream.id_for(obj.target))
+        if not self.miniature:
+            stream.write_field("name", obj.target.name)
+            stream.write_field("long_name", obj.long_name())
+
+
+class NodeComponentSerializer(Serializer):
+    def __init__(self, class_type: Type, miniature=False):
+        super().__init__(class_type)
+        self.miniature = miniature
+        self.config.map_simple_fields("name")
+
+    def write(self, obj: NetworkNode, stream: SerializerStream):
+        if not self.miniature:
+            stream.write_field("long_name", obj.long_name())
+
+
+class SoftwareSerializer(NodeComponentSerializer):
+    def __init__(self, miniature=False):
+        super().__init__(Software, miniature)
+
+    def new(self, stream: SerializerStream) -> Software:
+        return Software(stream.resolve("at"), stream["name"])
+
+
+class IoTSystemSerializer(NetworkNodeSerializer):
+    def __init__(self, system: IoTSystem, miniature=False):
+        super().__init__(IoTSystem, miniature)
+        self.config.type_name = "system"
+        self.config.map_new_class("host", HostSerializer(miniature))
+        self.config.map_new_class("service", ServiceSerializer(miniature))
+        self.config.map_new_class("connection", ConnectionSerializer(miniature))
+        self.config.map_new_class("sw", SoftwareSerializer(miniature))
+        self.system = system
+
+    def write(self, obj: IoTSystem, stream: SerializerStream):
+        super().write(obj, stream)
+        for c in obj.get_connections():
+            stream.push_object(c, at_object=obj)
