@@ -1,53 +1,59 @@
 # Tool-Driven Security Assessment Framework
-
-This is **early version** of the _Tool-driven security assessment_ (TDSA) framework.
+This is an **early version** of the _Tool-driven security assessment_ (TDSA) framework.
 The framework is intended to support automated security assessment of _Internet of Things_ (IoT) and other systems by running common security tools.
 
-This is open-source project driven by [Test of Things](https://testofthings.com).
+This is an open-source project driven by [Test of Things](https://testofthings.com).
 It has been developed based on the PhD thesis of Rauli Kaksonen.
-Orginally, the project was created to demonstrate the TDSA approach for research purposes, but the goal is to make it a real-world usable security assessment 
-framework.
+Orginally, the project was created to demonstrate the TDSA approach for research purposes, but the goal is to make it a real-world usable security assessment framework.
 
 The framework has two main functions:
 
-  1. Creation of _security statement_ for an IoT/IT product or system
-  1. Verification of the statement using output from supported tools
+  1. _Security statement_ creation for an IoT/IT product or system
+  1. Statement verification using output from supported tools
 
-The security statement is now created by Python-based _Domain-Specific Language_ (DSL).
-The verification is done by running [supported tools](Tools.md), which output is them used to pass verdicts for security statement properties.
+Security statements are currently created with a Python-based _Domain-Specific Language_ (DSL).
+The verification is done by running [supported tools](documentation/Tools.md), and using their output to pass verdicts on security statement properties.
 
-## Future plans
+## Getting Started with TDSAF
+At the moment there is no _PyPi_ package for TDSAF, so it must be installed manually. Here's how to do that:
 
-On the long run the framework is intended to support JSON-based security statement descripitons and cover more different tools.
-Check the [roadmap](Roadmap.md) for upcoming features.
-
-## Usage
-
-Security statement are created by Python [Domain Specific Language (DSL)](DSLIntro.md). 
-The idea is that security statement are created as Python applications, with one or several statements per application.
-Thus, the first thing is to create a Python application project. I recommend creating a _virtual environment_ for the project (there are many guides in the Internet). For example
-
-    $ mkdir my_ss
-    $ cd my_ss
-    $ python3.12 -m venv .venv
-    $ source .venv/bin/activate
-
-After that, you must [install](Install.md) the framework from _Github_.
-Then you can start working with you security statement using your favorite editor or IDE.
-The framework comes with sample security statements in directory `samples/`. The security statements description are in a [DSL](DSLIntro.md).
-
-Assuming your security statement is `statement.py`, you execute it as follows:
-
-    $ python statement.py
-
-## Providing tool data
-
-Once the security statement is defined, it can be verified.
-The verification is tool-driven based on output from the tools. Tool results must be stored in a [batch directory](Tools.md) structure, which is specified by `--read` argument, e.g.
-```
-$ python statement.py --read <batch-dir>
+First, clone this repository.
+```shell
+git clone https://github.com/testofthings/tdsaf.git # HTTPS
+# OR
+git clone git@github.com:testofthings/tdsaf.git     # SSH
 ```
 
+Next, create a directory and a virtual environment for your security statement.
+```shell
+mkdir statement-device && cd statement-device
+python3 -m venv .venv
+source .venv/bin/activate # Activate the virtual environment
+mkdir device && cd device
+touch __init__.py statement.py
+```
+The above commands produce the [expected project structure](documentation/CreatingSecurityStatements.md#project-structure) for your statement.
+
+Finally, TDSAF can be taken into use in the statement's directory with the following command.
+(The option `--config-settings editable_mode=strict` is required by some tools to properly work with locally cloned module.)
+```shell
+pip install -e ../tdsaf/ --config-settings editable_mode=strict
+```
+
+Keep in mind that TDSAF and security statements should be stored in their own separate directories.
+
+## Working with Security Statements
+The following two subsections explain how to create security statements for your devices and then verify them. The explanations also provide examples based on how we created a security statement for the _Deltaco Smart Outdoor Plug_.
+
+If you’re a device manufacturer, begin with the creation section. If you’re less familiar with the inner workings of the device you want to test, start with the verification section, which covers data collection. A security statement can be created based on collected data (as we did with the Smart Outdoor Plug).
+
+### Creating Security Statements
+Information on security statement creation is provided [here](documentation/CreatingSecurityStatements.md).
+
+### Verifying Security Statements
+Information on security statement verification is provided [here](documentation/VerifyingSecurityStatements.md).
+
+## Providing tool data (FIXME: Cleanup)
 The `--read` and `--http-server` arguments can be combined to inspecft the verification results using the UI.
 
 Batch files can be provided through API in a zip-file to endpoint `api1/batch`.
@@ -59,24 +65,20 @@ $ curl -v -X POST --data-binary @<batch-file>.zip  \
    http://localhost:8180/api1/batch
 ```
 
-## More options
-
-The framework has additional [command-line options](CommandLine.md).
+## Command Line Options
+The framework's command-line options are listed [here](documentation/CommandLineOptions.md).
 
 ## API server
-
 The framework can run as [API server](APIServer.md).
 The server can only run a single security statement or it can dynamically load them by API calls.
 
 The servers are inteded to be run Docker containers.
 The containers can bundled into a deployment, see [tcsfw UI](https://github.com/ouspg/tcsfw-ui) documentation.
 
-# Client tool
-
+## Client tool
 The API can be used by _client tool_ [tdsaf](ClientTool.md).
 
 ## Sample security statements
-
 A security statement for _Ruuvi gateway and tags_ (https://ruuvi.com/) was developed during the PhD research. The statement is in directory `samples/ruuvi/`. The data for verifying the security statement is available for academic research, please request it from Rauli. Remember to tell the goals of the research and the organization performing it. Right to refuse requests is reserved.
 
 The security statement for Ruuvi is executed like this, assuming working directory is the Tdsaf root:
@@ -85,6 +87,29 @@ $ python samples/ruuvi/ruuvi.py
 ```
 The command dumps some basic information about the security statement.
 
-## License
+## Unit Test
+To run the unit tests, install _pytest_
+```shell
+pip install pytest
+```
+then, in the tdsaf directory:
+```shell
+pytest tests/
+```
 
+## Linting
+To lint tdsaf code, install _pylint_
+```shell
+pip install pylint
+```
+then:
+```shell
+pylint tdsaf/
+```
+Samples and tests are not lint-compatible.
+
+## Future plans
+In the long run the framework is intended to support JSON-based security statement descripitons and to cover even more tools. Check the [roadmap](Roadmap.md) for upcoming features.
+
+## License
 The project is published with [MIT license](LICENSE).
