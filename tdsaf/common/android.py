@@ -5,25 +5,39 @@ import enum
 class MobilePermissions(enum.Enum):
     """Android manifest.xml permission categories.
        Categories based on https://m2.material.io/design/platform-guidance/android-permissions.html#usage"""
-    PHONE = "Phone"                    # Make and manage calls
+    CALLS = "Calls"                    # Make and manage calls
+    SMS = "SMS"                        # Access to SMS and messaging
+    CONTACTS = "Contacts"              # Access to contact information
+    CALENDAR = "Calendar"              # Access to user's calendar
     LOCATION = "Location"              # Access to current device location
+    RECORDING = "Recording"            # Access to camera and microphone
     STORAGE = "Storage"                # Access to photos, media and files
     NETWORK = "Network"                # Access to networks and WiFi configs
-    ADMINISTRATIVE = "Administrative"  # Device administration and security
-    SMS = "SMS"                        # Access to SMS and messaging
-    SETTINGS = "Settings"              # Access to system settings and cofigs
-    BLUETOOTH = "Bluetooth"            # Bluetooth and device management
+    HEALTH = "Health"                  # Access to body sensors, biometrics, ...
     ACCOUNT = "Account"                # User account and authentication
-    RECORDING = "Recording"            # Access to camera and microphone
+    BILLING = "Billing"                # Has in-app purchases
+    BLUETOOTH = "Bluetooth"            # Bluetooth and device management
+    ADMINISTRATIVE = "Administrative"  # Device administration and security
 
     UNCATEGORIZED = "Uncategorized"    # What to do with this one?
 
-
-PHONE = MobilePermissions.PHONE
+CALLS = MobilePermissions.CALLS
 """Make and manage calls"""
+
+SMS = MobilePermissions.SMS
+"""Read/write messages"""
+
+CONTACTS = MobilePermissions.CONTACTS
+"""Access to contact information"""
+
+CALENDAR = MobilePermissions.CALENDAR
+"""Access to user's calendar"""
 
 LOCATION = MobilePermissions.LOCATION
 """Access to device location"""
+
+RECORDING = MobilePermissions.RECORDING
+"""Access to camera and/or microphone"""
 
 STORAGE = MobilePermissions.STORAGE
 """Read and write data on the mobile device"""
@@ -31,23 +45,20 @@ STORAGE = MobilePermissions.STORAGE
 NETWORK = MobilePermissions.NETWORK
 """Access to network configurations"""
 
-ADMINISTRATIVE = MobilePermissions.ADMINISTRATIVE
-"""Access to device administration and security"""
-
-SMS = MobilePermissions.SMS
-"""Read/write messages"""
-
-SETTINGS = MobilePermissions.SETTINGS
-"""Access to device settings and configs FIXME"""
-
-BLUETOOTH = MobilePermissions.BLUETOOTH
-"""Access to bluetooth and nearby device management"""
+HEALTH = MobilePermissions.HEALTH
+"""Access to body sensors, biometrics, ..."""
 
 ACCOUNT = MobilePermissions.ACCOUNT
 """Access to user account and authenticatio"""
 
-RECORDING = MobilePermissions.RECORDING
-"""Access to camera and/or microphone"""
+BILLING = MobilePermissions.BILLING
+"""Has in-app purchases"""
+
+BLUETOOTH = MobilePermissions.BLUETOOTH
+"""Access to bluetooth and nearby device management"""
+
+ADMINISTRATIVE = MobilePermissions.ADMINISTRATIVE
+"""Access to device administration and security"""
 
 UNCATEGORIZED = MobilePermissions.UNCATEGORIZED
 """Uncategorized permissions"""
