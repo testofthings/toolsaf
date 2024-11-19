@@ -67,9 +67,6 @@ class SerializerStream:
             obj = serial.new(self)
             if obj is None:
                 raise ValueError(f"Serializer {serial} does not support new objects")
-            post_process = serializer.config.post_process.get(serial)
-            if post_process:
-                post_process(obj)
             self._read_object(serial, obj)
             yield obj
             self.data = next(iterator, None)
@@ -146,22 +143,18 @@ class SerializerConfiguration:
         self.type_name = ""
         self.class_map: Dict[Type, Serializer] = {}
         self.name_map: Dict[str, Serializer] = {}
-        self.post_process: Dict[Serializer, Callable[[Any], None]] = {}
         self.simple_fields: List[str] = []
 
     def map_simple_fields(self, *fields: str):
         """Map simple fields"""
         self.simple_fields.extend(fields)
 
-    def map_new_class(self, type_name: str, serializer: 'Serializer',
-                      post_process: Optional[Callable[[Any], None]] = None):
+    def map_new_class(self, type_name: str, serializer: 'Serializer'):
         """Map class"""
         self.name_map[type_name] = serializer
         serializer.config.type_name = type_name
         if serializer.config.class_type:
             self.class_map[serializer.config.class_type] = serializer
-        if post_process:
-            self.post_process[serializer] = post_process
 
     def __repr__(self) -> str:
         return self.class_type.__name__
