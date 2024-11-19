@@ -1,7 +1,7 @@
 """The new serializer module"""
 
 import json
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Type
 
 class SerializerContext:
     """Serializer context"""
@@ -97,6 +97,8 @@ class SerializerStream:
         queue = self.push_to
         self.push_to = []
         serial.write(obj, self)
+        for dec in serial.config.decorators:
+            dec.write(obj, self)
         self.push_to = self.push_to + queue  # depth first order
 
     def write_field(self, field_name: str, value: Any):
@@ -112,6 +114,8 @@ class SerializerStream:
         if id_s:
             self.context.object_map[id_s] = obj
             self.context.identifier_map[obj] = id_s
+        for dec in serializer.config.decorators:
+            dec.read(obj, self)
 
     def __getitem__(self, field_name: str) -> Any:
         """Get attribute by field name"""
@@ -136,14 +140,16 @@ class SerializerStream:
             r.append(f"  {e[0].name}")
         return "\n".join(r)
 
+
 class SerializerConfiguration:
     """Serializer configuration"""
     def __init__(self, class_type: Type) -> None:
         self.class_type = class_type
         self.type_name = ""
+        self.simple_fields: List[str] = []
+        self.decorators: List[Serializer] = []
         self.class_map: Dict[Type, Serializer] = {}
         self.name_map: Dict[str, Serializer] = {}
-        self.simple_fields: List[str] = []
 
     def map_simple_fields(self, *fields: str):
         """Map simple fields"""
@@ -155,6 +161,17 @@ class SerializerConfiguration:
         serializer.config.type_name = type_name
         if serializer.config.class_type:
             self.class_map[serializer.config.class_type] = serializer
+
+    def add_decorator(self, decorator: 'Serializer', sub_type: Optional[Type] = None):
+        """Add decorator"""
+        if not sub_type:
+            # add on this level
+            self.decorators.append(decorator)
+        else:
+            # add on sub type level
+            for t, s in self.class_map.items():
+                if issubclass(t, sub_type):
+                    s.add_post_processor(decorator)
 
     def __repr__(self) -> str:
         return self.class_type.__name__
