@@ -68,7 +68,13 @@ class AndroidManifestScan(EndpointTool):
                 ev = PropertyEvent(evidence, software, key.verdict(ver))
                 interface.property_update(ev)
 
-        # FIXME: What if a permission is set in DSL, but its not present in the manifest?
+        for permission in software.permissions:
+            key = PropertyKey("permission", permission)
+            if key not in key_set:
+                key_set.add(key)
+                ev = PropertyEvent(evidence, software, key.verdict(Verdict.FAIL))
+                interface.property_update(ev)
+
         if self.send_events:
             ev = PropertyEvent(evidence, software, Properties.PERMISSIONS.value_set(key_set, self.tool.name))
             interface.property_update(ev)

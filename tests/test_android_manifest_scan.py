@@ -60,14 +60,15 @@ def test_process_endpoint():
 
     mobile_app = system.mobile("Mobile App")
     mobile_app.software("Mobile App SW")
-    mobile_app.set_permissions(RECORDING)
+    mobile_app.set_permissions(RECORDING, STORAGE)
 
     do_process(setup)
 
     sw = mobile_app.get_software()
-    assert len(sw.properties) == 3 # Two permissions and 1 check
+    assert len(sw.properties) == 4 # Three permissions and 1 check
     assert sw.properties[PropertyKey("permission", "Network")].verdict == Verdict.FAIL
     assert sw.properties[PropertyKey("permission", "Recording")].verdict == Verdict.PASS
+    assert sw.properties[PropertyKey("permission", "Storage")].verdict == Verdict.FAIL # Not in manifest
 
 
 def test_process_endpoint_fails_when_not_mobile_app():
