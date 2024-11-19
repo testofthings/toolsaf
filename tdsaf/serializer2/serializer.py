@@ -179,7 +179,9 @@ class Serializer:
 
 
 class NetworkNodeSerializer(Serializer):
-    def initialize(self):
+    def __init__(self, class_type: Type, miniature=False):
+        super().__init__(class_type)
+        self.miniature = miniature
         self.config.map_simple_fields("name")
 
     def write(self, obj: NetworkNode, stream: SerializerStream):
@@ -194,30 +196,31 @@ class NetworkNodeSerializer(Serializer):
 class AddressableSerializer(NetworkNodeSerializer):
     def write(self, obj: Addressable, stream: SerializerStream):
         super().write(obj, stream)
-        # stream.write_field("long_name", obj.long_name())
-        # stream.write_field("tag", obj.get_tag())
+        if not self.miniature:
+            stream.write_field("long_name", obj.long_name())
+            stream.write_field("tag", obj.get_tag())
 
 
 class HostSerializer(AddressableSerializer):
-    def __init__(self):
-        super().__init__(Host)
+    def __init__(self, miniature=False):
+        super().__init__(Host, miniature)
 
     def new(self, stream: SerializerStream) -> Host:
         return Host(stream.resolve("at"), stream["name"])
 
 
 class ServiceSerializer(AddressableSerializer):
-    def __init__(self):
-        super().__init__(Service)
+    def __init__(self, miniature=False):
+        super().__init__(Service, miniature)
 
     def new(self, stream: SerializerStream) -> Service:
         return Service(stream["name"], stream.resolve("at"))
 
 
 class IoTSystemSerializer(NetworkNodeSerializer):
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem, miniature=False):
         super().__init__(IoTSystem)
         self.config.type_name = "system"
-        self.config.map_new_class("host", HostSerializer())
-        self.config.map_new_class("service", ServiceSerializer())
+        self.config.map_new_class("host", HostSerializer(miniature))
+        self.config.map_new_class("service", ServiceSerializer(miniature))
         self.system = system

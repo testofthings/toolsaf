@@ -1,5 +1,6 @@
 from tdsaf.core.model import Connection, IoTSystem
 from tdsaf.serializer.system_serializer import SystemSerializer
+from tdsaf.serializer2.serializer import IoTSystemSerializer, SerializerStream
 from tests.test_model_new import Setup_1
 
 
@@ -31,3 +32,15 @@ def test_simple_model():
     assert isinstance(r[4], Connection)
     assert r[4].source == r[3]
     assert r[4].target == r[2]
+
+
+def test_simple_model_2():
+    su = Setup_1()
+    su.system.system.name = "Test"
+    ser = IoTSystemSerializer(su.system.system, miniature=True)
+    stream = SerializerStream()
+    js = list(stream.write(ser.system, ser))
+    assert len(js) == 4
+    assert js[0] == {"id": "id1", "type": "system", "name": "Test"}
+    assert js[1] == {"id": "id2", "at": "id1", "type": "host", "name": "Device 1"}
+    # assert js[4] == {"id": "id5", "at": "id1", "type": "connection", "source": "id4", "target": "id3"}
