@@ -132,10 +132,7 @@ class SerializerStream:
         return self.context.id_for(obj)
 
     def __repr__(self) -> str:
-        r = [json.dumps(self.data)]
-        for e in self.push_to:
-            r.append(f"  {e[0].name}")
-        return "\n".join(r)
+        return json.dumps(self.data)  # best debugging help - JSON so far
 
 
 class SerializerConfiguration:
