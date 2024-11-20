@@ -90,6 +90,20 @@ Use of Censys API requires an account with suitable permissions. Once account ha
 $ python tdsaf/censys_scan <address>
 ```
 
+### Certmitm
+[Certmitm](https://github.com/aapooksman/certmitm) produces files and folders as its output. To provide this data to TDSAF create a compressed zip file containing the output.
+Example metafile `00meta.json`:
+```json
+{
+    "file_type": "certmitm",
+    "addresses": {
+        "192.168.4.2": "Mobile_App",
+        "192.168.5.3": "Backend_1"
+    }
+}
+```
+To properly process certmitm results, IP addresses for the hosts, present in the output need to be provided in the metafile.
+
 ### Github releses
 
 Data files are release json-files fetched from GitHub and named as `<component>.json` where `<component>` is the name of the SW component.
