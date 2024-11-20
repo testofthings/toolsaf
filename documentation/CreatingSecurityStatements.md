@@ -68,6 +68,7 @@ Now that we know the structure of a security statement, let's look at a real wor
 ```python
 """ Security statement """
 from tdsaf.main import Builder, TLS, DNS, UDP, ARP, EAPOL, ICMP, TCP
+from tdsaf.common.android import LOCATION, BLUETOOTH, ADMINISTRATIVE, NETWORK, RECORDING, STORAGE, UNCATEGORIZED
 
 # Start modeling the IoT system
 system = Builder.new("Deltaco Smart Outdoor Plug")
@@ -84,6 +85,11 @@ smart_plug_udp_port = smart_plug / UDP(port=63144)
 
 # Defining the mobile app
 mobile_app = system.mobile("Smart Home App")
+
+# Defining mobile app permissions
+mobile_app.set_permissions(
+    LOCATION, BLUETOOTH, ADMINISTRATIVE, NETWORK, RECORDING, STORAGE, UNCATEGORIZED
+)
 
 # Defining broadcasts
 udp_broadcast_1 = system.broadcast(UDP(port=6667))
