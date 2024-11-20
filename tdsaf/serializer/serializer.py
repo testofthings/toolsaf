@@ -1,7 +1,7 @@
 """The new serializer module"""
 
 import json
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Type
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, Callable
 
 class SerializerContext:
     """Serializer context"""
@@ -79,11 +79,11 @@ class SerializerStream:
     def _write_object(self, obj: Any, at_object: Any, serializer: 'Serializer'):
         """Write object"""
         obj_type = type(obj)
-        if obj_type == serializer.config.class_type:
+        if issubclass(obj_type, serializer.config.class_type):
             serial = serializer
         else:
             serial = serializer.config.find_serializer(obj_type)
-        ref = self.context.resolve_id(obj, unique=True)
+        ref = self.serializer.config.resolve_id(obj, self.context)
         self.data["id"] = ref
         if at_object:
             self.data["at"] = self.context.id_for(at_object)
@@ -145,6 +145,7 @@ class SerializerConfiguration:
     def __init__(self, class_type: Type) -> None:
         self.class_type = class_type
         self.type_name = ""
+        self.explicit_id: Optional[Callable[[Any], str]] = None
         self.simple_fields: List[str] = []
         self.decorators: List[Serializer] = []
         self.class_map: Dict[Type, Serializer] = {}
@@ -180,6 +181,16 @@ class SerializerConfiguration:
         if ser:
             return ser
         raise ValueError(f"Serializer not found for {for_type}")
+
+    def resolve_id(self, obj: Any, context: SerializerContext) -> str:
+        """Resolve object id"""
+        if self.explicit_id is not None:
+            ids = self.explicit_id(obj)
+            context.identifier_map[obj] = ids
+            context.object_map[ids] = obj
+        else:
+            ids = context.resolve_id(obj, unique=True)
+        return ids
 
     def __repr__(self) -> str:
         return self.class_type.__name__

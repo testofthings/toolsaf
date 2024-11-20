@@ -1,12 +1,12 @@
 # pylint: disable=missing-class-docstring
 """Serializing IoT system and related class"""
 
-from typing import Dict, Iterable, Optional, Type
+from typing import Optional, Type
 
 from tdsaf.visualizer import Visualizer
 
 from tdsaf.core.components import Software
-from tdsaf.serializer.serializer import Serializer, SerializerContext, SerializerStream
+from tdsaf.serializer.serializer import Serializer, SerializerStream
 
 from tdsaf.core.model import Addressable, Connection, Host, IoTSystem, NetworkNode, Service
 
@@ -35,12 +35,6 @@ class IoTSystemSerializer(NetworkNodeSerializer):
         self.config.map_new_class("sw", SoftwareSerializer(self))
         self.system = system
         self.visualizer = visualizer
-
-    def write_json(self, context: Optional[SerializerContext]) -> Iterable[Dict]:
-        """Write system to JSON"""
-        stream = SerializerStream(context=context)
-        return stream.write(self.system, self)
-
 
     def write(self, obj: IoTSystem, stream: SerializerStream):
         super().write(obj, stream)
