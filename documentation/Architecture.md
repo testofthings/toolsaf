@@ -3,8 +3,18 @@
 ## NetworkNode
 - Should have no more than 1 software component.
 
+## Common
+This section provides info on `tdsaf.common`.
+
+FIXME
+
+## Core
+This section provides info on `tdsaf.core`.
+
+FIXME
+
 ## Tools
-This section first provides info on the tool various tool classes, then on the tool output readers.
+This section provides info on the various tool classes and finders, batch directory importer and tool output readers. These are all found under `tdsaf.adapters`.
 
 ### Base Classes
 #### **ToolAdapter**
@@ -49,11 +59,16 @@ This section first provides info on the tool various tool classes, then on the t
 
 ---
 ### Tool Finder
-FIXME
+File: [tool_finder.py](../tdsaf/adapters/tool_finder.py).
 
+FIXME
 
 ---
 ### Batch Import
+File: [batch_import.py](../tdsaf/adapters/batch_import.py).
+
+Loads sample data from a batch directory.
+
 FIXME
 
 ---
@@ -92,7 +107,7 @@ FIXME
 - FIXME
 
 #### **PCAPReader**
-- File: [](../tdsaf/adapters/pcap_reader.py).
+- File: [pcap_reader](../tdsaf/adapters/pcap_reader.py).
 - Is a SystemWideTool.
 - FIXME
 
@@ -118,7 +133,7 @@ FIXME
 
 #### **SSHAuditScan**
 - File: [ssh_audit_scan.py](../tdsaf/adapters/ssh_audit_scan.py).
-- Is a
+- Is an EndpointTool.
 - FIXME
 
 #### **TestSSLScan**
