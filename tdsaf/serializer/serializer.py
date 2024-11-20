@@ -9,15 +9,13 @@ class SerializerContext:
         self.identifier_map: Dict[Any, str] = {}
         self.object_map: Dict[str, Any] = {}
 
-    def resolve_id(self, obj: Any, unique=False) -> str:
+    def resolve_id(self, obj: Any) -> str:
         """Resolve object id"""
         i = self.identifier_map.get(obj)
         if i is None:
             i = f"id{len(self.identifier_map) + 1}"
             self.identifier_map[obj] = i
             self.object_map[i] = obj
-        elif unique:
-            raise ValueError(f"Object {obj} (id={i}) already in context")
         return i
 
     def id_for(self, obj: Any) -> str:
@@ -189,7 +187,7 @@ class SerializerConfiguration:
             context.identifier_map[obj] = ids
             context.object_map[ids] = obj
         else:
-            ids = context.resolve_id(obj, unique=True)
+            ids = context.resolve_id(obj)
         return ids
 
     def __repr__(self) -> str:
