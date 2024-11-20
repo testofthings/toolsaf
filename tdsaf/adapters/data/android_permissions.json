@@ -105,7 +105,6 @@
     ],
 
     "Health": [
-        "USE_BIOMETRIC",
         "BODY_SENSORS",
         "BODY_SENSORS_BACKGROUND",
         "FOREGROUND_SERVICE_HEALTH"
@@ -360,6 +359,7 @@
         "UNINSTALL_SHORTCUT",
         "USE_EXACT_ALARM",
         "USE_FINGERPRINT",
+        "USE_BIOMETRIC",
         "USE_SIP",
         "VIBRATE",
         "WRITE_GSERVICES"
