@@ -62,11 +62,11 @@ class HostSerializer(AddressableSerializer):
     def write(self, obj: Host, stream: SerializerStream):
         super().write(obj, stream)
         vis = self.root.visualizer
-        if vis:
+        if vis and obj.visual:
             stream.write_field("xy", vis.place(obj))
-            image = vis.images.get(obj.name)
-            if image:
-                stream.write_field("image", image)
+            image_and_z = vis.images.get(obj)
+            if image_and_z:
+                stream.write_field("image", image_and_z)
 
 
 
