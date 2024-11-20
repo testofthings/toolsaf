@@ -165,10 +165,11 @@ class SerializerConfiguration:
             # add on this level
             self.decorators.append(decorator)
         else:
-            # add on sub type level
-            for t, s in self.class_map.items():
-                if issubclass(t, sub_type):
-                    s.add_post_processor(decorator)
+            # add by sub type
+            if issubclass(self.class_type, sub_type):
+                self.decorators.append(decorator)
+            for s in self.class_map.values():
+                s.config.add_decorator(decorator, sub_type=sub_type)
 
     def find_serializer(self, for_type: Type) -> 'Serializer':
         """Find serializer for type"""
