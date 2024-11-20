@@ -42,8 +42,9 @@ class SerializerStream:
             o, at = queue[0]
             self.push_to = []
             self.data = {}
-            self._write_object(o, at, self.serializer)
-            yield self.data
+            send = self._write_object(o, at, self.serializer)
+            if send:
+                yield self.data
             queue = self.push_to + queue[1:] # depth first order
 
     def read(self, start: Any, data: Iterable[Dict]) -> Iterable[Any]:
@@ -74,13 +75,15 @@ class SerializerStream:
         """Push object to queue"""
         self.push_to.append((obj, at_object))
 
-    def _write_object(self, obj: Any, at_object: Any, serializer: 'Serializer'):
+    def _write_object(self, obj: Any, at_object: Any, serializer: 'Serializer') -> bool:
         """Write object"""
         obj_type = type(obj)
         if issubclass(obj_type, serializer.config.class_type):
             serial = serializer
         else:
             serial = serializer.config.find_serializer(obj_type)
+        if serial.config.abstract:
+            return False
         ref = self.serializer.config.resolve_id(obj, self.context)
         self.data["id"] = ref
         if at_object:
@@ -97,12 +100,13 @@ class SerializerStream:
         for dec in serial.config.decorators:
             dec.write(obj, self)
         self.push_to = self.push_to + queue  # depth first order
+        return True
 
     def write_field(self, field_name: str, value: Any):
         """Write custom field"""
         self.data[field_name] = value
 
-    def _read_object(self, serializer: 'Serializer', obj: Any) -> Any:
+    def _read_object(self, serializer: 'Serializer', obj: Any):
         """Read object"""
         for field in serializer.config.simple_fields:
             setattr(obj, field, self.data[field])
@@ -139,6 +143,7 @@ class SerializerConfiguration:
     """Serializer configuration"""
     def __init__(self, class_type: Type) -> None:
         self.class_type = class_type
+        self.abstract = False
         self.type_name = ""
         self.explicit_id: Optional[Callable[[Any], str]] = None
         self.simple_fields: List[str] = []

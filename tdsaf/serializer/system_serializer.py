@@ -8,7 +8,7 @@ from tdsaf.visualizer import Visualizer
 from tdsaf.core.components import Software
 from tdsaf.serializer.serializer import Serializer, SerializerStream
 
-from tdsaf.core.model import Addressable, Connection, Host, IoTSystem, NetworkNode, Service
+from tdsaf.core.model import Addressable, Connection, Host, IoTSystem, NetworkNode, NodeComponent, Service
 
 
 class NetworkNodeSerializer(Serializer):
@@ -22,6 +22,8 @@ class NetworkNodeSerializer(Serializer):
             stream.write_field("long_name", obj.long_name())
         for c in obj.children:
             stream.push_object(c, at_object=obj)
+        for c in obj.components:
+            stream.push_object(c, at_object=obj)
 
 
 class IoTSystemSerializer(NetworkNodeSerializer):
@@ -32,6 +34,7 @@ class IoTSystemSerializer(NetworkNodeSerializer):
         self.config.map_new_class("host", HostSerializer(self))
         self.config.map_new_class("service", ServiceSerializer(self))
         self.config.map_new_class("connection", ConnectionSerializer(self))
+        self.config.map_new_class("component", NodeComponentSerializer(self))
         self.config.map_new_class("sw", SoftwareSerializer(self))
         self.system = system
         self.visualizer = visualizer
@@ -96,9 +99,10 @@ class ConnectionSerializer(Serializer):
 
 
 class NodeComponentSerializer(Serializer):
-    def __init__(self, class_type: Type, root: IoTSystemSerializer):
+    def __init__(self, root: IoTSystemSerializer, class_type=NodeComponent):
         super().__init__(class_type)
         self.root = root
+        self.config.abstract = True  # do not create instances of this class
         self.config.map_simple_fields("name")
 
     def write(self, obj: NetworkNode, stream: SerializerStream):
@@ -108,7 +112,8 @@ class NodeComponentSerializer(Serializer):
 
 class SoftwareSerializer(NodeComponentSerializer):
     def __init__(self, root: IoTSystemSerializer):
-        super().__init__(Software, root)
+        super().__init__(root, class_type=Software)
+        self.config.abstract = False
 
     def new(self, stream: SerializerStream) -> Software:
         return Software(stream.resolve("at"), stream["name"])
