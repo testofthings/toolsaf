@@ -156,8 +156,6 @@ class SerializerConfiguration:
         serializer.config.type_name = type_name
         if serializer.config.class_type:
             self.class_map[serializer.config.class_type] = serializer
-            for sb in serializer.config.class_type.__subclasses__():
-                self.class_map[sb] = serializer
 
     def add_decorator(self, decorator: 'Serializer', sub_type: Optional[Type] = None):
         """Add decorator"""
@@ -176,6 +174,10 @@ class SerializerConfiguration:
         ser = self.class_map.get(for_type)
         if ser:
             return ser
+        for sc in for_type.__mro__:
+            ser = self.class_map.get(sc)
+            if ser:
+                return ser
         raise ValueError(f"Serializer not found for {for_type}")
 
     def resolve_id(self, obj: Any, context: SerializerContext) -> str:
