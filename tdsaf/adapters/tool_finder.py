@@ -5,6 +5,7 @@ from tdsaf.adapters.android_manifest_scan import AndroidManifestScan
 from tdsaf.adapters.censys_scan import CensysScan
 from tdsaf.adapters.har_scan import HARScan
 from tdsaf.adapters.mitm_log_reader import MITMLogReader
+from tdsaf.adapters.certmitm_reader import CertMITMReader
 from tdsaf.adapters.nmap_scan import NMAPScan
 from tdsaf.adapters.pcap_reader import PCAPReader
 from tdsaf.adapters.ping_command import PingCommand
@@ -75,6 +76,7 @@ class ToolFinderImplementation:
         self.har = ToolDepiction("har", HARScan, extension="json")
         self.http = ToolDepiction("http", WebChecker, extension="http")
         self.mitm_proxy = ToolDepiction("mitmproxy", MITMLogReader, extension="log")
+        self.certmitm = ToolDepiction("certmitm", CertMITMReader, extension="zip")
         self.nmap = ToolDepiction("nmap", NMAPScan, extension="xml")
         self.releases = ToolDepiction("github-releases", ReleaseReader)
         self.ping = ToolDepiction("ping", PingCommand, extension="log")
