@@ -42,18 +42,14 @@ A sample command to capture the output in proper format is shown for command-lin
 **FIXME** Add actual list!
 
 ### Android Manifest
-
-Data files are APK manifest XML files with suffix `.xml`.
-Example metafile `00meta.json`:
+TDSAF checks the permissions listed in `.xml` format Android Manifest files. These can be extracted from mobile application's `.apk` files. Example metafile `00meta.json`:
 
 ```json
 {
     "file_type": "apk"
 }
 ```
-
-A manifest file can be extracted from Android package file by `apktool' or simply using 'unzip'.
-
+A manifest file can be extracted from an Android package file with `apktool` or simply using 'unzip'.
 ```
 $ apktool d <package>.apk -f -o apk-files
 ```
@@ -62,6 +58,7 @@ As the package file is a zip, the following works as well.
 ```
 $ unzip <package>.apk AndroidManifest.xml
 ```
+We divide Android permissions into [different categories](../tdsaf/adapters/data/android_permissions.json) that are then used in the DSL.
 
 ### Black Duck vulnerabilities
 

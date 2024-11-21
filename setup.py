@@ -24,6 +24,8 @@ setup(
     description='TDSA Framework',
     long_description='Tool-Driven Security Assessment Framework',
     url='https://github.com/testofthings/tdsaf',
+    include_package_data=True,
+    package_data={'tdsaf.adapters': ['data/*.json']},
     install_requires=requirements,
     classifiers=[
         "Programming Language :: Python :: 3",
