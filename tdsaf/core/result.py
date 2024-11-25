@@ -38,7 +38,7 @@ class Report:
         self.print_properties(self.system, "  ", writer)
 
         hosts = self.system.get_hosts()
-        writer.write("== Hosts and Services ==\n")
+        writer.write("## Hosts and Services\n")
         rev_map: Dict[str, List[Host]] = {}
         for h in hosts:
             if not h.is_relevant():
@@ -70,7 +70,7 @@ class Report:
             if len(hs) > 1:
                 self.logger.warning("DOUBLE mapped %s: %s", ad, ", ".join([f"{h}" for h in hs]))
 
-        writer.write("== Connections ==\n")
+        writer.write("## Connections\n")
         for conn in self.system.get_connections(relevant_only=False):
             stat = conn.con_type.value if conn.con_type == ConnectionType.LOGICAL else conn.status_string()
             writer.write(f"[{stat}] {conn.source.long_name():<30} ==> {conn.target.long_name()}\n")
