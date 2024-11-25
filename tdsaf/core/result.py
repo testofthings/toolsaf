@@ -36,11 +36,10 @@ class Report:
             v = verdict.split("/")[1]
             color = GREEN if v.lower() == "p" else RED
             return f"[{color}{verdict}{RESET}]"
-        else:
-            if verdict.lower()[0] == "i" or verdict == " ":
-                return "[ ]"
-            color = GREEN if verdict.lower()[0] == "p" else RED
-            return f"[{color}{verdict[0]}{RESET}]"
+        if verdict.lower()[0] == "i" or verdict == " ":
+            return "[ ]"
+        color = GREEN if verdict.lower()[0] == "p" else RED
+        return f"[{color}{verdict[0]}{RESET}]"
 
     def get_verdict(self, st: str) -> str:
         """Get verdict from Addressable status string"""
