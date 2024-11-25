@@ -16,6 +16,10 @@ from tdsaf.core.registry import Registry
 INDENT = "  "
 SUB_INDENT = INDENT + "  "
 
+GREEN = Fore.green if sys.stdout.isatty() else ""
+RED = Fore.red if sys.stdout.isatty() else ""
+RESET = Style.reset if sys.stdout.isatty() else ""
+
 
 class Report:
     """Report of the system status"""
@@ -28,14 +32,26 @@ class Report:
 
     def get_colored_verdict(self, verdict: str) -> str:
         """Add color to verdict string if output not redirected"""
-        if verdict.lower() == "incon":
-            return "[ ]"
-        if sys.stdout.isatty():
-            color = Fore.green if verdict.lower() == "pass" else Fore.red
-            reset = Style.reset
+        if "/" in verdict:
+            v = verdict.split("/")[1]
+            color = GREEN if v.lower() == "p" else RED
+            return f"[{color}{verdict}{RESET}]"
         else:
-            color, reset = "", ""
-        return f"[{color}{verdict[0]}{reset}]"
+            if verdict.lower()[0] == "i" or verdict == " ":
+                return "[ ]"
+            color = GREEN if verdict.lower()[0] == "p" else RED
+            return f"[{color}{verdict[0]}{RESET}]"
+
+    def get_verdict(self, st: str) -> str:
+        """Get verdict from Addressable status string"""
+        try:
+            s, v = st.split("/")
+        except ValueError:
+            s, v = st, ""
+        if v == "":
+            return " "
+        s = ["E", "U", "X", "I"][["expected", "unexpected", "external", "incon"].index(s.lower())]
+        return f"{s}/{v[0]}"
 
     def print_properties(self, entity: NetworkNode, indent: str, writer: TextIO):
         """Print properties from entity"""
@@ -47,7 +63,12 @@ class Report:
             s = k.get_value_string(v)
             if 'permission' in s and not self.show_permissions:
                 continue
-            writer.write(f"{indent}{s}{com}\n")
+            if "check" not in s:
+                s, v = s.split("=")
+                v = self.get_colored_verdict(v)
+                writer.write(f"{indent}{v} {s}{com}\n")
+            else:
+                writer.write(f"{indent}{s}{com}\n")
             self._print_source(writer, entity, 2, k)
 
     def print_report(self, writer: TextIO):
@@ -68,8 +89,8 @@ class Report:
             if not h.is_relevant():
                 continue
             h_name = f"{h.name}"
-            aggregate_verdict = h.get_verdict(cache)
-            writer.write(f"{self.get_colored_verdict(aggregate_verdict.value)} {h_name}\n")
+            aggregate_verdict = f"{h.status.value}/{h.get_verdict(cache).value}"
+            writer.write(f"{self.get_colored_verdict(self.get_verdict(aggregate_verdict))} {h_name}\n")
             self._print_source(writer, h, 1)
             ads = [f"{a}" for a in sorted(h.addresses)]
             for a in ads:
@@ -88,7 +109,8 @@ class Report:
 
             self.print_properties(h, "  ", writer)
             for s in h.children:
-                writer.write(f"{INDENT}[{s.status_string()}] {s.name}\n")
+                v = self.get_colored_verdict(self.get_verdict(s.status_string()))
+                writer.write(f"{INDENT}{v} {s.name}\n")
                 self._print_source(writer, s, 2)
                 self.print_properties(s, "    ", writer)
         for ad, hs in sorted(rev_map.items()):
@@ -98,7 +120,8 @@ class Report:
         writer.write("## Connections\n")
         for conn in self.system.get_connections(relevant_only=False):
             stat = conn.con_type.value if conn.con_type == ConnectionType.LOGICAL else conn.status_string()
-            writer.write(f"[{stat}] {conn.source.long_name():<30} ==> {conn.target.long_name()}\n")
+            v = self.get_colored_verdict(self.get_verdict(stat))
+            writer.write(f"{v} {conn.source.long_name():<30} ==> {conn.target.long_name()}\n")
             self._print_source(writer, conn, 2)
             self.print_properties(conn, "    ", writer)
 
