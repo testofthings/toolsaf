@@ -20,6 +20,7 @@ class Report:
         self.registry = registry
         self.system = registry.system
         self.source_count = 3
+        self.show_permissions = False
         self.logger = logging.getLogger("reporter")
 
     def print_properties(self, entity: NetworkNode, indent: str, writer: TextIO):
@@ -29,7 +30,10 @@ class Report:
                 continue  # encoded into status string
             com = k.get_explanation(v)
             com = f" # {com}" if com else ""
-            writer.write(f"{indent}{k.get_value_string(v)}{com}\n")
+            s = k.get_value_string(v)
+            if 'permission' in s and not self.show_permissions:
+                continue
+            writer.write(f"{indent}{s}{com}\n")
             self._print_source(writer, entity, 2, k)
 
     def print_report(self, writer: TextIO):
