@@ -2,10 +2,12 @@
 
 import enum
 import re
+import sys
 from typing import Dict, Optional, Self, List, Any, Tuple, Iterable, Iterator
+from colored import Fore, Style
+
 from tdsaf.common.basics import Status
 from tdsaf.common.verdict import Verdict
-
 from tdsaf.common.claim import AbstractClaim
 from tdsaf.common.property import Properties, PropertyKey
 from tdsaf.common.verdict import Verdictable
@@ -110,9 +112,17 @@ class Entity:
         """Get a status string"""
         st = self.status.value
         v = Properties.EXPECTED.get_verdict(self.properties)
-        if v is not None:
-            st = f"{st}/{v.value}"
-        return st
+        if sys.stdout.isatty():
+            if v == Verdict.PASS:
+                return f'{Fore.green}{["p", "P"][st == "Expected"]}{Style.reset}'
+            elif v == Verdict.FAIL:
+                return f'{Fore.red}{["f", "F"][st == "Expected"]}{Style.reset}'
+        else:
+            if v == Verdict.PASS:
+                return f'{["p", "P"][st == "Expected"]}'
+            elif v == Verdict.FAIL:
+                return f'{["f", "F"][st == "Expected"]}'
+        return " " # Verdict.INCON
 
     def __repr__(self):
         s = f"{self.status_string()} {self.long_name()}"

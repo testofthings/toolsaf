@@ -1,9 +1,11 @@
 """Properties"""
 
+import sys
 from dataclasses import dataclass
 from typing import Set, Dict, Any, Optional, Tuple, Self
-from tdsaf.common.verdict import Verdict
+from colored import Fore, Style
 
+from tdsaf.common.verdict import Verdict
 from tdsaf.common.verdict import Verdictable
 
 class PropertyKey:
@@ -103,7 +105,15 @@ class PropertyKey:
             s = f"{value.get_overall_verdict({})}" if not value.sub_keys else f"{value.sub_keys}"
         else:
             s = f"{value}"
-        return f"{self.get_name()}={s}" if s else self.get_name()
+        if s == "Pass":
+            if sys.stdout.isatty():
+                return f"[{Fore.green}p{Style.reset}] {self.get_name()}"
+            return f"[p] {self.get_name()}"
+        elif s == "Fail":
+            if sys.stdout.isatty():
+                return f"[{Fore.red}f{Style.reset}] {self.get_name()}"
+            return f"[f] {self.get_name()}"
+        return f"{self.get_name()}={s}"
 
     def get_value_json(self, value: Any, json_data: Dict) -> Dict:
         """Get value as JSON"""

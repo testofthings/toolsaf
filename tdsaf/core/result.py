@@ -5,14 +5,13 @@ from typing import TextIO, List, Dict
 
 from tdsaf.common.basics import ConnectionType
 from tdsaf.common.entity import Entity
-from tdsaf.core.model import Host, Service, NetworkNode
+from tdsaf.core.model import Host, NetworkNode
 from tdsaf.common.property import Properties, PropertyKey
 from tdsaf.core.registry import Registry
 
-# Keywords for verdicts
-FAIL = "fail"
-PASS = "pass"
-INCONCLUSIVE = "-"
+
+INDENT = "  "
+SUB_INDENT = INDENT + "  "
 
 
 class Report:
@@ -35,37 +34,36 @@ class Report:
 
     def print_report(self, writer: TextIO):
         """Print textual report"""
-        writer.write("== System ==\n")
+        writer.write(f"{self.system.long_name()}\n")
         self.print_properties(self.system, "  ", writer)
 
         hosts = self.system.get_hosts()
-        writer.write("== Hosts ==\n")
+        writer.write("== Hosts and Services ==\n")
         rev_map: Dict[str, List[Host]] = {}
         for h in hosts:
             if not h.is_relevant():
                 continue
             h_name = f"{h.name}"
-            writer.write(f"{h_name} [{h.status_string()}]\n")
+            writer.write(f"[{h.status_string()}] {h_name}\n")
             self._print_source(writer, h, 1)
             ads = [f"{a}" for a in sorted(h.addresses)]
             for a in ads:
                 rev_map.setdefault(a, []).append(h)
             ads = [a for a in ads if a != h_name]
             if ads:
-                writer.write("  Addresses: " + " ".join(ads) + "\n")
+                writer.write(INDENT + "Addresses: " + " ".join(ads) + "\n")
 
             for comp in h.components:
-                writer.write(f"  {comp.name} [Component]\n")
+                writer.write(f"{INDENT}{comp.name} [Component]\n")
                 sw_info = comp.info_string()
                 if sw_info:
-                    writer.write("    " + sw_info.replace("\n", "\n    ") + "\n")
+                    writer.write(SUB_INDENT + sw_info.replace("\n", "\n    ") + "\n")
                 self._print_source(writer, comp, 2)
-                self.print_properties(comp, "    ", writer)
+                self.print_properties(comp, SUB_INDENT, writer)
 
             self.print_properties(h, "  ", writer)
             for s in h.children:
-                auth = f" auth={s.authentication}" if isinstance(s, Service) else ""
-                writer.write(f"  {s.name} [{s.status_string()}]{auth}\n")
+                writer.write(f"{INDENT}[{s.status_string()}] {s.name}\n")
                 self._print_source(writer, s, 2)
                 self.print_properties(s, "    ", writer)
         for ad, hs in sorted(rev_map.items()):
@@ -75,7 +73,7 @@ class Report:
         writer.write("== Connections ==\n")
         for conn in self.system.get_connections(relevant_only=False):
             stat = conn.con_type.value if conn.con_type == ConnectionType.LOGICAL else conn.status_string()
-            writer.write(f"  {conn.source.long_name():<30} ==> {conn.target.long_name()} [{stat}]\n")
+            writer.write(f"[{stat}] {conn.source.long_name():<30} ==> {conn.target.long_name()}\n")
             self._print_source(writer, conn, 2)
             self.print_properties(conn, "    ", writer)
 
