@@ -51,8 +51,8 @@ def test_model_events():
     assert lis.labels == [
         'Device 1 => Device 2 UDP:1234 property check:expected=[Pass]',
         'Device 1 property check:expected=[Pass]',
-        'conn Unexpected/Fail Device 1 => 1.0.0.3',
-        'host Unexpected/Fail 1.0.0.3',
+        'conn f Device 1 => 1.0.0.3',
+        'host f 1.0.0.3',
     ]
 
     # identical flows -> no change
@@ -81,8 +81,8 @@ def test_registry_events():
     assert lis0.labels == [
         'Device 1 => Device 2 UDP:1234 property check:expected=[Pass]',
         'Device 1 property check:expected=[Pass]',
-        'conn Unexpected/Fail Device 1 => 1.0.0.3',
-        'host Unexpected/Fail 1.0.0.3',
+        'conn f Device 1 => 1.0.0.3',
+        'host f 1.0.0.3',
     ]
 
     lis = AModelListener()
