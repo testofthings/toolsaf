@@ -1,10 +1,13 @@
 """Simple text report on the system status"""
 
+import sys
 import logging
 from typing import TextIO, List, Dict
+from colored import Fore, Style
 
 from tdsaf.common.basics import ConnectionType
 from tdsaf.common.entity import Entity
+from tdsaf.common.verdict import Verdict
 from tdsaf.core.model import Host, NetworkNode
 from tdsaf.common.property import Properties, PropertyKey
 from tdsaf.core.registry import Registry
@@ -23,6 +26,17 @@ class Report:
         self.show_permissions = False
         self.logger = logging.getLogger("reporter")
 
+    def get_colored_verdict(self, verdict: str) -> str:
+        """Add color to verdict string if output not redirected"""
+        if verdict.lower() == "incon":
+            return "[ ]"
+        if sys.stdout.isatty():
+            color = Fore.green if verdict.lower() == "pass" else Fore.red
+            reset = Style.reset
+        else:
+            color, reset = "", ""
+        return f"[{color}{verdict[0]}{reset}]"
+
     def print_properties(self, entity: NetworkNode, indent: str, writer: TextIO):
         """Print properties from entity"""
         for k, v in entity.properties.items():
@@ -38,17 +52,24 @@ class Report:
 
     def print_report(self, writer: TextIO):
         """Print textual report"""
-        writer.write(f"{self.system.long_name()}\n")
-        self.print_properties(self.system, "  ", writer)
+        cache: Dict[Entity, Verdict] = {}
+        system_verdict = Verdict.PASS
 
         hosts = self.system.get_hosts()
+        for h in hosts:
+            if h.get_verdict(cache) == Verdict.FAIL:
+                system_verdict = Verdict.FAIL
+        writer.write(f"{self.get_colored_verdict(system_verdict.name)} {self.system.long_name()}\n")
+        self.print_properties(self.system, "  ", writer)
+
         writer.write("## Hosts and Services\n")
         rev_map: Dict[str, List[Host]] = {}
         for h in hosts:
             if not h.is_relevant():
                 continue
             h_name = f"{h.name}"
-            writer.write(f"[{h.status_string()}] {h_name}\n")
+            aggregate_verdict = h.get_verdict(cache)
+            writer.write(f"{self.get_colored_verdict(aggregate_verdict.value)} {h_name}\n")
             self._print_source(writer, h, 1)
             ads = [f"{a}" for a in sorted(h.addresses)]
             for a in ads:
