@@ -37,7 +37,7 @@ class Report:
     def get_verdict_color(self, verdict: any) -> str:
         """Returns color value for Verdict or string"""
         if isinstance(verdict, Verdict):
-            return GREEN if verdict.value == Verdict.PASS else RED
+            return [RED, GREEN, YELLOW][[Verdict.FAIL, Verdict.PASS, Verdict.INCON].index(verdict)]
         if isinstance(verdict, str):
             verdict = verdict.lower()
             if "/" in verdict:
