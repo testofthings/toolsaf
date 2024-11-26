@@ -25,6 +25,12 @@ By adding `^` to the statement you can exclude a specific set of data.
 python statements/statement.py -r ../sample-data -L ^pcap-0
 ```
 
+## Show properties
+By default properties (such as permissions, etc.) are not shown in the output of `-r`. You can include it in the output by using `--show-properties`.
+```bash
+python statements/statement.py -r ../sample-data --show-properties
+```
+
 ## Display Verdict Tool Data
 The lines/frames, e.g. in a _pcap_ file, that effect verification verdicts can be printed out with `-w` or `--with-files`.
 ```bash

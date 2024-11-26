@@ -31,7 +31,7 @@ class Report:
         self.registry = registry
         self.system = registry.system
         self.source_count = 3
-        self.show_permissions = False
+        self.show_properties = False
         self.logger = logging.getLogger("reporter")
 
     def get_verdict_color(self, verdict: any) -> str:
@@ -74,14 +74,14 @@ class Report:
 
     def print_properties(self, entity: NetworkNode, writer: TextIO):
         """Print properties from entity"""
+        if not self.show_properties:
+            return
         for k, v in entity.properties.items():
             if k == Properties.EXPECTED:
                 continue  # encoded into status string
             com = k.get_explanation(v)
             com = f" # {com}" if com else ""
             s = k.get_value_string(v)
-            if 'permission' in s and not self.show_permissions:
-                continue
             if "check" not in s:
                 s, v = s.split("=")
                 color = self.get_verdict_color(v)
