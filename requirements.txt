@@ -4,3 +4,4 @@ aiohttp
 aiofiles
 sqlalchemy
 watchdog
+diagrams
