@@ -9,8 +9,8 @@ from colored import Fore, Style
 from tdsaf.common.basics import ConnectionType
 from tdsaf.common.entity import Entity
 from tdsaf.common.verdict import Verdict
-from tdsaf.core.model import Host, NetworkNode
-from tdsaf.common.property import Properties, PropertyKey
+from tdsaf.core.model import Host, NetworkNode, Connection
+from tdsaf.common.property import Properties, PropertyKey, PropertyVerdictValue
 from tdsaf.core.registry import Registry
 
 
@@ -76,19 +76,24 @@ class Report:
         """Print properties from entity"""
         if not self.show_properties:
             return
-        for k, v in entity.properties.items():
+        num_properties = len(entity.properties)
+        for i, (k, v) in enumerate(entity.properties.items()):
             if k == Properties.EXPECTED:
                 continue  # encoded into status string
             com = k.get_explanation(v)
             com = f" # {com}" if com else ""
             s = k.get_value_string(v)
-            if "check" not in s:
-                s, v = s.split("=")
-                color = self.get_verdict_color(v)
+
+            symbol = "├──" if i < num_properties-1 else "└──"
+            indent = 17 if isinstance(entity, Connection) else 20
+
+            if isinstance(v, PropertyVerdictValue):
+                s = s.split("=")[0]
+                color = self.get_verdict_color(v.verdict)
                 text = f"{s}{com}"
-                writer.write(f"{color}{'['+v+']':<20}{RESET}├──{color}{text}{RESET}\n")
+                writer.write(f"{color}{'['+v.verdict.value+']':<{indent}}{RESET}{symbol}{color}{text}{RESET}\n")
             else:
-                writer.write(f"{'':<20}└──{s}{com}\n")
+                writer.write(f"{'':<{indent}}{symbol}{s}{com}\n")
 
             self._print_source(writer, entity, 2, k)
 
