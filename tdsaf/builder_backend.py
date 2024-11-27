@@ -39,6 +39,7 @@ from tdsaf.common.traffic import Evidence, EvidenceSource
 from tdsaf.common.verdict import Verdict
 from tdsaf.common.android import MobilePermissions
 from tdsaf.visualizer import Visualizer, VisualizerAPI
+from tdsaf.visualizer_2 import Visualizer2
 
 
 class SystemBackend(SystemBuilder):
@@ -142,6 +143,9 @@ class SystemBackend(SystemBuilder):
 
     def visualize(self) -> 'VisualizerBackend':
         return VisualizerBackend(self.visualizer)
+
+    def visualize2(self) -> 'Visualizer2':
+        return Visualizer2(self)
 
     def load(self) -> 'EvidenceLoader':
         el = EvidenceLoader(self)
