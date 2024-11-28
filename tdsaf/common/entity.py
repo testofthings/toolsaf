@@ -109,11 +109,10 @@ class Entity:
     def status_string(self) -> str:
         """Get a status string"""
         st = self.status.value
-        verdicts = [p.get_verdict(self.properties) for p in self.properties]
-        if Properties.EXPECTED not in self.properties:
-            return st
-        v = Verdict.FAIL if Verdict.FAIL in verdicts else Verdict.PASS
-        return f"{st}/{v.value}"
+        v = Properties.EXPECTED.get_verdict(self.properties)
+        if v is not None:
+            st = f"{st}/{v.value}"
+        return st
 
     def __repr__(self):
         s = f"{self.status_string()} {self.long_name()}"
