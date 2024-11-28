@@ -9,7 +9,7 @@ from colored import Fore, Style
 from tdsaf.common.basics import ConnectionType
 from tdsaf.common.entity import Entity
 from tdsaf.common.verdict import Verdict
-from tdsaf.core.model import Host, NetworkNode, Connection, Status
+from tdsaf.core.model import Host, NetworkNode, Connection
 from tdsaf.core.components import SoftwareComponent
 from tdsaf.common.property import Properties, PropertyKey, PropertyVerdictValue
 from tdsaf.core.registry import Registry
@@ -32,7 +32,6 @@ class Report:
         self.verbose = False
         self.show = []
         self.no_truncate = False
-        self.show_properties = False # FIXME: DELETE
         self.logger = logging.getLogger("reporter")
         self.width = self.get_terminal_width()
 
@@ -92,9 +91,11 @@ class Report:
         if self.verbose:
             return prop_items, len(prop_items)
         if "ignored" in self.show and "properties" not in self.show:
-            prop_items = [(k,v) for k,v in prop_items if isinstance(v, PropertyVerdictValue) and v.verdict==Verdict.IGNORE]
+            prop_items = [(k,v) for k,v in prop_items\
+                          if isinstance(v, PropertyVerdictValue) and v.verdict==Verdict.IGNORE]
         elif "ignored" not in self.show:
-            prop_items = [(k,v) for k,v in prop_items if not isinstance(v, PropertyVerdictValue) or v.verdict!=Verdict.IGNORE]
+            prop_items = [(k,v) for k,v in prop_items\
+                          if not isinstance(v, PropertyVerdictValue) or v.verdict!=Verdict.IGNORE]
         return prop_items, len(prop_items)
 
     def get_symbol_for_addresses(self, h: Host) -> str:
@@ -152,13 +153,16 @@ class Report:
                 s = s.split("=")[0]
                 color = self.get_verdict_color(v.verdict)
                 text = f"{s}{com}"
-                writer.write(self.crop_text(f"{color}{'['+v.verdict.value+']':<{indent}}{RESET}{symbol}{color}{text}{RESET}\n"))
+                writer.write(self.crop_text(
+                    f"{color}{'['+v.verdict.value+']':<{indent}}{RESET}{symbol}{color}{text}{RESET}\n"
+                ))
             else:
                 writer.write(self.crop_text(f"{'':<{indent}}{symbol}{s}{com}\n"))
 
             self._print_source(writer, entity, 2, k)
 
     def get_connection_status(self, connection: Connection, cache: dict) -> str:
+        """Returns status string for a connection"""
         if connection.con_type == ConnectionType.LOGICAL:
             return connection.con_type.value
         v = connection.get_verdict(cache)
@@ -188,7 +192,7 @@ class Report:
             aggregate_verdict = f"{h.status.value}/{h.get_verdict(cache).value}"
             color = self.get_verdict_color(aggregate_verdict)
             if "/Incon" in aggregate_verdict:
-                aggregate_verdict = aggregate_verdict.split("/")[0]
+                aggregate_verdict = aggregate_verdict.split("/", maxsplit=1)[0]
             writer.write(self.crop_text(f"{color}{'['+aggregate_verdict+']':<17}{BOLD}{h_name}{RESET}\n"))
 
             self._print_source(writer, h, 1)
@@ -228,13 +232,13 @@ class Report:
                 self.logger.warning("DOUBLE mapped %s: %s", ad, ", ".join([f"{h}" for h in hs]))
 
         self.print_title(f"{BOLD}Connections\n{'Verdict:':<17}{'Source:':<33}Target:{RESET}", "-", writer)
-        relevant_only = False if self.verbose or self.show and "ignored" in self.show else True
+        relevant_only = not (self.verbose or (self.show and "irrelevant" in self.show))
         for conn in self.system.get_connections(relevant_only=relevant_only):
             stat = self.get_connection_status(conn, cache)
             color = self.get_verdict_color(stat)
-            writer.write(
-                self.crop_text(f"{color}{'['+stat+']':<17}{conn.source.long_name():<32} {conn.target.long_name()}{RESET}\n")
-            )
+            writer.write(self.crop_text(
+                f"{color}{'['+stat+']':<17}{conn.source.long_name():<32} {conn.target.long_name()}{RESET}\n"
+            ))
             self._print_source(writer, conn, 2)
             self.print_properties(conn, writer)
 

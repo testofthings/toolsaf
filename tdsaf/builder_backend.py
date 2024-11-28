@@ -1078,8 +1078,6 @@ class SystemBackendRunner(SystemBackend):
                             help="Show additional info in output")
         parser.add_argument("--no-truncate", action="store_true",
                             help="Disables output text truncation")
-        parser.add_argument("--show-properties", action="store_true",
-                            help="Show host properties in output")
         parser.add_argument("--dhcp", action="store_true",
                             help="Add default DHCP server handling")
         parser.add_argument("--dns", action="store_true",
@@ -1181,7 +1179,6 @@ class SystemBackendRunner(SystemBackend):
         with_files = bool(args.with_files)
         report = Report(registry)
         report.source_count = 3 if with_files else 0
-        report.show_properties = bool(args.show_properties)
         report.verbose = bool(args.verbose)
         report.show = args.show
         report.no_truncate = bool(args.no_truncate)
