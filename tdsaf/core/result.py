@@ -33,6 +33,7 @@ class Report:
         self.source_count = 3
         self.show_properties = False
         self.logger = logging.getLogger("reporter")
+        self.width = self.get_terminal_width()
 
     def get_verdict_color(self, verdict: any) -> str:
         """Returns color value for Verdict or string"""
@@ -58,13 +59,22 @@ class Report:
         w, _ = shutil.get_terminal_size(fallback=(90, 30))
         return w
 
+    def crop_text(self, text: str) -> str:
+        """Crop text to fit on one line. Cropping can be disabled with cmd argument"""
+        # FIXME add cmd arg
+        if len(text) > self.width:
+            new_end = "\n" if "\n" in text else ""
+            if RESET != "" and RESET in text:
+                new_end = RESET + new_end
+            return text[:self.width - 3] + "..." + new_end
+        return text
+
     def print_title(self, text: str, symbol: str, writer: TextIO, skip_first: bool=False) -> None:
         """Writes title sections to the output"""
-        w = self.get_terminal_width()
         if not skip_first:
-            writer.write(symbol * w + "\n")
+            writer.write(symbol * self.width + "\n")
         writer.write(text + "\n")
-        writer.write(symbol * w + "\n")
+        writer.write(symbol * self.width + "\n")
 
     def get_title_text(self, verdict: any) -> str:
         """Returns the main title of the output"""
@@ -95,9 +105,9 @@ class Report:
                     continue
                 color = self.get_verdict_color(v.verdict)
                 text = f"{s}{com}"
-                writer.write(f"{color}{'['+v.verdict.value+']':<{indent}}{RESET}{symbol}{color}{text}{RESET}\n")
+                writer.write(self.crop_text(f"{color}{'['+v.verdict.value+']':<{indent}}{RESET}{symbol}{color}{text}{RESET}\n"))
             else:
-                writer.write(f"{'':<{indent}}{symbol}{s}{com}\n")
+                writer.write(self.crop_text(f"{'':<{indent}}{symbol}{s}{com}\n"))
 
             self._print_source(writer, entity, 2, k)
 
@@ -130,7 +140,7 @@ class Report:
             h_name = f"{h.name}"
             aggregate_verdict = f"{h.status.value}/{h.get_verdict(cache).value}"
             color = self.get_verdict_color(aggregate_verdict)
-            writer.write(f"{color}{'['+aggregate_verdict+']':<17}{BOLD}{h_name}{RESET}\n")
+            writer.write(self.crop_text(f"{color}{'['+aggregate_verdict+']':<17}{BOLD}{h_name}{RESET}\n"))
 
             self._print_source(writer, h, 1)
             ads = [f"{a}" for a in sorted(h.addresses)]
@@ -138,24 +148,24 @@ class Report:
                 rev_map.setdefault(a, []).append(h)
             ads = [a for a in ads if a != h_name]
             if ads:
-                writer.write(f"{'':<17}|  Addresses: {', '.join(ads)}\n")
+                writer.write(self.crop_text(f"{'':<17}|  Addresses: {', '.join(ads)}\n"))
 
             self.print_properties(h, writer)
             for i, s in enumerate(h.children):
                 v = s.status_string()
                 color = self.get_verdict_color(v)
                 if i == len(h.children)-1 and len(h.components) == 0:
-                    writer.write(f"{color}{'['+v+']':<17}{RESET}└──{color}{s.name}{RESET}\n")
+                    writer.write(self.crop_text(f"{color}{'['+v+']':<17}{RESET}└──{color}{s.name}{RESET}\n"))
                 else:
-                    writer.write(f"{color}{'['+v+']':<17}{RESET}├──{color}{s.name}{RESET}\n")
+                    writer.write(self.crop_text(f"{color}{'['+v+']':<17}{RESET}├──{color}{s.name}{RESET}\n"))
                 self._print_source(writer, s, 2)
                 self.print_properties(s, writer)
 
             for comp in h.components:
-                writer.write(f"{'':<17}└──{comp.name} [Component]\n")
+                writer.write(self.crop_text(f"{'':<17}└──{comp.name} [Component]\n"))
                 sw_info = comp.info_string()
                 if sw_info:
-                    writer.write(SUB_INDENT + sw_info.replace("\n", "\n    ") + "\n")
+                    writer.write(self.crop_text(SUB_INDENT + sw_info.replace("\n", "\n    ") + "\n"))
                 self._print_source(writer, comp, 2)
                 self.print_properties(comp, writer)
 
@@ -166,9 +176,10 @@ class Report:
         self.print_title(f"{BOLD}Connections\n{'Verdict:':<17}{'Source:':<33}Target:{RESET}", "-", writer)
         for conn in self.system.get_connections(relevant_only=False):
             stat = self.get_connection_status(conn, cache)
-            #stat = conn.con_type.value if conn.con_type == ConnectionType.LOGICAL else conn.status_string()
             color = self.get_verdict_color(stat)
-            writer.write(f"{color}{'['+stat+']':<17}{conn.source.long_name():<32} {conn.target.long_name()}{RESET}\n")
+            writer.write(
+                self.crop_text(f"{color}{'['+stat+']':<17}{conn.source.long_name():<32} {conn.target.long_name()}{RESET}\n")
+            )
             self._print_source(writer, conn, 2)
             self.print_properties(conn, writer)
 
