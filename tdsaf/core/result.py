@@ -10,12 +10,10 @@ from tdsaf.common.basics import ConnectionType
 from tdsaf.common.entity import Entity
 from tdsaf.common.verdict import Verdict
 from tdsaf.core.model import Host, NetworkNode, Connection
+from tdsaf.core.components import SoftwareComponent
 from tdsaf.common.property import Properties, PropertyKey, PropertyVerdictValue
 from tdsaf.core.registry import Registry
 
-
-INDENT = "  "
-SUB_INDENT = INDENT + "  "
 
 OUTPUT_REDIRECTED = not sys.stdout.isatty()
 GREEN = Fore.green if not OUTPUT_REDIRECTED else ""
@@ -84,37 +82,71 @@ class Report:
         return f"{'Report for:':<16} {BOLD}{self.system.long_name()}{RESET}\n" + \
                 f"{color}{'Verdict:':<16} {BOLD}{verdict}{RESET}"
 
+    def get_properties_to_print(self, e: NetworkNode) -> tuple[dict, int]:
+        """Retuns properties that should be printed and the number of properties"""
+        prop_items = [(k,v) for k,v in e.properties.items() if k!=Properties.EXPECTED]
+        # FIXME: NO SKIP ARG FOR IGNORES
+        prop_items = [(k,v) for k,v in prop_items if not isinstance(v, PropertyVerdictValue) or v.verdict!=Verdict.IGNORE]
+        return prop_items, len(prop_items)
+
+    def get_symbol_for_addresses(self, h: Host) -> str:
+        """Returns appropriate dir tree symbol for addresses"""
+        if len(h.components) == 0 and len(h.children) == 0:
+            return "└──"
+        return "│  "
+
+    def get_symbol_for_property(self, idx: int, total_num: int) -> str:
+        """Returns appropriate dir tree symbol for property"""
+        if idx + 1 < total_num:
+            return "├──"
+        return "└──"
+
+    def get_symbol_for_service(self, idx: int, h: Host) -> str:
+        """Returns appropriate dir tree symbol for service"""
+        if idx + 1 == len(h.children) and len(h.components) == 0:
+            return "└──"
+        return "├──"
+
+    def get_symbol_for_component(self, idx: int, h: Host) -> str:
+        """Returns appropriate dir tree symbol for component"""
+        if idx + 1 == len(h.components) or len(h.components) == 1:
+            return "└──"
+        return "├──"
+
+    def get_symbol_for_info(self, idx: int, h: Host, c: SoftwareComponent) -> str:
+        """Returns appropriate dir tree symbol for info"""
+        if self.show_properties and len(c.properties) > 0:
+            return "├──"
+        if idx + 1 != len(h.components):
+            return "│  "
+        return "└──"
+
     def print_properties(self, entity: NetworkNode, writer: TextIO, leading: str=""):
         """Print properties from entity"""
         if not self.show_properties:
             return
 
-        # FIXME: NO SKIP ARG FOR IGNORES
-        prop_items = [(k,v) for k,v in entity.properties.items() if k!=Properties.EXPECTED]
-        prop_items = [(k,v) for k,v in prop_items if not isinstance(v, PropertyVerdictValue) or v.verdict!=Verdict.IGNORE]
-        num_properties = len(prop_items)
+        prop_items, num = self.get_properties_to_print(entity)
+        k: PropertyKey
         for i, (k, v) in enumerate(prop_items):
             com = k.get_explanation(v)
             com = f" # {com}" if com else ""
             s = k.get_value_string(v)
 
-            symbol = "├──" if i < num_properties-1 else "└──"
+            symbol = self.get_symbol_for_property(i, num)
             indent = 17 if isinstance(entity, Connection) else 20
+
+            if leading != "":
+                symbol = leading + "  " + symbol
+                indent -= 3
 
             if isinstance(v, PropertyVerdictValue):
                 s = s.split("=")[0]
                 color = self.get_verdict_color(v.verdict)
                 text = f"{s}{com}"
-
-                if leading != "":
-                    writer.write(self.crop_text(f"{color}{'['+v.verdict.value+']':<{indent-3}}{RESET}{leading}  {symbol}{color}{text}{RESET}\n"))
-                else:
-                    writer.write(self.crop_text(f"{color}{'['+v.verdict.value+']':<{indent}}{RESET}{symbol}{color}{text}{RESET}\n"))
+                writer.write(self.crop_text(f"{color}{'['+v.verdict.value+']':<{indent}}{RESET}{symbol}{color}{text}{RESET}\n"))
             else:
-                if leading != "":
-                    writer.write(self.crop_text(f"{'':<{indent-3}}{leading}  {symbol}{s}{com}\n"))
-                else:
-                    writer.write(self.crop_text(f"{'':<{indent}}{symbol}{s}{com}\n"))
+                writer.write(self.crop_text(f"{'':<{indent}}{symbol}{s}{com}\n"))
 
             self._print_source(writer, entity, 2, k)
 
@@ -155,37 +187,28 @@ class Report:
                 rev_map.setdefault(a, []).append(h)
             ads = [a for a in ads if a != h_name]
             if ads:
-                writer.write(self.crop_text(f"{'':<17}│  Addresses: {', '.join(ads)}\n"))
+                symbol = self.get_symbol_for_addresses(h)
+                writer.write(self.crop_text(f"{'':<17}{symbol}Addresses: {', '.join(ads)}\n"))
 
             self.print_properties(h, writer, leading="│")
             for i, s in enumerate(h.children):
                 v = s.status_string()
                 color = self.get_verdict_color(v)
-                if i == len(h.children)-1 and len(h.components) == 0:
-                    writer.write(self.crop_text(f"{color}{'['+v+']':<17}{RESET}└──{color}{s.name}{RESET}\n"))
-                else:
-                    writer.write(self.crop_text(f"{color}{'['+v+']':<17}{RESET}├──{color}{s.name}{RESET}\n"))
+
+                symbol = self.get_symbol_for_service(i, h)
+                writer.write(self.crop_text(f"{color}{'['+v+']':<17}{RESET}{symbol}{color}{s.name}{RESET}\n"))
                 self._print_source(writer, s, 2)
 
                 if i < len(h.children)-1:
                     self.print_properties(s, writer, leading="│")
 
             for i, comp in enumerate(h.components):
-                if len(h.components) == 1:
-                    symbol = "└──"
-                else:
-                    symbol = "└──" if i == len(h.components)-1 else "├──"
+                symbol = self.get_symbol_for_component(i, h)
                 writer.write(self.crop_text(f"{'':<17}{symbol}{comp.name} [Component]\n"))
                 sw_info = comp.info_string()
-                leading = ""
-                if len(comp.properties) > 0:
-                    leading = "├──"
-                elif i != len(h.components)-1:
-                    leading = "│  "
-                else:
-                    leading = "└──"
                 if sw_info:
-                    writer.write(self.crop_text(f"{'':<20}{leading}Info: {sw_info}\n"))
+                    symbol = self.get_symbol_for_info(i, h, comp)
+                    writer.write(self.crop_text(f"{'':<20}{symbol}Info: {sw_info}\n"))
                 self._print_source(writer, comp, 2)
                 leading = "│" if i != len(h.components)-1 else ""
                 self.print_properties(comp, writer, leading=leading)
