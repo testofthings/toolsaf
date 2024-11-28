@@ -37,6 +37,8 @@ class Report:
     def get_verdict_color(self, verdict: any) -> str:
         """Returns color value for Verdict or string"""
         if isinstance(verdict, Verdict):
+            if verdict == Verdict.IGNORE:
+                return ""
             return [RED, GREEN, YELLOW][[Verdict.FAIL, Verdict.PASS, Verdict.INCON].index(verdict)]
         if isinstance(verdict, str):
             verdict = verdict.lower()
@@ -89,6 +91,8 @@ class Report:
 
             if isinstance(v, PropertyVerdictValue):
                 s = s.split("=")[0]
+                if v.verdict == Verdict.IGNORE: # FIXME command-line arg for showing these
+                    continue
                 color = self.get_verdict_color(v.verdict)
                 text = f"{s}{com}"
                 writer.write(f"{color}{'['+v.verdict.value+']':<{indent}}{RESET}{symbol}{color}{text}{RESET}\n")
@@ -96,6 +100,14 @@ class Report:
                 writer.write(f"{'':<{indent}}{symbol}{s}{com}\n")
 
             self._print_source(writer, entity, 2, k)
+
+    def get_connection_status(self, connection: Connection, cache: dict) -> str:
+        if connection.con_type == ConnectionType.LOGICAL:
+            return connection.con_type.value
+        v = connection.get_verdict(cache)
+        if v not in [Verdict.PASS, Verdict.FAIL]:
+            return connection.status.value
+        return f"{connection.status.value}/{v.value}"
 
     def print_report(self, writer: TextIO):
         """Print textual report"""
@@ -153,7 +165,8 @@ class Report:
 
         self.print_title(f"{BOLD}Connections\n{'Verdict:':<17}{'Source:':<33}Target:{RESET}", "-", writer)
         for conn in self.system.get_connections(relevant_only=False):
-            stat = conn.con_type.value if conn.con_type == ConnectionType.LOGICAL else conn.status_string()
+            stat = self.get_connection_status(conn, cache)
+            #stat = conn.con_type.value if conn.con_type == ConnectionType.LOGICAL else conn.status_string()
             color = self.get_verdict_color(stat)
             writer.write(f"{color}{'['+stat+']':<17}{conn.source.long_name():<32} {conn.target.long_name()}{RESET}\n")
             self._print_source(writer, conn, 2)
