@@ -137,7 +137,7 @@ class Report:
             if not h.is_relevant():
                 continue
 
-            h_name = f"{h.name}"
+            h_name = h.name
             aggregate_verdict = f"{h.status.value}/{h.get_verdict(cache).value}"
             color = self.get_verdict_color(aggregate_verdict)
             writer.write(self.crop_text(f"{color}{'['+aggregate_verdict+']':<17}{BOLD}{h_name}{RESET}\n"))
@@ -165,7 +165,7 @@ class Report:
                 writer.write(self.crop_text(f"{'':<17}└──{comp.name} [Component]\n"))
                 sw_info = comp.info_string()
                 if sw_info:
-                    writer.write(self.crop_text(SUB_INDENT + sw_info.replace("\n", "\n    ") + "\n"))
+                    writer.write(self.crop_text(f"{'':<20}|  Info: {sw_info}\n"))
                 self._print_source(writer, comp, 2)
                 self.print_properties(comp, writer)
 
