@@ -103,8 +103,6 @@ class Report:
 
             if isinstance(v, PropertyVerdictValue):
                 s = s.split("=")[0]
-                if v.verdict == Verdict.IGNORE: # FIXME command-line arg for showing these
-                    continue
                 color = self.get_verdict_color(v.verdict)
                 text = f"{s}{com}"
 
@@ -159,7 +157,7 @@ class Report:
             if ads:
                 writer.write(self.crop_text(f"{'':<17}│  Addresses: {', '.join(ads)}\n"))
 
-            self.print_properties(h, writer)
+            self.print_properties(h, writer, leading="│")
             for i, s in enumerate(h.children):
                 v = s.status_string()
                 color = self.get_verdict_color(v)
@@ -172,13 +170,25 @@ class Report:
                 if i < len(h.children)-1:
                     self.print_properties(s, writer, leading="│")
 
-            for comp in h.components:
-                writer.write(self.crop_text(f"{'':<17}└──{comp.name} [Component]\n"))
+            for i, comp in enumerate(h.components):
+                if len(h.components) == 1:
+                    symbol = "└──"
+                else:
+                    symbol = "└──" if i == len(h.components)-1 else "├──"
+                writer.write(self.crop_text(f"{'':<17}{symbol}{comp.name} [Component]\n"))
                 sw_info = comp.info_string()
+                leading = ""
+                if len(comp.properties) > 0:
+                    leading = "├──"
+                elif i != len(h.components)-1:
+                    leading = "│  "
+                else:
+                    leading = "└──"
                 if sw_info:
-                    writer.write(self.crop_text(f"{'':<20}|  Info: {sw_info}\n"))
+                    writer.write(self.crop_text(f"{'':<20}{leading}Info: {sw_info}\n"))
                 self._print_source(writer, comp, 2)
-                self.print_properties(comp, writer)
+                leading = "│" if i != len(h.components)-1 else ""
+                self.print_properties(comp, writer, leading=leading)
 
         for ad, hs in sorted(rev_map.items()):
             if len(hs) > 1:
