@@ -144,7 +144,7 @@ class SystemBackend(SystemBuilder):
     def visualize(self) -> 'VisualizerBackend':
         return VisualizerBackend(self.visualizer)
 
-    def visualize2(self) -> 'Visualizer2':
+    def visualizer2(self) -> 'Visualizer2':
         return Visualizer2(self)
 
     def load(self) -> 'EvidenceLoader':

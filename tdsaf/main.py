@@ -73,7 +73,7 @@ class SystemBuilder:
         """Model visualization"""
         raise NotImplementedError()
 
-    def visualize2(self) -> 'Visualizer2':
+    def visualizer2(self) -> 'Visualizer2':
         """Security statement visualization"""
         raise NotImplementedError()
 
@@ -280,8 +280,8 @@ class Visualizer2:
         """Use images from the internet for specified nodes"""
         raise NotImplementedError()
 
-    def show(self) -> None:
-        """Create and show security statement visualization"""
+    def create_diagram(self) -> None:
+        """Create a diagram based on the security statement"""
         raise NotImplementedError()
 
 

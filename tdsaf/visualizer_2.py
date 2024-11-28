@@ -78,8 +78,8 @@ class Visualizer2:
         for connection in host.connections[1:]:
             self.connections.add((s, connection.source.name, "BLE", "blue"))
 
-    def show(self) -> Self:
-        """Create and show security statement visualization"""
+    def create_diagram(self) -> Self:
+        """Create a diagram based on the security statement"""
         #system_name = self._sanitize_labels(self.system.system.long_name())
         system_name = self.system.system.long_name()
         with Diagram(name="", filename=system_name, graph_attr=self.graph_attr, show=True):
