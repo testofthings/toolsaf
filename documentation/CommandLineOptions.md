@@ -25,10 +25,22 @@ By adding `^` to the statement you can exclude a specific set of data.
 python statements/statement.py -r ../sample-data -L ^pcap-0
 ```
 
-## Show properties
-By default properties (such as permissions, etc.) are not shown in the output of `-r`. You can include it in the output by using `--show-properties`.
+## Show
+By default properties, entities with verdict.IGNORE and irrelevant connections are not shown. You can include them in the output by using `--show` along with `properties`, `ignored` and `irrelevant`.
 ```bash
-python statements/statement.py -r ../sample-data --show-properties
+python statements/statement.py -r ../sample-data --show properties ignored irrelevant
+```
+
+## No Text Truncation
+By default text that is longer than the terminal's width is truncated. This can be turned off with `--no-truncate`.
+```bash
+python statements/statement.py -r ../sample-data --no-truncate
+```
+
+## Verbose
+Print out everything without text truncation with `--verbose`.
+```bash
+python statements/statement.py -r ../sample-data --verbose
 ```
 
 ## Display Verdict Tool Data

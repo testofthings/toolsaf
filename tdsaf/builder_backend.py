@@ -1072,6 +1072,12 @@ class SystemBackendRunner(SystemBackend):
         parser.add_argument("--def-loads", "-L", type=str,
                             help="Comma-separated list of tools to load")
         parser.add_argument("--with-files", "-w", action="store_true", help="Show relevant result files for verdicts")
+        parser.add_argument("--verbose", "-v", action="store_true",
+                            help="Show all info in output without text truncation")
+        parser.add_argument("--show", nargs="+", choices=["properties", "ignored", "irrelevant"],
+                            help="Show additional info in output")
+        parser.add_argument("--no-truncate", action="store_true",
+                            help="Disables output text truncation")
         parser.add_argument("--show-properties", action="store_true",
                             help="Show host properties in output")
         parser.add_argument("--dhcp", action="store_true",
@@ -1176,6 +1182,9 @@ class SystemBackendRunner(SystemBackend):
         report = Report(registry)
         report.source_count = 3 if with_files else 0
         report.show_properties = bool(args.show_properties)
+        report.verbose = bool(args.verbose)
+        report.show = args.show
+        report.no_truncate = bool(args.no_truncate)
         report.print_report(sys.stdout)
 
         if args.http_server:

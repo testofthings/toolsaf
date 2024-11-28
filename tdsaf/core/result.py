@@ -9,7 +9,7 @@ from colored import Fore, Style
 from tdsaf.common.basics import ConnectionType
 from tdsaf.common.entity import Entity
 from tdsaf.common.verdict import Verdict
-from tdsaf.core.model import Host, NetworkNode, Connection
+from tdsaf.core.model import Host, NetworkNode, Connection, Status
 from tdsaf.core.components import SoftwareComponent
 from tdsaf.common.property import Properties, PropertyKey, PropertyVerdictValue
 from tdsaf.core.registry import Registry
@@ -17,7 +17,7 @@ from tdsaf.core.registry import Registry
 
 OUTPUT_REDIRECTED = not sys.stdout.isatty()
 GREEN = Fore.green if not OUTPUT_REDIRECTED else ""
-YELLOW = Fore.yellow if not OUTPUT_REDIRECTED else ""
+YELLOW = Fore.rgb(255,220,101) if not OUTPUT_REDIRECTED else ""
 RED = Fore.red if not OUTPUT_REDIRECTED else ""
 BOLD = Style.bold if not OUTPUT_REDIRECTED else ""
 RESET = Style.reset if not OUTPUT_REDIRECTED else ""
@@ -29,26 +29,29 @@ class Report:
         self.registry = registry
         self.system = registry.system
         self.source_count = 3
-        self.show_properties = False
+        self.verbose = False
+        self.show = []
+        self.no_truncate = False
+        self.show_properties = False # FIXME: DELETE
         self.logger = logging.getLogger("reporter")
         self.width = self.get_terminal_width()
 
     def get_verdict_color(self, verdict: any) -> str:
         """Returns color value for Verdict or string"""
         if isinstance(verdict, Verdict):
-            if verdict == Verdict.IGNORE:
+            if verdict == Verdict.INCON:
                 return ""
-            return [RED, GREEN, YELLOW][[Verdict.FAIL, Verdict.PASS, Verdict.INCON].index(verdict)]
+            return [RED, GREEN, YELLOW][[Verdict.FAIL, Verdict.PASS, Verdict.IGNORE].index(verdict)]
         if isinstance(verdict, str):
             verdict = verdict.lower()
             if "/" in verdict:
                 v = verdict.split("/")[1]
-                return [RED, GREEN, YELLOW][["fail", "pass", "incon"].index(v)]
+                return [RED, GREEN, ""][["fail", "pass", "incon"].index(v)]
             if "pass" in verdict:
                 return GREEN
             if "fail" in verdict:
                 return RED
-            if "incon" in verdict:
+            if "ignore" in verdict:
                 return YELLOW
         return ""
 
@@ -59,7 +62,8 @@ class Report:
 
     def crop_text(self, text: str) -> str:
         """Crop text to fit on one line. Cropping can be disabled with cmd argument"""
-        # FIXME add cmd arg
+        if self.verbose or self.no_truncate:
+            return text
         if len(text) > self.width:
             new_end = "\n" if "\n" in text else ""
             if RESET != "" and RESET in text:
@@ -85,8 +89,12 @@ class Report:
     def get_properties_to_print(self, e: NetworkNode) -> tuple[dict, int]:
         """Retuns properties that should be printed and the number of properties"""
         prop_items = [(k,v) for k,v in e.properties.items() if k!=Properties.EXPECTED]
-        # FIXME: NO SKIP ARG FOR IGNORES
-        prop_items = [(k,v) for k,v in prop_items if not isinstance(v, PropertyVerdictValue) or v.verdict!=Verdict.IGNORE]
+        if self.verbose:
+            return prop_items, len(prop_items)
+        if "ignored" in self.show and "properties" not in self.show:
+            prop_items = [(k,v) for k,v in prop_items if isinstance(v, PropertyVerdictValue) and v.verdict==Verdict.IGNORE]
+        elif "ignored" not in self.show:
+            prop_items = [(k,v) for k,v in prop_items if not isinstance(v, PropertyVerdictValue) or v.verdict!=Verdict.IGNORE]
         return prop_items, len(prop_items)
 
     def get_symbol_for_addresses(self, h: Host) -> str:
@@ -115,7 +123,7 @@ class Report:
 
     def get_symbol_for_info(self, idx: int, h: Host, c: SoftwareComponent) -> str:
         """Returns appropriate dir tree symbol for info"""
-        if self.show_properties and len(c.properties) > 0:
+        if (self.verbose or self.show and 'properties' in self.show) and len(c.properties) > 0:
             return "├──"
         if idx + 1 != len(h.components):
             return "│  "
@@ -123,7 +131,7 @@ class Report:
 
     def print_properties(self, entity: NetworkNode, writer: TextIO, leading: str=""):
         """Print properties from entity"""
-        if not self.show_properties:
+        if not self.show and not self.verbose:
             return
 
         prop_items, num = self.get_properties_to_print(entity)
@@ -218,7 +226,8 @@ class Report:
                 self.logger.warning("DOUBLE mapped %s: %s", ad, ", ".join([f"{h}" for h in hs]))
 
         self.print_title(f"{BOLD}Connections\n{'Verdict:':<17}{'Source:':<33}Target:{RESET}", "-", writer)
-        for conn in self.system.get_connections(relevant_only=False):
+        relevant_only = False if self.verbose or self.show and "ignored" in self.show else True
+        for conn in self.system.get_connections(relevant_only=relevant_only):
             stat = self.get_connection_status(conn, cache)
             color = self.get_verdict_color(stat)
             writer.write(
