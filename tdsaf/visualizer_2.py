@@ -3,6 +3,7 @@
 # pylint: disable=expression-not-assigned
 # pylint: disable=cyclic-import
 
+import os
 from typing import Self
 from urllib.request import urlretrieve
 from diagrams import Diagram, Edge
@@ -16,18 +17,22 @@ import tdsaf.builder_backend as BB
 
 FONT_SIZE_NODE = "18"
 FONT_SIZE_EDGE = "16"
+GRAPH_ATTR = { # https://www.graphviz.org/doc/info/attrs.html
+    "splines": "spline",
+    "center": "true"
+}
 
 class Visualizer2:
     """Security statement visualizer"""
     def __init__(self, system: 'BB.SystemBackend'):
         self.system = system
+        self.diagram: Diagram
+        self.outformat: str="png"
+        self.filename = system.system.long_name()
+        self.should_create_diagram: bool=False
         self.nodes: dict={}
         self.connections: set[str]=set()
         self.images: dict[str, str]={}
-        self.graph_attr = { # https://www.graphviz.org/doc/info/attrs.html
-            "splines": "spline",
-            "center": "true"
-        }
 
     def add_images(self, d: dict['BB.HostBackend', str]) -> Self:
         """Use locally stored images for specified nodes in visualization.
@@ -80,9 +85,19 @@ class Visualizer2:
 
     def create_diagram(self) -> Self:
         """Create a diagram based on the security statement"""
+        self.should_create_diagram = True
+        return self
+
+    def visualize(self) -> Self:
+        """Create a diagram based on the security statement"""
+        if not self.should_create_diagram:
+            return self
+
         #system_name = self._sanitize_labels(self.system.system.long_name())
-        system_name = self.system.system.long_name()
-        with Diagram(name="", filename=system_name, graph_attr=self.graph_attr, show=True):
+        with Diagram(
+            name="", filename=self.filename, graph_attr=GRAPH_ATTR, show=False,
+            outformat=self.outformat
+        ) as d:
             for component in self.system.system.children:
                 if 'Bluetooth' in component.description:
                     self._add_ble_connection(component)
@@ -103,4 +118,23 @@ class Visualizer2:
                                 penwidth="3", fontsize=FONT_SIZE_EDGE, color=c)
                     self.nodes[s] >> edge >> self.nodes[t]
 
+            self.diagram = d
+
         return self
+
+    def set_outformat(self, outformat: str) -> None:
+        """Set save format for the diagram"""
+        self.outformat = outformat
+
+    def show_diagram(self):
+        """Show the only when asked to"""
+        self.diagram.show = True
+        self.diagram.render()
+        if os.path.exists(self.filename):
+            os.remove(self.filename)
+
+    #def delete_diagram(self):
+    #    """Delete diagram file"""
+    #    file = f"{self.filename}.{self.outformat}"
+    #    if os.path.exists(file):
+    #        os.remove(file)
