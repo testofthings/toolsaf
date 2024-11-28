@@ -84,14 +84,16 @@ class Report:
         return f"{'Report for:':<16} {BOLD}{self.system.long_name()}{RESET}\n" + \
                 f"{color}{'Verdict:':<16} {BOLD}{verdict}{RESET}"
 
-    def print_properties(self, entity: NetworkNode, writer: TextIO):
+    def print_properties(self, entity: NetworkNode, writer: TextIO, leading: str=""):
         """Print properties from entity"""
         if not self.show_properties:
             return
-        num_properties = len(entity.properties)
-        for i, (k, v) in enumerate(entity.properties.items()):
-            if k == Properties.EXPECTED:
-                continue  # encoded into status string
+
+        # FIXME: NO SKIP ARG FOR IGNORES
+        prop_items = [(k,v) for k,v in entity.properties.items() if k!=Properties.EXPECTED]
+        prop_items = [(k,v) for k,v in prop_items if not isinstance(v, PropertyVerdictValue) or v.verdict!=Verdict.IGNORE]
+        num_properties = len(prop_items)
+        for i, (k, v) in enumerate(prop_items):
             com = k.get_explanation(v)
             com = f" # {com}" if com else ""
             s = k.get_value_string(v)
@@ -105,9 +107,16 @@ class Report:
                     continue
                 color = self.get_verdict_color(v.verdict)
                 text = f"{s}{com}"
-                writer.write(self.crop_text(f"{color}{'['+v.verdict.value+']':<{indent}}{RESET}{symbol}{color}{text}{RESET}\n"))
+
+                if leading != "":
+                    writer.write(self.crop_text(f"{color}{'['+v.verdict.value+']':<{indent-3}}{RESET}{leading}  {symbol}{color}{text}{RESET}\n"))
+                else:
+                    writer.write(self.crop_text(f"{color}{'['+v.verdict.value+']':<{indent}}{RESET}{symbol}{color}{text}{RESET}\n"))
             else:
-                writer.write(self.crop_text(f"{'':<{indent}}{symbol}{s}{com}\n"))
+                if leading != "":
+                    writer.write(self.crop_text(f"{'':<{indent-3}}{leading}  {symbol}{s}{com}\n"))
+                else:
+                    writer.write(self.crop_text(f"{'':<{indent}}{symbol}{s}{com}\n"))
 
             self._print_source(writer, entity, 2, k)
 
@@ -148,7 +157,7 @@ class Report:
                 rev_map.setdefault(a, []).append(h)
             ads = [a for a in ads if a != h_name]
             if ads:
-                writer.write(self.crop_text(f"{'':<17}|  Addresses: {', '.join(ads)}\n"))
+                writer.write(self.crop_text(f"{'':<17}│  Addresses: {', '.join(ads)}\n"))
 
             self.print_properties(h, writer)
             for i, s in enumerate(h.children):
@@ -159,7 +168,9 @@ class Report:
                 else:
                     writer.write(self.crop_text(f"{color}{'['+v+']':<17}{RESET}├──{color}{s.name}{RESET}\n"))
                 self._print_source(writer, s, 2)
-                self.print_properties(s, writer)
+
+                if i < len(h.children)-1:
+                    self.print_properties(s, writer, leading="│")
 
             for comp in h.components:
                 writer.write(self.crop_text(f"{'':<17}└──{comp.name} [Component]\n"))
