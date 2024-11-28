@@ -187,6 +187,8 @@ class Report:
             h_name = h.name
             aggregate_verdict = f"{h.status.value}/{h.get_verdict(cache).value}"
             color = self.get_verdict_color(aggregate_verdict)
+            if "/Incon" in aggregate_verdict:
+                aggregate_verdict = aggregate_verdict.split("/")[0]
             writer.write(self.crop_text(f"{color}{'['+aggregate_verdict+']':<17}{BOLD}{h_name}{RESET}\n"))
 
             self._print_source(writer, h, 1)
