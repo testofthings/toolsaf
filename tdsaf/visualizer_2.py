@@ -3,7 +3,6 @@
 # pylint: disable=expression-not-assigned
 # pylint: disable=cyclic-import
 
-import os
 from typing import Self
 from urllib.request import urlretrieve
 from diagrams import Diagram, Edge
@@ -26,7 +25,8 @@ class Visualizer2:
     """Security statement visualizer"""
     def __init__(self, system: 'BB.SystemBackend'):
         self.system = system
-        self.diagram: Diagram
+        self.show: bool=False
+        self.delete: bool=False
         self.outformat: str="png"
         self.filename = system.system.long_name()
         self.should_create_diagram: bool=False
@@ -88,16 +88,17 @@ class Visualizer2:
         self.should_create_diagram = True
         return self
 
-    def visualize(self) -> Self:
-        """Create a diagram based on the security statement"""
+    def visualize(self) -> None:
+        """Create the actual visualization and show it.
+           Not to be used from a security statemnet."""
         if not self.should_create_diagram:
-            return self
+            return
 
         #system_name = self._sanitize_labels(self.system.system.long_name())
         with Diagram(
-            name="", filename=self.filename, graph_attr=GRAPH_ATTR, show=False,
-            outformat=self.outformat
-        ) as d:
+            name="", filename=self.filename, graph_attr=GRAPH_ATTR,
+            show=self.show, outformat=self.outformat
+        ):
             for component in self.system.system.children:
                 if 'Bluetooth' in component.description:
                     self._add_ble_connection(component)
@@ -117,24 +118,3 @@ class Visualizer2:
                     edge = Edge(label=f"<<b>{n}</b>>", minlen="4", style="dashed",
                                 penwidth="3", fontsize=FONT_SIZE_EDGE, color=c)
                     self.nodes[s] >> edge >> self.nodes[t]
-
-            self.diagram = d
-
-        return self
-
-    def set_outformat(self, outformat: str) -> None:
-        """Set save format for the diagram"""
-        self.outformat = outformat
-
-    def show_diagram(self):
-        """Show the only when asked to"""
-        self.diagram.show = True
-        self.diagram.render()
-        if os.path.exists(self.filename):
-            os.remove(self.filename)
-
-    #def delete_diagram(self):
-    #    """Delete diagram file"""
-    #    file = f"{self.filename}.{self.outformat}"
-    #    if os.path.exists(file):
-    #        os.remove(file)

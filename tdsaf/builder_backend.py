@@ -1080,11 +1080,9 @@ class SystemBackendRunner(SystemBackend):
         parser.add_argument("--no-diagram", action="store_true",
                             help="Don't create diagram even if visualization is included in statement")
         parser.add_argument("--diagram-format", type=str, default="png", choices=["png", "jpg", "svg", "pdf"],
-                            help="Set format for saved diagram")
+                            help="Set file format for diagram")
         parser.add_argument("--show-diagram", action="store_true",
                             help="Display the visualizer's output")
-        parser.add_argument("--no-save-diagram", action="store_true",
-                            help="Don't save diagrams created by the visualizer")
         parser.add_argument("--dhcp", action="store_true",
                             help="Add default DHCP server handling")
         parser.add_argument("--dns", action="store_true",
@@ -1188,13 +1186,10 @@ class SystemBackendRunner(SystemBackend):
         report.source_count = 3 if with_files else 0
         report.print_report(sys.stdout)
 
-        if not bool(args.no_diagram):
-            self.visualizer_2.set_outformat(args.diagram_format)
+        if not bool(args.no_diagram): # What if there is no visualization in statement?
+            self.visualizer_2.outformat = args.diagram_format
+            self.visualizer_2.show = bool(args.show_diagram)
             self.visualizer_2.visualize()
-            if bool(args.show_diagram):
-                self.visualizer_2.show_diagram()
-            #if bool(args.no_save_diagram):
-            #        self.visualizer_2.delete_diagram()
 
         if args.http_server:
             server = HTTPServerRunner(
