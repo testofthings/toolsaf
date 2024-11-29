@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 from colored import Fore, Style
 
 from tdsaf.common.verdict import Verdict
+from tdsaf.common.property import PropertyVerdictValue
 from tdsaf.core.registry import Registry
 from tdsaf.common.basics import ConnectionType
 from tdsaf.core.result import *
@@ -12,6 +13,10 @@ from tests.test_model import Setup
 res.GREEN = Fore.green
 res.YELLOW = Fore.rgb(255,220,101)
 res.RED = Fore.red
+
+
+def _get_pvv(v: Verdict) -> PropertyVerdictValue:
+    return PropertyVerdictValue(v)
 
 
 def _mock_array(n: int) -> list[MagicMock]:
@@ -76,6 +81,38 @@ def test_get_title_text(verdict: Verdict):
     result = r.get_title_text(verdict)
     assert s.get_system().long_name() in result
     assert verdict.value in result
+
+
+@pytest.mark.parametrize(
+    "p, v, s, exp",
+    [
+        ({Properties.EXPECTED: Verdict.PASS}, True, [], ([], 0)),
+        (
+            {Properties.EXPECTED: Verdict.PASS, Properties.MITM: Verdict.IGNORE},
+            True, [], ([(Properties.MITM, Verdict.IGNORE)], 1)
+        ),
+        (
+            {Properties.MITM: _get_pvv(Verdict.FAIL), Properties.FUZZ: _get_pvv(Verdict.IGNORE)},
+            False, ["ignored"], ([(Properties.FUZZ, _get_pvv(Verdict.IGNORE))], 1)
+        ),
+        (
+            {Properties.MITM: _get_pvv(Verdict.PASS), Properties.FUZZ: _get_pvv(Verdict.IGNORE)},
+            False, ["properties"], ([(Properties.MITM, _get_pvv(Verdict.PASS))], 1)
+        ),
+        (
+            {Properties.MITM: _get_pvv(Verdict.PASS), Properties.FUZZ: _get_pvv(Verdict.IGNORE)},
+            False, ["properties", "ignored"],
+            ([(Properties.MITM, _get_pvv(Verdict.PASS)), (Properties.FUZZ, _get_pvv(Verdict.IGNORE))], 2)
+        )
+    ]
+)
+def test_get_properties_to_print(p: dict, v: bool, s: list[str], exp: tuple):
+    e = MagicMock()
+    e.properties = p
+    r = Report(Registry(Setup().get_inspector()))
+    r.verbose = v
+    r.show = s
+    assert r.get_properties_to_print(e) == exp
 
 
 @pytest.mark.parametrize(
@@ -154,6 +191,7 @@ def test_get_symbol_for_info(verb, show, n_prop, idx, n_comp, exp):
     c.properties = [MagicMock()]*n_prop
     host = _get_mock_host(n_comp)
     assert r.get_symbol_for_info(idx, host, c) == exp
+
 
 @pytest.mark.parametrize(
     "c_type, c_status, verdict, exp",
