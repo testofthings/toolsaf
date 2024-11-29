@@ -1,7 +1,7 @@
 import pytest
 import sys
 from unittest.mock import MagicMock
-from colored import Fore
+from colored import Fore, Style
 
 from tdsaf.common.verdict import Verdict
 from tdsaf.core.registry import Registry
@@ -12,6 +12,20 @@ from tests.test_model import Setup
 res.GREEN = Fore.green
 res.YELLOW = Fore.rgb(255,220,101)
 res.RED = Fore.red
+
+
+def _mock_array(n: int) -> list[MagicMock]:
+    return [MagicMock()] * n
+
+
+def _get_mock_host(n_components: int=0, n_children: int=0):
+    host = MagicMock()
+    if n_components:
+        host.components = _mock_array(n_components)
+    if n_children:
+        host.children = _mock_array(n_children)
+    return host
+
 
 @pytest.mark.parametrize(
     "verdict, exp",
@@ -31,23 +45,50 @@ res.RED = Fore.red
 )
 def test_get_verdict_color(verdict, exp):
     r = Report(Registry(Setup().get_inspector()))
-    OUTPUT_REDIRECTED = False
     assert r.get_verdict_color(verdict) == exp
 
 
 @pytest.mark.parametrize(
-    "comp, child, exp",
+    "text, exp",
     [
-        ([], [], "└──"),
-        (["comp1"], [], "│  "),
-        ([], ["child1"], "│  "),
-        (["comp1"], ["child1"], "│  ")
+        ("test", "test"),
+        (f"test{Style.reset}\n", f"test{Style.reset}\n"),
+        (f"{'t'*10}{Style.reset}\n", f"ttttttt...{Style.reset}\n")
     ]
 )
-def test_ge_symbol_for_address(comp, child, exp):
-    host = MagicMock()
-    host.components = comp
-    host.children = child
+def test_crop_text(text, exp):
+    r = Report(Registry(Setup().get_inspector()))
+    r.width = 10
+    res.RESET = Style.reset
+    assert r.crop_text(text) == exp
+
+
+@pytest.mark.parametrize(
+    "verdict",
+    [
+        (Verdict.PASS),
+        (Verdict.FAIL)
+    ]
+)
+def test_get_title_text(verdict: Verdict):
+    s = Setup()
+    r = Report(Registry(s.get_inspector()))
+    result = r.get_title_text(verdict)
+    assert s.get_system().long_name() in result
+    assert verdict.value in result
+
+
+@pytest.mark.parametrize(
+    "n_comp, n_child, exp",
+    [
+        (0, 0, "└──"),
+        (1, 0, "│  "),
+        (0, 1, "│  "),
+        (1, 1, "│  ")
+    ]
+)
+def test_ge_symbol_for_address(n_comp, n_child, exp):
+    host = _get_mock_host(n_comp, n_child)
     r = Report(Registry(Setup().get_inspector()))
     assert r.get_symbol_for_addresses(host) == exp
 
@@ -65,34 +106,31 @@ def test_get_symbol_for_property(idx, total, exp):
 
 
 @pytest.mark.parametrize(
-    "idx, comp, child, exp",
+    "idx, n_comp, n_child, exp",
     [
-        (0, [], [], "├──"),
-        (0, ["comp1"], [], "├──"),
-        [0, [], ["child1"], "└──"],
-        [1, ["comp1", "comp2"], ["child1", "child2"], "├──"]
+        (0, 0, 0, "├──"),
+        (0, 1, 0, "├──"),
+        [0, 0, 1, "└──"],
+        [1, 2, 2, "├──"]
     ]
 )
-def test_get_symbol_for_service(idx, comp, child, exp):
-    host = MagicMock()
-    host.components = comp
-    host.children = child
+def test_get_symbol_for_service(idx, n_comp, n_child, exp):
+    host = _get_mock_host(n_comp, n_child)
     r = Report(Registry(Setup().get_inspector()))
     assert r.get_symbol_for_service(idx, host) == exp
 
 
 @pytest.mark.parametrize(
-    "idx, comp, exp",
+    "idx, n_comp, exp",
     [
-        (0, [], "├──"),
-        (0, ["comp1"], "└──"),
-        (2, ["comp1"], "└──"),
-        (1, ["comp1", "comp2"], "└──")
+        (0, 0, "├──"),
+        (0, 1, "└──"),
+        (2, 1, "└──"),
+        (1, 2, "└──")
     ]
 )
-def test_get_symbol_for_component(idx, comp, exp):
-    host = MagicMock()
-    host.components = comp
+def test_get_symbol_for_component(idx, n_comp, exp):
+    host = _get_mock_host(n_comp)
     r = Report(Registry(Setup().get_inspector()))
     assert r.get_symbol_for_component(idx, host) == exp
 
@@ -114,6 +152,5 @@ def test_get_symbol_for_info(verb, show, n_prop, idx, n_comp, exp):
     r.show = show
     c = MagicMock()
     c.properties = [MagicMock()]*n_prop
-    host = MagicMock()
-    host.components = [MagicMock()]*n_comp
+    host = _get_mock_host(n_comp)
     assert r.get_symbol_for_info(idx, host, c) == exp
