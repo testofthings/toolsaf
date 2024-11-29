@@ -131,6 +131,13 @@ class SerializerStream:
         ref = self.data[field_name]
         return self.context.object_map.get(ref)
 
+    def write_object_id(self, field_name: str, obj: Any, optional=False):
+        """Write object id"""
+        if obj is None or (optional and obj not in self.context.identifier_map):
+            return  # nothing written
+        ref = self.context.id_for(obj)
+        self.data[field_name] = ref
+
     def id_for(self, obj: Any) -> str:
         """Get existing object id"""
         return self.context.id_for(obj)
