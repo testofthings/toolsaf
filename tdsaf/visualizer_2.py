@@ -3,9 +3,9 @@
 # pylint: disable=expression-not-assigned
 # pylint: disable=cyclic-import
 
-from typing import Self
+from typing import Self, Union
 from urllib.request import urlretrieve
-from diagrams import Diagram, Edge
+from diagrams import Diagram, Edge, Node
 from diagrams.custom import Custom
 from diagrams.aws.iot import IotSensor
 from diagrams.ibm.user import Browser
@@ -14,15 +14,14 @@ from diagrams.generic import device, storage
 from tdsaf.core.model import Host, HostType
 import tdsaf.builder_backend as BB
 
-FONT_SIZE_NODE = "18"
-FONT_SIZE_EDGE = "16"
-GRAPH_ATTR = { # https://www.graphviz.org/doc/info/attrs.html
-    "splines": "spline",
-    "center": "true"
-}
 
 class Visualizer2:
     """Security statement visualizer"""
+
+    __font_size_node = "18"
+    __font_size_edge = "16"
+    __graph_attr = {"splines": "spline", "center": "true"}
+
     def __init__(self, system: 'BB.SystemBackend'):
         self.system = system
         self.show: bool=False
@@ -57,23 +56,31 @@ class Visualizer2:
         return Custom(
             label=label,
             icon_path="",
-            fontsize=FONT_SIZE_NODE
+            fontsize=self.__font_size_node
         )
 
-    def _get_node(self, host: Host):
+    def _get_node_type(self, host: Host) -> Union[Node, None]:
+        """Returns a suitable node type for a given Host."""
+        if host.name in self.images:
+            return Custom
+        match host.host_type:
+            case HostType.DEVICE:
+                return IotSensor
+            case HostType.MOBILE:
+                return device.Mobile
+            case HostType.BROWSER:
+                return Browser
+            case HostType.REMOTE:
+                return storage.Storage
+
+    def _get_node(self, host: Host) -> Union[Node, None]:
         """Returns a suitable visual representation for a given Host"""
         label = f"<<b>\n{self._sanitize_label(host.name)}</b>>"
-        if host.name in self.images:
-            return Custom(label=label, icon_path=self.images[host.name], fontsize=FONT_SIZE_NODE)
-        match host.host_type:
-            case HostType.MOBILE:
-                return device.Mobile(label=label, fontsize=FONT_SIZE_NODE)
-            case HostType.DEVICE:
-                return IotSensor(label=label, fontsize=FONT_SIZE_NODE)
-            case HostType.BROWSER:
-                return Browser(label=label, fontsize=FONT_SIZE_NODE)
-            case HostType.REMOTE:
-                return storage.Storage(label=label, fontsize=FONT_SIZE_NODE)
+        if (node := self._get_node_type(host)) is Custom:
+            return node(label=label, icon_path=self.images[host.name], fontsize=self.__font_size_node)
+        if node is not None:
+            return node(label=label, fontsize=self.__font_size_node)
+        return None
 
     def _add_connections(self, host: Host) -> None:
         """Adds connections between nodes"""
@@ -102,7 +109,7 @@ class Visualizer2:
             return
 
         with Diagram(
-            name="", filename=self.filename, graph_attr=GRAPH_ATTR,
+            name="", filename=self.filename, graph_attr=self.__graph_attr,
             show=self.show, outformat=self.outformat
         ):
             for component in self.system.system.children:
@@ -118,5 +125,5 @@ class Visualizer2:
                 s, t, n, c = connection
                 if s in self.nodes and t in self.nodes:
                     edge = Edge(label=f"<<b>{n}</b>>", minlen="4", style="dashed",
-                                penwidth="3", fontsize=FONT_SIZE_EDGE, color=c)
+                                penwidth="3", fontsize=self.__font_size_edge, color=c)
                     self.nodes[s] >> edge >> self.nodes[t]
