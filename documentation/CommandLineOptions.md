@@ -47,6 +47,24 @@ pcap-0    PCAP reader
 pcap-1    PCAP reader
 ```
 
+## Show Diagram
+By default, if visualization is included in a security statement, a diagram is created and saved but not shown. You can see the diagram with `--show-diagram`:
+```shell
+python statements/statement.py --show-diagram
+```
+
+## Diagram File Format
+You can set the format of created visualizations with `--diagram-format`. You can specify either `png`, `jpg`, `svg` or `pdf`.
+ ```shell
+python statements/statement.py --diagram-format jpg
+```
+
+## Stop Diagram Creation
+By default, if visualization is included in a security statement, a diagram is automatically created and saved to the location from where the statement was executed. This can be stopped with `--no-diagram`:
+```shell
+python statements/statement.py --no-diagram
+```
+
 ## Set Log Level
 You can set the log level with `-l` or `--log-level`. Value can be `DEBUG`, `INFO`, `WARNING`, `ERROR` or `CRITICAL`.
 ```bash

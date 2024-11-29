@@ -216,24 +216,14 @@ python3 statement.py
 ```
 Once the security statement is complete, it is ready for [verification](VerifyingSecurityStatements.md).
 
-### Info on `broadcast`
-
-FIXME
-
-## Graphical view
-
-**FIXME: Keep or drop?**
-A visual representation of a model requires placing the network nodes into a canvas. The positions are controlled using DSL, like below.
-
+## Security Statement Visualization
+You can visuallize your security statement by adding the following code at the end of your statement:
 ```python
-system.visualize().place(
-    "D   A",
-    "  B  ",
-) .where({
-    "D": device,
-    "B": backend,
-    "A": app
-})
+system.visualizer2().create_diagram()
 ```
-The letters "A", "B", and "C" stand for the application, backend, and device.
-Their positions are determined in the `place` method.
+Then, when running the statement use the flag `--show-diagram` to see the result.
+```shell
+python3 statement.py --show-diagram
+```
+
+TDSAF creates visualizations using [Diagrams](https://github.com/mingrammer/diagrams).
