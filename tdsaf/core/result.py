@@ -85,7 +85,7 @@ class Report:
         return f"{'Report for:':<16} {BOLD}{self.system.long_name()}{RESET}\n" + \
                 f"{color}{'Verdict:':<16} {BOLD}{verdict}{RESET}"
 
-    def get_properties_to_print(self, e: NetworkNode) -> tuple[dict, int]:
+    def get_properties_to_print(self, e: NetworkNode) -> tuple[list[tuple], int]:
         """Retuns properties that should be printed and the number of properties"""
         prop_items = [(k,v) for k,v in e.properties.items() if k!=Properties.EXPECTED]
         if self.verbose:
