@@ -79,7 +79,7 @@ class Visualizer2:
         """Adds connections between nodes"""
         for connection in host.connections:
             self.connections.add((
-                host.name, connection.target.parent.name, connection.target.name, "grey"
+                connection.source.name, connection.target.parent.name, connection.target.name, "grey"
             ))
 
     def _add_ble_connection(self, host: Host) -> None:
@@ -101,7 +101,6 @@ class Visualizer2:
         if not self.should_create_diagram:
             return
 
-        #system_name = self._sanitize_label(self.system.system.long_name())
         with Diagram(
             name="", filename=self.filename, graph_attr=GRAPH_ATTR,
             show=self.show, outformat=self.outformat
@@ -109,18 +108,14 @@ class Visualizer2:
             for component in self.system.system.children:
                 if 'Bluetooth' in component.description:
                     self._add_ble_connection(component)
+                else:
+                    self._add_connections(component)
 
-                node = self._get_node(component)
-                if node is None:
-                    continue
-
-                self.nodes[component.name] = node
-                self._add_connections(component)
+                if (node:=self._get_node(component)) is not None:
+                    self.nodes[component.name] = node
 
             for connection in self.connections:
                 s, t, n, c = connection
-                if s == t:
-                    continue
                 if s in self.nodes and t in self.nodes:
                     edge = Edge(label=f"<<b>{n}</b>>", minlen="4", style="dashed",
                                 penwidth="3", fontsize=FONT_SIZE_EDGE, color=c)
