@@ -53,6 +53,13 @@ class Visualizer2:
         """Turn certain symbols to HTML character"""
         return label.replace("&", "&amp;")
 
+    def _custom_image(self, label: str) -> Custom:
+        return Custom(
+            label=label,
+            icon_path="",
+            fontsize=FONT_SIZE_NODE
+        )
+
     def _get_node(self, host: Host):
         """Returns a suitable visual representation for a given Host"""
         label = f"<<b>\n{self._sanitize_label(host.name)}</b>>"
