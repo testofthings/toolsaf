@@ -49,13 +49,13 @@ class Visualizer2:
             self.images[name] = f"{name}.png"
         return self
 
-    def _sanitize_labels(self, label: str) -> str:
+    def _sanitize_label(self, label: str) -> str:
         """Turn certain symbols to HTML character"""
         return label.replace("&", "&amp;")
 
     def _get_node(self, host: Host):
         """Returns a suitable visual representation for a given Host"""
-        label = f"<<b>\n{self._sanitize_labels(host.name)}</b>>"
+        label = f"<<b>\n{self._sanitize_label(host.name)}</b>>"
         if host.name in self.images:
             return Custom(label=label, icon_path=self.images[host.name], fontsize=FONT_SIZE_NODE)
         match host.host_type:
@@ -94,7 +94,7 @@ class Visualizer2:
         if not self.should_create_diagram:
             return
 
-        #system_name = self._sanitize_labels(self.system.system.long_name())
+        #system_name = self._sanitize_label(self.system.system.long_name())
         with Diagram(
             name="", filename=self.filename, graph_attr=GRAPH_ATTR,
             show=self.show, outformat=self.outformat
