@@ -1,10 +1,10 @@
 import pytest
-import sys
 from unittest.mock import MagicMock
 from colored import Fore, Style
 
 from tdsaf.common.verdict import Verdict
 from tdsaf.core.registry import Registry
+from tdsaf.common.basics import ConnectionType
 from tdsaf.core.result import *
 import tdsaf.core.result as res
 from tests.test_model import Setup
@@ -154,3 +154,21 @@ def test_get_symbol_for_info(verb, show, n_prop, idx, n_comp, exp):
     c.properties = [MagicMock()]*n_prop
     host = _get_mock_host(n_comp)
     assert r.get_symbol_for_info(idx, host, c) == exp
+
+@pytest.mark.parametrize(
+    "c_type, c_status, verdict, exp",
+    [
+        (ConnectionType.LOGICAL, "", Verdict.PASS, "Logical"),
+        (ConnectionType.LOGICAL, "", Verdict.FAIL, "Logical"),
+        (ConnectionType.ENCRYPTED, "Ext", Verdict.INCON, "Ext"),
+        (ConnectionType.ENCRYPTED, "Exp", Verdict.PASS, "Exp/Pass"),
+        (ConnectionType.ENCRYPTED, "Exp", Verdict.FAIL, "Exp/Fail"),
+    ]
+)
+def test_get_connection_status(c_type: ConnectionType, c_status: str, verdict: Verdict, exp: str):
+    r = Report(Registry(Setup().get_inspector()))
+    connection = MagicMock()
+    connection.con_type = c_type
+    connection.status.value = c_status
+    connection.get_verdict = MagicMock(return_value=verdict)
+    assert r.get_connection_status(connection, {}) == exp
