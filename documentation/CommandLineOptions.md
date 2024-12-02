@@ -26,9 +26,9 @@ python statements/statement.py -r ../sample-data -L ^pcap-0
 ```
 
 ## Show
-By default properties, entities with verdict.IGNORE and irrelevant connections are not shown. You can include them in the output by using `--show` along with `properties`, `ignored` and `irrelevant`.
+By default properties, entities with verdict.IGNORE and irrelevant connections are not shown. You can include them in the output by using `--show` along with the comma separated values `properties`, `ignored` and `irrelevant`.
 ```bash
-python statements/statement.py -r ../sample-data --show properties ignored irrelevant
+python statements/statement.py -r ../sample-data --show properties,ignored,irrelevant
 ```
 
 ## No Text Truncation
