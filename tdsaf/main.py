@@ -5,6 +5,7 @@ from tdsaf.common.address import AnyAddress, HWAddress, HWAddresses, IPAddress, 
 from tdsaf.core.selector import AbstractSelector, Host
 from tdsaf.common.basics import ConnectionType, HostType, ExternalActivity
 from tdsaf.common.verdict import Verdict
+from tdsaf.common.android import MobilePermissions
 
 
 ProtocolType = Union['ProtocolConfigurer', Type['ProtocolConfigurer']]
@@ -187,6 +188,10 @@ class HostBuilder(NodeBuilder):
 
     def set_property(self, *key: str):
         """Set a model properties"""
+        raise NotImplementedError()
+
+    def set_permissions(self, *permissions: MobilePermissions) -> Self:
+        """Set permissions for a mobile application"""
         raise NotImplementedError()
 
 
