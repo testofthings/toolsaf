@@ -1074,7 +1074,7 @@ class SystemBackendRunner(SystemBackend):
         parser.add_argument("--with-files", "-w", action="store_true", help="Show relevant result files for verdicts")
         parser.add_argument("--verbose", "-v", action="store_true",
                             help="Show all info in output without text truncation")
-        parser.add_argument("--show", nargs="+", choices=["properties", "ignored", "irrelevant"],
+        parser.add_argument("--show", nargs="+", choices=["properties", "ignored", "irrelevant"], default=[],
                             help="Show additional info in output")
         parser.add_argument("--no-truncate", action="store_true",
                             help="Disables output text truncation")

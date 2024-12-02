@@ -100,14 +100,20 @@ def test_get_title_text(verdict: Verdict):
 @pytest.mark.parametrize(
     "p, v, s, exp",
     [
-        ({Properties.EXPECTED: Verdict.PASS}, True, [], ([], 0)),
+        (
+            {Properties.EXPECTED: Verdict.PASS}, True, [], ([], 0)
+        ),
         (
             {Properties.EXPECTED: Verdict.PASS, Properties.MITM: Verdict.IGNORE},
             True, [], ([(Properties.MITM, Verdict.IGNORE)], 1)
         ),
         (
+            {Properties.MITM: Verdict.PASS}, False, [], ([], 0),
+        ),
+        (
             {Properties.MITM: _get_pvv(Verdict.FAIL), Properties.FUZZ: _get_pvv(Verdict.IGNORE)},
-            False, ["ignored"], ([(Properties.FUZZ, _get_pvv(Verdict.IGNORE))], 1)
+            False, ["ignored"],
+            ([(Properties.MITM, _get_pvv(Verdict.FAIL)), (Properties.FUZZ, _get_pvv(Verdict.IGNORE))], 2)
         ),
         (
             {Properties.MITM: _get_pvv(Verdict.PASS), Properties.FUZZ: _get_pvv(Verdict.IGNORE)},

@@ -1,4 +1,5 @@
 """Simple text report on the system status"""
+#pylint: disable=too-many-boolean-expressions
 
 import sys
 import shutil
@@ -99,13 +100,16 @@ class Report:
         prop_items = [(k,v) for k,v in e.properties.items() if k!=Properties.EXPECTED]
         if self.verbose:
             return prop_items, len(prop_items)
-        if "ignored" in self.show and "properties" not in self.show:
-            prop_items = [(k,v) for k,v in prop_items\
-                          if isinstance(v, PropertyVerdictValue) and v.verdict==Verdict.IGNORE]
-        elif "ignored" not in self.show:
-            prop_items = [(k,v) for k,v in prop_items\
-                          if not isinstance(v, PropertyVerdictValue) or v.verdict!=Verdict.IGNORE]
-        return prop_items, len(prop_items)
+
+        result = []
+        for k, v in prop_items:
+            if (is_inst:=isinstance(v, PropertyVerdictValue)) and (
+                v.verdict == Verdict.FAIL or
+                v.verdict == Verdict.IGNORE and "ignored" in self.show or
+                v.verdict != Verdict.IGNORE and "properties" in self.show
+            ) or not is_inst and "properties" in self.show:
+                result += [(k, v)]
+        return result, len(result)
 
     def get_symbol_for_addresses(self, h: Host) -> str:
         """Returns appropriate dir tree symbol for addresses"""
@@ -141,9 +145,6 @@ class Report:
 
     def print_properties(self, entity: NetworkNode, writer: TextIO, leading: str=""):
         """Print properties from entity"""
-        if not self.show and not self.verbose:
-            return
-
         prop_items, num = self.get_properties_to_print(entity)
         k: PropertyKey
         for i, (k, v) in enumerate(prop_items):
