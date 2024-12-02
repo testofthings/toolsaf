@@ -217,13 +217,10 @@ python3 statement.py
 Once the security statement is complete, it is ready for [verification](VerifyingSecurityStatements.md).
 
 ## Security Statement Visualization
-You can visuallize your security statement by adding the following code at the end of your statement:
-```python
-system.diagram_visualizer().create_diagram()
-```
-Then, when running the statement use the flag `--show-diagram` to see the result.
+You can visualize your security statement with the following command:
 ```shell
-python3 statement.py --show-diagram
+python3 statement.py --create-diagram --show-diagram
 ```
+More info on the command-line arguments can be found [here](CommandLineOptions.md#create-diagram-visualization).
 
-TDSAF creates visualizations using [Diagrams](https://github.com/mingrammer/diagrams).
+TDSAF creates visualizations using [Diagrams](https://github.com/mingrammer/diagrams). You also need to install [Graphviz](https://graphviz.org/download/).

@@ -1077,10 +1077,10 @@ class SystemBackendRunner(SystemBackend):
         parser.add_argument("--def-loads", "-L", type=str,
                             help="Comma-separated list of tools to load")
         parser.add_argument("--with-files", "-w", action="store_true", help="Show relevant result files for verdicts")
-        parser.add_argument("--no-diagram", action="store_true",
-                            help="Don't create diagram even if visualization is included in statement")
-        parser.add_argument("--diagram-format", type=str, default="png", choices=["png", "jpg", "svg", "pdf"],
-                            help="Set file format for diagram")
+        parser.add_argument("--create-diagram", const="png", nargs="?", choices=["png", "jpg", "svg", "pdf"],
+                            help="Creat a diagram of a security statement with given file format. Default is png")
+        parser.add_argument("--diagram-name", type=str,
+                            help="File name for created diagram. Default is the system's name")
         parser.add_argument("--show-diagram", action="store_true",
                             help="Display the visualizer's output")
         parser.add_argument("--dhcp", action="store_true",
@@ -1186,10 +1186,11 @@ class SystemBackendRunner(SystemBackend):
         report.source_count = 3 if with_files else 0
         report.print_report(sys.stdout)
 
-        if not bool(args.no_diagram): # What if there is no visualization in statement?
-            self.diagram.outformat = args.diagram_format
+        if args.create_diagram is not None:
+            self.diagram.outformat = args.create_diagram
             self.diagram.show = bool(args.show_diagram)
-            self.diagram.visualize()
+            self.diagram.set_file_name(args.diagram_name)
+            self.diagram.create_diagram()
 
         if args.http_server:
             server = HTTPServerRunner(

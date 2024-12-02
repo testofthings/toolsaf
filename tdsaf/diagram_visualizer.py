@@ -33,6 +33,11 @@ class DiagramVisualizer:
         self.connections: set[str]=set()
         self.images: dict[str, str]={}
 
+    def set_file_name(self, file_name: str="") -> None:
+        """Set filename for created diagram. Default is the system's name"""
+        if file_name:
+            self.filename = file_name
+
     def add_images(self, d: dict['BB.HostBackend', str]) -> Self:
         """Use locally stored images for specified nodes in visualization.
             Must be .png images"""
@@ -97,17 +102,17 @@ class DiagramVisualizer:
         for connection in host.connections[1:]:
             self.connections.add((s, connection.source.name, "BLE", "blue"))
 
-    def create_diagram(self) -> Self:
-        """Create a diagram based on the security statement"""
-        self.should_create_diagram = True
-        return self
+    def create_diagram(self) -> None:
+        """Execute diagram visualization and handle any exceptions"""
+        try:
+            self.visualize()
+        except Exception as e:
+            if 'ExecutableNotFound' in str(type(e)):
+                raise OSError("Missing Graphviz? You can install it here: https://graphviz.org/download/") from e
+            raise e
 
     def visualize(self) -> None:
-        """Create the actual visualization and show it.
-           Not to be used from a security statemnet."""
-        if not self.should_create_diagram:
-            return
-
+        """Create the actual visualization and show it"""
         with Diagram(
             name="", filename=self.filename, graph_attr=self.__graph_attr,
             show=self.show, outformat=self.outformat
