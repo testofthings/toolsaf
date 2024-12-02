@@ -52,7 +52,7 @@ class SystemBackend(SystemBuilder):
         self.claim_set = ClaimSetBackend(self)
         self.attachments: List[pathlib.Path] = []
         self.visualizer = Visualizer()
-        self.visualizer_2 = DiagramVisualizer(self)
+        self.diagram = DiagramVisualizer(self)
         self.loaders: List[EvidenceLoader] = []
         self.protocols: Dict[Any, 'ProtocolBackend'] = {}
 
@@ -146,7 +146,7 @@ class SystemBackend(SystemBuilder):
         return VisualizerBackend(self.visualizer)
 
     def diagram_visualizer(self) -> 'DiagramVisualizer':
-        return self.visualizer_2
+        return self.diagram
 
     def load(self) -> 'EvidenceLoader':
         el = EvidenceLoader(self)
@@ -1187,9 +1187,9 @@ class SystemBackendRunner(SystemBackend):
         report.print_report(sys.stdout)
 
         if not bool(args.no_diagram): # What if there is no visualization in statement?
-            self.visualizer_2.outformat = args.diagram_format
-            self.visualizer_2.show = bool(args.show_diagram)
-            self.visualizer_2.visualize()
+            self.diagram.outformat = args.diagram_format
+            self.diagram.show = bool(args.show_diagram)
+            self.diagram.visualize()
 
         if args.http_server:
             server = HTTPServerRunner(
