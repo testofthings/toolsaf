@@ -4,6 +4,7 @@
 import sys
 import shutil
 import logging
+from functools import cached_property
 from typing import TextIO, List, Dict
 from colored import Fore, Style
 
@@ -16,14 +17,6 @@ from tdsaf.common.property import Properties, PropertyKey, PropertyVerdictValue
 from tdsaf.core.registry import Registry
 
 
-OUTPUT_REDIRECTED = not sys.stdout.isatty()
-GREEN = Fore.green if not OUTPUT_REDIRECTED else ""
-YELLOW = Fore.rgb(255,220,101) if not OUTPUT_REDIRECTED else ""
-RED = Fore.red if not OUTPUT_REDIRECTED else ""
-BOLD = Style.bold if not OUTPUT_REDIRECTED else ""
-RESET = Style.reset if not OUTPUT_REDIRECTED else ""
-
-
 class Report:
     """Report of the system status"""
     def __init__(self, registry: Registry):
@@ -33,8 +26,39 @@ class Report:
         self.show_all = False
         self.show = []
         self.no_truncate = False
+        self.c = False
         self.logger = logging.getLogger("reporter")
         self.width = self.get_terminal_width()
+
+    @cached_property
+    def use_color(self) -> bool:
+        """Determines if color text should be colored"""
+        return self.c or sys.stdout.isatty()
+
+    @cached_property
+    def green(self) -> str:
+        """Green color"""
+        return Fore.green if self.use_color else ""
+
+    @cached_property
+    def yellow(self) -> str:
+        """Yellow color"""
+        return Fore.rgb(255,220,101) if self.use_color else ""
+
+    @cached_property
+    def red(self) -> str:
+        """Red color"""
+        return Fore.red if self.use_color else ""
+
+    @cached_property
+    def bold(self) -> str:
+        """Bold text"""
+        return Style.bold if self.use_color else ""
+
+    @cached_property
+    def reset(self) -> str:
+        """Reset colors/styles"""
+        return Style.reset if self.use_color else ""
 
     def get_system_verdict(self, cache: dict) -> Verdict:
         """Get verdict for the entire system based on cached verdicts."""
@@ -50,18 +74,18 @@ class Report:
         if isinstance(verdict, Verdict):
             if verdict == Verdict.INCON:
                 return ""
-            return [RED, GREEN, YELLOW][[Verdict.FAIL, Verdict.PASS, Verdict.IGNORE].index(verdict)]
+            return [self.red, self.green, self.yellow][[Verdict.FAIL, Verdict.PASS, Verdict.IGNORE].index(verdict)]
         if isinstance(verdict, str):
             verdict = verdict.lower()
             if "/" in verdict:
                 v = verdict.split("/")[1]
-                return [RED, GREEN, ""][["fail", "pass", "incon"].index(v)]
+                return [self.red, self.green, ""][["fail", "pass", "incon"].index(v)]
             if "pass" in verdict:
-                return GREEN
+                return self.green
             if "fail" in verdict:
-                return RED
+                return self.red
             if "ignore" in verdict:
-                return YELLOW
+                return self.yellow
         return ""
 
     def get_terminal_width(self) -> int:
@@ -75,8 +99,8 @@ class Report:
             return text
         if len(text) > self.width:
             new_end = "\n" if "\n" in text else ""
-            if RESET != "" and RESET in text:
-                new_end = RESET + new_end
+            if self.reset != "" and self.reset in text:
+                new_end = self.reset + new_end
             return text[:self.width - 3] + "..." + new_end
         return text
 
@@ -92,8 +116,8 @@ class Report:
         color = self.get_verdict_color(verdict)
         if isinstance(verdict, Verdict):
             verdict = verdict.value
-        return f"{'Report for:':<16} {BOLD}{self.system.long_name()}{RESET}\n" + \
-                f"{color}{'Verdict:':<16} {BOLD}{verdict}{RESET}"
+        return f"{'Report for:':<16} {self.bold}{self.system.long_name()}{self.reset}\n" + \
+                f"{color}{'Verdict:':<16} {self.bold}{verdict}{self.reset}"
 
     def get_properties_to_print(self, e: NetworkNode) -> tuple[list[tuple], int]:
         """Retuns properties that should be printed and the number of properties"""
@@ -164,7 +188,7 @@ class Report:
                 color = self.get_verdict_color(v.verdict)
                 text = f"{s}{com}"
                 writer.write(self.crop_text(
-                    f"{color}{'['+v.verdict.value+']':<{indent}}{RESET}{symbol}{color}{text}{RESET}\n"
+                    f"{color}{'['+v.verdict.value+']':<{indent}}{self.reset}{symbol}{color}{text}{self.reset}\n"
                 ))
             else:
                 writer.write(self.crop_text(f"{'':<{indent}}{symbol}{s}{com}\n"))
@@ -190,7 +214,7 @@ class Report:
 
         system_verdict = self.get_system_verdict(cache)
         self.print_title(self.get_title_text(system_verdict), "=", writer)
-        self.print_title(f"{BOLD}{'Verdict:':<17}Hosts and Services:{RESET}", "-", writer, skip_first=True)
+        self.print_title(f"{self.bold}{'Verdict:':<17}Hosts and Services:{self.reset}", "-", writer, skip_first=True)
 
         rev_map: Dict[str, List[Host]] = {}
         for h in hosts:
@@ -202,7 +226,7 @@ class Report:
             color = self.get_verdict_color(aggregate_verdict)
             if "/Incon" in aggregate_verdict:
                 aggregate_verdict = aggregate_verdict.split("/", maxsplit=1)[0]
-            writer.write(self.crop_text(f"{color}{'['+aggregate_verdict+']':<17}{BOLD}{h_name}{RESET}\n"))
+            writer.write(self.crop_text(f"{color}{'['+aggregate_verdict+']':<17}{self.bold}{h_name}{self.reset}\n"))
 
             self._print_source(writer, h, 1)
             ads = [f"{a}" for a in sorted(h.addresses)]
@@ -219,7 +243,7 @@ class Report:
                 color = self.get_verdict_color(v)
 
                 symbol = self.get_symbol_for_service(i, h)
-                writer.write(self.crop_text(f"{color}{'['+v+']':<17}{RESET}{symbol}{color}{s.name}{RESET}\n"))
+                writer.write(self.crop_text(f"{color}{'['+v+']':<17}{self.reset}{symbol}{color}{s.name}{self.reset}\n"))
                 self._print_source(writer, s, 2)
 
                 if i < len(h.children)-1:
@@ -240,13 +264,13 @@ class Report:
             if len(hs) > 1:
                 self.logger.warning("DOUBLE mapped %s: %s", ad, ", ".join([f"{h}" for h in hs]))
 
-        self.print_title(f"{BOLD}Connections\n{'Verdict:':<17}{'Source:':<33}Target:{RESET}", "-", writer)
+        self.print_title(f"{self.bold}Connections\n{'Verdict:':<17}{'Source:':<33}Target:{self.reset}", "-", writer)
         relevant_only = not (self.show_all or (self.show and "irrelevant" in self.show))
         for conn in self.system.get_connections(relevant_only=relevant_only):
             stat = self.get_connection_status(conn, cache)
             color = self.get_verdict_color(stat)
             writer.write(self.crop_text(
-                f"{color}{'['+stat+']':<17}{conn.source.long_name():<32} {conn.target.long_name()}{RESET}\n"
+                f"{color}{'['+stat+']':<17}{conn.source.long_name():<32} {conn.target.long_name()}{self.reset}\n"
             ))
             self._print_source(writer, conn, 2)
             self.print_properties(conn, writer)

@@ -37,6 +37,12 @@ By default text that is longer than the terminal's width is truncated. This can 
 python statements/statement.py -r ../sample-data --no-truncate
 ```
 
+## Use Color With Output Piping
+If you want to have text coloring in piped output use `-C`.
+```bash
+python statements/statement.py -r ../sample-data -C | less -R
+```
+
 ## Show All Output Info
 Print out everything without text truncation with `--show-all`.
 ```bash

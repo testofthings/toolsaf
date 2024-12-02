@@ -7,12 +7,7 @@ from tdsaf.common.property import PropertyVerdictValue
 from tdsaf.core.registry import Registry
 from tdsaf.common.basics import ConnectionType
 from tdsaf.core.result import *
-import tdsaf.core.result as res
 from tests.test_model import Setup
-
-res.GREEN = Fore.green
-res.YELLOW = Fore.rgb(255,220,101)
-res.RED = Fore.red
 
 
 def _get_pvv(v: Verdict) -> PropertyVerdictValue:
@@ -31,6 +26,20 @@ def _get_mock_host(n_components: int=0, n_children: int=0):
         host.children = _mock_array(n_children)
     return host
 
+@pytest.mark.parametrize(
+    "C, is_piped, exp",
+    [
+        (True, True, True),
+        (True, False, True),
+        (False, True, True),
+        (False, False, False)
+    ]
+)
+def test_use_color(C, is_piped, exp):
+    r = Report(Registry(Setup().get_inspector()))
+    r.c = C
+    sys.stdout.isatty = MagicMock(return_value=is_piped)
+    assert r.use_color is exp
 
 @pytest.mark.parametrize(
     "cache, exp",
@@ -64,6 +73,7 @@ def test_get_system_verdict(cache: dict, exp: Verdict):
 )
 def test_get_verdict_color(verdict, exp):
     r = Report(Registry(Setup().get_inspector()))
+    r.c = True
     assert r.get_verdict_color(verdict) == exp
 
 
@@ -78,7 +88,7 @@ def test_get_verdict_color(verdict, exp):
 def test_crop_text(text, exp):
     r = Report(Registry(Setup().get_inspector()))
     r.width = 10
-    res.RESET = Style.reset
+    r.c = True
     assert r.crop_text(text) == exp
 
 
