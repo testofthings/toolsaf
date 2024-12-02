@@ -73,7 +73,7 @@ class SystemBuilder:
         """Model visualization"""
         raise NotImplementedError()
 
-    def visualizer2(self) -> 'Visualizer2':
+    def diagram_visualizer(self) -> 'DiagramVisualizer':
         """Security statement visualization"""
         raise NotImplementedError()
 
@@ -265,7 +265,7 @@ class VisualizerBuilder:
         raise NotImplementedError()
 
 
-class Visualizer2:
+class DiagramVisualizer:
     """Security statement visualizer"""
     def visualize(self) -> Self:
         """Visualize statement"""

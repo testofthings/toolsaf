@@ -219,7 +219,7 @@ Once the security statement is complete, it is ready for [verification](Verifyin
 ## Security Statement Visualization
 You can visuallize your security statement by adding the following code at the end of your statement:
 ```python
-system.visualizer2().create_diagram()
+system.diagram_visualizer().create_diagram()
 ```
 Then, when running the statement use the flag `--show-diagram` to see the result.
 ```shell

@@ -39,7 +39,7 @@ from tdsaf.common.traffic import Evidence, EvidenceSource
 from tdsaf.common.verdict import Verdict
 from tdsaf.common.android import MobilePermissions
 from tdsaf.visualizer import Visualizer, VisualizerAPI
-from tdsaf.visualizer_2 import Visualizer2
+from tdsaf.diagram_visualizer import DiagramVisualizer
 
 
 class SystemBackend(SystemBuilder):
@@ -52,7 +52,7 @@ class SystemBackend(SystemBuilder):
         self.claim_set = ClaimSetBackend(self)
         self.attachments: List[pathlib.Path] = []
         self.visualizer = Visualizer()
-        self.visualizer_2 = Visualizer2(self)
+        self.visualizer_2 = DiagramVisualizer(self)
         self.loaders: List[EvidenceLoader] = []
         self.protocols: Dict[Any, 'ProtocolBackend'] = {}
 
@@ -145,7 +145,7 @@ class SystemBackend(SystemBuilder):
     def visualize(self) -> 'VisualizerBackend':
         return VisualizerBackend(self.visualizer)
 
-    def visualizer2(self) -> 'Visualizer2':
+    def diagram_visualizer(self) -> 'DiagramVisualizer':
         return self.visualizer_2
 
     def load(self) -> 'EvidenceLoader':

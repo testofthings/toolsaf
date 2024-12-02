@@ -15,7 +15,7 @@ from tdsaf.core.model import Host, HostType
 import tdsaf.builder_backend as BB
 
 
-class Visualizer2:
+class DiagramVisualizer:
     """Security statement visualizer"""
 
     __font_size_node = "18"
