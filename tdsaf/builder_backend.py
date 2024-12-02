@@ -1078,7 +1078,7 @@ class SystemBackendRunner(SystemBackend):
                             help="Show additional info in output. Valid values: properties, ignored, irrelevant")
         parser.add_argument("--no-truncate", action="store_true",
                             help="Disables output text truncation")
-        parser.add_argument("-C", action="store_true",
+        parser.add_argument("-c", "--color", action="store_true",
                             help="Keep colors in output even when output is piped")
         parser.add_argument("--dhcp", action="store_true",
                             help="Add default DHCP server handling")
@@ -1184,7 +1184,7 @@ class SystemBackendRunner(SystemBackend):
         report.show_all = bool(args.show_all)
         report.show = args.show
         report.no_truncate = bool(args.no_truncate)
-        report.c = bool(args.C)
+        report.c = bool(args.color)
         report.print_report(sys.stdout)
 
         if args.http_server:

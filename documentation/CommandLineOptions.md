@@ -38,9 +38,9 @@ python statements/statement.py -r ../sample-data --no-truncate
 ```
 
 ## Use Color With Output Piping
-If you want to have text coloring in piped output use `-C`.
+If you want to have text coloring in piped output use `-c` or `--color`.
 ```bash
-python statements/statement.py -r ../sample-data -C | less -R
+python statements/statement.py -r ../sample-data -c | less -R
 ```
 
 ## Show All Output Info
