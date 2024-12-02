@@ -30,7 +30,7 @@ class Report:
         self.registry = registry
         self.system = registry.system
         self.source_count = 3
-        self.verbose = False
+        self.show_all = False
         self.show = []
         self.no_truncate = False
         self.logger = logging.getLogger("reporter")
@@ -71,7 +71,7 @@ class Report:
 
     def crop_text(self, text: str) -> str:
         """Crop text to fit on one line. Cropping can be disabled with cmd argument"""
-        if self.verbose or self.no_truncate:
+        if self.show_all or self.no_truncate:
             return text
         if len(text) > self.width:
             new_end = "\n" if "\n" in text else ""
@@ -98,7 +98,7 @@ class Report:
     def get_properties_to_print(self, e: NetworkNode) -> tuple[list[tuple], int]:
         """Retuns properties that should be printed and the number of properties"""
         prop_items = [(k,v) for k,v in e.properties.items() if k!=Properties.EXPECTED]
-        if self.verbose:
+        if self.show_all:
             return prop_items, len(prop_items)
 
         result = []
@@ -137,7 +137,7 @@ class Report:
 
     def get_symbol_for_info(self, idx: int, h: Host, c: SoftwareComponent) -> str:
         """Returns appropriate dir tree symbol for info"""
-        if (self.verbose or self.show and 'properties' in self.show) and len(c.properties) > 0:
+        if (self.show_all or self.show and 'properties' in self.show) and len(c.properties) > 0:
             return "├──"
         if idx + 1 != len(h.components):
             return "│  "
@@ -241,7 +241,7 @@ class Report:
                 self.logger.warning("DOUBLE mapped %s: %s", ad, ", ".join([f"{h}" for h in hs]))
 
         self.print_title(f"{BOLD}Connections\n{'Verdict:':<17}{'Source:':<33}Target:{RESET}", "-", writer)
-        relevant_only = not (self.verbose or (self.show and "irrelevant" in self.show))
+        relevant_only = not (self.show_all or (self.show and "irrelevant" in self.show))
         for conn in self.system.get_connections(relevant_only=relevant_only):
             stat = self.get_connection_status(conn, cache)
             color = self.get_verdict_color(stat)

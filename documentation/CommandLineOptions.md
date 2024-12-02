@@ -37,10 +37,10 @@ By default text that is longer than the terminal's width is truncated. This can 
 python statements/statement.py -r ../sample-data --no-truncate
 ```
 
-## Verbose
-Print out everything without text truncation with `--verbose`.
+## Show All Output Info
+Print out everything without text truncation with `--show-all`.
 ```bash
-python statements/statement.py -r ../sample-data --verbose
+python statements/statement.py -r ../sample-data --show-all
 ```
 
 ## Display Verdict Tool Data

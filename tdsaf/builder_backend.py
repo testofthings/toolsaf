@@ -1072,7 +1072,7 @@ class SystemBackendRunner(SystemBackend):
         parser.add_argument("--def-loads", "-L", type=str,
                             help="Comma-separated list of tools to load")
         parser.add_argument("--with-files", "-w", action="store_true", help="Show relevant result files for verdicts")
-        parser.add_argument("--verbose", "-v", action="store_true",
+        parser.add_argument("--show-all", action="store_true",
                             help="Show all info in output without text truncation")
         parser.add_argument("--show", type=lambda s: s.split(","), default=[],
                             help="Show additional info in output. Valid values: properties, ignored, irrelevant")
@@ -1179,7 +1179,7 @@ class SystemBackendRunner(SystemBackend):
         with_files = bool(args.with_files)
         report = Report(registry)
         report.source_count = 3 if with_files else 0
-        report.verbose = bool(args.verbose)
+        report.show_all = bool(args.show_all)
         report.show = args.show
         report.no_truncate = bool(args.no_truncate)
         report.print_report(sys.stdout)

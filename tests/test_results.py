@@ -98,7 +98,7 @@ def test_get_title_text(verdict: Verdict):
 
 
 @pytest.mark.parametrize(
-    "p, v, s, exp",
+    "p, a, s, exp",
     [
         (
             {Properties.EXPECTED: Verdict.PASS}, True, [], ([], 0)
@@ -126,11 +126,11 @@ def test_get_title_text(verdict: Verdict):
         )
     ]
 )
-def test_get_properties_to_print(p: dict, v: bool, s: list[str], exp: tuple):
+def test_get_properties_to_print(p: dict, a: bool, s: list[str], exp: tuple):
     e = MagicMock()
     e.properties = p
     r = Report(Registry(Setup().get_inspector()))
-    r.verbose = v
+    r.show_all = a
     r.show = s
     assert r.get_properties_to_print(e) == exp
 
@@ -193,7 +193,7 @@ def test_get_symbol_for_component(idx, n_comp, exp):
 
 
 @pytest.mark.parametrize(
-    "verb, show, n_prop, idx, n_comp, exp",
+    "all, show, n_prop, idx, n_comp, exp",
     [
         (True,  [], 1, 0, 0, "├──"),
         (True,  [], 0, 0, 0, "│  "),
@@ -203,9 +203,9 @@ def test_get_symbol_for_component(idx, n_comp, exp):
         (False, [], 0, 1, 2, "└──")
     ]
 )
-def test_get_symbol_for_info(verb, show, n_prop, idx, n_comp, exp):
+def test_get_symbol_for_info(all, show, n_prop, idx, n_comp, exp):
     r = Report(Registry(Setup().get_inspector()))
-    r.verbose = verb
+    r.show_all = all
     r.show = show
     c = MagicMock()
     c.properties = [MagicMock()]*n_prop
