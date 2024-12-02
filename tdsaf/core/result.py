@@ -35,6 +35,15 @@ class Report:
         self.logger = logging.getLogger("reporter")
         self.width = self.get_terminal_width()
 
+    def get_system_verdict(self, cache: dict) -> Verdict:
+        """Get verdict for the entire system based on cached verdicts."""
+        verdicts = cache.values()
+        if Verdict.FAIL in verdicts:
+            return Verdict.FAIL
+        if Verdict.PASS in verdicts:
+            return Verdict.PASS
+        return Verdict.INCON
+
     def get_verdict_color(self, verdict: any) -> str:
         """Returns color value for Verdict or string"""
         if isinstance(verdict, Verdict):
@@ -173,13 +182,12 @@ class Report:
     def print_report(self, writer: TextIO):
         """Print textual report"""
         cache: Dict[Entity, Verdict] = {}
-        system_verdict = Verdict.PASS
 
         hosts = self.system.get_hosts()
         for h in hosts:
-            if h.get_verdict(cache) == Verdict.FAIL:
-                system_verdict = Verdict.FAIL
+            h.get_verdict(cache)
 
+        system_verdict = self.get_system_verdict(cache)
         self.print_title(self.get_title_text(system_verdict), "=", writer)
         self.print_title(f"{BOLD}{'Verdict:':<17}Hosts and Services:{RESET}", "-", writer, skip_first=True)
 

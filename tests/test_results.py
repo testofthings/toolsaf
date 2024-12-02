@@ -33,6 +33,20 @@ def _get_mock_host(n_components: int=0, n_children: int=0):
 
 
 @pytest.mark.parametrize(
+    "cache, exp",
+    [
+        ({1: Verdict.PASS, 2: Verdict.INCON, 3: Verdict.IGNORE}, Verdict.PASS),
+        ({1: Verdict.PASS, 2: Verdict.INCON, 3: Verdict.FAIL}, Verdict.FAIL),
+        ({1: Verdict.INCON, 2: Verdict.IGNORE}, Verdict.INCON),
+        ({}, Verdict.INCON)
+    ]
+)
+def test_get_system_verdict(cache: dict, exp: Verdict):
+    r = Report(Registry(Setup().get_inspector()))
+    assert r.get_system_verdict(cache) == exp
+
+
+@pytest.mark.parametrize(
     "verdict, exp",
     [
         (Verdict.INCON, ""),
