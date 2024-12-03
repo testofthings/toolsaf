@@ -33,6 +33,13 @@ class DiagramVisualizer:
         self.connections: set[str]=set()
         self.images: dict[str, str]={}
 
+    def set_outformat(self, cd: Union[str, None], sd: Union[str, None]) -> None:
+        """Set outformat for created diagram"""
+        if cd is not None and sd is not None:
+            self.outformat = next((f for f in [cd, sd] if f != "png"), "png")
+        else:
+            self.outformat = sd if sd is not None else cd
+
     def set_file_name(self, file_name: str="") -> None:
         """Set filename for created diagram. Default is the system's name"""
         if file_name:
