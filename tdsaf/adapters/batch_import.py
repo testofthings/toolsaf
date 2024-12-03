@@ -8,10 +8,10 @@ import pathlib
 import io
 from typing import Dict, List, Optional
 
-from tdsaf.common.address import Addresses
+from tdsaf.common.address import Addresses, AnyAddress
 from tdsaf.common.basics import ExternalActivity
 from tdsaf.core.event_interface import EventInterface
-from tdsaf.core.model import EvidenceNetworkSource, IoTSystem
+from tdsaf.core.model import Addressable, EvidenceNetworkSource, IoTSystem, NetworkNode
 from tdsaf.adapters.tool_finder import ToolDepiction, ToolFinder
 from tdsaf.common.traffic import EvidenceSource
 
@@ -28,18 +28,23 @@ class BatchImporter:
 
         # collect evidence sources from visited tools
         self.evidence: Dict[str, List[EvidenceSource]] = {}
+        # store batch hierarchy
+        self.batch_data: List[BatchData] = []
 
     def import_batch(self, file: pathlib.Path):
         """Import a batch of files from a directory or zip file recursively."""
         if file.is_dir:
-            self._import_batch(file, FileMetaInfo())
+            bd = BatchData(FileMetaInfo())
+            self._import_batch(file, bd)
             if not self.meta_file_count:
                 self.logger.warning("No 00meta.json files found")
+            self.batch_data.append(bd)
         else:
             raise ValueError(f"Expected directory, got {file.as_posix()}")
 
-    def _import_batch(self, file: pathlib.Path, parent_info: 'FileMetaInfo'):
+    def _import_batch(self, file: pathlib.Path, parent: 'BatchData'):
         """Import a batch of files from a directory or zip file recursively."""
+        parent_info = parent.meta_info
         self.logger.info("scanning %s", file.as_posix())
         if file.is_dir():
             dir_name = file.name
@@ -48,16 +53,20 @@ class BatchImporter:
                 # the directory has data files
                 if meta_file.stat().st_size == 0:
                     info = FileMetaInfo(dir_name, parent=parent_info) # meta_file is empty
+                    b_data = BatchData(info)
                 else:
                     try:
                         with meta_file.open("rb") as f:
-                            info = FileMetaInfo.parse_from_stream(f, dir_name, self.system, parent=parent_info)
+                            b_data = BatchData.parse_from_stream(f, dir_name, self.system, parent_meta=parent_info)
+                            info = b_data.meta_info
                     except Exception as e:
                         raise ValueError(f"Error in {meta_file.as_posix()}") from e
                 self.evidence.setdefault(info.label, [])
                 self.meta_file_count += 1
             else:
                 info = FileMetaInfo(parent=parent_info)
+                b_data = BatchData(info)
+            parent.sub_data.append(b_data)
 
             # get tool info by file type
             tool_dep = ToolFinder.by_file_type(info.file_type)
@@ -103,7 +112,7 @@ class BatchImporter:
                     with a_file.open("rb") as f:
                         self._do_process(f, a_file, info, tool_dep, skip_processing)
                 else:
-                    self._import_batch(a_file, info)
+                    self._import_batch(a_file, b_data)
 
     def _do_process(self, stream: io.BytesIO, file_path: pathlib.Path, info: 'FileMetaInfo', tool: ToolDepiction,
                     skip_processing: bool):
@@ -178,43 +187,6 @@ class FileMetaInfo:
             self.source.activity_map.update(parent.source.activity_map)
 
     @classmethod
-    def parse_from_stream(cls, stream: io.BytesIO, directory_name: str, system: IoTSystem,
-                          parent: Optional['FileMetaInfo'] = None) -> 'FileMetaInfo':
-        """Parse from stream"""
-        return cls.parse_from_json(json.load(stream), directory_name, system, parent)
-
-    @classmethod
-    def parse_from_json(cls, json_data: Dict, directory_name: str, system: IoTSystem,
-                          parent: Optional['FileMetaInfo'] = None) -> 'FileMetaInfo':
-        """Parse from JSON"""
-        label = str(json_data.get("label", directory_name))
-        file_type = json_data.get("file_type", "")
-        r = cls(label, file_type, parent=parent)
-        r.from_pipe = bool(json_data.get("from_pipe", False))
-        r.load_baseline = bool(json_data.get("load_baseline", False))
-        r.file_load_order = json_data.get("file_order", [])
-        r.default_include = bool(json_data.get("include", True))
-
-        # read batch-specific addresses
-        for add, ent_s in json_data.get("addresses", {}).items():
-            address = Addresses.parse_address(add)
-            ent = Addresses.parse_address(ent_s)
-            entity = system.find_endpoint(ent)
-            if not entity:
-                raise ValueError(f"Unknown entity {ent_s}")
-            r.source.address_map[address] = entity
-
-        # read batch-specific external activity policies
-        for ent_s, policy_n in json_data.get("external_activity", {}).items():
-            ent = Addresses.parse_address(ent_s)
-            node = system.find_endpoint(ent)
-            if not node:
-                raise ValueError(f"Unknown entity '{ent_s}'")
-            policy = ExternalActivity[policy_n]
-            r.source.activity_map[node] = policy
-        return r
-
-    @classmethod
     def sort_load_order(cls, files: List[pathlib.Path], load_order: List[str]) -> List[pathlib.Path]:
         """Sort files according to load order"""
         proc_files = {f.name: f for f in files}
@@ -228,6 +200,59 @@ class FileMetaInfo:
 
     def __repr__(self) -> str:
         return f"file_type: {self.file_type}, label: {self.label}"
+
+
+class BatchData:
+    """Batch data hierarchy"""
+    def __init__(self, meta_info: FileMetaInfo):
+        self.meta_info = meta_info
+        self.sub_data: List[BatchData] = []
+        self.address_map: Dict[AnyAddress, Addressable] = {}
+        self.activity_map: Dict[NetworkNode, ExternalActivity] = {}
+
+    def __repr__(self) -> str:
+        return str(self.meta_info)
+
+    @classmethod
+    def parse_from_stream(cls, stream: io.BytesIO, directory_name: str, system: IoTSystem,
+                          parent_meta: Optional['FileMetaInfo'] = None) -> 'BatchData':
+        """Parse from stream"""
+        return cls.parse_from_json(json.load(stream), directory_name, system, parent_meta)
+
+    @classmethod
+    def parse_from_json(cls, json_data: Dict, directory_name: str, system: IoTSystem,
+                          parent_meta: Optional['FileMetaInfo'] = None) -> 'BatchData':
+        """Parse from JSON"""
+        label = str(json_data.get("label", directory_name))
+        file_type = json_data.get("file_type", "")
+        info = FileMetaInfo(label, file_type, parent=parent_meta)
+        info.from_pipe = bool(json_data.get("from_pipe", False))
+        info.load_baseline = bool(json_data.get("load_baseline", False))
+        info.file_load_order = json_data.get("file_order", [])
+        info.default_include = bool(json_data.get("include", True))
+
+        data = cls(info)
+
+        # read batch-specific addresses
+        for add, ent_s in json_data.get("addresses", {}).items():
+            address = Addresses.parse_address(add)
+            ent = Addresses.parse_address(ent_s)
+            entity = system.find_endpoint(ent)
+            if not entity:
+                raise ValueError(f"Unknown entity {ent_s}")
+            data.address_map[address] = entity
+            info.source.address_map[address] = entity
+
+        # read batch-specific external activity policies
+        for ent_s, policy_n in json_data.get("external_activity", {}).items():
+            ent = Addresses.parse_address(ent_s)
+            node = system.find_endpoint(ent)
+            if not node:
+                raise ValueError(f"Unknown entity '{ent_s}'")
+            policy = ExternalActivity[policy_n]
+            data.activity_map[node] = policy
+            info.source.activity_map[node] = policy
+        return data
 
 
 class LabelFilter:

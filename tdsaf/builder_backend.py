@@ -13,7 +13,7 @@ from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union
 from tdsaf.common.address import (AddressAtNetwork, Addresses, AnyAddress, DNSName, EndpointAddress, EntityTag,
                                   HWAddress, HWAddresses, IPAddress, IPAddresses, Network, Protocol)
 from tdsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status
-from tdsaf.adapters.batch_import import BatchImporter, LabelFilter
+from tdsaf.adapters.batch_import import BatchData, BatchImporter, LabelFilter
 from tdsaf.client_api import APIRequest
 from tdsaf.core.components import CookieData, Cookies, DataReference, StoredData, OperatingSystem, Software
 from tdsaf.common.entity import ClaimAuthority, Entity
@@ -1063,6 +1063,12 @@ class ClaimSetBackend(ClaimSetBuilder):
         return ls
 
 
+class LoadedData:
+    """Loaded data for programmatic invoker"""
+    def __init__(self, system: IoTSystem, batches: List[BatchData]):
+        self.system = system
+        self.batches = batches
+
 class SystemBackendRunner(SystemBackend):
     """Backend for system builder"""
 
@@ -1103,7 +1109,7 @@ class SystemBackendRunner(SystemBackend):
             logging, args.log_level or 'INFO'))
         return args
 
-    def run(self, custom_arguments: Optional[List[str]] = None) -> Registry:
+    def run(self, custom_arguments: Optional[List[str]] = None) -> LoadedData:
         args = self._parse_arguments(custom_arguments)
         if args.dhcp:
             self.any().serve(DHCP)
@@ -1148,6 +1154,8 @@ class SystemBackendRunner(SystemBackend):
             for sub in ln.subs:
                 sub.load(registry, label_filter=label_filter)
 
+        load_data = LoadedData(self.system, batch_import.batch_data)
+
         api = VisualizerAPI(registry, self.visualizer)
         if args.test_post:
             res, data = args.test_post
@@ -1160,18 +1168,18 @@ class SystemBackendRunner(SystemBackend):
                 api.logger.info("POST file %s", data)
                 resp = api.api_post_file(request, pathlib.Path(data))
             print(json.dumps(resp, indent=4))
-            return registry
+            return load_data
         if args.test_get:
             wid, hei = shutil.get_terminal_size()[0], 0  # only width specified
             for res in args.test_get:
                 api_req = APIRequest.parse(res)
                 api_req.set_param("screen", f"{wid}x{hei}")
                 print(api.api_get(api_req, pretty=True))
-            return registry
+            return load_data
 
         if custom_arguments is not None:
             # custom arguments, return without 'running' anything
-            return registry
+            return load_data
 
         with_files = bool(args.with_files)
         report = Report(registry)
@@ -1184,4 +1192,4 @@ class SystemBackendRunner(SystemBackend):
             server.component_delay = (args.test_delay or 0) / 1000
             server.run()
 
-        return registry
+        return load_data

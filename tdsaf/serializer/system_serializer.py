@@ -47,7 +47,8 @@ class IoTSystemSerializer(NetworkNodeSerializer):
 class AddressableSerializer(NetworkNodeSerializer):
     def write(self, obj: Addressable, stream: SerializerStream):
         super().write(obj, stream)
-        if not self.root.miniature:
+        if not self.root.miniature and obj.get_tag():
+            # (unexpected entities do not have tags)
             stream.write_field("tag", obj.get_tag().get_parseable_value())
 
     def read(self, obj: Addressable, stream: SerializerStream):

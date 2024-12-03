@@ -289,7 +289,7 @@ class Addressable(NetworkNode):
         self.any_host = False  # can be one or many hosts
 
     def get_tag(self) -> Optional[AnyAddress]:
-        """Get tag address, if any"""
+        """Get tag address, if any. Unexpected entities do not have tags."""
         raise NotImplementedError()
 
     def create_service(self, address: EndpointAddress) -> 'Service':
