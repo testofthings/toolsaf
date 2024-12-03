@@ -108,39 +108,38 @@ def test_get_title_text(verdict: Verdict):
 
 
 @pytest.mark.parametrize(
-    "p, a, s, exp",
+    "p, s, exp",
     [
         (
-            {Properties.EXPECTED: Verdict.PASS}, True, [], ([], 0)
+            {Properties.EXPECTED: Verdict.PASS}, ["all"], ([], 0)
         ),
         (
             {Properties.EXPECTED: Verdict.PASS, Properties.MITM: Verdict.IGNORE},
-            True, [], ([(Properties.MITM, Verdict.IGNORE)], 1)
+            ["all"], ([(Properties.MITM, Verdict.IGNORE)], 1)
         ),
         (
-            {Properties.MITM: Verdict.PASS}, False, [], ([], 0),
+            {Properties.MITM: Verdict.PASS}, [], ([], 0),
         ),
         (
             {Properties.MITM: _get_pvv(Verdict.FAIL), Properties.FUZZ: _get_pvv(Verdict.IGNORE)},
-            False, ["ignored"],
+            ["ignored"],
             ([(Properties.MITM, _get_pvv(Verdict.FAIL)), (Properties.FUZZ, _get_pvv(Verdict.IGNORE))], 2)
         ),
         (
             {Properties.MITM: _get_pvv(Verdict.PASS), Properties.FUZZ: _get_pvv(Verdict.IGNORE)},
-            False, ["properties"], ([(Properties.MITM, _get_pvv(Verdict.PASS))], 1)
+            ["properties"], ([(Properties.MITM, _get_pvv(Verdict.PASS))], 1)
         ),
         (
             {Properties.MITM: _get_pvv(Verdict.PASS), Properties.FUZZ: _get_pvv(Verdict.IGNORE)},
-            False, ["properties", "ignored"],
+            ["properties", "ignored"],
             ([(Properties.MITM, _get_pvv(Verdict.PASS)), (Properties.FUZZ, _get_pvv(Verdict.IGNORE))], 2)
         )
     ]
 )
-def test_get_properties_to_print(p: dict, a: bool, s: list[str], exp: tuple):
+def test_get_properties_to_print(p: dict, s: list[str], exp: tuple):
     e = MagicMock()
     e.properties = p
     r = Report(Registry(Setup().get_inspector()))
-    r.show_all = a
     r.show = s
     assert r.get_properties_to_print(e) == exp
 
@@ -203,19 +202,18 @@ def test_get_symbol_for_component(idx, n_comp, exp):
 
 
 @pytest.mark.parametrize(
-    "all, show, n_prop, idx, n_comp, exp",
+    "show, n_prop, idx, n_comp, exp",
     [
-        (True,  [], 1, 0, 0, "├──"),
-        (True,  [], 0, 0, 0, "│  "),
-        (False, ["properties"], 1, 0, 0, "├──"),
-        (False, ["properties"], 0, 0, 2, "│  "),
-        (False, [], 0, 1, 3, "│  "),
-        (False, [], 0, 1, 2, "└──")
+        (["all"], 1, 0, 0, "├──"),
+        (["all"], 0, 0, 0, "│  "),
+        (["properties"], 1, 0, 0, "├──"),
+        (["properties"], 0, 0, 2, "│  "),
+        ([], 0, 1, 3, "│  "),
+        ([], 0, 1, 2, "└──")
     ]
 )
-def test_get_symbol_for_info(all, show, n_prop, idx, n_comp, exp):
+def test_get_symbol_for_info(show, n_prop, idx, n_comp, exp):
     r = Report(Registry(Setup().get_inspector()))
-    r.show_all = all
     r.show = show
     c = MagicMock()
     c.properties = [MagicMock()]*n_prop

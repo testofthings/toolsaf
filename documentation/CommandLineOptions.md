@@ -26,10 +26,11 @@ python statements/statement.py -r ../sample-data -L ^pcap-0
 ```
 
 ## Show
-By default properties, entities with verdict.IGNORE and irrelevant connections are not shown. You can include them in the output by using `--show` along with the comma separated values `properties`, `ignored` and `irrelevant`.
+By default properties, entities with verdict.IGNORE and irrelevant connections are not shown. You can include them in the output by using `-s` or `--show` along with the comma separated values `all`, `properties`, `ignored` and `irrelevant`.
 ```bash
 python statements/statement.py -r ../sample-data --show properties,ignored,irrelevant
 ```
+When using `all`, all info is printed without text truncation.
 
 ## No Text Truncation
 By default text that is longer than the terminal's width is truncated. This can be turned off with `--no-truncate`.
@@ -41,12 +42,6 @@ python statements/statement.py -r ../sample-data --no-truncate
 If you want to have text coloring in piped output use `-c` or `--color`.
 ```bash
 python statements/statement.py -r ../sample-data -c | less -R
-```
-
-## Show All Output Info
-Print out everything without text truncation with `--show-all`.
-```bash
-python statements/statement.py -r ../sample-data --show-all
 ```
 
 ## Display Verdict Tool Data

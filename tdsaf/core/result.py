@@ -23,7 +23,6 @@ class Report:
         self.registry = registry
         self.system = registry.system
         self.source_count = 3
-        self.show_all = False
         self.show = []
         self.no_truncate = False
         self.c = False
@@ -59,6 +58,11 @@ class Report:
     def reset(self) -> str:
         """Reset colors/styles"""
         return Style.reset if self.use_color else ""
+
+    @cached_property
+    def show_all(self) -> bool:
+        """Should all info be printed without text truncation"""
+        return "all" in self.show
 
     def get_system_verdict(self, cache: dict) -> Verdict:
         """Get verdict for the entire system based on cached verdicts."""
