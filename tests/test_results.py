@@ -93,21 +93,6 @@ def test_crop_text(text, exp):
 
 
 @pytest.mark.parametrize(
-    "verdict",
-    [
-        (Verdict.PASS),
-        (Verdict.FAIL)
-    ]
-)
-def test_get_title_text(verdict: Verdict):
-    s = Setup()
-    r = Report(Registry(s.get_inspector()))
-    result = r.get_title_text(verdict)
-    assert s.get_system().long_name() in result
-    assert verdict.value in result
-
-
-@pytest.mark.parametrize(
     "p, s, exp",
     [
         (

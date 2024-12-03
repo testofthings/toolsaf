@@ -108,20 +108,14 @@ class Report:
             return text[:self.width - 3] + "..." + new_end
         return text
 
-    def print_title(self, text: str, symbol: str, writer: TextIO, skip_first: bool=False) -> None:
+    def print_title(self, text: str, writer: TextIO,
+                    top_symbol: str="", bottom_symbol: str="") -> None:
         """Writes title sections to the output"""
-        if not skip_first:
-            writer.write(symbol * self.width + "\n")
+        if top_symbol:
+            writer.write(top_symbol * self.width + "\n")
         writer.write(text + "\n")
-        writer.write(symbol * self.width + "\n")
-
-    def get_title_text(self, verdict: any) -> str:
-        """Returns the main title of the output"""
-        color = self.get_verdict_color(verdict)
-        if isinstance(verdict, Verdict):
-            verdict = verdict.value
-        return f"{'Report for:':<16} {self.bold}{self.system.long_name()}{self.reset}\n" + \
-                f"{color}{'Verdict:':<16} {self.bold}{verdict}{self.reset}"
+        if bottom_symbol:
+            writer.write(bottom_symbol * self.width + "\n")
 
     def get_properties_to_print(self, e: NetworkNode) -> tuple[list[tuple], int]:
         """Retuns properties that should be printed and the number of properties"""
@@ -171,9 +165,11 @@ class Report:
             return "│  "
         return "└──"
 
-    def print_properties(self, entity: NetworkNode, writer: TextIO, leading: str=""):
+    def print_properties(self, entity: NetworkNode, writer: TextIO, leading: str="", indent: int=0):
         """Print properties from entity"""
         prop_items, num = self.get_properties_to_print(entity)
+
+        set_indent = indent == 0
         k: PropertyKey
         for i, (k, v) in enumerate(prop_items):
             com = k.get_explanation(v)
@@ -181,7 +177,8 @@ class Report:
             s = k.get_value_string(v)
 
             symbol = self.get_symbol_for_property(i, num)
-            indent = 17 if isinstance(entity, Connection) else 20
+            if set_indent:
+                indent = 17 if isinstance(entity, Connection) else 20
 
             if leading != "":
                 symbol = leading + "  " + symbol
@@ -217,9 +214,13 @@ class Report:
             h.get_verdict(cache)
 
         system_verdict = self.get_system_verdict(cache)
-        self.print_title(self.get_title_text(system_verdict), "=", writer)
-        self.print_title(f"{self.bold}{'Verdict:':<17}Hosts and Services:{self.reset}", "-", writer, skip_first=True)
+        color = self.get_verdict_color(system_verdict)
 
+        self.print_title(f"{self.bold}{'Verdict:':<17}System:{self.reset}", writer, "=", "-")
+        writer.write(f"{color}[{system_verdict.value}]{self.bold:<15}{self.system.long_name()}{self.reset}\n")
+        self.print_properties(self.system, writer, indent=17)
+
+        self.print_title(f"{self.bold}{'Verdict:':<17}Hosts and Services:{self.reset}", writer, "=", "-")
         rev_map: Dict[str, List[Host]] = {}
         for h in hosts:
             if not h.is_relevant():
@@ -268,7 +269,9 @@ class Report:
             if len(hs) > 1:
                 self.logger.warning("DOUBLE mapped %s: %s", ad, ", ".join([f"{h}" for h in hs]))
 
-        self.print_title(f"{self.bold}Connections\n{'Verdict:':<17}{'Source:':<33}Target:{self.reset}", "-", writer)
+        self.print_title(
+            f"{self.bold}Connections\n{'Verdict:':<17}{'Source:':<33}Target:{self.reset}", writer, "=", "-"
+        )
         relevant_only = not (self.show_all or (self.show and "irrelevant" in self.show))
         for conn in self.system.get_connections(relevant_only=relevant_only):
             stat = self.get_connection_status(conn, cache)
