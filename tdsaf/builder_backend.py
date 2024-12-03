@@ -1077,12 +1077,12 @@ class SystemBackendRunner(SystemBackend):
         parser.add_argument("--def-loads", "-L", type=str,
                             help="Comma-separated list of tools to load")
         parser.add_argument("--with-files", "-w", action="store_true", help="Show relevant result files for verdicts")
-        parser.add_argument("--create-diagram", const="png", nargs="?", choices=["png", "jpg", "svg", "pdf"],
+        parser.add_argument("-C", "--create-diagram", const="png", nargs="?", choices=["png", "jpg", "svg", "pdf"],
                             help="Creat a diagram of a security statement with given file format. Default is png")
-        parser.add_argument("--diagram-name", type=str,
+        parser.add_argument("-S", "--show-diagram", const="png", nargs="?", choices=["png", "jpg", "svg", "pdf"],
+                            help="Display the visualizer's output. Can also set file format. Default is png")
+        parser.add_argument("-N", "--diagram-name", type=str,
                             help="File name for created diagram. Default is the system's name")
-        parser.add_argument("--show-diagram", action="store_true",
-                            help="Display the visualizer's output")
         parser.add_argument("--dhcp", action="store_true",
                             help="Add default DHCP server handling")
         parser.add_argument("--dns", action="store_true",
@@ -1186,10 +1186,10 @@ class SystemBackendRunner(SystemBackend):
         report.source_count = 3 if with_files else 0
         report.print_report(sys.stdout)
 
-        if args.create_diagram is not None:
-            self.diagram.outformat = args.create_diagram
-            self.diagram.show = bool(args.show_diagram)
+        if args.create_diagram is not None or args.show_diagram is not None:
+            self.diagram.set_outformat(args.create_diagram, args.show_diagram)
             self.diagram.set_file_name(args.diagram_name)
+            self.diagram.show = bool(args.show_diagram)
             self.diagram.create_diagram()
 
         if args.http_server:
