@@ -47,6 +47,31 @@ pcap-0    PCAP reader
 pcap-1    PCAP reader
 ```
 
+## Create Diagram Visualization
+You can create a diagram based on your security statement with `-C` or `--create-diagram`. The diagram will not be automatically displayed with this command. You can also set the diagram's file format with this flag. The format can be `png`, `jpg`, `svg` or `pdf`. Default format is `png`.
+```shell
+python statements/statement.py --create-diagram
+# OR
+python statements/statement.py -C jpg
+```
+Diagram creation requires you to install [Graphviz](https://graphviz.org/download/).
+
+## Create and Show Diagram Visualization
+You can use `-S` or `--show-diagram` to create and display a diagram based on your security statement. You can also set the diagram's file format with this flag. The format can be `png`, `jpg`, `svg` or `pdf`. Default format is `png`.
+```shell
+python statements/statement.py --show-diagram
+# OR
+python statements/statement.py -S pdf
+```
+
+## Diagram Name
+You can set the file name for created diagrams with `-N` or `--diagram-name`.
+```shell
+python statements/statement.py --create-diagram --diagram-name my_diagram
+# OR
+python statements/statement.py --show-diagram -N my_diagram
+```
+
 ## Set Log Level
 You can set the log level with `-l` or `--log-level`. Value can be `DEBUG`, `INFO`, `WARNING`, `ERROR` or `CRITICAL`.
 ```bash
