@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 from colored import Fore, Style
 
 from tdsaf.common.verdict import Verdict
-from tdsaf.common.property import PropertyVerdictValue
+from tdsaf.common.property import Properties, PropertyVerdictValue
 from tdsaf.core.registry import Registry
 from tdsaf.common.basics import ConnectionType
 from tdsaf.core.result import *
@@ -223,3 +223,70 @@ def test_get_connection_status(c_type: ConnectionType, c_status: str, verdict: V
     connection.status.value = c_status
     connection.get_verdict = MagicMock(return_value=verdict)
     assert r.get_connection_status(connection, {}) == exp
+
+
+def _mock_writer() -> MagicMock:
+    w = MagicMock()
+    w.output = []
+    w.write = lambda txt: w.output.append(txt)
+    return w
+
+
+def _get_properties(keys: list[str], verdicts: list[Verdict]) -> dict:
+    return {
+        Properties.FUZZ.append_key(k): _get_pvv(v)
+            for k, v in zip(keys, verdicts)
+    }
+
+
+@pytest.mark.parametrize(
+    "props, verds, lead, ind, exp",
+    [
+        (
+            ["t1"], [Verdict.PASS], "", 0,
+            ["[Pass]              └──check:fuzz:t1\n"]
+        ),
+        (
+            ["t1", "t2", "t3"], [Verdict.PASS, Verdict.FAIL, Verdict.INCON],
+            "", 0,
+            ["[Pass]              ├──check:fuzz:t1\n",
+             "[Fail]              ├──check:fuzz:t2\n",
+             "[Incon]             └──check:fuzz:t3\n"]
+        ),
+        (
+            ["t1", "t2", "t3"], [Verdict.PASS, Verdict.FAIL, Verdict.INCON],
+            "│", 0,
+            ["[Pass]           │  ├──check:fuzz:t1\n",
+             "[Fail]           │  ├──check:fuzz:t2\n",
+             "[Incon]          │  └──check:fuzz:t3\n"]
+        ),
+        (
+            ["t1", "t2", "t3"], [Verdict.PASS, Verdict.FAIL, Verdict.INCON],
+            "", 17,
+            ["[Pass]           ├──check:fuzz:t1\n",
+             "[Fail]           ├──check:fuzz:t2\n",
+             "[Incon]          └──check:fuzz:t3\n"]
+        ),
+        (
+            ["t1", "t2", "t3"], [Verdict.PASS, Verdict.FAIL, Verdict.INCON],
+            "|", 17, # indent=-3 if leading!=""
+            ["[Pass]        |  ├──check:fuzz:t1\n",
+             "[Fail]        |  ├──check:fuzz:t2\n",
+             "[Incon]       |  └──check:fuzz:t3\n"]
+        ),
+    ]
+)
+def test_print_properties_with_entity_and_pvv(props: list[str], verds: list[Verdict],
+                           lead: str, ind: int, exp: list[str]):
+    setup = Setup()
+    r = Report(Registry(Setup().get_inspector()))
+    r.show = ["properties"]
+
+    system = setup.get_system()
+    system.properties = _get_properties(props, verds)
+
+    writer = _mock_writer()
+    r.print_properties(system, writer, lead, ind)
+
+    for i in range(len(writer.output)):
+        assert writer.output[i] == exp[i]

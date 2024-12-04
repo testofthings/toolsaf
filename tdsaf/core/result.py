@@ -170,6 +170,9 @@ class Report:
         prop_items, num = self.get_properties_to_print(entity)
 
         set_indent = indent == 0
+        if not set_indent and leading:
+            indent -= 3
+
         k: PropertyKey
         for i, (k, v) in enumerate(prop_items):
             com = k.get_explanation(v)
@@ -180,9 +183,10 @@ class Report:
             if set_indent:
                 indent = 17 if isinstance(entity, Connection) else 20
 
-            if leading != "":
+            if leading:
                 symbol = leading + "  " + symbol
-                indent -= 3
+                if set_indent:
+                    indent -= 3
 
             if isinstance(v, PropertyVerdictValue):
                 s = s.split("=")[0]
