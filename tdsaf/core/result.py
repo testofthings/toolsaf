@@ -217,7 +217,7 @@ class Report:
         color = self.get_verdict_color(system_verdict)
 
         self.print_title(f"{self.bold}{'Verdict:':<17}System:{self.reset}", writer, "=", "-")
-        writer.write(f"{color}[{system_verdict.value}]{self.bold:<15}{self.system.long_name()}{self.reset}\n")
+        writer.write(f"{color}{'['+system_verdict.value+']':<17}{self.bold}{self.system.long_name()}{self.reset}\n")
         self.print_properties(self.system, writer, indent=17)
 
         self.print_title(f"{self.bold}{'Verdict:':<17}Hosts and Services:{self.reset}", writer, "=", "-")
