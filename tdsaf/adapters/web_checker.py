@@ -11,7 +11,7 @@ from tdsaf.common.property import Properties
 from tdsaf.adapters.tools import SystemWideTool
 from tdsaf.common.traffic import EvidenceSource, Evidence
 from tdsaf.common.verdict import Verdict
-
+from tdsaf.common.online_resources import OnlineResource
 
 class WebChecker(SystemWideTool):
     """Check web pages tool"""
@@ -30,7 +30,7 @@ class WebChecker(SystemWideTool):
             raise ValueError("File does not start with a proper URL")
         return url
 
-    def get_online_resource_for_url(self, url: str) -> Union[str, None]:
+    def get_online_resource_for_url(self, url: str) -> Union[OnlineResource, None]:
         """Get online resource that matches given URL"""
         for k, v in self.system.online_resources.items():
             if v == url:
@@ -44,6 +44,20 @@ class WebChecker(SystemWideTool):
         except (AttributeError, ValueError) as e:
             raise ValueError("Proper status code not found on line two") from e
 
+    def check_keywords(self, resource: OnlineResource, data: TextIOWrapper) -> bool:
+        """Check that at least 70% of keywords found on the page"""
+        keywords: set[str] = resource.keywords
+        found = 0
+        target = int(len(keywords) * 0.7)
+        for line in data:
+            line = line.strip().lower()
+            found_keywords = {kw for kw in keywords if kw in line}
+            found += len(found_keywords)
+            keywords -= found_keywords
+            if found >= target:
+                return True
+        return found >= target
+
     def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource) -> bool:
         with TextIOWrapper(data) as f:
             url = self.get_url_from_data(f)
@@ -54,12 +68,11 @@ class WebChecker(SystemWideTool):
             status_code = self.get_status_code_from_data(f)
             self.logger.info("web link %s: %s", url, status_code)
 
-            is_ok = status_code == 200
-            kv = Properties.DOCUMENT_AVAILABILITY.append_key(resource).verdict(
+            keywords_ok = self.check_keywords(resource, f)
+            is_ok = status_code == 200 and keywords_ok
+            kv = Properties.DOCUMENT_AVAILABILITY.append_key(resource.name).verdict(
                 Verdict.PASS if is_ok else Verdict.FAIL
             )
-
-            # Keyword check, and a related enum for different online resource types?
 
             evidence = Evidence(source, url)
             ev = PropertyEvent(evidence, self.system, kv)

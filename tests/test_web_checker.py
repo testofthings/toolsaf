@@ -2,8 +2,8 @@ import pytest
 from io import BytesIO, BufferedReader, TextIOWrapper
 from typing import Union
 
-from tdsaf.adapters.web_checker import WebChecker
-from tdsaf.core.model import IoTSystem
+from tdsaf.adapters.web_checker import WebChecker#, Keywords
+from tdsaf.common.online_resources import *
 from tdsaf.builder_backend import SystemBackend
 from tests.test_model import Setup
 
@@ -64,3 +64,27 @@ def test_get_status_code_from_data(data: TextIOWrapper, raises: bool, exp: Union
             w.get_status_code_from_data(data)
     else:
         assert w.get_status_code_from_data(data) == exp
+
+
+@pytest.mark.parametrize(
+    "data, resource, exp",
+    {
+        (_data("privacy policy personal data\nterms"), PrivacyPolicy, False),
+        (
+            _data("privacy policy personal data\nterms consent third party"),
+            PrivacyPolicy, True
+        ),
+        (
+            _data("vulnerability disclosure policy report a bug now submit" +
+                  " to our security scope"),
+            SecurityPolicy, True
+        ),
+        (
+            _data("our cookie policy is stored, deleted and blocked on expiry\n\
+                  for functional marketing purposes statistically"),
+            CookiePolicy, True
+        ),
+    }
+)
+def test_check_keywords(data: TextIOWrapper, resource: OnlineResource, exp: bool):
+    assert WebChecker(Setup().get_system()).check_keywords(resource, data) == exp
