@@ -5,3 +5,4 @@ aiofiles
 sqlalchemy
 watchdog
 colored
+diagrams

@@ -39,6 +39,7 @@ from tdsaf.common.traffic import Evidence, EvidenceSource
 from tdsaf.common.verdict import Verdict
 from tdsaf.common.android import MobilePermissions
 from tdsaf.visualizer import Visualizer, VisualizerAPI
+from tdsaf.diagram_visualizer import DiagramVisualizer
 
 
 class SystemBackend(SystemBuilder):
@@ -51,6 +52,7 @@ class SystemBackend(SystemBuilder):
         self.claim_set = ClaimSetBackend(self)
         self.attachments: List[pathlib.Path] = []
         self.visualizer = Visualizer()
+        self.diagram = DiagramVisualizer(self)
         self.loaders: List[EvidenceLoader] = []
         self.protocols: Dict[Any, 'ProtocolBackend'] = {}
 
@@ -142,6 +144,9 @@ class SystemBackend(SystemBuilder):
 
     def visualize(self) -> 'VisualizerBackend':
         return VisualizerBackend(self.visualizer)
+
+    def diagram_visualizer(self) -> 'DiagramVisualizer':
+        return self.diagram
 
     def load(self) -> 'EvidenceLoader':
         el = EvidenceLoader(self)
@@ -1078,6 +1083,12 @@ class SystemBackendRunner(SystemBackend):
                             help="Disables output text truncation")
         parser.add_argument("-c", "--color", action="store_true",
                             help="Keep colors in output even when output is piped")
+        parser.add_argument("-C", "--create-diagram", const="png", nargs="?", choices=["png", "jpg", "svg", "pdf"],
+                            help="Creat a diagram of a security statement with given file format. Default is png")
+        parser.add_argument("-S", "--show-diagram", const="png", nargs="?", choices=["png", "jpg", "svg", "pdf"],
+                            help="Display the visualizer's output. Can also set file format. Default is png")
+        parser.add_argument("-N", "--diagram-name", type=str,
+                            help="File name for created diagram. Default is the system's name")
         parser.add_argument("--dhcp", action="store_true",
                             help="Add default DHCP server handling")
         parser.add_argument("--dns", action="store_true",
@@ -1183,6 +1194,12 @@ class SystemBackendRunner(SystemBackend):
         report.no_truncate = bool(args.no_truncate)
         report.c = bool(args.color)
         report.print_report(sys.stdout)
+
+        if args.create_diagram is not None or args.show_diagram is not None:
+            self.diagram.set_outformat(args.create_diagram, args.show_diagram)
+            self.diagram.set_file_name(args.diagram_name)
+            self.diagram.show = bool(args.show_diagram)
+            self.diagram.create_diagram()
 
         if args.http_server:
             server = HTTPServerRunner(
