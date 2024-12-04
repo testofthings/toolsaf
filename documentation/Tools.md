@@ -250,6 +250,8 @@ Example metafile `00meta.json`:
 Files can be saved e.g. by `curl` with following syntax where `<url>` is the service URL.
 ```
 $ curl -L -i -o <url>.http <url>
+# NEW WAY
+$ (echo "<url>"; curl -Li <url>) > <file-name>.http
 ```
 NOTE: The actual save file name must be URL-encoded (`%3a` for dot, etc.)!
 
