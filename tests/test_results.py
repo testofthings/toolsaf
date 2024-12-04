@@ -5,7 +5,9 @@ from colored import Fore, Style
 from tdsaf.common.verdict import Verdict
 from tdsaf.common.property import Properties, PropertyVerdictValue
 from tdsaf.core.registry import Registry
+from tdsaf.core.model import Connection
 from tdsaf.common.basics import ConnectionType
+from tdsaf.common.release_info import ReleaseInfo
 from tdsaf.core.result import *
 from tests.test_model import Setup
 
@@ -276,14 +278,95 @@ def _get_properties(keys: list[str], verdicts: list[Verdict]) -> dict:
         ),
     ]
 )
-def test_print_properties_with_entity_and_pvv(props: list[str], verds: list[Verdict],
-                           lead: str, ind: int, exp: list[str]):
+def test_print_properties_with_entity_and_pvv(
+        props: list[str], verds: list[Verdict], lead: str, ind: int, exp: list[str]
+):
     setup = Setup()
     r = Report(Registry(Setup().get_inspector()))
     r.show = ["properties"]
 
     system = setup.get_system()
     system.properties = _get_properties(props, verds)
+
+    writer = _mock_writer()
+    r.print_properties(system, writer, lead, ind)
+
+    for i in range(len(writer.output)):
+        assert writer.output[i] == exp[i]
+
+
+@pytest.mark.parametrize(
+    "props, verds, lead, ind, exp",
+    [
+        ( # Connection indent value is 17 instead of 20
+            ["t1"], [Verdict.PASS], "", 0,
+            ["[Pass]           └──check:fuzz:t1\n"]
+        ),
+        (
+            ["t1", "t2"], [Verdict.PASS, Verdict.FAIL],
+            "", 0,
+            ["[Pass]           ├──check:fuzz:t1\n",
+             "[Fail]           └──check:fuzz:t2\n"]
+        ),
+        (
+            ["t1", "t2"], [Verdict.PASS, Verdict.FAIL],
+            "|", 0,
+            ["[Pass]        |  ├──check:fuzz:t1\n",
+             "[Fail]        |  └──check:fuzz:t2\n"]
+        ),
+        (
+            ["t1", "t2"], [Verdict.PASS, Verdict.FAIL],
+            "|", 13,
+            ["[Pass]    |  ├──check:fuzz:t1\n",
+             "[Fail]    |  └──check:fuzz:t2\n"]
+        ),
+    ]
+)
+def test_print_properties_with_connections_and_pvv(
+        props: list[str], verds: list[Verdict], lead: str, ind: int, exp: list[str]
+):
+    r = Report(Registry(Setup().get_inspector()))
+    r.show = ["properties"]
+
+    connection = Connection(None, None)
+    connection.properties = _get_properties(props, verds)
+    writer = _mock_writer()
+    r.print_properties(connection, writer, lead, ind)
+
+    for i in range(len(writer.output)):
+        assert writer.output[i] == exp[i]
+
+
+@pytest.mark.parametrize(
+    "lead, ind, exp",
+    [
+        (
+            "", 0,
+            ["                    └──default:release-info=0\n"]
+        ),
+        (
+            "|", 0,
+            ["                 |  └──default:release-info=0\n"]
+        ),
+        (
+            "", 17,
+            ["                 └──default:release-info=0\n"]
+        ),
+        (
+            "|", 20,
+            ["                 |  └──default:release-info=0\n"]
+        ),
+    ]
+)
+def test_print_properties_without_pvv(
+    lead: str, ind: int, exp: list[str]
+):
+    setup = Setup()
+    r = Report(Registry(Setup().get_inspector()))
+    r.show = ["properties"]
+
+    system = setup.get_system()
+    system.properties = {ReleaseInfo.PROPERTY_KEY: 0}
 
     writer = _mock_writer()
     r.print_properties(system, writer, lead, ind)
