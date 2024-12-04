@@ -3,6 +3,8 @@
 
 from typing import Optional, Type
 
+from tdsaf.common.address import Addresses, EntityTag
+
 from tdsaf.visualizer import Visualizer
 
 from tdsaf.core.components import Software
@@ -53,10 +55,18 @@ class AddressableSerializer(NetworkNodeSerializer):
         if not self.root.miniature and obj.get_tag():
             # (unexpected entities do not have tags)
             stream.write_field("tag", obj.get_tag().get_parseable_value())
+        if not self.root.miniature and obj.addresses:
+            stream.write_field("addresses", [a.get_parseable_value() for a in obj.addresses if not a.is_tag()])
 
     def read(self, obj: Addressable, stream: SerializerStream):
         obj.parent = stream.resolve("at")
         obj.parent.children.append(obj)
+        tag = stream.get("tag")
+        if tag:
+            obj.addresses.add(EntityTag.new(tag))
+        ads = stream.get("addresses") or []
+        for a in ads:
+            obj.addresses.add(Addresses.parse_address(a))
 
 
 class HostSerializer(AddressableSerializer):
