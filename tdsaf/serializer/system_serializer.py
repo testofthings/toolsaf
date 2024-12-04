@@ -21,15 +21,18 @@ class NetworkNodeSerializer(Serializer):
         if not self.root.miniature:
             stream.write_field("long_name", obj.long_name())
         for c in obj.children:
+            if not self.root.unexpected and not c.is_expected():
+                continue
             stream.push_object(c, at_object=obj)
         for c in obj.components:
             stream.push_object(c, at_object=obj)
 
 
 class IoTSystemSerializer(NetworkNodeSerializer):
-    def __init__(self, system: IoTSystem, visualizer: Optional[Visualizer] = None, miniature=False):
+    def __init__(self, system: IoTSystem, visualizer: Optional[Visualizer] = None, miniature=False, unexpected=True):
         super().__init__(IoTSystem, self)
         self.miniature = miniature
+        self.unexpected = unexpected
         self.config.type_name = "system"
         self.config.map_new_class("host", HostSerializer(self))
         self.config.map_new_class("service", ServiceSerializer(self))

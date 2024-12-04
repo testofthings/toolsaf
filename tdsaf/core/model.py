@@ -52,10 +52,6 @@ class Connection(Entity):
             return False
         return self.source.is_relevant() or self.target.is_relevant()
 
-    def is_expected(self) -> bool:
-        """Is the connection expected?"""
-        return self.status == Status.EXPECTED
-
     def is_encrypted(self) -> bool:
         """Is an encrypted connection?"""
         t = self.target
