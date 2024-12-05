@@ -1077,6 +1077,12 @@ class SystemBackendRunner(SystemBackend):
         parser.add_argument("--def-loads", "-L", type=str,
                             help="Comma-separated list of tools to load")
         parser.add_argument("--with-files", "-w", action="store_true", help="Show relevant result files for verdicts")
+        parser.add_argument("-s", "--show", type=lambda s: s.split(","), default=[],
+                            help="Show additional info in output. Valid values: all, properties, ignored, irrelevant")
+        parser.add_argument("--no-truncate", action="store_true",
+                            help="Disables output text truncation")
+        parser.add_argument("-c", "--color", action="store_true",
+                            help="Keep colors in output even when output is piped")
         parser.add_argument("-C", "--create-diagram", const="png", nargs="?", choices=["png", "jpg", "svg", "pdf"],
                             help="Creat a diagram of a security statement with given file format. Default is png")
         parser.add_argument("-S", "--show-diagram", const="png", nargs="?", choices=["png", "jpg", "svg", "pdf"],
@@ -1184,6 +1190,9 @@ class SystemBackendRunner(SystemBackend):
         with_files = bool(args.with_files)
         report = Report(registry)
         report.source_count = 3 if with_files else 0
+        report.show = args.show
+        report.no_truncate = bool(args.no_truncate)
+        report.c = bool(args.color)
         report.print_report(sys.stdout)
 
         if args.create_diagram is not None or args.show_diagram is not None:

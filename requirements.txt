@@ -4,4 +4,5 @@ aiohttp
 aiofiles
 sqlalchemy
 watchdog
+colored
 diagrams
