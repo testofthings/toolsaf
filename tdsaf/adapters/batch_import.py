@@ -95,7 +95,7 @@ class BatchImporter:
             all_files = tool_dep.filter_files_itself()
             if all_files:
                 # process all files by one tool
-                self._do_process_files(proc_list, info, tool_dep, skip_processing)
+                self._do_process_files(proc_list, b_data, tool_dep, skip_processing)
 
             if not info.label:
                 self.logger.info("skipping all files as no 00meta.json")
@@ -110,13 +110,14 @@ class BatchImporter:
                         self.logger.debug("skipping (default=False) %s", a_file.as_posix())
                         continue # skip file if not explicitly included
                     with a_file.open("rb") as f:
-                        self._do_process(f, a_file, info, tool_dep, skip_processing)
+                        self._do_process(f, a_file, b_data, tool_dep, skip_processing)
                 else:
                     self._import_batch(a_file, b_data)
 
-    def _do_process(self, stream: io.BytesIO, file_path: pathlib.Path, info: 'FileMetaInfo', tool: ToolDepiction,
+    def _do_process(self, stream: io.BytesIO, file_path: pathlib.Path, data: 'BatchData', tool: ToolDepiction,
                     skip_processing: bool):
         """Process a file """
+        info = data.meta_info
         if not skip_processing:
             self.logger.info("processing (%s) %s", info.label, file_path.as_posix())
 
@@ -136,15 +137,17 @@ class BatchImporter:
                     return
                 reader.load_baseline = info.load_baseline or self.load_baseline
                 reader.process_file(stream, file_name, self.interface, ev)
+                data.files.append(file_path)
                 return
 
         except Exception as e:
             raise ValueError(f"Error in {file_name}") from e
         self.logger.info("skipping unsupported '%s' type %s", file_name, info.file_type)
 
-    def _do_process_files(self, files: List[pathlib.Path], info: 'FileMetaInfo', tool: ToolDepiction,
+    def _do_process_files(self, files: List[pathlib.Path], data: 'BatchData', tool: ToolDepiction,
                           skip_processing: bool):
         """Process files"""
+        info = data.meta_info
         reader = tool.create_tool(self.system)
         reader.load_baseline = info.load_baseline or self.load_baseline
 
@@ -165,6 +168,7 @@ class BatchImporter:
                 ev.timestamp = datetime.fromtimestamp(fn.stat().st_mtime)
                 done = reader.process_file(f, fn.name, self.interface, ev)
             if done:
+                data.files.append(fn)
                 unmapped.remove(fn.name)
             else:
                 self.logger.info("unprocessed (%s) file %s", info.label, fn.as_posix())
@@ -209,6 +213,7 @@ class BatchData:
         self.sub_data: List[BatchData] = []
         self.address_map: Dict[AnyAddress, Addressable] = {}
         self.activity_map: Dict[NetworkNode, ExternalActivity] = {}
+        self.files: List[pathlib.Path] = []
 
     def __repr__(self) -> str:
         return str(self.meta_info)
