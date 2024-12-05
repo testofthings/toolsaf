@@ -240,6 +240,9 @@ class SoftwareBuilder:
         """Target update frequency, days"""
         raise NotImplementedError()
 
+    def sbom(self, components: List[str]=None, file: str="", column_num: int=0):
+        """Add an SBOM from given list or file"""
+        raise NotImplementedError()
 
 class CookieBuilder:
     """Cookies in a browser"""
