@@ -13,6 +13,7 @@ from tdsaf.common.entity import Entity
 from tdsaf.common.property import PropertyKey
 from tdsaf.common.traffic import Flow, EvidenceSource
 from tdsaf.common.verdict import Verdict
+from tdsaf.core.online_resources import OnlineResource
 
 
 class Connection(Entity):
@@ -519,7 +520,7 @@ class IoTSystem(NetworkNode):
         # network mask(s)
         self.networks = [Network("local", ip_network=ipaddress.ip_network("192.168.0.0/16"))]  # reasonable default
         # online resources
-        self.online_resources: Dict[str, str] = {}
+        self.online_resources: List[OnlineResource]=[]
         # original entities and connections
         self.originals: Set[Entity] = {self}
         # consumer for specific message types

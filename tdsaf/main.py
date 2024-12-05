@@ -62,7 +62,7 @@ class SystemBuilder:
         """Declare pieces of security-relevant data"""
         raise NotImplementedError()
 
-    def online_resource(self, key: str, url: str) -> Self:
+    def online_resource(self, name: str, url: str, keywords: List[str]) -> Self:
         """Document online resource"""
         raise NotImplementedError()
 
