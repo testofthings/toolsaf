@@ -25,6 +25,25 @@ By adding `^` to the statement you can exclude a specific set of data.
 python statements/statement.py -r ../sample-data -L ^pcap-0
 ```
 
+## Show
+By default properties, entities with verdict.IGNORE and irrelevant connections are not shown. You can include them in the output by using `-s` or `--show` along with the comma separated values `all`, `properties`, `ignored` and `irrelevant`.
+```bash
+python statements/statement.py -r ../sample-data --show properties,ignored,irrelevant
+```
+When using `all`, all info is printed without text truncation.
+
+## No Text Truncation
+By default text that is longer than the terminal's width is truncated. This can be turned off with `--no-truncate`.
+```bash
+python statements/statement.py -r ../sample-data --no-truncate
+```
+
+## Use Color With Output Piping
+If you want to have text coloring in piped output use `-c` or `--color`.
+```bash
+python statements/statement.py -r ../sample-data -c | less -R
+```
+
 ## Display Verdict Tool Data
 The lines/frames, e.g. in a _pcap_ file, that effect verification verdicts can be printed out with `-w` or `--with-files`.
 ```bash
