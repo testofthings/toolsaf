@@ -2,7 +2,7 @@
 
 from typing import Dict, List, Optional, Self, Tuple, Type, Union
 from tdsaf.common.address import AnyAddress, HWAddress, HWAddresses, IPAddress, IPAddresses, Network
-from tdsaf.core.selector import AbstractSelector
+from tdsaf.core.selector import AbstractSelector, Host
 from tdsaf.common.basics import ConnectionType, HostType, ExternalActivity
 from tdsaf.common.verdict import Verdict
 from tdsaf.common.android import MobilePermissions
@@ -72,6 +72,10 @@ class SystemBuilder:
 
     def visualize(self) -> 'VisualizerBuilder':
         """Model visualization"""
+        raise NotImplementedError()
+
+    def diagram_visualizer(self) -> 'DiagramVisualizer':
+        """Security statement visualization"""
         raise NotImplementedError()
 
     def load(self) -> 'EvidenceBuilder':
@@ -263,6 +267,26 @@ class VisualizerBuilder:
 
     def where(self, handles: Dict[str, Union[NodeBuilder, NodeVisualBuilder]]) -> Self:
         """Name handles in the image"""
+        raise NotImplementedError()
+
+
+class DiagramVisualizer:
+    """Security statement visualizer"""
+    def visualize(self) -> Self:
+        """Visualize statement"""
+        raise NotImplementedError()
+
+    def add_images(self, d: dict[Host, str]) -> Self:
+        """Use locally stored images for specified nodes in visualization.
+            Must be .png images"""
+        raise NotImplementedError()
+
+    def add_remote_images(self, d: dict[Host, str]) -> Self:
+        """Use images from the internet for specified nodes"""
+        raise NotImplementedError()
+
+    def create_diagram(self) -> None:
+        """Create a diagram based on the security statement"""
         raise NotImplementedError()
 
 

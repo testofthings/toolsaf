@@ -42,6 +42,8 @@ pip install -e ../tdsaf/ --config-settings editable_mode=strict
 
 Keep in mind that TDSAF and security statements should be stored in their own separate directories.
 
+If you want to visualize your security statmenets you also need to install [Graphviz](https://graphviz.org/download/).
+
 ## Working with Security Statements
 The following two subsections explain how to create security statements for your devices and then verify them. The explanations also provide examples based on how we created a security statement for the _Deltaco Smart Outdoor Plug_.
 

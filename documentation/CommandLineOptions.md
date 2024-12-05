@@ -25,6 +25,25 @@ By adding `^` to the statement you can exclude a specific set of data.
 python statements/statement.py -r ../sample-data -L ^pcap-0
 ```
 
+## Show
+By default properties, entities with verdict.IGNORE and irrelevant connections are not shown. You can include them in the output by using `-s` or `--show` along with the comma separated values `all`, `properties`, `ignored` and `irrelevant`.
+```bash
+python statements/statement.py -r ../sample-data --show properties,ignored,irrelevant
+```
+When using `all`, all info is printed without text truncation.
+
+## No Text Truncation
+By default text that is longer than the terminal's width is truncated. This can be turned off with `--no-truncate`.
+```bash
+python statements/statement.py -r ../sample-data --no-truncate
+```
+
+## Use Color With Output Piping
+If you want to have text coloring in piped output use `-c` or `--color`.
+```bash
+python statements/statement.py -r ../sample-data -c | less -R
+```
+
 ## Display Verdict Tool Data
 The lines/frames, e.g. in a _pcap_ file, that effect verification verdicts can be printed out with `-w` or `--with-files`.
 ```bash
@@ -45,6 +64,31 @@ Example output:
 nmap      Nmap scan
 pcap-0    PCAP reader
 pcap-1    PCAP reader
+```
+
+## Create Diagram Visualization
+You can create a diagram based on your security statement with `-C` or `--create-diagram`. The diagram will not be automatically displayed with this command. You can also set the diagram's file format with this flag. The format can be `png`, `jpg`, `svg` or `pdf`. Default format is `png`.
+```shell
+python statements/statement.py --create-diagram
+# OR
+python statements/statement.py -C jpg
+```
+Diagram creation requires you to install [Graphviz](https://graphviz.org/download/).
+
+## Create and Show Diagram Visualization
+You can use `-S` or `--show-diagram` to create and display a diagram based on your security statement. You can also set the diagram's file format with this flag. The format can be `png`, `jpg`, `svg` or `pdf`. Default format is `png`.
+```shell
+python statements/statement.py --show-diagram
+# OR
+python statements/statement.py -S pdf
+```
+
+## Diagram Name
+You can set the file name for created diagrams with `-N` or `--diagram-name`.
+```shell
+python statements/statement.py --create-diagram --diagram-name my_diagram
+# OR
+python statements/statement.py --show-diagram -N my_diagram
 ```
 
 ## Set Log Level
