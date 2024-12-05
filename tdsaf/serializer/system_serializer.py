@@ -22,6 +22,11 @@ class NetworkNodeSerializer(Serializer):
     def write(self, obj: NetworkNode, stream: SerializerStream):
         if not self.root.miniature:
             stream.write_field("long_name", obj.long_name())
+        if self.root.verdicts:
+            expected = obj.get_expected_verdict(None)
+            if expected:
+                stream.write_field("expected", expected.value)  # fail or pass
+            stream.write_field("verdict", obj.get_verdict(self.root.verdict_cache).value)
         for c in obj.children:
             if not self.root.unexpected and not c.is_expected():
                 continue
@@ -31,10 +36,13 @@ class NetworkNodeSerializer(Serializer):
 
 
 class IoTSystemSerializer(NetworkNodeSerializer):
-    def __init__(self, system: IoTSystem, visualizer: Optional[Visualizer] = None, miniature=False, unexpected=True):
+    def __init__(self, system: IoTSystem, visualizer: Optional[Visualizer] = None, miniature=False, unexpected=True,
+                 verdicts=False):
         super().__init__(IoTSystem, self)
         self.miniature = miniature
         self.unexpected = unexpected
+        self.verdicts = verdicts
+        self.verdict_cache = {}
         self.config.type_name = "system"
         self.config.map_new_class("host", HostSerializer(self))
         self.config.map_new_class("service", ServiceSerializer(self))
