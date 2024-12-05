@@ -11,7 +11,7 @@ from tdsaf.common.property import Properties
 from tdsaf.adapters.tools import SystemWideTool
 from tdsaf.common.traffic import EvidenceSource, Evidence
 from tdsaf.common.verdict import Verdict
-from tdsaf.common.online_resources import OnlineResource
+from tdsaf.core.online_resources import OnlineResource
 
 class WebChecker(SystemWideTool):
     """Check web pages tool"""
@@ -32,9 +32,9 @@ class WebChecker(SystemWideTool):
 
     def get_online_resource_for_url(self, url: str) -> Union[OnlineResource, None]:
         """Get online resource that matches given URL"""
-        for k, v in self.system.online_resources.items():
-            if v == url:
-                return k
+        for resource in self.system.online_resources:
+            if url == resource.url:
+                return resource
         return None
 
     def get_status_code_from_data(self, data: TextIOWrapper) -> int:
@@ -45,18 +45,15 @@ class WebChecker(SystemWideTool):
             raise ValueError("Proper status code not found on line two") from e
 
     def check_keywords(self, resource: OnlineResource, data: TextIOWrapper) -> bool:
-        """Check that at least 70% of keywords found on the page"""
-        keywords: set[str] = resource.keywords
-        found = 0
-        target = int(len(keywords) * 0.7)
+        """Check that given keywords found on the page"""
+        keywords: set[str] = set(resource.keywords)
         for line in data:
             line = line.strip().lower()
             found_keywords = {kw for kw in keywords if kw in line}
-            found += len(found_keywords)
             keywords -= found_keywords
-            if found >= target:
+            if not keywords:
                 return True
-        return found >= target
+        return not bool(keywords)
 
     def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource) -> bool:
         with TextIOWrapper(data) as f:
