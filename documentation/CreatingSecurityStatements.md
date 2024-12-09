@@ -37,8 +37,12 @@ open_port_1 = device / SSH
 
 # Define any mobile apps
 mobile = system.mobile("<Mobile app name>")
+
 # Define mobile app permissions
 mobile.set_permissions(STORAGE, RECORDING)
+
+# Define web browser
+browser = system.browser()
 
 # Define relevant backend services
 backend_1 = system.backend("<Service name>").serve(TLS).dns("<Service's DNS name>")
@@ -46,6 +50,9 @@ backend_2 = system.backend("<Service name>").serve(NTP).dns("<Service's DNS name
 backend_3 = system.backend("<Service name>").serve(TLS(port=1443)).dns("<Service's DNS name>")
 #...
 backend_n = system.backend("<Service name>").serve(NTP).dns("<Service's DNS name>")
+
+# Define firmware updates
+device.software().updates_from(backend_1)
 
 # Define connections from the environment
 any_host >> device / ARP
@@ -56,6 +63,24 @@ device >> backend_2 / NTP
 
 # Define connections and protocols from mobile apps
 mobile >> backend_1 / TLS
+
+# Define connections and protocols from browser
+browser >> backend_1 /TLS
+
+# Define online resources and keywords
+system.online_resource("privacy-policy", url="https://example.com/privacy-policy/",
+                        keywords=["privacy policy", "personal data"]
+)
+
+# Define cookies
+cookies = browser.cookies()
+cookies.set({
+#                 Domain     Path  Explanation
+    "_ga": ("*.example.com", "/", "Google Analytics"),
+})
+
+# Define collected sensitive data
+system.data(["User e-mail", "Sensor measurements", "Billing Info"])
 
 if __name__ == '__main__':
     system.run()
