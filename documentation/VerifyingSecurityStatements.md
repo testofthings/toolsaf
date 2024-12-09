@@ -47,7 +47,7 @@ Verdict:         Hosts and Services:
 [Expected/Pass]  ├──TLS:443
 [Unexpected/Fail]├──SSH:22
                  └──Mobile_App SW [component]
-[Pass]              └──permissions:Billing
+[Pass]              └──permission:Billing
 [Expected/Pass]  Backend 1
                  │  Addresses: 1.2.3.4 1.2.3.5 Backend_1
 [Expected/Pass]  └──TLS:443
