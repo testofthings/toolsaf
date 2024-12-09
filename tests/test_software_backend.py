@@ -1,3 +1,4 @@
+import json
 import tempfile
 import pytest
 from unittest.mock import MagicMock
@@ -30,19 +31,30 @@ def test_sbom_components_list():
 def test_sbom_file():
     sb = SoftwareBackend(MagicMock(), "test")
 
-    with pytest.raises(ConfigurationException): # No column_num given
-        sb.sbom(file="test.csv")
+    with pytest.raises(ConfigurationException):
+        sb.sbom(file_path="test.json") # No file found
 
-    with tempfile.NamedTemporaryFile(delete=True) as tmp:
-        tmp.write(b"c1\nc2\nc3")
+    with pytest.raises(ConfigurationException):
+        sb.sbom(file_path="test.txt") # Not JSON
+
+    with tempfile.NamedTemporaryFile(delete=True, mode="w+", suffix=".json") as tmp:
+        json.dump({
+            "packages": [
+                { "name": "package-1", "versionInfo": "1.0" },
+                { "name": "package-2", "versionInfo": "2.1.0" }
+            ]
+        }, tmp)
         tmp.seek(0)
 
-        sb.sbom(file=tmp.name, column_num=0)
-        assert len(sb.sw.components) == 3
-        assert len(sb.sw.properties) == 3
+        sb.sbom(file_path=tmp.name)
+        assert len(sb.sw.components) == 2
+        assert sb.sw.components["package-1"].version == "1.0"
+        assert sb.sw.components["package-2"].version == "2.1.0"
+
+        assert len(sb.sw.properties) == 2
         assert sb.sw.properties[
-            PropertyKey("component", "c1")
+            PropertyKey("component", "package-1")
         ].verdict == Verdict.INCON
         assert sb.sw.properties[
-            PropertyKey("component", "c3")
+            PropertyKey("component", "package-2")
         ].verdict == Verdict.INCON

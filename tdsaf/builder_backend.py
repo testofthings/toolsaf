@@ -8,7 +8,7 @@ import logging
 import pathlib
 import shutil
 import sys
-import csv
+import inspect
 from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union
 
 from tdsaf.common.address import (AddressAtNetwork, Addresses, AnyAddress, DNSName, EndpointAddress, EntityTag,
@@ -41,6 +41,7 @@ from tdsaf.core.sql_database import SQLDatabase
 from tdsaf.common.traffic import Evidence, EvidenceSource
 from tdsaf.common.verdict import Verdict
 from tdsaf.common.android import MobilePermissions
+from tdsaf.adapters.spdx_reader import SPDXJson
 from tdsaf.visualizer import Visualizer, VisualizerAPI
 from tdsaf.diagram_visualizer import DiagramVisualizer
 
@@ -558,26 +559,30 @@ class SoftwareBackend(SoftwareBuilder):
         self.sw.info.interval_days = days
         return self
 
-    def sbom(self, components: List[str]=None, file: str="", column_num: int=-1) -> Self:
-        """Add an SBOM from given list or file"""
-        if not components and not file:
+    def sbom(self, components: List[str]=None, file_path: str="") -> Self:
+        """Add an SBOM from given list or SPDX JSON file.
+           file_path is relative to statement"""
+        if not components and not file_path:
             raise ConfigurationException("Provide either components list of file")
-        if file and column_num < 0:
-            raise ConfigurationException("You must provide column_num with file")
+        if file_path and not file_path.endswith(".json"):
+            raise ConfigurationException("Given SBOM file must be SPDX JSON")
 
         if components:
             for c in components:
                 self.sw.components[c] = SoftwareComponent(c, version="")
                 key = PropertyKey("component", c)
-                self.sw.properties[key] = PropertyVerdictValue(Verdict.INCON) #, exp="version: "
+                self.sw.properties[key] = PropertyVerdictValue(Verdict.INCON)
         else:
-            with open(file, 'r', encoding="utf-8") as f:
-                reader = csv.reader(f, delimiter=",")
-                for row in reader:
-                    c = row[column_num]
-                    self.sw.components[c] = SoftwareComponent(c, version="")
-                    key = PropertyKey("component", c)
-                    self.sw.properties[key] = PropertyVerdictValue(Verdict.INCON) #, exp="version: "
+            statement_file_path = pathlib.Path(inspect.stack()[1].filename).parent
+            try:
+                with open((statement_file_path / file_path).resolve(), 'r', encoding="utf-8") as f:
+                    for c in SPDXJson(f).read():
+                        self.sw.components[c.name] = c
+                        key = PropertyKey("component", c.name)
+                        self.sw.properties[key] =\
+                            PropertyVerdictValue(Verdict.INCON, explanation=f"version {c.version}")
+            except FileNotFoundError as e:
+                raise ConfigurationException(f"Could not find SBOM file {e.filename}") from e
 
         return self
 
