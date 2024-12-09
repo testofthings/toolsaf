@@ -22,6 +22,7 @@ A security statement is structured as follows:
 """Security statement"""
 
 from tdsaf.main import Builder, TLS. NTP, ...
+from tdsaf.common.android import STORAGE, RECORDING
 
 system = Builder.new("<Product name>")
 
@@ -36,6 +37,8 @@ open_port_1 = device / SSH
 
 # Define any mobile apps
 mobile = system.mobile("<Mobile app name>")
+# Define mobile app permissions
+mobile.set_permissions(STORAGE, RECORDING)
 
 # Define relevant backend services
 backend_1 = system.backend("<Service name>").serve(TLS).dns("<Service's DNS name>")
@@ -65,6 +68,7 @@ Now that we know the structure of a security statement, let's look at a real wor
 ```python
 """ Security statement """
 from tdsaf.main import Builder, TLS, DNS, UDP, ARP, EAPOL, ICMP, TCP
+from tdsaf.common.android import LOCATION, BLUETOOTH, ADMINISTRATIVE, NETWORK, RECORDING, STORAGE, UNCATEGORIZED
 
 # Start modeling the IoT system
 system = Builder.new("Deltaco Smart Outdoor Plug")
@@ -81,6 +85,11 @@ smart_plug_udp_port = smart_plug / UDP(port=63144)
 
 # Defining the mobile app
 mobile_app = system.mobile("Smart Home App")
+
+# Defining mobile app permissions
+mobile_app.set_permissions(
+    LOCATION, BLUETOOTH, ADMINISTRATIVE, NETWORK, RECORDING, STORAGE, UNCATEGORIZED
+)
 
 # Defining broadcasts
 udp_broadcast_1 = system.broadcast(UDP(port=6667))
@@ -172,6 +181,34 @@ device >> backend_conn
 mobile >> backend_conn
 ```
 
+## Additional DSL Definitions
+### Mobile Application Permissions (Android Only)
+Typically mobile applications ask their users to grant them certain permissions. These permissions should be included in the security statement. You can define them with:
+```python
+from tdsaf.common.android import STORAGE, LOCATION, ...
+
+mobile.set_permissions(STORAGE, LOCATION, ...)
+```
+However, since there are [hundreds of different permissions](https://developer.android.com/reference/android/Manifest.permission), **use the permission categories we have created** in your security statements. TDSAF handles the rest.
+
+Our permission categories are:
+- `CALLS`
+- `SMS`
+- `CONTACTS`
+- `CALENDAR`
+- `LOCATION`
+- `RECORDING`
+- `STORAGE`
+- `NETWORK`
+- `HEALTH`
+- `ACCOUNT`
+- `BILLING`
+- `BLUETOOTH`
+- `ADMINISTRATIVE`
+- `UNCATEGORIZED`
+
+An up-to-date list of categories can always be found [here](../tdsaf/common/android.py). You can check into which category a permission belongs to from [this json file](../tdsaf/adapters/data/android_permissions.json). Currently, if a permission is not in the _.json_ file, its category will be `UNCATEGORIZED`.
+
 ## When the Statement is Defined
 To ensure that your statement is filled in properly, run the statement file with Python. This way you can be sure that its free of runtime errors.
 ```shell
@@ -179,24 +216,11 @@ python3 statement.py
 ```
 Once the security statement is complete, it is ready for [verification](VerifyingSecurityStatements.md).
 
-### Info on `broadcast`
-
-FIXME
-
-## Graphical view
-
-**FIXME: Keep or drop?**
-A visual representation of a model requires placing the network nodes into a canvas. The positions are controlled using DSL, like below.
-
-```python
-system.visualize().place(
-    "D   A",
-    "  B  ",
-) .where({
-    "D": device,
-    "B": backend,
-    "A": app
-})
+## Security Statement Visualization
+You can visualize your security statement with the following command:
+```shell
+python3 statement.py --create-diagram --show-diagram
 ```
-The letters "A", "B", and "C" stand for the application, backend, and device.
-Their positions are determined in the `place` method.
+More info on the command-line arguments can be found [here](CommandLineOptions.md#create-diagram-visualization).
+
+TDSAF creates visualizations using [Diagrams](https://github.com/mingrammer/diagrams). You also need to install [Graphviz](https://graphviz.org/download/).
