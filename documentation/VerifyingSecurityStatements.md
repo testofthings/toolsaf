@@ -28,34 +28,39 @@ In this example, we have a directory called `sample-data` <small>([batch directo
 ## Checking TDSAF Output
 Once a security statement file is run with either one of the _read_ flags, TDSAF outputs the statement's verification result. Here's an example to give you a rough idea what the results look like:
 ```
-== System ==
-== Hosts ==
-DUT [Expected/Pass]
-    Addresses: DUT
-    DUT SW [Component]
-    UDP:63144 [Expected/Pass] auth=False
-    ARP: [Expected/Pass]
-Mobile App [Expected/Pass]
-    Addresses: Mobile_App
-    Mobile App SW [Component]
-    TLS: 443 [Expected/Pass] auth=True
-    SSH: 22 [Unexpected/Fail]
-Backend 1
-    Addresses: 1.2.3.4 1.2.3.5 1.2.3.6 Backend_1 example.com
-    Backend 1 SW [Component]
-    TLS: 443 [Expected/Pass] auth=True
-    NTP: 123 [Expected/Fail] auth=False
-6.5.4.3 [Unexpected/Fail]
-    Addresses: 6.5.4.3
-    HTTP: 80 [Unexpected/Fail] auth=False
-== Connections ==
-    Mobile App  ==> DUT SSH:22 [Expected/Pass]
-    DUT         ==> Backend 1 UDP:63144 [Expected]
-    DUT         ==> 6.5.4.3 HTTP:80 [Unexpected/Fail]
-    Mobile App  ==> play.googleapis.com TCP: 443 [External]
-    ...
+=================================================================
+Verdict:         System:
+-----------------------------------------------------------------
+[Fail]           Example System
+=================================================================
+Verdict:         Hosts and Services:
+-----------------------------------------------------------------
+[Expected/Pass]  DUT
+                 │  Addresses: DUT
+[Expected/Pass]  ├──UDP:64144
+[Expected/Pass]  ├──ARP
+                 └──DUT SW [component]
+                    ├──component:dependency version 1.0
+                    └──component:...
+[Expected/Fail]  Mobile_App
+                 │  Addresses: Mobile_App
+[Expected/Pass]  ├──TLS:443
+[Unexpected/Fail]├──SSH:22
+                 └──Mobile_App SW [component]
+[Pass]              └──permissions:Billing
+[Expected/Pass]  Backend 1
+                 │  Addresses: 1.2.3.4 1.2.3.5 Backend_1
+[Expected/Pass]  └──TLS:443
+=================================================================
+Connections
+Verdict:         Source:             Target:
+-----------------------------------------------------------------
+[Expected/Pass]  DUT                 Backend 1 UDP:63144
+[Unexpected/Fail]DUT                 Mobile App SSH:22
+[External]       Mobile app          play.googleapis.com TLS: 443
+....
 ```
-The output is divided into two main sections: _Hosts_ and _Connections_. These sections lists out all the hosts (devices, backends, etc.) and connections you have defined in the security statement, along with hosts and connections, found by TDSAF from tool output, that are not present in the statement.
+The output is divided into three main sections: _System_, _Hosts and Services_ and _Connections_. The first displays the overall verdict for the system. The two others list out all the hosts (devices, backends, etc.) and connections you have defined in the security statement, along with hosts and connections, found by TDSAF from tool output, that are not present in the statement.
 
 ### Hosts
 TDSAF displays each host's name and a status message ([Expected/Pass] or [Unexpected/Fail]). A host is marked as expected and passes verification if it is defined in the security statement. Otherwise, it's marked as unexpected, and that part of the verification result is marked as failed.
