@@ -5,6 +5,7 @@ import json
 from datetime import datetime
 from typing import cast
 
+from tdsaf.main import ConfigurationException
 from tdsaf.core.components import Software, SoftwareComponent
 from tdsaf.core.event_interface import PropertyEvent, EventInterface
 from tdsaf.core.model import IoTSystem, NodeComponent
@@ -12,6 +13,26 @@ from tdsaf.common.property import Properties, PropertyKey
 from tdsaf.adapters.tools import NodeComponentTool
 from tdsaf.common.traffic import EvidenceSource, Evidence
 from tdsaf.common.verdict import Verdict
+
+
+class SPDXJson:
+    """JSON format SPDX SBOM reader"""
+    def __init__(self, file: BytesIO):
+        self.file = json.load(file)
+
+    def read(self) -> list[SoftwareComponent]:
+        """Read list of SoftwareComponents"""
+        components = []
+        try:
+            for i, package in enumerate(self.file["packages"]):
+                name = package["name"]
+                if i == 0 and name.endswith(".apk"):
+                    continue
+                version = package.get("versionInfo", "")
+                components.append(SoftwareComponent(name, version))
+            return components
+        except KeyError as e:
+            raise ConfigurationException(f"Field {e} missing from SPDX JSON") from e
 
 
 class SPDXReader(NodeComponentTool):
