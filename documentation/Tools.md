@@ -36,10 +36,25 @@ See [end of this page](#advanced-metafile-definitions) for advanced options requ
 
 ## List of supported tools
 
-The following lists the supported tools and formats and shortly describes what is actually supported.
-A sample command to capture the output in proper format is shown for command-line tools.
+In the following list you can find the tools and formats TDSAF supports. Short descriptions and commands for output capturing in proper formats are provided in their own sections.
 
-**FIXME** Add actual list!
+| Tool | File Format |
+|------|-------------|
+| [apktool](Tools.md#android-manifest) | .xml |
+| [Black Duck Vulns](Tools.md#black-duck-vulnerabilities) | .csv |
+| [Censys](Tools.md#censys) | .json |
+| [certmitm](Tools.md#certmitm) | .zip |
+| [GitHub Releases](Tools.md#github-releses) | .json |
+| [HAR](Tools.md#har) | .json |
+| [MITM proxy](Tools.md#mitm-proxy) | .log |
+| [nmap](Tools.md#nmap) | .xml |
+| [Wireshark / tcpdumo](Tools.md#pcap) | .pcap |
+| [SPDX SBOM](Tools.md#spdx) | .json |
+| [ssh-audit](Tools.md#ssh-audit) | .json |
+| [testssl.sh](Tools.md#testsslsh) | .json |
+| [Tshark (BLE only)](Tools.md#tshark-ble-only) | .json |
+| [cURL](Tools.md#http-responses) | .http |
+| [ZED Attack Proxy (ZAP)](Tools.md#zed-attack-proxy-zap) | .json |
 
 ### Android Manifest
 TDSAF checks the permissions listed in `.xml` format Android Manifest files. These can be extracted from mobile application's `.apk` files. Example metafile `00meta.json`:
@@ -88,7 +103,7 @@ $ python tdsaf/censys_scan <address>
 ```
 
 ### Certmitm
-[Certmitm](https://github.com/aapooksman/certmitm) produces files and folders as its output. To provide this data to TDSAF create a compressed zip file containing the output.
+[Certmitm](https://github.com/aapooksman/certmitm) produces files and folders as its output. To provide this data to TDSAF, create a compressed `.zip` file containing the output.
 Example metafile `00meta.json`:
 ```json
 {
@@ -235,7 +250,7 @@ Example metafile `00meta.json`:
 }
 ```
 
-Note, only BLE data is read from JSON-formatted papture. The  command-line tool `tshark` can capture data in this format and convert pcap-files to it. See `tshark` documentation for instructions.
+Note, only BLE data is read from JSON-formatted capture. The  command-line tool `tshark` can capture data in this format and convert pcap-files to it. See `tshark` documentation for instructions.
 
 ### HTTP responses
 
