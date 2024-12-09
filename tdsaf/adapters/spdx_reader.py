@@ -2,7 +2,6 @@
 
 from io import BytesIO
 import json
-from datetime import datetime
 from typing import cast
 
 from tdsaf.main import ConfigurationException
@@ -27,8 +26,10 @@ class SPDXJson:
             for i, package in enumerate(self.file["packages"]):
                 name = package["name"]
                 if i == 0 and name.endswith(".apk"):
-                    continue
+                    continue # NOTE A kludge to clean away opened APK itself
                 version = package.get("versionInfo", "")
+                if "property 'version'" in version:
+                    version = ""  # NOTE: Kludging a bug in BlackDuck
                 components.append(SoftwareComponent(name, version))
             return components
         except KeyError as e:
@@ -47,39 +48,35 @@ class SPDXReader(NodeComponentTool):
     def process_component(self, component: NodeComponent, data_file: BytesIO, interface: EventInterface,
                        source: EvidenceSource):
         software = cast(Software, component)
-
         evidence = Evidence(source)
-
         properties = set()
 
-        raw_file = json.load(data_file)
+        components = SPDXJson(data_file).read()
+        for c in software.components.values():
+            if c not in components and self.send_events:
+                key = PropertyKey("component", c.name)
+                ev = PropertyEvent(evidence, software, key.verdict(Verdict.FAIL, explanation=f"{c.name} {c.version}"))
+                interface.property_update(ev)
 
-        cr_info = raw_file["creationInfo"]
-        source.timestamp = datetime.strptime(cr_info["created"], "%Y-%m-%dT%H:%M:%SZ")
-
-        for index, raw in enumerate(raw_file["packages"]):
-            name = raw["name"]
-            if index == 0 and name.endswith(".apk"):
-                continue  # NOTE A kludge to clean away opened APK itself
-            version = raw.get("versionInfo", "")
-            if "property 'version'" in version:
-                version = ""  # NOTE: Kludging a bug in BlackDuck
-            key = PropertyKey("component", name)
+        for c in components:
+            key = PropertyKey("component", c.name)
             properties.add(key)
-            old_sc = software.components.get(name)
+            old_sc = software.components.get(c.name)
             verdict = Verdict.PASS
+
             if self.load_baseline:
-                if old_sc:
-                    self.logger.warning("Double definition for component: %s", name)
-                    continue
-                # component in baseline
-                software.components[name] = SoftwareComponent(name, version=version)
-            elif not old_sc:
-                verdict = Verdict.FAIL  # claim not in baseline
+                software.components[c.name] = c
+
+            if not old_sc and not self.load_baseline:
+                verdict = Verdict.FAIL
+                software.components[c.name] = c
+
             if self.send_events:
-                ev = PropertyEvent(evidence, software, key.verdict(verdict, explanation=f"{name} {version}"))
+                ev = PropertyEvent(evidence, software, key.verdict(verdict, explanation=f"{c.name} {c.version}"))
                 interface.property_update(ev)
 
         if self.send_events:
             ev = PropertyEvent(evidence, software, Properties.COMPONENTS.value_set(properties))
             interface.property_update(ev)
+
+        return True
