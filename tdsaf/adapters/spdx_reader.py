@@ -25,9 +25,9 @@ class SPDXJson:
         try:
             for i, package in enumerate(self.file["packages"]):
                 name = package["name"]
+                version = package.get("versionInfo", "")
                 if i == 0 and name.endswith(".apk"):
                     continue # NOTE A kludge to clean away opened APK itself
-                version = package.get("versionInfo", "")
                 if "property 'version'" in version:
                     version = ""  # NOTE: Kludging a bug in BlackDuck
                 components.append(SoftwareComponent(name, version))

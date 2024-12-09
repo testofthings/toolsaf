@@ -12,70 +12,51 @@ from tdsaf.common.verdict import Verdict
 from tests.test_model import Setup
 
 
+def _write_spdx_json(packages: dict, tmp: tempfile) -> None:
+    json.dump({
+        "spdxVersion": "SPDX-2.3",
+        "packages": packages
+    }, tmp)
+    tmp.seek(0)
+
+
 def test_spdx_json_read():
     with tempfile.NamedTemporaryFile(delete=True, mode="w+") as tmp:
-        json.dump({
-            "spdxVersion": "SPDX-2.3",
-            "packages": [
-                {
-                    "name": "package-1",
-                    "versionInfo": "1.0",
-                    "licenseConcluded": "MIT"
-                },
-                {
-                    "name": "package-2",
-                    "versionInfo": "2.1.0",
-                    "licenseConcluded": "MIT"
-                },
-                {
-                    "name": "package-3",
-                    "licenseConcluded": "MIT"
-                }
-            ]
-        }, tmp)
-        tmp.seek(0)
+        packages = [
+            {"name": "package-1", "versionInfo": "1.0"},
+            {"name": "package-2", "versionInfo": "2.0"},
+            {"name": "package-3"}
+        ]
+        _write_spdx_json(packages, tmp)
 
         components = SPDXJson(file=tmp).read()
         assert len(components) == 3
-        assert components[0].name == "package-1"
-        assert components[0].version == "1.0"
-        assert components[1].name == "package-2"
-        assert components[1].version == "2.1.0"
+        assert components[0].name == packages[0]["name"]
+        assert components[0].version == packages[0]["versionInfo"]
+        assert components[1].name == packages[1]["name"]
+        assert components[1].version == packages[1]["versionInfo"]
         assert components[2].name == "package-3"
         assert components[2].version == ""
 
 
 def test_spdx_json_read_apk_kludge():
     with tempfile.NamedTemporaryFile(delete=True, mode="w+") as tmp:
-        json.dump({
-            "spdxVersion": "SPDX-2.3",
-            "packages": [
-                {
-                    "name": "package-1.apk",
-                    "versionInfo": "1.0",
-                    "licenseConcluded": "MIT"
-                },
-                {
-                    "name": "package-2",
-                    "versionInfo": "2.1.0",
-                    "licenseConcluded": "MIT"
-                }
-            ]
-        }, tmp)
-        tmp.seek(0)
+        packages = [
+            {"name": "package-1.apk", "versionInfo": "1.0"},
+            {"name": "package-2", "versionInfo": "2.0"}
+        ]
+        _write_spdx_json(packages, tmp)
 
         components = SPDXJson(file=tmp).read()
         assert len(components) == 1
-        assert components[0].name == "package-2"
-        assert components[0].version == "2.1.0"
+        assert components[0].name == packages[1]["name"]
+        assert components[0].version == packages[1]["versionInfo"]
 
 
 def test_spdx_json_read_incorrect_json():
     with tempfile.NamedTemporaryFile(delete=True, mode="w+") as tmp:
         json.dump({
-            "packages": [
-                { "versionInfo": "1.0","licenseConcluded": "MIT" }
-            ]
+            "packages": [{"versionInfo": "1.0","licenseConcluded": "MIT"}]
         }, tmp)
         tmp.seek(0)
 
@@ -84,9 +65,7 @@ def test_spdx_json_read_incorrect_json():
 
     with tempfile.NamedTemporaryFile(delete=True, mode="w+") as tmp:
         json.dump({
-            "pckts": [
-                { "versionInfo": "1.0","licenseConcluded": "MIT" }
-            ]
+            "pckts": [{"versionInfo": "1.0", "licenseConcluded": "MIT"}]
         }, tmp)
         tmp.seek(0)
 
@@ -116,7 +95,6 @@ def test_process_component():
         {"name": "c2", "versionInfo": "1.0"}
     ])
 
-    # Incon pois
     assert reader.process_component(sw, data, setup.get_inspector(), MagicMock())
     assert sw.properties[PropertyKey("component", "c1")].verdict == Verdict.PASS
     assert sw.properties[PropertyKey("component", "c2")].verdict == Verdict.PASS
