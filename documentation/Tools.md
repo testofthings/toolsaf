@@ -214,7 +214,7 @@ Example metafile `00meta.json`:
 }
 ```
 
-SPDX file import is tested with files downloaded from Black Duck service.
+SPDX file import is tested with files downloaded from Black Duck service. You can also use open-source SBOM generators to create `.json` format SPDX files.
 
 ### Ssh-audit
 
