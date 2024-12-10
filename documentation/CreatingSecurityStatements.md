@@ -168,13 +168,17 @@ Since our DSL is built with Python, creating security statements is similar to w
 As shown in the example at the beginning of the _**Statement Contents**_ section, building a security statement starts with a call to `Builder.new`. This call takes the system's name as an argument and returns a _system_ object, which represents the entire IoT system—from the _devices_, and _backend_ services to the _mobile apps_ and _networks_.
 
 Once the _system_ object is created, you can begin defining the various components, or nodes, of the system using this object. These components may include any of the following:
-* Devices (`system.device`): IoT devices
-* Mobile (`system.mobile`): Mobile applications
-* Browser (`system.browser`): Browser application
-* Backend (`system.backend`): Backend services
-* Network (`system.network`): System networks
-* Any (`system.any`): Conceptual node for services provided by the environment, e.g. a network router
-* Broadcast (`system.broadcast`): **FIXME**
+| Component/Node | Description |
+|----------------|-------------|
+| `system.device()`    | IoT devices |
+| `system.mobile()`    | Mobie applications |
+| `system.browser()`   | Web browser |
+| `system.backend()`   | Backend services |
+| `system.network()`   | System networks |
+| `system.infra()`     | Testing infrastructure |
+| `system.any()`       | Conseptual node for services provided by the environment, e.g. network router |
+| `system.broadcast()` | Network broadcasts |
+
 
 Each node can be assigned a name. It's best to name them according to what they represent. For instance, if the system includes a smart plug, it should be added to the system like this:
 ```python
@@ -216,21 +220,7 @@ mobile.set_permissions(STORAGE, LOCATION, ...)
 ```
 However, since there are [hundreds of different permissions](https://developer.android.com/reference/android/Manifest.permission), **use the permission categories we have created** in your security statements. TDSAF handles the rest.
 
-Our permission categories are:
-- `CALLS`
-- `SMS`
-- `CONTACTS`
-- `CALENDAR`
-- `LOCATION`
-- `RECORDING`
-- `STORAGE`
-- `NETWORK`
-- `HEALTH`
-- `ACCOUNT`
-- `BILLING`
-- `BLUETOOTH`
-- `ADMINISTRATIVE`
-- `UNCATEGORIZED`
+Our permission categories are: `CALLS`, `SMS`, `CONTACTS`, `CALENDAR`, `LOCATION`, `RECORDING`, `STORAGE`, `NETWORK`, `HEALTH`, `ACCOUNT`, `BILLING`, `BLUETOOTH`, `ADMINISTRATIVE`, `UNCATEGORIZED`
 
 An up-to-date list of categories can always be found [here](../tdsaf/common/android.py). You can check into which category a permission belongs to from [this json file](../tdsaf/adapters/data/android_permissions.json). Currently, if a permission is not in the _.json_ file, its category will be `UNCATEGORIZED`.
 
