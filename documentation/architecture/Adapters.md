@@ -64,7 +64,7 @@ NodeComponentTool applies tool output to node components. Sample data files need
 |:----------:|:---------|
 | File          | [censys_scan.py](../../tdsaf/adapters/censys_scan.py) |
 | Base class    | [EndpointTool](#endpointtool) |
-| Tool output   | **FIXME** |
+| Tool output   | `.json` format Censys scan results |
 | Verdict `Pass`| **FIXME** |
 
 ---
@@ -83,7 +83,7 @@ NodeComponentTool applies tool output to node components. Sample data files need
 |:----------:|:---------|
 | File          | [har_scan.py](../../tdsaf/adapters/har_scan.py) |
 | Base class    | [NetworkNodeTool](#networknodetool) |
-| Tool output   | **FIXME** |
+| Tool output   | `.json` format HAR files extractred from Browser |
 | Verdict `Pass`| **FIXME** |
 
 ---
@@ -101,7 +101,7 @@ NodeComponentTool applies tool output to node components. Sample data files need
 |:----------:|:---------|
 | File          | [nmap_scan.py](../../tdsaf/adapters/nmap_scan.py) |
 | Base class    | [SystemWideTool](#systemwidetool) |
-| Tool output   | **FIXME** |
+| Tool output   | `.xml` format nmap results |
 | Verdict `Pass`| **FIXME** |
 
 ---
@@ -110,7 +110,7 @@ NodeComponentTool applies tool output to node components. Sample data files need
 |:----------:|:---------|
 | File          | [pcap_reader](../../tdsaf/adapters/pcap_reader.py) |
 | Base class    | [SystemWideTool](#systemwidetool) |
-| Tool output   | **FIXME** |
+| Tool output   | `.pcap` format tcpdump of Wireshark packet caputes |
 | Verdict `Pass`| **FIXME** |
 
 ---
@@ -141,6 +141,15 @@ NodeComponentTool applies tool output to node components. Sample data files need
 | Verdict `Pass`| **FIXME** |
 
 ---
+### ShellCommandSs
+| Property   | Details  |
+|:----------:|:---------|
+| File          | [shell_commands.py](../../tdsaf/adapters/shell_commands.py) |
+| Base class    | [EndpointTool](#endpointtool) |
+| Tool output   | **FIXME** |
+| Verdict `Pass`| **FIXME** |
+
+---
 ### SimpleFlowTool
 | Property   | Details  |
 |:----------:|:---------|
@@ -155,7 +164,7 @@ NodeComponentTool applies tool output to node components. Sample data files need
 |:----------:|:---------|
 | File          | [spdx_reader.py](../../tdsaf/adapters/spdx_reader.py) |
 | Base class    | [NodeComponentTool](#nodecomponenttool) |
-| Tool output   | JSON format SPDX files created with a sbom generator or BlackDuck |
+| Tool output   | `.json` format SPDX files created with a sbom generator or BlackDuck |
 | Verdict `Pass`| If SW node component present in both security statement and batch directory SBOM |
 | Other         | To `component` property |
 
@@ -165,7 +174,7 @@ NodeComponentTool applies tool output to node components. Sample data files need
 |:----------:|:---------|
 | File          | [ssh_audit_scan.py](../../tdsaf/adapters/ssh_audit_scan.py) |
 | Base class    | [EndpointTool](#endpointtool) |
-| Tool output   | **FIXME** |
+| Tool output   | `.json` format ssh-audit results |
 | Verdict `Pass`| **FIXME** |
 
 ---
@@ -174,7 +183,7 @@ NodeComponentTool applies tool output to node components. Sample data files need
 |:----------:|:---------|
 | File          | [testsslsh_scan.py](../../tdsaf/adapters/testsslsh_scan.py) |
 | Base class    | [EndpointTool](#endpointtool) |
-| Tool output   | **FIXME** |
+| Tool output   | `.json` format testssl results |
 | Verdict `Pass`| **FIXME** |
 
 ---
@@ -183,7 +192,7 @@ NodeComponentTool applies tool output to node components. Sample data files need
 |:----------:|:---------|
 | File          | [tsrahk_reader.py](../../tdsaf/adapters/tshark_reader.py) |
 | Base class    | [SystemWideTool](#systemwidetool) |
-| Tool output   | **FIXME** |
+| Tool output   | `.json` format TShark BLE capture results |
 | Verdict `Pass`| **FIXME** |
 
 ---
@@ -192,7 +201,7 @@ NodeComponentTool applies tool output to node components. Sample data files need
 |:----------:|:---------|
 | File          | [vulnerability_reader.py](../../tdsaf/adapters/vulnerability_reader.py) |
 | Base class    | [NodeComponentTool](#nodecomponenttool) |
-| Tool output   | **FIXME** |
+| Tool output   | `.csv` format BlackDuck binary analysis results |
 | Verdict `Pass`| **FIXME** |
 
 ---
@@ -206,16 +215,17 @@ NodeComponentTool applies tool output to node components. Sample data files need
 | Other | Assigns result to system's `OnlineResources`. |
 
 ---
-#### ZEDReader
+### ZEDReader
 | Property   | Details  |
 |:----------:|:---------|
 | File          | [zed_reader.py](../../tdsaf/adapters/zed_reader.py) |
 | Base class    | [SystemWideTool](#systemwidetool) |
-| Tool output   | **FIXME** |
+| Tool output   | `.json` format ZED Attack Proxy results |
 | Verdict `Pass`| **FIXME** |
 
 
 ## TODO
 - SetupCSVReader
-- ToolFinder
+- ToolDepiction
+- ToolFinderImplementation
 - BatchImporter
