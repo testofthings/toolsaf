@@ -276,12 +276,12 @@ class DiagramVisualizer:
         """Visualize statement"""
         raise NotImplementedError()
 
-    def add_images(self, d: dict[Host, str]) -> Self:
+    def add_images(self, d: Dict[Host, str]) -> Self:
         """Use locally stored images for specified nodes in visualization.
             Must be .png images"""
         raise NotImplementedError()
 
-    def add_remote_images(self, d: dict[Host, str]) -> Self:
+    def add_remote_images(self, d: Dict[Host, str]) -> Self:
         """Use images from the internet for specified nodes"""
         raise NotImplementedError()
 

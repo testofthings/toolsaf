@@ -3,7 +3,7 @@
 # pylint: disable=expression-not-assigned
 # pylint: disable=cyclic-import
 
-from typing import Self, Union
+from typing import Self, Union, Dict
 from urllib.request import urlretrieve
 from diagrams import Diagram, Edge, Node
 from diagrams.custom import Custom
@@ -29,9 +29,9 @@ class DiagramVisualizer:
         self.outformat: str="png"
         self.filename = system.system.long_name()
         self.should_create_diagram: bool=False
-        self.nodes: dict={}
+        self.nodes: Dict={}
         self.connections: set[str]=set()
-        self.images: dict[str, str]={}
+        self.images: Dict[str, str]={}
 
     def set_outformat(self, cd: Union[str, None], sd: Union[str, None]) -> None:
         """Set outformat for created diagram"""
@@ -45,14 +45,14 @@ class DiagramVisualizer:
         if file_name:
             self.filename = file_name
 
-    def add_images(self, d: dict['BB.HostBackend', str]) -> Self:
+    def add_images(self, d: Dict['BB.HostBackend', str]) -> Self:
         """Use locally stored images for specified nodes in visualization.
             Must be .png images"""
         for host, file in d.items():
             self.images[host.entity.name] = file
         return self
 
-    def add_remote_images(self, d: dict['BB.HostBackend', str]) -> Self:
+    def add_remote_images(self, d: Dict['BB.HostBackend', str]) -> Self:
         """Use images from the internet for specified nodes"""
         for host, url in d.items():
             name = host.entity.name
