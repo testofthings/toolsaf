@@ -198,7 +198,7 @@ class Report:
             else:
                 writer.write(self.crop_text(f"{'':<{indent}}{symbol}{s}{com}\n"))
 
-            self._print_source(writer, entity, indent, k)
+            self._get_sources(entity, k)
 
     def get_connection_status(self, connection: Connection, cache: Dict) -> str:
         """Returns status string for a connection"""
@@ -237,7 +237,18 @@ class Report:
                 aggregate_verdict = aggregate_verdict.split("/", maxsplit=1)[0]
             writer.write(self.crop_text(f"{color}{'['+aggregate_verdict+']':<17}{self.bold}{h_name}{self.reset}\n"))
 
-            self._print_source(writer, h, 17)
+
+            srcs = self._get_sources(h)
+            srcs = [] if srcs is None else srcs
+            if self.get_properties_to_print(h)[1] > 0:
+                for src in srcs:
+                    writer.write(f"{'':<17}│  │  @{src}\n")
+            else:
+                for src in srcs:
+                    writer.write(f"{'':<17}│  @{src}\n")
+
+            self.print_properties(h, writer, leading="│")
+
             ads = [f"{a}" for a in sorted(h.addresses)]
             for a in ads:
                 rev_map.setdefault(a, []).append(h)
@@ -246,17 +257,27 @@ class Report:
                 symbol = self.get_symbol_for_addresses(h)
                 writer.write(self.crop_text(f"{'':<17}{symbol}Addresses: {', '.join(ads)}\n"))
 
-            self.print_properties(h, writer, leading="│")
             for i, s in enumerate(h.children):
                 v = s.status_string()
                 color = self.get_verdict_color(v)
 
                 symbol = self.get_symbol_for_service(i, h)
                 writer.write(self.crop_text(f"{color}{'['+v+']':<17}{self.reset}{symbol}{color}{s.name}{self.reset}\n"))
-                self._print_source(writer, s, 17)
 
-                if i < len(h.children)-1:
-                    self.print_properties(s, writer, leading="│")
+                srcs = self._get_sources(h)
+                srcs = [] if srcs is None else srcs
+
+                if self.get_properties_to_print(s)[1] >= 1:
+                    for src in srcs:
+                        writer.write(f"{'':<17}│  │  @{src}\n")
+                elif i < len(h.children) - 1 or len(h.components) > 0:
+                    for src in srcs:
+                        writer.write(f"{'':<17}│     @{src}\n")
+                else:
+                    for src in srcs:
+                        writer.write(f"{'':<17}      @{src}\n")
+
+                self.print_properties(s, writer, leading="│")
 
             for i, comp in enumerate(h.components):
                 symbol = self.get_symbol_for_component(i, h)
@@ -265,7 +286,13 @@ class Report:
                 if sw_info:
                     symbol = self.get_symbol_for_info(i, h, comp)
                     writer.write(self.crop_text(f"{'':<20}{symbol}Info: {sw_info}\n"))
-                self._print_source(writer, comp, 17)
+
+
+                srcs = self._get_sources(comp)
+                srcs = [] if srcs is None else srcs
+                for src in srcs:
+                    writer.write(f"{'':<20}│  @{src}\n")
+
                 leading = "│" if i != len(h.components)-1 else ""
                 self.print_properties(comp, writer, leading=leading)
 
@@ -283,16 +310,26 @@ class Report:
             writer.write(self.crop_text(
                 f"{color}{'['+stat+']':<17}{conn.source.long_name():<32} {conn.target.long_name()}{self.reset}\n"
             ))
-            self._print_source(writer, conn, 17)
+
+            srcs = self._get_sources(conn)
+            srcs = [] if srcs is None else srcs
+
+            if self.get_properties_to_print(conn)[1] >= 1:
+                for src in srcs:
+                    writer.write(f"{'':<17}│  @{src}\n")
+            else:
+                for src in srcs:
+                    writer.write(f"{'':<20}@{src}\n")
+
             self.print_properties(conn, writer)
 
-    def _print_source(self, writer: TextIO, entity: Entity, indent: int, key: PropertyKey=Properties.EXPECTED):
-        """Print source of entity"""
-        if self.source_count:
-            sources = set(filter(None, [
-                e.event.evidence.get_reference()
-                for e in self.registry.logging.get_log(entity, {key})
-            ]))
+    def _get_sources(self, entity: Entity, key: PropertyKey=Properties.EXPECTED) -> List[str]:
+        """Returns max self.source_count source strs for entity"""
+        if not self.source_count:
+            return []
+        sources = set(filter(None, [
+            e.event.evidence.get_reference()
+            for e in self.registry.logging.get_log(entity, {key})
+        ]))
 
-            for src in list(sources)[:self.source_count]:
-                writer.write(f"{'':<{indent}}@{src}\n")
+        return list(sources)[:self.source_count]
