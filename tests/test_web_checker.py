@@ -1,6 +1,6 @@
 import pytest
 from io import BytesIO, BufferedReader, TextIOWrapper
-from typing import Union
+from typing import Union, List
 
 from tdsaf.adapters.web_checker import WebChecker
 from tdsaf.core.online_resources import OnlineResource
@@ -26,7 +26,7 @@ def _bytesio_data(data: str) -> BytesIO:
     return io_data
 
 
-def _add_online_resources(system: SystemBackend, resource: list[str, str, list[str]]):
+def _add_online_resources(system: SystemBackend, resource: List):
     name, url, keywords = resource
     system.online_resource(name, url, keywords)
 
@@ -70,7 +70,7 @@ def test_get_url_from_data(data: TextIOWrapper, raises: bool, exp: Union[str, No
         (("test-policy", "test.com", ["kw1", "kw2"]), "test.com", "test-policy"),
     ]
 )
-def test_get_online_resource_for_url(res: list, url: str, exp: str):
+def test_get_online_resource_for_url(res: List, url: str, exp: str):
     system = Setup().system
     _add_online_resources(system, res)
     if exp is None:
@@ -123,7 +123,7 @@ def test_check_keywords(data: TextIOWrapper, resource: OnlineResource, exp: bool
         (["HTTP"], Verdict.FAIL)
     ]
 )
-def test_process_file(keywords: list[str], exp: Verdict):
+def test_process_file(keywords: List[str], exp: Verdict):
     setup = Setup()
     data = _bytesio_data(
         "http://test.com\n" +
