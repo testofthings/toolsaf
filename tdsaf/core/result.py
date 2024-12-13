@@ -5,7 +5,7 @@ import sys
 import shutil
 import logging
 from functools import cached_property
-from typing import TextIO, List, Dict
+from typing import TextIO, List, Dict, Tuple
 from colored import Fore, Style
 
 from tdsaf.common.basics import ConnectionType
@@ -64,7 +64,7 @@ class Report:
         """Should all info be printed without text truncation"""
         return "all" in self.show
 
-    def get_system_verdict(self, cache: dict) -> Verdict:
+    def get_system_verdict(self, cache: Dict) -> Verdict:
         """Get verdict for the entire system based on cached verdicts."""
         verdicts = cache.values()
         if Verdict.FAIL in verdicts:
@@ -117,7 +117,7 @@ class Report:
         if bottom_symbol:
             writer.write(bottom_symbol * self.width + "\n")
 
-    def get_properties_to_print(self, e: NetworkNode) -> tuple[list[tuple], int]:
+    def get_properties_to_print(self, e: NetworkNode) -> Tuple[List[Tuple], int]:
         """Retuns properties that should be printed and the number of properties"""
         prop_items = [(k,v) for k,v in e.properties.items() if k!=Properties.EXPECTED]
         if self.show_all:
@@ -200,7 +200,7 @@ class Report:
 
             self._print_source(writer, entity, 2, k)
 
-    def get_connection_status(self, connection: Connection, cache: dict) -> str:
+    def get_connection_status(self, connection: Connection, cache: Dict) -> str:
         """Returns status string for a connection"""
         if connection.con_type == ConnectionType.LOGICAL:
             return connection.con_type.value
