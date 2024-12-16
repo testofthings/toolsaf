@@ -196,7 +196,15 @@ class Report:
                     f"{color}{'['+v.verdict.value+']':<{indent}}{self.reset}{symbol}{color}{text}{self.reset}\n"
                 ))
             else:
-                writer.write(self.crop_text(f"{'':<{indent}}{symbol}{s}{com}\n"))
+                if "=verdict" in s.lower():
+                    s = s.split("=")[0]
+                    v = k.get_verdict(entity.properties)
+                    color = self.get_verdict_color(v)
+                    writer.write(self.crop_text(
+                        f"{color}{'['+v.value+']':<{indent}}{self.reset}{symbol}{color}{s}{com}{self.reset}\n"
+                    ))
+                else:
+                    writer.write(self.crop_text(f"{'':<{indent}}{symbol}{s}{com}\n"))
 
             self._get_sources(entity, k)
 
