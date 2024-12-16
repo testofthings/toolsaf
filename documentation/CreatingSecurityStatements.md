@@ -209,6 +209,29 @@ Our permission categories are:
 
 An up-to-date list of categories can always be found [here](../tdsaf/common/android.py). You can check into which category a permission belongs to from [this json file](../tdsaf/adapters/data/android_permissions.json). Currently, if a permission is not in the _.json_ file, its category will be `UNCATEGORIZED`.
 
+### Software Bill of Materials
+A Software Bill of Materials (SBOM) is a comprehensive inventory of the software components, libraries, dependencies, and other elements that make up the software of an Internet of Things (IoT) system. Our DSL provides a method, `sbom(components, file_path)`, to specify an SBOM for the system's software components. Here's how it can be used:
+```python
+device.software().sbom(
+    components=["component1", "component2", ...]
+)
+# OR
+device.software().sbom(
+    file_path="../sbom.json"
+)
+```
+The SBOM's contents can be provided either manually using the `components` parameter or in a JSON-format SPDX file via the `file_path` parameter. The `components` parameter accepts a list of software component names. The minimal contents of SPDX files, referenced by `file_path`, are as follows:
+```json
+{
+    "packages": [
+        {
+            "name": "component1"
+        }
+    ]
+}
+```
+TDSAF also reads the `versionInfo` field of individual packages if it is included in the file. SBOM file paths are provided relative to the statement's location. The file can be generated, for example, using an open-source SBOM generator.
+
 ## When the Statement is Defined
 To ensure that your statement is filled in properly, run the statement file with Python. This way you can be sure that its free of runtime errors.
 ```shell
