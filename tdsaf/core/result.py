@@ -165,7 +165,17 @@ class Report:
             return "│  "
         return "└──"
 
-    def print_properties(self, entity: NetworkNode, writer: TextIO, leading: str="", indent: int=0):
+    def get_text(self, k: PropertyKey, v: any) -> str:
+        """Get text to print"""
+        value_string = k.get_value_string(v)
+        comment = k.get_explanation(v)
+        comment = f" # {comment}" if comment else ""
+        if isinstance(v, PropertyVerdictValue) or "=verdict" in value_string.lower():
+            value_string = value_string.split("=")[0]
+        return f"{value_string}{comment}"
+
+    def print_properties(self, entity: NetworkNode, writer: TextIO, leading: str="",
+                         indent: int=0, is_last: bool=False):
         """Print properties from entity"""
         prop_items, num = self.get_properties_to_print(entity)
 
@@ -175,9 +185,7 @@ class Report:
 
         k: PropertyKey
         for i, (k, v) in enumerate(prop_items):
-            com = k.get_explanation(v)
-            com = f" # {com}" if com else ""
-            s = k.get_value_string(v)
+            text = self.get_text(k, v)
 
             symbol = self.get_symbol_for_property(i, num)
             if set_indent:
@@ -188,17 +196,27 @@ class Report:
                 if set_indent:
                     indent -= 3
 
-            if isinstance(v, PropertyVerdictValue):
-                s = s.split("=")[0]
-                color = self.get_verdict_color(v.verdict)
-                text = f"{s}{com}"
+            if (v:=k.get_verdict(entity.properties)) is not None:
+                color = self.get_verdict_color(v)
                 writer.write(self.crop_text(
-                    f"{color}{'['+v.verdict.value+']':<{indent}}{self.reset}{symbol}{color}{text}{self.reset}\n"
+                    f"{color}{'['+v.value+']':<{indent}}{self.reset}{symbol}{color}{text}{self.reset}\n"
                 ))
             else:
-                writer.write(self.crop_text(f"{'':<{indent}}{symbol}{s}{com}\n"))
+                writer.write(self.crop_text(f"{'':<{indent}}{symbol}{text}\n"))
 
-            self._print_source(writer, entity, 2, k)
+            srcs = self._get_sources(entity, k)
+            src_indent = 14 if isinstance(entity, Connection) else 17
+            for src in srcs:
+                if is_last:
+                    if i == len(prop_items)-1:
+                        writer.write(f"{'':<{src_indent}}         @{src}\n")
+                    else:
+                        writer.write(f"{'':<{src_indent}}   │     @{src}\n")
+                else:
+                    if i == len(prop_items)-1:
+                        writer.write(f"{'':<{src_indent}}│        @{src}\n")
+                    else:
+                        writer.write(f"{'':<{src_indent}}│  │     @{src}\n")
 
     def get_connection_status(self, connection: Connection, cache: Dict) -> str:
         """Returns status string for a connection"""
@@ -237,7 +255,17 @@ class Report:
                 aggregate_verdict = aggregate_verdict.split("/", maxsplit=1)[0]
             writer.write(self.crop_text(f"{color}{'['+aggregate_verdict+']':<17}{self.bold}{h_name}{self.reset}\n"))
 
-            self._print_source(writer, h, 1)
+
+            srcs = self._get_sources(h)
+            if self.get_properties_to_print(h)[1] > 0:
+                for src in srcs:
+                    writer.write(f"{'':<17}│  │  @{src}\n")
+            else:
+                for src in srcs:
+                    writer.write(f"{'':<17}│  @{src}\n")
+
+            self.print_properties(h, writer, leading="│")
+
             ads = [f"{a}" for a in sorted(h.addresses)]
             for a in ads:
                 rev_map.setdefault(a, []).append(h)
@@ -246,17 +274,25 @@ class Report:
                 symbol = self.get_symbol_for_addresses(h)
                 writer.write(self.crop_text(f"{'':<17}{symbol}Addresses: {', '.join(ads)}\n"))
 
-            self.print_properties(h, writer, leading="│")
             for i, s in enumerate(h.children):
                 v = s.status_string()
                 color = self.get_verdict_color(v)
 
                 symbol = self.get_symbol_for_service(i, h)
                 writer.write(self.crop_text(f"{color}{'['+v+']':<17}{self.reset}{symbol}{color}{s.name}{self.reset}\n"))
-                self._print_source(writer, s, 2)
 
-                if i < len(h.children)-1:
-                    self.print_properties(s, writer, leading="│")
+                srcs = self._get_sources(h)
+                if self.get_properties_to_print(s)[1] >= 1:
+                    for src in srcs:
+                        writer.write(f"{'':<17}│  │  @{src}\n")
+                elif i < len(h.children) - 1 or len(h.components) > 0:
+                    for src in srcs:
+                        writer.write(f"{'':<17}│     @{src}\n")
+                else:
+                    for src in srcs:
+                        writer.write(f"{'':<17}      @{src}\n")
+
+                self.print_properties(s, writer, leading="│", is_last=len(h.components)==0)
 
             for i, comp in enumerate(h.components):
                 symbol = self.get_symbol_for_component(i, h)
@@ -265,9 +301,22 @@ class Report:
                 if sw_info:
                     symbol = self.get_symbol_for_info(i, h, comp)
                     writer.write(self.crop_text(f"{'':<20}{symbol}Info: {sw_info}\n"))
-                self._print_source(writer, comp, 2)
+
+                srcs = self._get_sources(comp)
+                for src in srcs:
+                    if self.get_properties_to_print(comp)[1] == 0:
+                        if i != len(h.components)-1:
+                            writer.write(f"{'':<17}│     @{src}\n")
+                        else:
+                            writer.write(f"{'':<17}      @{src}\n")
+                    else:
+                        if i != len(h.components)-1:
+                            writer.write(f"{'':<17}│  │  @{src}\n")
+                        else:
+                            writer.write(f"{'':<17}   │  @{src}\n")
+
                 leading = "│" if i != len(h.components)-1 else ""
-                self.print_properties(comp, writer, leading=leading)
+                self.print_properties(comp, writer, leading=leading, is_last=i==len(h.components)-1)
 
         for ad, hs in sorted(rev_map.items()):
             if len(hs) > 1:
@@ -276,30 +325,37 @@ class Report:
         self.print_title(
             f"{self.bold}Connections\n{'Verdict:':<17}{'Source:':<33}Target:{self.reset}", writer, "=", "-"
         )
+
         relevant_only = not (self.show_all or (self.show and "irrelevant" in self.show))
-        for conn in self.system.get_connections(relevant_only=relevant_only):
+        connections = self.system.get_connections(relevant_only=relevant_only)
+
+        for conn in connections:
             stat = self.get_connection_status(conn, cache)
             color = self.get_verdict_color(stat)
             writer.write(self.crop_text(
                 f"{color}{'['+stat+']':<17}{conn.source.long_name():<32} {conn.target.long_name()}{self.reset}\n"
             ))
-            self._print_source(writer, conn, 2)
-            self.print_properties(conn, writer)
 
-    def _print_source(self, writer: TextIO, entity: Entity, indentation: int, key: PropertyKey = Properties.EXPECTED):
-        """Print source of entity"""
+            srcs = self._get_sources(conn)
+            if self.get_properties_to_print(conn)[1] >= 1:
+                for src in srcs:
+                    writer.write(f"{'':<17}│  @{src}\n")
+            else:
+                for src in srcs:
+                    writer.write(f"{'':<20}@{src}\n")
+
+            self.print_properties(conn, writer, is_last=True)
+
+    def _get_sources(self, entity: Entity, key: PropertyKey=Properties.EXPECTED) -> List[str]:
+        """Returns max self.source_count source strs for entity; if any"""
         if not self.source_count:
-            return
-        events = self.registry.logging.get_log(entity, {key})
-        logged = set()
-        for e in events:
-            if e.event.evidence in logged:
-                continue
-            logged.add(e.event.evidence)
-            src = e.event.evidence.get_reference()
-            writer.write(f"{'  ' * indentation}@{src}\n")
-            if len(logged) >= self.source_count:
-                break
+            return []
+        sources = set(filter(None, [
+            e.event.evidence.get_reference()
+            for e in self.registry.logging.get_log(entity, {key})
+        ]))
+
+        return list(sources)[:self.source_count]
 
     def print_structure(self, result: str, lvl: int, j: Dict, lead: str="", parent_has_next: bool=False) -> None:
         for i, entry in enumerate(j):
