@@ -300,3 +300,50 @@ class Report:
             writer.write(f"{'  ' * indentation}@{src}\n")
             if len(logged) >= self.source_count:
                 break
+
+    def print_structure(self, result: str, lvl: int, j: Dict, lead: str="", parent_has_next: bool=False) -> None:
+        for i, entry in enumerate(j):
+            if entry == "verdict":
+                continue
+
+            if isinstance(j[entry], dict):
+                # Strip end from lead, it will be replace by symbol
+                c_lead = lead[:-3]
+                symbol = "└──" if i == len(j)-1 else "├──"
+                verdict = f"[{j['verdict'].value}]"
+                print(f"{verdict:<17}{c_lead}{symbol}{entry}")
+
+                # Check entity relations
+                parent_has_next = any([isinstance(j[k], dict) for k in list(j.keys())[i:] if k != entry])
+                entity_has_children = any(isinstance(j[entry][k], dict) for k in j[entry] if k != entry)
+                is_last_entity = i == len(j)-1
+
+                if not is_last_entity:
+                    c_lead = lead + "|  " if entity_has_children else lead + "   "
+                    self.print_structure(result, lvl+1, j[entry], lead=c_lead, parent_has_next=parent_has_next)
+                else:
+                    # Special handling for symbols of last entities
+                    if lvl == 0:
+                        lead = "   "
+                    if entity_has_children:
+                        # Remove 2nd to last "|" from lead, so symbols allign properly
+                        c_lead = lead[:-3] + "   " + "|  "
+                    else:
+                        c_lead = lead + "   "
+                    self.print_structure(result, lvl+1, j[entry], lead=c_lead, parent_has_next=parent_has_next)
+
+            else:
+                has_next_entity = any(isinstance(j[k], dict) for k in j)
+                c_lead = lead
+                if not has_next_entity:
+                    if lvl > 1 and not parent_has_next:
+                        c_lead = lead[::-1].replace('|', ' ', 1)[::-1]
+
+                # Print sources
+                if entry == "srcs":
+                    for src in j[entry]:
+                        print(f"{'':<17}{c_lead}{src}")
+
+                # Print, e.g., addresses
+                if j[entry] is None:
+                    print(f"{'':<17}{c_lead}{entry}")
