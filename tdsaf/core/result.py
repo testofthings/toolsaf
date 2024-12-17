@@ -227,6 +227,65 @@ class Report:
             return connection.status.value
         return f"{connection.status.value}/{v.value}"
 
+    def _get_addresses(self, e: Host) -> str:
+        """FIXME"""
+        ads = [f"{a}" for a in sorted(e.addresses)]
+        ads = [a for a in ads if a != e.name]
+        return ", ".join(ads)
+
+    def _get_properties(self, entity: Host) -> Dict:
+        """FIXME"""
+        props = {}
+        prop_items, _ = self.get_properties_to_print(entity)
+
+        k: PropertyKey
+        for _, (k, v) in enumerate(prop_items):
+            text = self.get_text(k, v)
+            v = k.get_verdict(entity.properties)
+
+            props[k.get_name()] = {
+                "srcs": self._get_sources(entity, k),
+                "verdict": v.value if v is not None else None,
+                "text": text
+            }
+        return props
+
+
+    def build_structure(self, entities: List[Host], cache: Dict) -> Dict: # Or Connection
+        """FIXME"""
+        structure = {"hosts": {}}
+
+        for e in entities:
+            if not e.is_relevant():
+                continue
+
+            structure["hosts"][e.long_name()] = {
+                "srcs": self._get_sources(e),
+                "verdict": f"{e.status.value}/{e.get_verdict(cache).value}",
+                "addr": self._get_addresses(e),
+            }
+            for k, v in self._get_properties(e).items():
+                structure["hosts"][e.long_name()][k] = v
+
+            # Protocols
+            for s in e.children:
+                structure["hosts"][e.long_name()][s.name] = {
+                    "srcs": self._get_sources(s),
+                    "verdict": s.status_string()
+                }
+                for k, v in self._get_properties(s).items():
+                    structure["hosts"][e.long_name()][s.name][k] = v
+
+            # SW components
+            for comp in e.components:
+                structure["hosts"][e.long_name()][comp.name] = {
+                    "srcs": self._get_sources(comp),
+                    "verdict": comp.status_string()
+                }
+                for k, v in self._get_properties(comp).items():
+                    structure["hosts"][e.long_name()][comp.name][k] = v
+        return structure
+
     def print_report(self, writer: TextIO):
         """Print textual report"""
         cache: Dict[Entity, Verdict] = {}
@@ -244,6 +303,12 @@ class Report:
 
         self.print_title(f"{self.bold}{'Verdict:':<17}Hosts and Services:{self.reset}", writer, "=", "-")
         rev_map: Dict[str, List[Host]] = {}
+
+
+        #import json
+        #print(json.dumps(self.build_structure(hosts, cache), indent=4))
+        #return
+
         for h in hosts:
             if not h.is_relevant():
                 continue
@@ -358,6 +423,7 @@ class Report:
         return list(sources)[:self.source_count]
 
     def print_structure(self, result: str, lvl: int, j: Dict, lead: str="", parent_has_next: bool=False) -> None:
+        """FIXME"""
         for i, entry in enumerate(j):
             if entry == "verdict":
                 continue
@@ -370,7 +436,7 @@ class Report:
                 print(f"{verdict:<17}{c_lead}{symbol}{entry}")
 
                 # Check entity relations
-                parent_has_next = any([isinstance(j[k], dict) for k in list(j.keys())[i:] if k != entry])
+                parent_has_next = any((isinstance(j[k], dict) for k in list(j.keys())[i:] if k != entry))
                 entity_has_children = any(isinstance(j[entry][k], dict) for k in j[entry] if k != entry)
                 is_last_entity = i == len(j)-1
 
