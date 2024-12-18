@@ -233,7 +233,7 @@ class Report:
         ads = [a for a in ads if a != e.name]
         return ", ".join(ads)
 
-    def _get_properties(self, entity: Host) -> Dict:
+    def _get_properties(self, entity: Host, parent_srcs: List=None) -> Dict:
         """FIXME"""
         props = {}
         prop_items, _ = self.get_properties_to_print(entity)
@@ -243,8 +243,12 @@ class Report:
             text = self.get_text(k, v)
             v = k.get_verdict(entity.properties)
 
+            srcs = self._get_sources(entity, k)
+            if srcs == parent_srcs:
+                srcs = []
+
             props[k.get_name()] = {
-                "srcs": self._get_sources(entity, k),
+                "srcs": srcs,
                 "verdict": v.value if v is not None else None,
                 "text": text
             }
@@ -252,11 +256,12 @@ class Report:
 
     def _get_sub_structure(self, entity: Union[Host, Addressable, NodeComponent]) -> Dict:
         """FIXME"""
+        srcs = self._get_sources(entity)
         return {
-            "srcs": self._get_sources(entity),
+            "srcs": srcs,
             "verdict": entity.status_string(),
             "address": self._get_addresses(entity) if isinstance(entity, Host) else None,
-            **self._get_properties(entity)
+            **self._get_properties(entity, parent_srcs=srcs)
         }
 
     def build_structure(self, entities: List[Host]) -> Dict: # Or Connection
@@ -284,12 +289,13 @@ class Report:
         """FIXME"""
         structure = {"connections": []}
         for c in connections:
+            srcs = self._get_sources(c)
             structure["connections"].append({
                 "verdict":self.get_connection_status(c, cache),
                 "source": c.source.long_name(),
                 "target": c.target.long_name(),
-                "srcs": self._get_sources(c),
-                **self._get_properties(c)
+                "srcs": srcs,
+                **self._get_properties(c, parent_srcs=srcs)
             })
         return structure
 
@@ -340,18 +346,22 @@ class Report:
         system_verdict = self.get_system_verdict(cache)
         color = self.get_verdict_color(system_verdict)
 
+        # System level
         self.print_title(f"{self.bold}{'Verdict:':<17}System:{self.reset}", writer, "=", "-")
         writer.write(f"{color}{'['+system_verdict.value+']':<17}{self.bold}{self.system.long_name()}{self.reset}\n")
-        self.print_properties(self.system, writer, indent=17)
+        system_srcs = self._get_sources(self.system)
+        system_properties = self._get_properties(self.system, parent_srcs=system_srcs)
+        if system_properties:
+            self.print_structure(0, {"srcs": system_srcs}, writer, lead="│  ")
+            self.print_structure(0, system_properties, writer, lead="│  ")
 
-
-        a="""
+        # Hosts and services
         self.print_title(f"{self.bold}{'Verdict:':<17}Hosts and Services:{self.reset}", writer, "=", "-")
-
+        a="""
         host_structure = self.build_structure(hosts)
         self.print_structure(-1, host_structure["hosts"], writer, "", False)
 
-
+        # Connections
         self.print_title(
             f"{self.bold}Connections\n{'Verdict:':<17}{'Source:':<33}Target:{self.reset}", writer, "=", "-"
         )
@@ -362,7 +372,7 @@ class Report:
             self.print_connection_structure(connection, writer)
 
         return
-        """
+        #"""
 
         for h in hosts:
             if not h.is_relevant():
