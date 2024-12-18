@@ -5,13 +5,13 @@ import sys
 import shutil
 import logging
 from functools import cached_property
-from typing import TextIO, List, Dict, Tuple
+from typing import TextIO, List, Dict, Tuple, Union
 from colored import Fore, Style
 
 from tdsaf.common.basics import ConnectionType
 from tdsaf.common.entity import Entity
 from tdsaf.common.verdict import Verdict
-from tdsaf.core.model import Host, NetworkNode, Connection
+from tdsaf.core.model import Host, NetworkNode, Connection, Addressable, NodeComponent
 from tdsaf.core.components import SoftwareComponent
 from tdsaf.common.property import Properties, PropertyKey, PropertyVerdictValue
 from tdsaf.core.registry import Registry
@@ -250,8 +250,16 @@ class Report:
             }
         return props
 
+    def _get_sub_structure(self, entity: Union[Host, Addressable, NodeComponent]) -> Dict:
+        """FIXME"""
+        return {
+            "srcs": self._get_sources(entity),
+            "verdict": entity.status_string(),
+            "address": self._get_addresses(entity) if isinstance(entity, Host) else None,
+            **self._get_properties(entity)
+        }
 
-    def build_structure(self, entities: List[Host], cache: Dict) -> Dict: # Or Connection
+    def build_structure(self, entities: List[Host]) -> Dict: # Or Connection
         """FIXME"""
         structure = {"hosts": {}}
 
@@ -259,32 +267,65 @@ class Report:
             if not e.is_relevant():
                 continue
 
-            structure["hosts"][e.long_name()] = {
-                "srcs": self._get_sources(e),
-                "verdict": f"{e.status.value}/{e.get_verdict(cache).value}",
-                "addr": self._get_addresses(e),
-            }
-            for k, v in self._get_properties(e).items():
-                structure["hosts"][e.long_name()][k] = v
+            # Host
+            structure["hosts"][e.name] = self._get_sub_structure(e)
 
             # Protocols
-            for s in e.children:
-                structure["hosts"][e.long_name()][s.name] = {
-                    "srcs": self._get_sources(s),
-                    "verdict": s.status_string()
-                }
-                for k, v in self._get_properties(s).items():
-                    structure["hosts"][e.long_name()][s.name][k] = v
+            for c in e.children:
+                structure["hosts"][e.name][c.name] = self._get_sub_structure(c)
 
-            # SW components
-            for comp in e.components:
-                structure["hosts"][e.long_name()][comp.name] = {
-                    "srcs": self._get_sources(comp),
-                    "verdict": comp.status_string()
-                }
-                for k, v in self._get_properties(comp).items():
-                    structure["hosts"][e.long_name()][comp.name][k] = v
+            # Components
+            for c in e.components:
+                structure["hosts"][e.name][c.name + " [Component]"] = self._get_sub_structure(c)
+
         return structure
+
+    def build_connecion_structure(self, connections: List[Connection], cache: Dict) -> Dict:
+        """FIXME"""
+        structure = {"connections": []}
+        for c in connections:
+            structure["connections"].append({
+                "verdict":self.get_connection_status(c, cache),
+                "source": c.source.long_name(),
+                "target": c.target.long_name(),
+                "srcs": self._get_sources(c),
+                **self._get_properties(c)
+            })
+        return structure
+
+    def _print_text(self, text: str, verdict: str, lead: str, writer: TextIO,
+                    indent: int=17, use_bold: bool=False) -> None:
+        """FIXME"""
+        text = self._crop_text(text, lead, indent)
+        if verdict is not None:
+            color = self.get_verdict_color(verdict)
+            if use_bold:
+                text = self.bold + text
+            writer.write(
+                f"{color}{'[' + verdict + ']':<{indent}}{self.reset}{lead}{color}{text}{self.reset}\n"
+            )
+        else:
+            writer.write(f"{'':<{indent}}{lead}{text}\n")
+
+    def print_connection_structure(self, c: Dict, writer: TextIO, lead: str="", symbol: str="") -> None:
+        """FIXME"""
+        v = c['verdict']
+        children = [k for k in c if isinstance(c[k], dict)]
+        c_lead = lead[:-3] + symbol
+        if "source" in c:
+            self._print_text(f"{c['source']:<33}{c['target']}", v, c_lead, writer)
+        else:
+            self._print_text(c["text"], v, c_lead, writer)
+
+        c_lead = lead + "│  " if children else lead + "   "
+        for src in c["srcs"]:
+            self._print_text(f"@{src}", None, c_lead, writer)
+
+
+        for child in children:
+            symbol = "├──" if child != children[-1] else "└──"
+            self.print_connection_structure(c[child], writer, lead=lead + "   ", symbol=symbol)
+
 
     def print_report(self, writer: TextIO):
         """Print textual report"""
@@ -294,6 +335,8 @@ class Report:
         for h in hosts:
             h.get_verdict(cache)
 
+        rev_map: Dict[str, List[Host]] = {}
+
         system_verdict = self.get_system_verdict(cache)
         color = self.get_verdict_color(system_verdict)
 
@@ -301,13 +344,25 @@ class Report:
         writer.write(f"{color}{'['+system_verdict.value+']':<17}{self.bold}{self.system.long_name()}{self.reset}\n")
         self.print_properties(self.system, writer, indent=17)
 
+
+        a="""
         self.print_title(f"{self.bold}{'Verdict:':<17}Hosts and Services:{self.reset}", writer, "=", "-")
-        rev_map: Dict[str, List[Host]] = {}
+
+        host_structure = self.build_structure(hosts)
+        self.print_structure(-1, host_structure["hosts"], writer, "", False)
 
 
-        #import json
-        #print(json.dumps(self.build_structure(hosts, cache), indent=4))
-        #return
+        self.print_title(
+            f"{self.bold}Connections\n{'Verdict:':<17}{'Source:':<33}Target:{self.reset}", writer, "=", "-"
+        )
+        relevant_only = not (self.show_all or (self.show and "irrelevant" in self.show))
+        connections = self.system.get_connections(relevant_only=relevant_only)
+        connection_structure = self.build_connecion_structure(connections, cache)
+        for connection in connection_structure["connections"]:
+            self.print_connection_structure(connection, writer)
+
+        return
+        """
 
         for h in hosts:
             if not h.is_relevant():
@@ -422,50 +477,68 @@ class Report:
 
         return list(sources)[:self.source_count]
 
-    def print_structure(self, result: str, lvl: int, j: Dict, lead: str="", parent_has_next: bool=False) -> None:
+    def _crop_text(self, text: str, lead: str, indent: int) -> str:
+        total_len = len(text) + len(lead) + indent
+        if total_len > self.width:
+            return text[:(self.width - len(lead) - indent - 3)] + "..."
+        return text
+
+    def print_structure(self, lvl: int, j: Dict, writer: TextIO, lead: str="", parent_has_next: bool=False) -> None:
         """FIXME"""
         for i, entry in enumerate(j):
             if entry == "verdict":
                 continue
 
-            if isinstance(j[entry], dict):
-                # Strip end from lead, it will be replace by symbol
-                c_lead = lead[:-3]
+            # Hosts are at lvl -1
+            if lvl < 0:
+                v = j[entry]["verdict"]
+                self._print_text(entry, v, "", writer, use_bold=True)
+                self.print_structure(lvl+1, j[entry], writer, "│  ", False)
+
+
+            elif isinstance(j[entry], dict):
+                v = j[entry]['verdict']
                 symbol = "└──" if i == len(j)-1 else "├──"
-                verdict = f"[{j['verdict'].value}]"
-                print(f"{verdict:<17}{c_lead}{symbol}{entry}")
+                # Strip end from lead, it will be replace by symbol
+                c_lead = lead[:-3] + symbol
+                text = j[entry]["text"] if "text" in j[entry] else entry
+
+                if v is not None:
+                    self._print_text(text, v, c_lead, writer)
+                else:
+                    self._print_text(text, None, c_lead, writer)
 
                 # Check entity relations
-                parent_has_next = any((isinstance(j[k], dict) for k in list(j.keys())[i:] if k != entry))
+                parent_has_next = any(
+                    (isinstance(j[k], dict) for k in list(j.keys())[i:] if k != entry)
+                ) if lvl>=1 else False
                 entity_has_children = any(isinstance(j[entry][k], dict) for k in j[entry] if k != entry)
                 is_last_entity = i == len(j)-1
 
                 if not is_last_entity:
-                    c_lead = lead + "|  " if entity_has_children else lead + "   "
-                    self.print_structure(result, lvl+1, j[entry], lead=c_lead, parent_has_next=parent_has_next)
+                    c_lead = lead + "│  " if entity_has_children else lead + "   "
+                    self.print_structure(lvl+1, j[entry], writer, lead=c_lead, parent_has_next=parent_has_next)
                 else:
                     # Special handling for symbols of last entities
                     if lvl == 0:
                         lead = "   "
                     if entity_has_children:
                         # Remove 2nd to last "|" from lead, so symbols allign properly
-                        c_lead = lead[:-3] + "   " + "|  "
+                        c_lead = lead[:-3] + "   " + "│  "
                     else:
                         c_lead = lead + "   "
-                    self.print_structure(result, lvl+1, j[entry], lead=c_lead, parent_has_next=parent_has_next)
+                    self.print_structure(lvl+1, j[entry], writer, lead=c_lead, parent_has_next=parent_has_next)
 
             else:
                 has_next_entity = any(isinstance(j[k], dict) for k in j)
                 c_lead = lead
                 if not has_next_entity:
                     if lvl > 1 and not parent_has_next:
-                        c_lead = lead[::-1].replace('|', ' ', 1)[::-1]
+                        c_lead = lead[::-1].replace('│', ' ', 1)[::-1]
 
-                # Print sources
                 if entry == "srcs":
                     for src in j[entry]:
-                        print(f"{'':<17}{c_lead}{src}")
+                        self._print_text(f"@{src}", None, c_lead, writer)
 
-                # Print, e.g., addresses
-                if j[entry] is None:
-                    print(f"{'':<17}{c_lead}{entry}")
+                if entry == "address" and j[entry] is not None:
+                    self._print_text(f"Addresses: {j[entry]}", None, c_lead, writer)
