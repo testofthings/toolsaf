@@ -249,9 +249,9 @@ Example metafile `00meta.json`:
 
 Files can be saved e.g. by `curl` with following syntax where `<url>` is the service URL.
 ```
-$ curl -L -i -o <url>.http <url>
+$ (echo "<url>"; curl -Li <url>) > <file-name>.http
 ```
-NOTE: The actual save file name must be URL-encoded (`%3a` for dot, etc.)!
+NOTE: The first line of the `.http` file must contain the pages URL starting with `https://` or `http://`. The second line must contain the requests status code.
 
 ### ZED attack proxy (ZAP)
 
