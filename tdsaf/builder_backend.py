@@ -38,6 +38,7 @@ from tdsaf.core.components import SoftwareComponent
 from tdsaf.core.selector import AbstractSelector
 from tdsaf.core.services import DHCPService, DNSService
 from tdsaf.core.sql_database import SQLDatabase
+from tdsaf.core.online_resources import OnlineResource
 from tdsaf.common.traffic import Evidence, EvidenceSource
 from tdsaf.common.verdict import Verdict
 from tdsaf.common.android import MobilePermissions
@@ -130,8 +131,12 @@ class SystemBackend(SystemBuilder):
              for n in names]
         return SensitiveDataBackend(self, d)
 
-    def online_resource(self, key: str, url: str) -> Self:
-        self.system.online_resources[key] = url
+    def online_resource(self, name: str, url: str, keywords: List[str]) -> Self:
+        if len(keywords) == 0:
+            raise ConfigurationException("You must provide at least 1 keyword")
+        self.system.online_resources.append(
+            OnlineResource(name, url, keywords)
+        )
         return self
 
     def attach_file(self, file_path: str, relative_to: Optional[str] = None) -> Self:
