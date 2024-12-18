@@ -133,7 +133,7 @@ class Report:
         return result
 
     def _get_addresses(self, e: Host) -> str:
-        """FIXME"""
+        """Get addresses for given host"""
         ads = [f"{a}" for a in sorted(e.addresses)]
         ads = [a for a in ads if a != e.name]
         return ", ".join(ads)
@@ -149,7 +149,7 @@ class Report:
 
     def _get_properties(self, entity: Union[Host, Addressable, NodeComponent, Connection],
                         parent_srcs: List=None) -> Dict:
-        """FIXME"""
+        """Get a dictionary of properties for given entity"""
         props = {}
         k: PropertyKey
         for k, v in self.get_properties_to_print(entity):
@@ -168,7 +168,7 @@ class Report:
 
     def _print_text(self, text: str, verdict: str, lead: str, writer: TextIO,
                     indent: int=17, use_bold: bool=False) -> None:
-        """FIXME"""
+        """Prints a cropped version of given text. Adds color if verdict is given"""
         text = self._crop_text(text, lead, indent)
         if verdict is not None:
             color = self.get_verdict_color(verdict)
@@ -214,25 +214,25 @@ class Report:
 
         return structure
 
-    def _print_host_structure(self, lvl: int, j: Dict, writer: TextIO,
+    def _print_host_structure(self, lvl: int, d: Dict, writer: TextIO,
                               lead: str="", parent_has_next: bool=False) -> None:
         """Print given host and service tree structure"""
-        for i, entry in enumerate(j):
+        for i, entry in enumerate(d):
             if entry == "verdict":
                 continue
 
             # Hosts are at lvl -1
             if lvl < 0:
-                v = j[entry]["verdict"]
+                v = d[entry]["verdict"]
                 self._print_text(entry, v, "", writer, use_bold=True)
-                self._print_host_structure(lvl+1, j[entry], writer, "│  ", False)
+                self._print_host_structure(lvl+1, d[entry], writer, "│  ", False)
 
-            elif isinstance(j[entry], dict):
-                v = j[entry]['verdict']
-                symbol = "└──" if i == len(j)-1 else "├──"
+            elif isinstance(d[entry], dict):
+                v = d[entry]['verdict']
+                symbol = "└──" if i == len(d)-1 else "├──"
                 # Strip end from lead, it will be replace by symbol
                 c_lead = lead[:-3] + symbol
-                text = j[entry]["text"] if "text" in j[entry] else entry
+                text = d[entry]["text"] if "text" in d[entry] else entry
 
                 if v is not None:
                     self._print_text(text, v, c_lead, writer)
@@ -241,14 +241,14 @@ class Report:
 
                 # Check entity relations
                 parent_has_next = any(
-                    (isinstance(j[k], dict) for k in list(j.keys())[i:] if k != entry)
+                    (isinstance(d[k], dict) for k in list(d.keys())[i:] if k != entry)
                 ) if lvl>=1 else False
-                entity_has_children = any(isinstance(j[entry][k], dict) for k in j[entry] if k != entry)
-                is_last_entity = i == len(j)-1
+                entity_has_children = any(isinstance(d[entry][k], dict) for k in d[entry] if k != entry)
+                is_last_entity = i == len(d)-1
 
                 if not is_last_entity:
                     c_lead = lead + "│  " if entity_has_children else lead + "   "
-                    self._print_host_structure(lvl+1, j[entry], writer, lead=c_lead, parent_has_next=parent_has_next)
+                    self._print_host_structure(lvl+1, d[entry], writer, lead=c_lead, parent_has_next=parent_has_next)
                 else:
                     # Special handling for symbols of last entities
                     if lvl == 0:
@@ -258,21 +258,21 @@ class Report:
                         c_lead = lead[:-3] + "   " + "│  "
                     else:
                         c_lead = lead + "   "
-                    self._print_host_structure(lvl+1, j[entry], writer, lead=c_lead, parent_has_next=parent_has_next)
+                    self._print_host_structure(lvl+1, d[entry], writer, lead=c_lead, parent_has_next=parent_has_next)
 
             else:
-                has_next_entity = any(isinstance(j[k], dict) for k in j)
+                has_next_entity = any(isinstance(d[k], dict) for k in d)
                 c_lead = lead
                 if not has_next_entity:
                     if lvl > 1 and not parent_has_next:
                         c_lead = lead[::-1].replace('│', ' ', 1)[::-1]
 
                 if entry == "srcs":
-                    for src in j[entry]:
+                    for src in d[entry]:
                         self._print_text(f"@{src}", None, c_lead, writer)
 
-                if entry == "address" and j[entry] is not None:
-                    self._print_text(f"Addresses: {j[entry]}", None, c_lead, writer)
+                if entry == "address" and d[entry] is not None:
+                    self._print_text(f"Addresses: {d[entry]}", None, c_lead, writer)
 
     def get_connection_status(self, connection: Connection, cache: Dict) -> str:
         """Returns status string for a connection"""
@@ -297,23 +297,23 @@ class Report:
             })
         return structure
 
-    def _print_connection_structure(self, c: Dict, writer: TextIO, lead: str="", symbol: str="") -> None:
+    def _print_connection_structure(self, d: Dict, writer: TextIO, lead: str="", symbol: str="") -> None:
         """Print given connection tree structure"""
-        v = c['verdict']
-        children = [k for k in c if isinstance(c[k], dict)]
+        v = d['verdict']
+        children = [k for k in d if isinstance(d[k], dict)]
         c_lead = lead[:-3] + symbol
-        if "source" in c:
-            self._print_text(f"{c['source']:<33}{c['target']}", v, c_lead, writer)
+        if "source" in d:
+            self._print_text(f"{d['source']:<33}{d['target']}", v, c_lead, writer)
         else:
-            self._print_text(c["text"], v, c_lead, writer)
+            self._print_text(d["text"], v, c_lead, writer)
 
         c_lead = lead + "│  " if children else lead + "   "
-        for src in c["srcs"]:
+        for src in d["srcs"]:
             self._print_text(f"@{src}", None, c_lead, writer)
 
         for child in children:
             symbol = "├──" if child != children[-1] else "└──"
-            self._print_connection_structure(c[child], writer, lead=lead + "   ", symbol=symbol)
+            self._print_connection_structure(d[child], writer, lead=lead + "   ", symbol=symbol)
 
     def print_report(self, writer: TextIO):
         """Print textual report"""
