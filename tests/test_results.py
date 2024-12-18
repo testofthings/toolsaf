@@ -81,46 +81,31 @@ def test_get_verdict_color(verdict, exp):
 
 
 @pytest.mark.parametrize(
-    "text, exp",
-    [
-        ("test", "test"),
-        (f"test{Style.reset}\n", f"test{Style.reset}\n"),
-        (f"{'t'*10}{Style.reset}\n", f"ttttttt...{Style.reset}\n")
-    ]
-)
-def test_crop_text(text, exp):
-    r = Report(Registry(Setup().get_inspector()))
-    r.width = 10
-    r.c = True
-    assert r.crop_text(text) == exp
-
-
-@pytest.mark.parametrize(
     "p, s, exp",
     [
         (
-            {Properties.EXPECTED: Verdict.PASS}, ["all"], ([], 0)
+            {Properties.EXPECTED: Verdict.PASS}, ["all"], []
         ),
         (
             {Properties.EXPECTED: Verdict.PASS, Properties.MITM: Verdict.IGNORE},
-            ["all"], ([(Properties.MITM, Verdict.IGNORE)], 1)
+            ["all"], [(Properties.MITM, Verdict.IGNORE)]
         ),
         (
-            {Properties.MITM: Verdict.PASS}, [], ([], 0),
+            {Properties.MITM: Verdict.PASS}, [], [],
         ),
         (
             {Properties.MITM: _get_pvv(Verdict.FAIL), Properties.FUZZ: _get_pvv(Verdict.IGNORE)},
             ["ignored"],
-            ([(Properties.MITM, _get_pvv(Verdict.FAIL)), (Properties.FUZZ, _get_pvv(Verdict.IGNORE))], 2)
+            [(Properties.MITM, _get_pvv(Verdict.FAIL)), (Properties.FUZZ, _get_pvv(Verdict.IGNORE))]
         ),
         (
             {Properties.MITM: _get_pvv(Verdict.PASS), Properties.FUZZ: _get_pvv(Verdict.IGNORE)},
-            ["properties"], ([(Properties.MITM, _get_pvv(Verdict.PASS))], 1)
+            ["properties"], [(Properties.MITM, _get_pvv(Verdict.PASS))]
         ),
         (
             {Properties.MITM: _get_pvv(Verdict.PASS), Properties.FUZZ: _get_pvv(Verdict.IGNORE)},
             ["properties", "ignored"],
-            ([(Properties.MITM, _get_pvv(Verdict.PASS)), (Properties.FUZZ, _get_pvv(Verdict.IGNORE))], 2)
+            [(Properties.MITM, _get_pvv(Verdict.PASS)), (Properties.FUZZ, _get_pvv(Verdict.IGNORE))]
         )
     ]
 )
@@ -130,83 +115,6 @@ def test_get_properties_to_print(p: Dict, s: List[str], exp: Tuple):
     r = Report(Registry(Setup().get_inspector()))
     r.show = s
     assert r.get_properties_to_print(e) == exp
-
-
-@pytest.mark.parametrize(
-    "n_comp, n_child, exp",
-    [
-        (0, 0, "└──"),
-        (1, 0, "│  "),
-        (0, 1, "│  "),
-        (1, 1, "│  ")
-    ]
-)
-def test_ge_symbol_for_address(n_comp, n_child, exp):
-    host = _get_mock_host(n_comp, n_child)
-    r = Report(Registry(Setup().get_inspector()))
-    assert r.get_symbol_for_addresses(host) == exp
-
-
-@pytest.mark.parametrize(
-    "idx, total, exp",
-    [
-        (0, 2, "├──"),
-        (1, 2, "└──")
-    ]
-)
-def test_get_symbol_for_property(idx, total, exp):
-    r = Report(Registry(Setup().get_inspector()))
-    assert r.get_symbol_for_property(idx, total) == exp
-
-
-@pytest.mark.parametrize(
-    "idx, n_comp, n_child, exp",
-    [
-        (0, 0, 0, "├──"),
-        (0, 1, 0, "├──"),
-        [0, 0, 1, "└──"],
-        [1, 2, 2, "├──"]
-    ]
-)
-def test_get_symbol_for_service(idx, n_comp, n_child, exp):
-    host = _get_mock_host(n_comp, n_child)
-    r = Report(Registry(Setup().get_inspector()))
-    assert r.get_symbol_for_service(idx, host) == exp
-
-
-@pytest.mark.parametrize(
-    "idx, n_comp, exp",
-    [
-        (0, 0, "├──"),
-        (0, 1, "└──"),
-        (2, 1, "└──"),
-        (1, 2, "└──")
-    ]
-)
-def test_get_symbol_for_component(idx, n_comp, exp):
-    host = _get_mock_host(n_comp)
-    r = Report(Registry(Setup().get_inspector()))
-    assert r.get_symbol_for_component(idx, host) == exp
-
-
-@pytest.mark.parametrize(
-    "show, n_prop, idx, n_comp, exp",
-    [
-        (["all"], 1, 0, 0, "├──"),
-        (["all"], 0, 0, 0, "│  "),
-        (["properties"], 1, 0, 0, "├──"),
-        (["properties"], 0, 0, 2, "│  "),
-        ([], 0, 1, 3, "│  "),
-        ([], 0, 1, 2, "└──")
-    ]
-)
-def test_get_symbol_for_info(show, n_prop, idx, n_comp, exp):
-    r = Report(Registry(Setup().get_inspector()))
-    r.show = show
-    c = MagicMock()
-    c.properties = [MagicMock()]*n_prop
-    host = _get_mock_host(n_comp)
-    assert r.get_symbol_for_info(idx, host, c) == exp
 
 
 @pytest.mark.parametrize(
@@ -240,137 +148,3 @@ def _get_properties(keys: List[str], verdicts: List[Verdict]) -> Dict:
         Properties.FUZZ.append_key(k): _get_pvv(v)
             for k, v in zip(keys, verdicts)
     }
-
-
-@pytest.mark.parametrize(
-    "props, verds, lead, ind, exp",
-    [
-        (
-            ["t1"], [Verdict.PASS], "", 0,
-            ["[Pass]              └──check:fuzz:t1\n"]
-        ),
-        (
-            ["t1", "t2", "t3"], [Verdict.PASS, Verdict.FAIL, Verdict.INCON],
-            "", 0,
-            ["[Pass]              ├──check:fuzz:t1\n",
-             "[Fail]              ├──check:fuzz:t2\n",
-             "[Incon]             └──check:fuzz:t3\n"]
-        ),
-        (
-            ["t1", "t2", "t3"], [Verdict.PASS, Verdict.FAIL, Verdict.INCON],
-            "│", 0,
-            ["[Pass]           │  ├──check:fuzz:t1\n",
-             "[Fail]           │  ├──check:fuzz:t2\n",
-             "[Incon]          │  └──check:fuzz:t3\n"]
-        ),
-        (
-            ["t1", "t2", "t3"], [Verdict.PASS, Verdict.FAIL, Verdict.INCON],
-            "", 17,
-            ["[Pass]           ├──check:fuzz:t1\n",
-             "[Fail]           ├──check:fuzz:t2\n",
-             "[Incon]          └──check:fuzz:t3\n"]
-        ),
-        (
-            ["t1", "t2", "t3"], [Verdict.PASS, Verdict.FAIL, Verdict.INCON],
-            "|", 17, # indent=-3 if leading!=""
-            ["[Pass]        |  ├──check:fuzz:t1\n",
-             "[Fail]        |  ├──check:fuzz:t2\n",
-             "[Incon]       |  └──check:fuzz:t3\n"]
-        ),
-    ]
-)
-def test_print_properties_with_entity_and_pvv(
-        props: List[str], verds: List[Verdict], lead: str, ind: int, exp: List[str]
-):
-    setup = Setup()
-    r = Report(Registry(Setup().get_inspector()))
-    r.show = ["properties"]
-
-    system = setup.get_system()
-    system.properties = _get_properties(props, verds)
-
-    writer = _mock_writer()
-    r.print_properties(system, writer, lead, ind)
-
-    for i in range(len(writer.output)):
-        assert writer.output[i] == exp[i]
-
-
-@pytest.mark.parametrize(
-    "props, verds, lead, ind, exp",
-    [
-        ( # Connection indent value is 17 instead of 20
-            ["t1"], [Verdict.PASS], "", 0,
-            ["[Pass]           └──check:fuzz:t1\n"]
-        ),
-        (
-            ["t1", "t2"], [Verdict.PASS, Verdict.FAIL],
-            "", 0,
-            ["[Pass]           ├──check:fuzz:t1\n",
-             "[Fail]           └──check:fuzz:t2\n"]
-        ),
-        (
-            ["t1", "t2"], [Verdict.PASS, Verdict.FAIL],
-            "|", 0,
-            ["[Pass]        |  ├──check:fuzz:t1\n",
-             "[Fail]        |  └──check:fuzz:t2\n"]
-        ),
-        (
-            ["t1", "t2"], [Verdict.PASS, Verdict.FAIL],
-            "|", 13,
-            ["[Pass]    |  ├──check:fuzz:t1\n",
-             "[Fail]    |  └──check:fuzz:t2\n"]
-        ),
-    ]
-)
-def test_print_properties_with_connections_and_pvv(
-        props: List[str], verds: List[Verdict], lead: str, ind: int, exp: List[str]
-):
-    r = Report(Registry(Setup().get_inspector()))
-    r.show = ["properties"]
-
-    connection = Connection(None, None)
-    connection.properties = _get_properties(props, verds)
-    writer = _mock_writer()
-    r.print_properties(connection, writer, lead, ind)
-
-    for i in range(len(writer.output)):
-        assert writer.output[i] == exp[i]
-
-
-@pytest.mark.parametrize(
-    "lead, ind, exp",
-    [
-        (
-            "", 0,
-            ["                    └──default:release-info=0\n"]
-        ),
-        (
-            "|", 0,
-            ["                 |  └──default:release-info=0\n"]
-        ),
-        (
-            "", 17,
-            ["                 └──default:release-info=0\n"]
-        ),
-        (
-            "|", 20,
-            ["                 |  └──default:release-info=0\n"]
-        ),
-    ]
-)
-def test_print_properties_without_pvv(
-    lead: str, ind: int, exp: List[str]
-):
-    setup = Setup()
-    r = Report(Registry(Setup().get_inspector()))
-    r.show = ["properties"]
-
-    system = setup.get_system()
-    system.properties = {ReleaseInfo.PROPERTY_KEY: 0}
-
-    writer = _mock_writer()
-    r.print_properties(system, writer, lead, ind)
-
-    for i in range(len(writer.output)):
-        assert writer.output[i] == exp[i]
