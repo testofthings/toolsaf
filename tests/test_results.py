@@ -211,6 +211,32 @@ def test_print_text():
         "                 │  Test\n"
 
 
+def test_get_sub_structure():
+    r = Report(Registry(Setup().get_inspector()))
+    r._get_sources = MagicMock(return_value=[1, 2])
+    r._get_addresses = MagicMock(return_value=".fi, .com")
+    r._get_properties = MagicMock(return_value = {"test1": {"a": 1}, "test2": {"b": 2}})
+    e = MagicMock(spec=Host)
+    e.status_string.return_value = "Expected/Pass"
+    assert r._get_sub_structure(e) == {
+        "srcs": [1, 2],
+        "verdict": "Expected/Pass",
+        "address": ".fi, .com",
+        "test1": {"a": 1},
+        "test2": {"b": 2}
+    }
+
+    e = MagicMock()
+    e.status_string.return_value = "Expected/Pass"
+    assert r._get_sub_structure(e) == {
+        "srcs": [1, 2],
+        "verdict": "Expected/Pass",
+        "address": None,
+        "test1": {"a": 1},
+        "test2": {"b": 2}
+    }
+
+
 
 @pytest.mark.parametrize(
     "c_type, c_status, verdict, exp",
