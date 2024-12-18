@@ -166,6 +166,15 @@ class Report:
             }
         return props
 
+    def _crop_text(self, text: str, lead: str, indent: int) -> str:
+        """Crop text that would be longer than the terminal's width"""
+        if self.show_all or self.no_truncate:
+            return text
+        total_len = len(text) + len(lead) + indent
+        if total_len > self.width:
+            return text[:(self.width - len(lead) - indent - 3)] + "..."
+        return text
+
     def _print_text(self, text: str, verdict: str, lead: str, writer: TextIO,
                     indent: int=17, use_bold: bool=False) -> None:
         """Prints a cropped version of given text. Adds color if verdict is given"""
@@ -179,15 +188,6 @@ class Report:
             )
         else:
             writer.write(f"{'':<{indent}}{lead}{text}\n")
-
-    def _crop_text(self, text: str, lead: str, indent: int) -> str:
-        """Crop text that would be longer than the terminal's width"""
-        if self.show_all or self.no_truncate:
-            return text
-        total_len = len(text) + len(lead) + indent
-        if total_len > self.width:
-            return text[:(self.width - len(lead) - indent - 3)] + "..."
-        return text
 
     def _get_sub_structure(self, entity: Union[Host, Addressable, NodeComponent]) -> Dict:
         """Get sub structure based on given entity"""
