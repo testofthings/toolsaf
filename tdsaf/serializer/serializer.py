@@ -84,7 +84,7 @@ class SerializerStream:
             serial = serializer.config.find_serializer(obj_type)
         if serial.config.abstract:
             return False
-        ref = self.serializer.config.resolve_id(obj, self.context)
+        ref = serial.config.resolve_id(obj, self.context)
         self.data["id"] = ref
         if at_object:
             self.data["at"] = self.context.id_for(at_object)
