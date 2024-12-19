@@ -165,8 +165,8 @@ def test_get_properties():
         "verdict": "Pass"
     }}
 
-    assert r._get_properties(e, parent_srcs=["test1", "test2"]) == {"check:mitm": {
-        "srcs": [],
+    assert r._get_properties(e) == {"check:mitm": {
+        "srcs": ["test1", "test2"],
         "text": "check:mitm",
         "verdict": "Pass"
     }}
@@ -257,10 +257,10 @@ def test_build_host_structure():
     assert r.build_host_structure(s.system.system.get_hosts()) == {
         "Mobile App": {
             "srcs": ["@1", "@2"], "address": "Mobile_App", "verdict": "Expected/Pass",
-            "check:mitm": {"srcs": [], "verdict": "Pass", "text": "check:mitm"},
+            "check:mitm": {"srcs": ["@1", "@2"], "verdict": "Pass", "text": "check:mitm"},
             "Test [Component]": {
                 "srcs": ["@1", "@2"], "address": None, "verdict": "Expected",
-                "check:fuzz": {"srcs": [], "verdict": "Fail", "text": "check:fuzz"},
+                "check:fuzz": {"srcs": ["@1", "@2"], "verdict": "Fail", "text": "check:fuzz"},
             },
         },
         "Device": {

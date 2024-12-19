@@ -111,7 +111,7 @@ class Report:
             return []
         sources = set(filter(None, [
             e.event.evidence.get_reference()
-            for e in self.registry.logging.get_log(entity, {key})
+            for e in self.registry.logging.get_log(entity, key)
         ]))
 
         return list(sources)[:self.source_count]
@@ -147,8 +147,7 @@ class Report:
             value_string = value_string.split("=")[0]
         return f"{value_string}{comment}"
 
-    def _get_properties(self, entity: Union[Host, Addressable, NodeComponent, Connection],
-                        parent_srcs: List=None) -> Dict:
+    def _get_properties(self, entity: Union[Host, Addressable, NodeComponent, Connection]) -> Dict:
         """Get a dictionary of properties for given entity"""
         props = {}
         k: PropertyKey
@@ -156,11 +155,8 @@ class Report:
             text = self._get_text(k, v)
             v = k.get_verdict(entity.properties)
 
-            if (srcs:=self._get_sources(entity, k)) == parent_srcs:
-                srcs = []
-
             props[k.get_name()] = {
-                "srcs": srcs,
+                "srcs": self._get_sources(entity, k),
                 "verdict": v.value if v is not None else None,
                 "text": text
             }
@@ -191,12 +187,11 @@ class Report:
 
     def _get_sub_structure(self, entity: Union[Host, Addressable, NodeComponent]) -> Dict:
         """Get sub structure based on given entity"""
-        srcs = self._get_sources(entity)
         return {
-            "srcs": srcs,
+            "srcs": self._get_sources(entity),
             "verdict": entity.status_string(),
             "address": self._get_addresses(entity) if isinstance(entity, Host) else None,
-            **self._get_properties(entity, parent_srcs=srcs)
+            **self._get_properties(entity)
         }
 
     def build_host_structure(self, entities: List[Host]) -> Dict:
@@ -287,13 +282,12 @@ class Report:
         """Build a printable tree structure out of given connections"""
         structure = {"connections": []}
         for c in connections:
-            srcs = self._get_sources(c)
             structure["connections"].append({
                 "verdict":self.get_connection_status(c, cache),
                 "source": c.source.long_name(),
                 "target": c.target.long_name(),
-                "srcs": srcs,
-                **self._get_properties(c, parent_srcs=srcs)
+                "srcs": self._get_sources(c),
+                **self._get_properties(c)
             })
         return structure
 
@@ -332,10 +326,8 @@ class Report:
         system_verdict = self.get_system_verdict(cache)
         self.print_title(f"{self.bold}{'Verdict:':<17}System:{self.reset}", writer, "=", "-")
         self._print_text(self.system.long_name(), system_verdict.value, "", writer, use_bold=True)
-        system_srcs = self._get_sources(self.system)
-        system_properties = self._get_properties(self.system, parent_srcs=system_srcs)
+        system_properties = self._get_properties(self.system)
         if system_properties:
-            self._print_host_structure(0, {"srcs": system_srcs}, writer, lead="│  ")
             self._print_host_structure(0, system_properties, writer, lead="│  ")
 
         # Hosts and services
