@@ -4,6 +4,7 @@ import json
 from io import BytesIO
 from pathlib import Path
 from xml.etree import ElementTree
+from typing import Dict
 
 from tdsaf.main import ConfigurationException
 from tdsaf.common.basics import HostType
@@ -25,7 +26,7 @@ class AndroidManifestScan(EndpointTool):
         self.tool.name = "Android Manifest"
         self.categories = self.load_categories()
 
-    def load_categories(self) -> dict:
+    def load_categories(self) -> Dict:
         """Load our Android permission category info from json"""
         data_json_path = Path(__file__).parent / "data/android_permissions.json"
         with open(data_json_path, "r", encoding="utf-8") as f:

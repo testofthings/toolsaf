@@ -62,7 +62,7 @@ class SystemBuilder:
         """Declare pieces of security-relevant data"""
         raise NotImplementedError()
 
-    def online_resource(self, key: str, url: str) -> Self:
+    def online_resource(self, name: str, url: str, keywords: List[str]) -> Self:
         """Document online resource"""
         raise NotImplementedError()
 
@@ -240,6 +240,10 @@ class SoftwareBuilder:
         """Target update frequency, days"""
         raise NotImplementedError()
 
+    def sbom(self, components: List[str]=None, file_path: str=""):
+        """Add an SBOM from given list or SPDX JSON file.
+           file_path is relative to the statement"""
+        raise NotImplementedError()
 
 class CookieBuilder:
     """Cookies in a browser"""
@@ -276,12 +280,12 @@ class DiagramVisualizer:
         """Visualize statement"""
         raise NotImplementedError()
 
-    def add_images(self, d: dict[Host, str]) -> Self:
+    def add_images(self, d: Dict[Host, str]) -> Self:
         """Use locally stored images for specified nodes in visualization.
             Must be .png images"""
         raise NotImplementedError()
 
-    def add_remote_images(self, d: dict[Host, str]) -> Self:
+    def add_remote_images(self, d: Dict[Host, str]) -> Self:
         """Use images from the internet for specified nodes"""
         raise NotImplementedError()
 

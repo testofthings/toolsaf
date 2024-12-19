@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
+from typing import List, Tuple
 from colored import Fore, Style
 
 from tdsaf.common.verdict import Verdict
@@ -16,7 +17,7 @@ def _get_pvv(v: Verdict) -> PropertyVerdictValue:
     return PropertyVerdictValue(v)
 
 
-def _mock_array(n: int) -> list[MagicMock]:
+def _mock_array(n: int) -> List[MagicMock]:
     return [MagicMock()] * n
 
 
@@ -52,7 +53,7 @@ def test_use_color(C, is_piped, exp):
         ({}, Verdict.INCON)
     ]
 )
-def test_get_system_verdict(cache: dict, exp: Verdict):
+def test_get_system_verdict(cache: Dict, exp: Verdict):
     r = Report(Registry(Setup().get_inspector()))
     assert r.get_system_verdict(cache) == exp
 
@@ -123,7 +124,7 @@ def test_crop_text(text, exp):
         )
     ]
 )
-def test_get_properties_to_print(p: dict, s: list[str], exp: tuple):
+def test_get_properties_to_print(p: Dict, s: List[str], exp: Tuple):
     e = MagicMock()
     e.properties = p
     r = Report(Registry(Setup().get_inspector()))
@@ -234,7 +235,7 @@ def _mock_writer() -> MagicMock:
     return w
 
 
-def _get_properties(keys: list[str], verdicts: list[Verdict]) -> dict:
+def _get_properties(keys: List[str], verdicts: List[Verdict]) -> Dict:
     return {
         Properties.FUZZ.append_key(k): _get_pvv(v)
             for k, v in zip(keys, verdicts)
@@ -279,7 +280,7 @@ def _get_properties(keys: list[str], verdicts: list[Verdict]) -> dict:
     ]
 )
 def test_print_properties_with_entity_and_pvv(
-        props: list[str], verds: list[Verdict], lead: str, ind: int, exp: list[str]
+        props: List[str], verds: List[Verdict], lead: str, ind: int, exp: List[str]
 ):
     setup = Setup()
     r = Report(Registry(Setup().get_inspector()))
@@ -323,7 +324,7 @@ def test_print_properties_with_entity_and_pvv(
     ]
 )
 def test_print_properties_with_connections_and_pvv(
-        props: list[str], verds: list[Verdict], lead: str, ind: int, exp: list[str]
+        props: List[str], verds: List[Verdict], lead: str, ind: int, exp: List[str]
 ):
     r = Report(Registry(Setup().get_inspector()))
     r.show = ["properties"]
@@ -359,7 +360,7 @@ def test_print_properties_with_connections_and_pvv(
     ]
 )
 def test_print_properties_without_pvv(
-    lead: str, ind: int, exp: list[str]
+    lead: str, ind: int, exp: List[str]
 ):
     setup = Setup()
     r = Report(Registry(Setup().get_inspector()))
