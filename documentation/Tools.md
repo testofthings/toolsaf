@@ -191,7 +191,7 @@ Files can be captured by _Wireshark_ or `tcpdump`, see their documentation for i
 
 ### SPDX
 
-Data is Software Package Data Exchange (SPDX) xml-files with suffix `.xml`.
+Data is Software Package Data Exchange (SPDX) json-files with suffix `.json`.
 Example metafile `00meta.json`:
 ```json
 {

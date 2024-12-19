@@ -8,6 +8,7 @@ import logging
 import pathlib
 import shutil
 import sys
+import inspect
 from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union
 
 from tdsaf.common.address import (AddressAtNetwork, Addresses, AnyAddress, DNSName, EndpointAddress, EntityTag,
@@ -19,6 +20,7 @@ from tdsaf.core.components import CookieData, Cookies, DataReference, StoredData
 from tdsaf.common.entity import ClaimAuthority, Entity
 from tdsaf.core.event_interface import PropertyEvent
 from tdsaf.common.release_info import ReleaseInfo
+from tdsaf.common.property import PropertyVerdictValue
 from tdsaf.http_server import HTTPServerRunner
 from tdsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP, IP, TLS,
                         BLEAdvertisement, ClaimBuilder, ClaimSetBuilder, ConnectionBuilder,
@@ -32,6 +34,7 @@ from tdsaf.common.property import Properties, PropertyKey
 from tdsaf.core.registry import Registry
 from tdsaf.core.inspector import Inspector
 from tdsaf.core.result import Report
+from tdsaf.core.components import SoftwareComponent
 from tdsaf.core.selector import AbstractSelector
 from tdsaf.core.services import DHCPService, DNSService
 from tdsaf.core.sql_database import SQLDatabase
@@ -39,6 +42,7 @@ from tdsaf.core.online_resources import OnlineResource
 from tdsaf.common.traffic import Evidence, EvidenceSource
 from tdsaf.common.verdict import Verdict
 from tdsaf.common.android import MobilePermissions
+from tdsaf.adapters.spdx_reader import SPDXJson
 from tdsaf.visualizer import Visualizer, VisualizerAPI
 from tdsaf.diagram_visualizer import DiagramVisualizer
 
@@ -558,6 +562,33 @@ class SoftwareBackend(SoftwareBuilder):
     def update_frequency(self, days: float) -> Self:
         """Target update frequency, days"""
         self.sw.info.interval_days = days
+        return self
+
+    def sbom(self, components: List[str]=None, file_path: str="") -> Self:
+        """Add an SBOM from given list or SPDX JSON file.
+           file_path is relative to statement"""
+        if not components and not file_path:
+            raise ConfigurationException("Provide either components list of file")
+        if file_path and not file_path.endswith(".json"):
+            raise ConfigurationException("Given SBOM file must be SPDX JSON")
+
+        if components:
+            for c in components:
+                self.sw.components[c] = SoftwareComponent(c, version="")
+                key = PropertyKey("component", c)
+                self.sw.properties[key] = PropertyVerdictValue(Verdict.INCON)
+        else:
+            statement_file_path = pathlib.Path(inspect.stack()[1].filename).parent
+            try:
+                with open((statement_file_path / file_path).resolve(), 'r', encoding="utf-8") as f:
+                    for c in SPDXJson(f).read():
+                        self.sw.components[c.name] = c
+                        key = PropertyKey("component", c.name)
+                        self.sw.properties[key] =\
+                            PropertyVerdictValue(Verdict.INCON, explanation=f"version {c.version}")
+            except FileNotFoundError as e:
+                raise ConfigurationException(f"Could not find SBOM file {e.filename}") from e
+
         return self
 
     # Backend methods

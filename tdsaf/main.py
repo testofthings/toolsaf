@@ -240,6 +240,10 @@ class SoftwareBuilder:
         """Target update frequency, days"""
         raise NotImplementedError()
 
+    def sbom(self, components: List[str]=None, file_path: str=""):
+        """Add an SBOM from given list or SPDX JSON file.
+           file_path is relative to the statement"""
+        raise NotImplementedError()
 
 class CookieBuilder:
     """Cookies in a browser"""
