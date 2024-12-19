@@ -1,14 +1,13 @@
 import pytest
 from unittest.mock import MagicMock
 from typing import List, Tuple
-from colored import Fore, Style
+from colored import Fore
 
 from tdsaf.common.verdict import Verdict
 from tdsaf.common.property import Properties, PropertyVerdictValue
+from tdsaf.main import HTTP, TLS
 from tdsaf.core.registry import Registry
-from tdsaf.core.model import Connection
 from tdsaf.common.basics import ConnectionType
-from tdsaf.common.release_info import ReleaseInfo
 from tdsaf.core.result import *
 from tests.test_model import Setup
 
@@ -237,6 +236,76 @@ def test_get_sub_structure():
     }
 
 
+def test_build_host_structure():
+    s = Setup()
+    r = Report(Registry(s.get_inspector()))
+    r.show = "properties"
+    r._get_sources = MagicMock(return_value=["@1", "@2"])
+
+    m = s.system.mobile("Mobile App")
+    d = s.system.device("Device")
+    m.software("Test")
+    m.entity.components[0].properties = {
+        Properties.FUZZ: _get_pvv(Verdict.FAIL)
+    }
+    m >> d / HTTP
+    m.entity.status_string = MagicMock(return_value="Expected/Pass")
+    m.entity.properties = {
+        Properties.MITM: _get_pvv(Verdict.PASS)
+    }
+
+    assert r.build_host_structure(s.system.system.get_hosts()) == {
+        "Mobile App": {
+            "srcs": ["@1", "@2"], "address": "Mobile_App", "verdict": "Expected/Pass",
+            "check:mitm": {"srcs": [], "verdict": "Pass", "text": "check:mitm"},
+            "Test [Component]": {
+                "srcs": ["@1", "@2"], "address": None, "verdict": "Expected",
+                "check:fuzz": {"srcs": [], "verdict": "Fail", "text": "check:fuzz"},
+            },
+        },
+        "Device": {
+            "srcs": ["@1", "@2"], "address": "", "verdict": "Expected",
+            "HTTP:80": {"srcs": ["@1", "@2"], "address": None, "verdict": "Expected"},
+        }
+    }
+
+
+def test_print_host_structure():
+    r = Report(Registry(Setup().get_inspector()))
+    d = {
+        "Mobile App": {
+            "srcs": [], "address": "Mobile_App", "verdict": "Expected/Pass",
+            "check:mitm": {"srcs": [], "verdict": "Pass", "text": "check:mitm"},
+            "Test [Component]": {
+                "srcs": ["1", "2"], "address": None, "verdict": "Expected",
+                "check:fuzz": {"srcs": [], "verdict": "Fail", "text": "check:fuzz"},
+            },
+        },
+        "Device": {
+            "srcs": ["1", "2"], "address": "Device", "verdict": "Expected",
+            "HTTP:80": {"srcs": ["1", "2"], "address": None, "verdict": "Expected"},
+        }
+    }
+
+    w = _mock_writer()
+    r._print_host_structure(0, d, w, "│  ", False)
+
+    assert ''.join(w.output) == \
+        "[Expected/Pass]  ├──Mobile App\n"                + \
+        "                 │  │  Addresses: Mobile_App\n"  + \
+        "[Pass]           │  ├──check:mitm\n"             + \
+        "[Expected]       │  └──Test [Component]\n"       + \
+        "                 │     │  @1\n"                  + \
+        "                 │     │  @2\n"                  + \
+        "[Fail]           │     └──check:fuzz\n"          + \
+        "[Expected]       └──Device\n"                    + \
+        "                    │  @1\n"                     + \
+        "                    │  @2\n"                     + \
+        "                    │  Addresses: Device\n"      + \
+        "[Expected]          └──HTTP:80\n"                + \
+        "                          @1\n"                  + \
+        "                          @2\n"
+
 
 @pytest.mark.parametrize(
     "c_type, c_status, verdict, exp",
@@ -256,3 +325,72 @@ def test_get_connection_status(c_type: ConnectionType, c_status: str, verdict: V
     connection.get_verdict = MagicMock(return_value=verdict)
     assert r.get_connection_status(connection, {}) == exp
 
+
+def test_build_connection_structure():
+    s = Setup()
+    r = Report(Registry(s.get_inspector()))
+    r.show = "properties"
+    r.get_connection_status = MagicMock(return_value="Expected/Pass")
+
+
+    m = s.system.mobile("Mobile App")
+    d = s.system.device("Device")
+
+    m >> d / HTTP / TLS
+
+    for c in s.get_system().get_connections():
+        c.properties = {Properties.MITM: _get_pvv(Verdict.PASS)}
+
+    assert r.build_connecion_structure(s.get_system().get_connections(), {}) == {
+        "connections": [
+            {
+                "verdict": "Expected/Pass",
+                "source": "Mobile App",
+                "target": "Device HTTP:80",
+                "srcs": [],
+                "check:mitm": {"srcs": [], "verdict": "Pass", "text": "check:mitm"}
+            },
+            {
+                "verdict": "Expected/Pass",
+                "source": "Mobile App",
+                "target": "Device TLS:443",
+                "srcs": [],
+                "check:mitm": {"srcs": [], "verdict": "Pass", "text": "check:mitm"}
+            }
+        ]
+    }
+
+
+def test_print_connection_structure():
+    r = Report(Registry(Setup().get_inspector()))
+    d = {
+        "connections": [
+            {
+                "verdict": "Expected/Pass",
+                "source": "Mobile App",
+                "target": "Device HTTP:80",
+                "srcs": ["1"],
+                "check:mitm": {"srcs": [], "verdict": "Pass", "text": "check:mitm"}
+            },
+            {
+                "verdict": "Expected/Pass",
+                "source": "Mobile App",
+                "target": "Device TLS:443",
+                "srcs": [],
+                "check:mitm": {"srcs": ["1", "2"], "verdict": "Pass", "text": "check:mitm"}
+            }
+        ]
+    }
+
+    w = _mock_writer()
+    for connection in d["connections"]:
+        r._print_connection_structure(connection, w)
+
+    assert ''.join(w.output) == \
+        "[Expected/Pass]  Mobile App                       Device HTTP:80\n" + \
+        "                 │  @1\n"                                           + \
+        "[Pass]           └──check:mitm\n"                                   + \
+        "[Expected/Pass]  Mobile App                       Device TLS:443\n" + \
+        "[Pass]           └──check:mitm\n"                                   + \
+        "                       @1\n"                                        + \
+        "                       @2\n"
