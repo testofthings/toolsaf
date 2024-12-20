@@ -30,10 +30,10 @@ class Protocol(enum.Enum):
     @classmethod
     def get_protocol(cls, value: str, default: Optional['Protocol'] = None) -> Optional['Protocol']:
         """Get protocol by name"""
-        try:
-            return cls[value.upper()] if value else default
-        except KeyError:
-            return default
+        return PROTOCOL_LOOKUP.get(value.lower(), default)
+
+# Protocol lookup dict
+PROTOCOL_LOOKUP = {p.value: p for p in Protocol}
 
 
 class AnyAddress:
