@@ -169,8 +169,14 @@ class NetworkNode(Entity):
         """Is a multicast target rather than real host?"""
         return False
 
+    @classmethod
+    def is_entity_multicast(cls, entity: Entity) -> bool:
+        """Is a multicast target rather than real host?"""
+        return isinstance(entity, NetworkNode) and entity.is_multicast()
+
     def is_relevant(self) -> bool:
         return self.status in {Status.EXPECTED, Status.UNEXPECTED}
+
 
     def is_admin(self) -> bool:
         return self.host_type == HostType.ADMINISTRATIVE
