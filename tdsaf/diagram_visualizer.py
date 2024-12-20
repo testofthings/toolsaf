@@ -1,9 +1,9 @@
-"""FIXME"""
+"""Security Statement Visualizer"""
 # pylint: disable=pointless-statement
 # pylint: disable=expression-not-assigned
 # pylint: disable=cyclic-import
 
-from typing import Self, Union, Dict
+from typing import Self, Union, Dict, List
 from urllib.request import urlretrieve
 from diagrams import Diagram, Edge, Node
 from diagrams.custom import Custom
@@ -11,6 +11,7 @@ from diagrams.aws.iot import IotSensor
 from diagrams.ibm.user import Browser
 from diagrams.generic import device, storage
 
+from tdsaf.common.verdict import Verdict
 from tdsaf.core.model import Host, HostType
 import tdsaf.builder_backend as BB
 
@@ -60,6 +61,11 @@ class DiagramVisualizer:
             self.images[name] = f"{name}.png"
         return self
 
+    def _get_hosts(self) -> List[Host]:
+        return [
+            host for host in self.system.system.get_hosts() if host.is_relevant()
+        ]
+
     def _sanitize_label(self, label: str) -> str:
         """Turn certain symbols to HTML character"""
         return label.replace("&", "&amp;")
@@ -85,9 +91,31 @@ class DiagramVisualizer:
             case HostType.REMOTE:
                 return storage.Storage
 
+    def _get_verdict_text(self, v: Verdict) -> str:
+        if v in [Verdict.PASS, Verdict.FAIL]:
+            return f"[{v.value}] "
+        return " "
+
+    def _get_label_color(self, v: Verdict) -> str:
+        if v == Verdict.PASS:
+            return "darkgreen"
+        if v == Verdict.FAIL:
+            return "darkred"
+        return "black"
+
+    def _get_node_label(self, host: Host, v: Verdict) -> str:
+        if (text:=self._get_verdict_text(v)) != " ":
+            return f"<<font color='{self._get_label_color(v)}'><b>" + \
+                   f"\n\n<br/>{text}<br/>"                          + \
+                   f"{self._sanitize_label(host.name)}</b></font>>"
+
+        return f"<<font color='{self._get_label_color(v)}'><b>" + \
+               f"\n{self._sanitize_label(host.name)}</b></font>>"
+
     def _get_node(self, host: Host) -> Union[Node, None]:
         """Returns a suitable visual representation for a given Host"""
-        label = f"<<b>\n{self._sanitize_label(host.name)}</b>>"
+        v = host.get_verdict({})
+        label = self._get_node_label(host, v)
         if (node := self._get_node_type(host)) is Custom:
             return node(label=label, icon_path=self.images[host.name], fontsize=self.__font_size_node)
         if node is not None:
@@ -97,8 +125,10 @@ class DiagramVisualizer:
     def _add_connections(self, host: Host) -> None:
         """Adds connections between nodes"""
         for connection in host.connections:
+            v = connection.get_verdict({})
             self.connections.add((
-                connection.source.name, connection.target.parent.name, connection.target.name, "grey"
+                connection.source.name, connection.target.parent.name,
+                f"{self._get_verdict_text(v)}{connection.target.name}", "black", self._get_label_color(v)
             ))
 
     def _add_ble_connection(self, host: Host) -> None:
@@ -107,7 +137,11 @@ class DiagramVisualizer:
             return
         s = host.connections[0].source.name
         for connection in host.connections[1:]:
-            self.connections.add((s, connection.source.name, "BLE", "blue"))
+            v = connection.get_verdict({})
+            self.connections.add((
+                s, connection.source.name, f"{self._get_verdict_text(v)}BLE",
+                "blue", self._get_label_color(v)
+            ))
 
     def create_diagram(self) -> None:
         """Execute diagram visualization and handle any exceptions"""
@@ -124,18 +158,18 @@ class DiagramVisualizer:
             name="", filename=self.filename, graph_attr=self.__graph_attr,
             show=self.show, outformat=self.outformat
         ):
-            for component in self.system.system.children:
-                if 'Bluetooth' in component.description:
-                    self._add_ble_connection(component)
+            for host in self._get_hosts():
+                if 'Bluetooth' in host.description:
+                    self._add_ble_connection(host)
                 else:
-                    self._add_connections(component)
+                    self._add_connections(host)
 
-                if (node:=self._get_node(component)) is not None:
-                    self.nodes[component.name] = node
+                if (node:=self._get_node(host)) is not None:
+                    self.nodes[host.name] = node
 
             for connection in self.connections:
-                s, t, n, c = connection
+                s, t, n, e_c, l_c = connection
                 if s in self.nodes and t in self.nodes:
-                    edge = Edge(label=f"<<b>{n}</b>>", minlen="4", style="dashed",
-                                penwidth="3", fontsize=self.__font_size_edge, color=c)
+                    edge = Edge(label=f"<<font color='{l_c}'><b>{n}</b></font>>", minlen="4", style="dashed",
+                                penwidth="3", fontsize=self.__font_size_edge, color=e_c)
                     self.nodes[s] >> edge >> self.nodes[t]
