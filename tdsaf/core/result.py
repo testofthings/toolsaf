@@ -5,13 +5,13 @@ import sys
 import shutil
 import logging
 from functools import cached_property
-from typing import TextIO, List, Dict, Tuple, Union
+from typing import TextIO, List, Dict, Tuple, Union, Any
 from colored import Fore, Style
 
 from tdsaf.common.basics import ConnectionType
 from tdsaf.common.entity import Entity
 from tdsaf.common.verdict import Verdict
-from tdsaf.core.model import Host, Connection, Addressable, NodeComponent
+from tdsaf.core.model import Host, Connection, Addressable, NodeComponent, IoTSystem
 from tdsaf.common.property import Properties, PropertyKey, PropertyVerdictValue
 from tdsaf.core.registry import Registry
 
@@ -22,7 +22,7 @@ class Report:
         self.registry = registry
         self.system = registry.system
         self.source_count = 3
-        self.show = []
+        self.show: List[str] = []
         self.no_truncate = False
         self.use_color_flag = False
         self.logger = logging.getLogger("reporter")
@@ -68,7 +68,7 @@ class Report:
         width, _ = shutil.get_terminal_size(fallback=(90, 30))
         return width
 
-    def get_system_verdict(self, cache: Dict) -> Verdict:
+    def get_system_verdict(self, cache: Dict [Entity, Verdict]) -> Verdict:
         """Get verdict for the entire system based on cached verdicts."""
         verdicts = cache.values()
         if Verdict.FAIL in verdicts:
@@ -77,7 +77,7 @@ class Report:
             return Verdict.PASS
         return Verdict.INCON
 
-    def get_verdict_color(self, verdict: any) -> str:
+    def get_verdict_color(self, verdict: Union[Verdict, str]) -> str:
         """Returns color value for Verdict or string"""
         if isinstance(verdict, Verdict):
             if verdict == Verdict.INCON:
@@ -116,7 +116,8 @@ class Report:
 
         return list(sources)[:self.source_count]
 
-    def get_properties_to_print(self, entity: Union[Host, Addressable, NodeComponent, Connection]) -> List[Tuple]:
+    def get_properties_to_print(self, entity: Union[IoTSystem, Host, Addressable, NodeComponent, Connection]) \
+                                -> List[Tuple[PropertyKey, Any]]:
         """Retuns properties that should be printed and the number of properties"""
         property_items = [(key, value) for key, value in entity.properties.items() if key!=Properties.EXPECTED]
         if self.show_all:
@@ -138,7 +139,7 @@ class Report:
         addresses = [address for address in addresses if address != host.name]
         return ", ".join(addresses)
 
-    def _get_text(self, key: PropertyKey, value: any) -> str:
+    def _get_text(self, key: PropertyKey, value: Any) -> str:
         """Get text to print"""
         value_string = key.get_value_string(value)
         comment = key.get_explanation(value)
@@ -147,7 +148,8 @@ class Report:
             value_string = value_string.split("=")[0]
         return f"{value_string}{comment}"
 
-    def _get_properties(self, entity: Union[Host, Addressable, NodeComponent, Connection]) -> Dict:
+    def _get_properties(self, entity: Union[IoTSystem, Host, Addressable, NodeComponent, Connection]) \
+                        -> Dict[str, Dict[str, Any]]:
         """Get a dictionary of properties for given entity"""
         properties = {}
         key: PropertyKey
@@ -157,7 +159,7 @@ class Report:
 
             properties[key.get_name()] = {
                 "srcs": self._get_sources(entity, key),
-                "verdict": verdict.value if verdict is not None else None,
+                "verdict": verdict.value if verdict is not None else "",
                 "text": text
             }
         return properties
@@ -175,7 +177,7 @@ class Report:
                     indent: int=17, use_bold: bool=False) -> None:
         """Prints a cropped version of given text. Adds color if verdict is given"""
         text = self._crop_text(text, lead, indent)
-        if verdict is not None:
+        if verdict:
             color = self.get_verdict_color(verdict)
             if use_bold:
                 text = self.bold + text
@@ -185,16 +187,16 @@ class Report:
         else:
             writer.write(f"{'':<{indent}}{lead}{text}\n")
 
-    def _get_sub_structure(self, entity: Union[Host, Addressable, NodeComponent]) -> Dict:
+    def _get_sub_structure(self, entity: Union[Host, Addressable, NodeComponent]) -> Dict[str, Any]:
         """Get sub structure based on given entity"""
         return {
             "srcs": self._get_sources(entity),
             "verdict": entity.status_string(),
-            "address": self._get_addresses(entity) if isinstance(entity, Host) else None,
+            "address": self._get_addresses(entity) if isinstance(entity, Host) else "",
             **self._get_properties(entity)
         }
 
-    def build_host_structure(self, entities: List[Host]) -> Dict:
+    def build_host_structure(self, entities: List[Host]) -> Dict[str, Dict[str, Any]]:
         """Build printable host and service tree structure"""
         structure = {}
 
@@ -209,7 +211,7 @@ class Report:
 
         return structure
 
-    def _print_host_structure(self, level: int, structure: Dict, writer: TextIO,
+    def _print_host_structure(self, level: int, structure: Dict[str, Any], writer: TextIO,
                               lead: str="", parent_has_next: bool=False) -> None:
         """Print given host and service tree structure"""
         for index, entry in enumerate(structure):
@@ -229,10 +231,10 @@ class Report:
                 current_lead = lead[:-3] + symbol
                 text = structure[entry]["text"] if "text" in structure[entry] else entry
 
-                if verdict is not None:
+                if verdict:
                     self._print_text(text, verdict, current_lead, writer)
                 else:
-                    self._print_text(text, None, current_lead, writer)
+                    self._print_text(text, "", current_lead, writer)
 
                 # Check entity relations
                 parent_has_next = any(
@@ -270,12 +272,12 @@ class Report:
 
                 if entry == "srcs":
                     for source in structure[entry]:
-                        self._print_text(f"@{source}", None, current_lead, writer)
+                        self._print_text(f"@{source}", "", current_lead, writer)
 
-                if entry == "address" and structure[entry] is not None:
-                    self._print_text(f"Addresses: {structure[entry]}", None, current_lead, writer)
+                if entry == "address" and structure[entry]:
+                    self._print_text(f"Addresses: {structure[entry]}", "", current_lead, writer)
 
-    def get_connection_status(self, connection: Connection, cache: Dict) -> str:
+    def get_connection_status(self, connection: Connection, cache: Dict [Entity, Verdict]) -> str:
         """Returns status string for a connection"""
         if connection.con_type == ConnectionType.LOGICAL:
             return connection.con_type.value
@@ -284,9 +286,9 @@ class Report:
             return connection.status.value
         return f"{connection.status.value}/{verdict.value}"
 
-    def build_connection_structure(self, connections: List[Connection], cache: Dict) -> Dict:
+    def build_connection_structure(self, connections: List[Connection], cache: Dict[Entity, Verdict]) -> Dict[str, Any]:
         """Build a printable tree structure out of given connections"""
-        structure = {"connections": []}
+        structure: Dict[str, List[Dict[str, Any]]] = {"connections": []}
         for connection in connections:
             structure["connections"].append({
                 "verdict": self.get_connection_status(connection, cache),
@@ -297,7 +299,8 @@ class Report:
             })
         return structure
 
-    def _print_connection_structure(self, structure: Dict, writer: TextIO, lead: str="", symbol: str="") -> None:
+    def _print_connection_structure(self, structure: Dict[str, Any], writer: TextIO,
+                                    lead: str="", symbol: str="") -> None:
         """Print given connection tree structure"""
         verdict = structure['verdict']
         children = [key for key in structure if isinstance(structure[key], dict)]
@@ -309,13 +312,13 @@ class Report:
 
         current_lead = lead + "│  " if children else lead + "   "
         for source in structure["srcs"]:
-            self._print_text(f"@{source}", None, current_lead, writer)
+            self._print_text(f"@{source}", "", current_lead, writer)
 
         for child in children:
             symbol = "├──" if child != children[-1] else "└──"
             self._print_connection_structure(structure[child], writer, lead=lead + "   ", symbol=symbol)
 
-    def print_report(self, writer: TextIO):
+    def print_report(self, writer: TextIO) -> None:
         """Print textual report"""
         cache: Dict[Entity, Verdict] = {}
         relevant_only = not (self.show_all or (self.show and "irrelevant" in self.show))
@@ -347,5 +350,5 @@ class Report:
         )
 
         connection_structure = self.build_connection_structure(connections, cache)
-        for connection in connection_structure["connections"]:
-            self._print_connection_structure(connection, writer)
+        for structure in connection_structure["connections"]:
+            self._print_connection_structure(structure, writer)

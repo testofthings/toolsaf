@@ -230,7 +230,7 @@ def test_get_sub_structure():
     assert report._get_sub_structure(entity) == {
         "srcs": [1, 2],
         "verdict": "Expected/Pass",
-        "address": None,
+        "address": "",
         "test1": {"a": 1},
         "test2": {"b": 2}
     }
@@ -259,13 +259,13 @@ def test_build_host_structure():
             "srcs": ["@1", "@2"], "address": "Mobile_App", "verdict": "Expected/Pass",
             "check:mitm": {"srcs": ["@1", "@2"], "verdict": "Pass", "text": "check:mitm"},
             "Test [Component]": {
-                "srcs": ["@1", "@2"], "address": None, "verdict": "Expected",
+                "srcs": ["@1", "@2"], "address": "", "verdict": "Expected",
                 "check:fuzz": {"srcs": ["@1", "@2"], "verdict": "Fail", "text": "check:fuzz"},
             },
         },
         "Device": {
             "srcs": ["@1", "@2"], "address": "", "verdict": "Expected",
-            "HTTP:80": {"srcs": ["@1", "@2"], "address": None, "verdict": "Expected"},
+            "HTTP:80": {"srcs": ["@1", "@2"], "address": "", "verdict": "Expected"},
         }
     }
 
@@ -277,13 +277,14 @@ def test_print_host_structure():
             "srcs": [], "address": "Mobile_App", "verdict": "Expected/Pass",
             "check:mitm": {"srcs": [], "verdict": "Pass", "text": "check:mitm"},
             "Test [Component]": {
-                "srcs": ["1", "2"], "address": None, "verdict": "Expected",
+                "srcs": ["1", "2"], "address": "", "verdict": "Expected",
                 "check:fuzz": {"srcs": [], "verdict": "Fail", "text": "check:fuzz"},
             },
         },
         "Device": {
             "srcs": ["1", "2"], "address": "Device", "verdict": "Expected",
-            "HTTP:80": {"srcs": ["1", "2"], "address": None, "verdict": "Expected"},
+            "HTTP:80": {"srcs": ["1", "2"], "address": "", "verdict": "Expected"},
+            "TLS:443": {"srcs": [], "address": "", "verdict": ""},
         }
     }
 
@@ -302,9 +303,10 @@ def test_print_host_structure():
         "                    │  @1\n"                     + \
         "                    │  @2\n"                     + \
         "                    │  Addresses: Device\n"      + \
-        "[Expected]          └──HTTP:80\n"                + \
-        "                          @1\n"                  + \
-        "                          @2\n"
+        "[Expected]          ├──HTTP:80\n"                + \
+        "                    │     @1\n"                  + \
+        "                    │     @2\n"                  + \
+        "                    └──TLS:443\n"
 
 
 @pytest.mark.parametrize(
