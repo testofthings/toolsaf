@@ -1,5 +1,5 @@
 from ipaddress import IPv4Network
-from tdsaf.common.address import AddressEnvelope, Addresses, DNSName, EndpointAddress, HWAddress, HWAddresses, IPAddress, IPAddresses, Network, Protocol
+from tdsaf.common.address import AddressEnvelope, Addresses, DNSName, EndpointAddress, EntityTag, HWAddress, HWAddresses, IPAddress, IPAddresses, Network, Protocol
 
 
 def test_hw_address():
@@ -79,6 +79,11 @@ def test_parse_endpoint_address():
     assert a.get_host() == HWAddress.new("01:02:03:04:05:06")
     assert a.protocol == Protocol.HTTP
     assert a.port == -1
+
+    ad = EndpointAddress(EntityTag.new("xxx"), Protocol.ETHERNET, 35000)
+    assert f"{ad}" == "xxx/eth:35000"
+    ad2 = Addresses.parse_endpoint(ad.get_parseable_value())
+    assert ad == ad2
 
 
 def test_hw_address_generation():
