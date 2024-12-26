@@ -179,6 +179,7 @@ class BatchImporter:
 class FileMetaInfo:
     """Batch file information."""
     def __init__(self, label="", file_type="", parent: Optional['FileMetaInfo'] = None) -> None:
+        self.name = label
         self.label = label
         self.file_load_order: List[str] = []
         self.file_type = file_type
@@ -230,7 +231,9 @@ class BatchData:
         """Parse from JSON"""
         label = str(json_data.get("label", directory_name))
         file_type = json_data.get("file_type", "")
+        meta_name = json_data.get("name", label)
         info = FileMetaInfo(label, file_type, parent=parent_meta)
+        info.name = meta_name
         info.from_pipe = bool(json_data.get("from_pipe", False))
         info.load_baseline = bool(json_data.get("load_baseline", False))
         info.file_load_order = json_data.get("file_order", [])
