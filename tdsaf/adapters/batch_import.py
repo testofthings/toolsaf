@@ -10,10 +10,11 @@ from typing import Dict, List, Optional
 
 from tdsaf.common.address import Addresses, AnyAddress
 from tdsaf.common.basics import ExternalActivity
+from tdsaf.common.verdict import Verdict
 from tdsaf.core.event_interface import EventInterface
 from tdsaf.core.model import Addressable, EvidenceNetworkSource, IoTSystem, NetworkNode
 from tdsaf.adapters.tool_finder import ToolDepiction, ToolFinder
-from tdsaf.common.traffic import EvidenceSource
+from tdsaf.common.traffic import Evidence, EvidenceSource
 
 
 class BatchImporter:
@@ -137,7 +138,7 @@ class BatchImporter:
                     return
                 reader.load_baseline = info.load_baseline or self.load_baseline
                 reader.process_file(stream, file_name, self.interface, ev)
-                data.files.append(file_path)
+                data.sources.append(ev)
                 return
 
         except Exception as e:
@@ -168,7 +169,7 @@ class BatchImporter:
                 ev.timestamp = datetime.fromtimestamp(fn.stat().st_mtime)
                 done = reader.process_file(f, fn.name, self.interface, ev)
             if done:
-                data.files.append(fn)
+                data.sources.append(ev)
                 unmapped.remove(fn.name)
             else:
                 self.logger.info("unprocessed (%s) file %s", info.label, fn.as_posix())
@@ -214,7 +215,8 @@ class BatchData:
         self.sub_data: List[BatchData] = []
         self.address_map: Dict[AnyAddress, Addressable] = {}
         self.activity_map: Dict[NetworkNode, ExternalActivity] = {}
-        self.files: List[pathlib.Path] = []
+        self.sources: List[EvidenceSource] = []
+        self.verdicts: Dict[Evidence, Verdict] = {}
 
     def __repr__(self) -> str:
         return str(self.meta_info)

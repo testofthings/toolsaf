@@ -4,7 +4,7 @@ from logging import Logger
 import logging
 from typing import Any, List, Set, Tuple, Dict, Optional, cast
 from tdsaf.common.address import AnyAddress
-from tdsaf.common.verdict import Verdict
+from tdsaf.common.verdict import Verdict, Verdictable
 
 from tdsaf.common.entity import Entity
 from tdsaf.core.event_interface import EventInterface, PropertyEvent, PropertyAddressEvent
@@ -12,7 +12,7 @@ from tdsaf.core.inspector import Inspector
 from tdsaf.core.model import IoTSystem, Connection, Host, ModelListener, Service
 from tdsaf.common.property import Properties, PropertyKey
 from tdsaf.core.services import NameEvent
-from tdsaf.common.traffic import EvidenceSource, HostScan, ServiceScan, Flow, Event
+from tdsaf.common.traffic import Evidence, EvidenceSource, HostScan, ServiceScan, Flow, Event
 
 
 class LoggingEvent:
@@ -28,6 +28,16 @@ class LoggingEvent:
         if entity is not None:
             self.entity = entity
             self.verdict = Properties.EXPECTED.get_verdict(entity.properties) or Verdict.INCON
+
+    def resolve_verdict(self) -> Verdict:
+        """Resolve verdict"""
+        if self.verdict != Verdict.INCON:
+            return self.verdict
+        if self.property_value:
+            value = self.property_value[1]
+            if isinstance(value, Verdictable):
+                return value.get_verdict()
+        return Verdict.INCON
 
     def get_value_string(self) -> str:
         """Get value as string"""
@@ -220,4 +230,16 @@ class EventLogger(EventInterface, ModelListener):
         for lo in self.logs:
             for p in lo.get_properties():
                 r.setdefault(p, {}).setdefault(lo.event.evidence.source, []).append(lo.entity)
+        return r
+
+    def collect_batch_verdicts(self) -> Dict[EvidenceSource, Dict[Evidence, Verdict]]:
+        """Collect batch verdicts"""
+        r = {}
+        for lo in self.logs:
+            ver = lo.resolve_verdict()
+            if ver == Verdict.INCON:
+                continue
+            ev = lo.event
+            r_source = r.setdefault(ev.evidence.source, {})
+            r_source[ev.evidence] = ver
         return r

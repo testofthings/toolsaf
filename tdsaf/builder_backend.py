@@ -21,6 +21,7 @@ from tdsaf.common.entity import ClaimAuthority, Entity
 from tdsaf.core.event_interface import PropertyEvent
 from tdsaf.common.release_info import ReleaseInfo
 from tdsaf.common.property import PropertyVerdictValue
+from tdsaf.core.event_logger import EventLogger
 from tdsaf.http_server import HTTPServerRunner
 from tdsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP, IP, TLS,
                         BLEAdvertisement, ClaimBuilder, ClaimSetBuilder, ConnectionBuilder,
@@ -1110,6 +1111,21 @@ class LoadedData:
         self.system = system
         self.batches = batches
 
+    def harvest_batch_evidence(self, logger: EventLogger):
+        """Harvest evidence for batch data"""
+        results = logger.collect_batch_verdicts()
+
+        def harvest(batch: BatchData):
+            for src in batch.sources:
+                src_res = results.get(src)
+                if src_res:
+                    batch.verdicts.update(src_res)
+            for sub in batch.sub_data:
+                harvest(sub)
+
+        for batch in self.batches:
+            harvest(batch)
+
 class SystemBackendRunner(SystemBackend):
     """Backend for system builder"""
 
@@ -1208,6 +1224,7 @@ class SystemBackendRunner(SystemBackend):
                 sub.load(registry, label_filter=label_filter)
 
         load_data = LoadedData(self.system, batch_import.batch_data)
+        load_data.harvest_batch_evidence(registry.logging)
 
         api = VisualizerAPI(registry, self.visualizer)
         if args.test_post:
