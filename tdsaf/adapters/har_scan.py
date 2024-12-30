@@ -4,7 +4,7 @@ from io import BytesIO
 import json
 import urllib.parse
 from datetime import datetime
-from typing import cast
+from typing import cast, Union
 
 from tdsaf.common.address import EndpointAddress, DNSName, Protocol
 from tdsaf.core.components import Cookies, CookieData
@@ -25,7 +25,8 @@ class HARScan(NetworkNodeTool):
     def filter_node(self, node: NetworkNode) -> bool:
         return isinstance(node, Host)
 
-    def process_node(self, node: NetworkNode, data_file: BytesIO, interface: EventInterface, source: EvidenceSource):
+    def process_node(self, node: NetworkNode, data_file: BytesIO, interface: EventInterface,
+                     source: EvidenceSource) -> None:
         host = cast(Host, node)
 
         component = Cookies.cookies_for(host)
@@ -54,6 +55,7 @@ class HARScan(NetworkNodeTool):
 
             request = raw["request"]
             req_url = request["url"]
+            cookie: Union[CookieData, None]
             for raw_c in request.get("cookies"):
                 name = decode(raw_c["name"])
                 p_key = PropertyKey("cookie", name)
@@ -96,8 +98,9 @@ class HARScan(NetworkNodeTool):
                 ru = urllib.parse.urlparse(req_url)
                 ep = EndpointAddress(DNSName.name_or_ip(str(ru.hostname)), Protocol.TCP, ru.port or 80)
                 txt = f"{response.get('status', '?')} {response.get('statusText', '?')}"
-                ev = PropertyAddressEvent(evidence, ep, Properties.HTTP_REDIRECT.verdict(Verdict.PASS, txt))
-                interface.property_address_update(ev)
+                interface.property_address_update(
+                    PropertyAddressEvent(evidence, ep, Properties.HTTP_REDIRECT.verdict(Verdict.PASS, txt))
+                )
 
         for n, cookie in component.cookies.items():
             if n in unseen:

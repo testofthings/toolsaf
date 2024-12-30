@@ -1,6 +1,6 @@
 """Mitmproxy log reader"""
 
-from io import BytesIO, TextIOWrapper
+from io import BufferedReader, TextIOWrapper
 import re
 
 from tdsaf.common.address import DNSName, HWAddresses
@@ -20,7 +20,8 @@ class MITMLogReader(SystemWideTool):
         self.tool.name = "MITM tool"
         self.data_file_suffix = ".log"
 
-    def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource) -> bool:
+    def process_file(self, data: BufferedReader, file_name: str, interface: EventInterface,
+                     source: EvidenceSource) -> bool:
         """Read a log file"""
         evidence = Evidence(source)
         names = set()
@@ -58,7 +59,7 @@ class MITMLogReader(SystemWideTool):
                 flow = IPFlow.tcp_flow(
                     # we do not know HW addresses from the log
                     HWAddresses.NULL.data, s_add, int(s_port),
-                    HWAddresses.NULL.data, d_add, int(d_port))
+                    HWAddresses.NULL.data, d_add, int(d_port)) # type: ignore[arg-type]
                 flow.evidence = evidence
                 if d:
                     # learn SNI, no peers in event, the connection will be UNEXPECTED if it is not expected

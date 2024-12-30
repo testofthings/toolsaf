@@ -25,34 +25,34 @@ class ReleaseReader(NodeComponentTool):
         return isinstance(component, Software)
 
     def process_component(self, component: NodeComponent, data_file: BytesIO, interface: EventInterface,
-                       source: EvidenceSource):
+                       source: EvidenceSource) -> None:
         software = cast(Software, component)
 
         root = json.load(data_file)
 
         releases: List[Tuple[datetime.datetime, str]] = []
         for rel in root:
-            ts = ReleaseInfo.parse_time(rel['published_at'][:10])
+            ts = cast(datetime.datetime, ReleaseInfo.parse_time(rel['published_at'][:10]))
             n = rel['tag_name']
             releases.append((ts, n))
         releases = sorted(releases, key=lambda r: r[0], reverse=True)
         d = []
-        for i in range(1, len(releases)):
-            d.append((releases[i - 1][0] - releases[i][0]).days)
+        for idx in range(1, len(releases)):
+            d.append((releases[idx - 1][0] - releases[idx][0]).days)
 
-        i = ReleaseInfo(software.name)
-        i.latest_release = "No releases", datetime.datetime.fromtimestamp(0)
-        i.first_release = i.latest_release
-        i.interval_days = 0
+        info = ReleaseInfo(software.name)
+        info.latest_release = "No releases", datetime.datetime.fromtimestamp(0) # type: ignore[assignment]
+        info.first_release = info.latest_release
+        info.interval_days = 0
         if releases:
-            i.latest_release = releases[0][0]
-            i.latest_release_name = releases[0][1]
-            i.first_release = releases[-1][0]
-            i.interval_days = int(mean(d))
+            info.latest_release = releases[0][0]
+            info.latest_release_name = releases[0][1]
+            info.first_release = releases[-1][0]
+            info.interval_days = int(mean(d))
 
         if self.load_baseline:
-            software.info = i
+            software.info = info
 
         if self.send_events:
-            ev = PropertyEvent(Evidence(source), software, (ReleaseInfo.PROPERTY_KEY, i))
+            ev = PropertyEvent(Evidence(source), software, (ReleaseInfo.PROPERTY_KEY, info))
             interface.property_update(ev)

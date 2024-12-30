@@ -2,7 +2,7 @@
 
 from io import BytesIO
 import json
-from typing import Dict
+from typing import Dict, Any
 
 from tdsaf.common.address import AnyAddress
 from tdsaf.core.event_interface import EventInterface, PropertyAddressEvent
@@ -24,12 +24,13 @@ class TestSSLScan(EndpointTool):
         return isinstance(node, Service)
 
     def process_endpoint(self,  endpoint: AnyAddress, stream: BytesIO, interface: EventInterface,
-                       source: EvidenceSource):
+                       source: EvidenceSource) -> None:
         raw = json.load(stream)
         evi = Evidence(source)
         self.do_scan(interface, endpoint, raw, evi)
 
-    def do_scan(self, event_sink: EventInterface, endpoint: AnyAddress, raw: Dict, evidence: Evidence):
+    def do_scan(self, event_sink: EventInterface, endpoint: AnyAddress, raw: Dict[str, Any],
+                evidence: Evidence) -> None:
         """Scan TLS service"""
         bp_keys = set()  # best practices
         vn_keys = set()  # vulnerabilities

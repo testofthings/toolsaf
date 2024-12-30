@@ -1,7 +1,7 @@
 """Nmap scan result XML parser"""
 
 import datetime
-from io import BytesIO
+from io import BufferedReader
 from xml.etree import ElementTree
 
 from tdsaf.common.address import IPAddress, HWAddress, EndpointAddress, Protocol
@@ -18,14 +18,15 @@ class NMAPScan(SystemWideTool):
         self.tool.name = "Nmap scan"
         self.data_file_suffix = ".xml"
 
-    def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource) -> bool:
+    def process_file(self, data: BufferedReader, file_name: str, interface: EventInterface,
+                     source: EvidenceSource) -> bool:
         tree = ElementTree.parse(data)
 
         system = self.system
 
         run_stat = tree.getroot().find('runstats')
         finished_x = run_stat.find('finished')
-        source.timestamp = datetime.datetime.fromtimestamp(int(finished_x.attrib.get('time')))
+        source.timestamp = datetime.datetime.fromtimestamp(int(finished_x.attrib.get('time'))) # type: ignore[arg-type]
         evidence = Evidence(source)
 
         for host_x in tree.getroot().iter('host'):
@@ -40,9 +41,9 @@ class NMAPScan(SystemWideTool):
                 addr_type = addr_x.attrib.get('addrtype')
                 try:
                     if addr_type == 'ipv4':
-                        ip_addr = IPAddress.new(raw_addr)
+                        ip_addr = IPAddress.new(str(raw_addr))
                     elif addr_type == 'mac':
-                        hw_addr = HWAddress.new(raw_addr)
+                        hw_addr = HWAddress.new(str(raw_addr))
                     else:
                         self.logger.warning("Ignoring scanned address: %s", raw_addr)
                         continue
@@ -66,16 +67,16 @@ class NMAPScan(SystemWideTool):
             ports_x = host_x.find('ports')
             for port_x in ports_x.iter('port') or []:
                 proto = Protocol[port_x.attrib.get('protocol').upper()]
-                port = int(port_x.attrib.get('portid'))
+                port = int(port_x.attrib.get('portid')) # type: ignore[arg-type]
                 service_x = port_x.find("service")
-                ad = EndpointAddress(ip_addr, proto, port)
+                ad = EndpointAddress(ip_addr, proto, port) # type: ignore[arg-type]
                 ad_name = service_x.attrib.get('name') if service_x is not None and 'name' in service_x.attrib else ""
                 scan = ServiceScan(evidence, ad, ad_name)
                 interface.service_scan(scan)
                 host_services.add(ad)
 
             # summarize the seen ports
-            scan = HostScan(evidence, ip_addr or hw_addr, host_services)
-            interface.host_scan(scan)
+            host_scan = HostScan(evidence, ip_addr or hw_addr, host_services) # type: ignore[arg-type]
+            interface.host_scan(host_scan)
 
         return True

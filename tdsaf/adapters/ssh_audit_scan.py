@@ -2,7 +2,7 @@
 
 from io import BytesIO
 import json
-from typing import Dict
+from typing import Dict, Set
 
 from tdsaf.common.address import AnyAddress, Protocol
 from tdsaf.core.event_interface import PropertyAddressEvent, EventInterface
@@ -26,7 +26,7 @@ class SSHAuditScan(EndpointTool):
         return node.protocol == Protocol.SSH
 
     def process_endpoint(self, endpoint: AnyAddress, stream: BytesIO, interface: EventInterface,
-                       source: EvidenceSource):
+                       source: EvidenceSource) -> None:
         """Scan network node"""
         raw = json.load(stream)
 
@@ -35,7 +35,7 @@ class SSHAuditScan(EndpointTool):
         # NOTE: There would be CVEs to collect, if someone listens for them!
         issues = {}
 
-        def make_issue(op: str, kind: str, item: Dict):
+        def make_issue(op: str, kind: str, item: Dict[str, str]) -> None:
             op_s = "Change" if op == "chg" else "Delete"
             key = PropertyKey(self.tool_label, op, kind, item['name'])
             issues[key] = f"{op_s} {kind} {item['name']}"
@@ -46,8 +46,8 @@ class SSHAuditScan(EndpointTool):
                 for i in items:
                     make_issue(op, kind, i)
 
-        bp_keys = set()  # best practices
-        vn_keys = set()  # vulnerabilities (none)
+        bp_keys: Set[PropertyKey] = set()  # best practices
+        vn_keys: Set[PropertyKey] = set()  # vulnerabilities (none)
         for key, exp in issues.items():
             self.logger.info("SSH issue %s: %s", key, exp)
             ev = PropertyAddressEvent(evidence, endpoint, key.verdict(Verdict.FAIL, f"{self.tool.name}: {exp}"))

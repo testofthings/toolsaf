@@ -1,6 +1,7 @@
 """Base classes for tool integration"""
+# mypy: disable-error-code="arg-type,assignment"
 
-from io import BytesIO
+from io import BufferedReader
 import json
 import logging
 from typing import Optional, Dict
@@ -15,7 +16,7 @@ from tdsaf.common.basics import Status
 
 class ToolAdapter:
     """Security tool adapter base class"""
-    def __init__(self, tool_label: str, system: IoTSystem):
+    def __init__(self, tool_label: str, system: IoTSystem) -> None:
         self.tool_label = tool_label
         self.tool = Tool(tool_label)  # human readable
         self.data_file_suffix = ""
@@ -25,7 +26,8 @@ class ToolAdapter:
         self.send_events = True  # True to send events to interface
         self.load_baseline = False  # True to load baseline, false to check it
 
-    def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource) -> bool:
+    def process_file(self, data: BufferedReader, file_name: str,
+                     interface: EventInterface, source: EvidenceSource) -> bool:
         """Process a tool result file or stream"""
         # Read a data file
         raise NotImplementedError(f"In {self.__class__.__name__}")
@@ -50,7 +52,8 @@ class ToolAdapter:
 class SystemWideTool(ToolAdapter):
     """Apply tool output to system as output indicates"""
 
-    def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource) -> bool:
+    def process_file(self, data: BufferedReader, file_name: str, interface: EventInterface,
+                     source: EvidenceSource) -> bool:
         raise NotImplementedError()
 
 
@@ -67,12 +70,13 @@ class EndpointTool(ToolAdapter):
         """Filter checked endpoints by the corresponding node"""
         return True
 
-    def process_endpoint(self, endpoint: AnyAddress, stream: BytesIO, interface: EventInterface,
-                         source: EvidenceSource):
+    def process_endpoint(self, endpoint: AnyAddress, stream: BufferedReader, interface: EventInterface,
+                         source: EvidenceSource) -> None:
         """Process result file for specific endpoint"""
         raise NotImplementedError()
 
-    def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource):
+    def process_file(self, data: BufferedReader, file_name: str, interface: EventInterface,
+                     source: EvidenceSource) -> bool:
         key = self.file_name_map.get(file_name)
         if key:
             self.logger.info("processing (%s) %s", source.label, file_name)
@@ -81,7 +85,7 @@ class EndpointTool(ToolAdapter):
             return True
         return False
 
-    def create_file_name_map(self):
+    def create_file_name_map(self) -> None:
         """Create file name map"""
         for host in self.system.get_hosts(include_external=False):
             if host.status != Status.EXPECTED:
@@ -96,7 +100,7 @@ class EndpointTool(ToolAdapter):
                 if self.filter_node(s):
                     self.map_addressable(s)
 
-    def map_addressable(self, entity: Addressable):
+    def map_addressable(self, entity: Addressable) -> None:
         """Map addressable entity to file names"""
         # First pass is Tags, DNS names, then IP addresses
         addresses = entity.get_addresses()
@@ -111,7 +115,7 @@ class EndpointTool(ToolAdapter):
 
 class NetworkNodeTool(ToolAdapter):
     """Tool applies to network nodes"""
-    def __init__(self, tool_label: str, data_file_suffix: str, system: IoTSystem):
+    def __init__(self, tool_label: str, data_file_suffix: str, system: IoTSystem) -> None:
         super().__init__(tool_label, system)
         self.data_file_suffix = data_file_suffix
         self.file_name_map: Dict[str, NetworkNode] = {}
@@ -121,11 +125,13 @@ class NetworkNodeTool(ToolAdapter):
         """Filter checked nodes"""
         return True
 
-    def process_node(self, node: NetworkNode, data_file: BytesIO, interface: EventInterface, source: EvidenceSource):
+    def process_node(self, node: NetworkNode, data_file: BufferedReader, interface: EventInterface,
+                     source: EvidenceSource) -> None:
         """Process file for specific network node"""
         raise NotImplementedError()
 
-    def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource):
+    def process_file(self, data: BufferedReader, file_name: str, interface: EventInterface,
+                     source: EvidenceSource) -> bool:
         key = self.file_name_map.get(file_name)
         if key:
             self.logger.info("processing (%s) %s", source.label, file_name)
@@ -133,11 +139,11 @@ class NetworkNodeTool(ToolAdapter):
             return True
         return False
 
-    def create_file_name_map(self):
+    def create_file_name_map(self) -> None:
         """Create file name map"""
         tool = self
 
-        def check_component(node: NetworkNode):
+        def check_component(node: NetworkNode) -> None:
             for c in node.children:
                 if not tool.filter_node(c):
                     continue
@@ -158,12 +164,13 @@ class NodeComponentTool(ToolAdapter):
         """Filter checked components"""
         return True
 
-    def process_component(self, component: NodeComponent, data_file: BytesIO, interface: EventInterface,
-                          source: EvidenceSource):
+    def process_component(self, component: NodeComponent, data_file: BufferedReader, interface: EventInterface,
+                          source: EvidenceSource) -> None:
         """Process file for specific component"""
         raise NotImplementedError()
 
-    def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource):
+    def process_file(self, data: BufferedReader, file_name: str, interface: EventInterface,
+                     source: EvidenceSource) -> bool:
         key = self.file_name_map.get(file_name)
         if key:
             self.logger.info("processing (%s) %s", source.label, file_name)
@@ -172,11 +179,11 @@ class NodeComponentTool(ToolAdapter):
             return True
         return False
 
-    def _create_file_name_map(self):
+    def _create_file_name_map(self) -> None:
         """Create file name map"""
         tool = self
 
-        def check_component(node: NetworkNode):
+        def check_component(node: NetworkNode) -> None:
             for c in node.components:
                 if not tool.filter_component(c):
                     continue
@@ -188,13 +195,15 @@ class NodeComponentTool(ToolAdapter):
 
 class SimpleFlowTool(SystemWideTool):
     """Simple flow tool powered by list of flows"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("flow", system)
         self.tool.name = "JSON flow reader"
 
-    def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource) -> bool:
+    def process_file(self, data: BufferedReader, file_name: str, interface: EventInterface,
+                     source: EvidenceSource) -> bool:
         raw_json = json.load(data)
         for raw_flow in raw_json.get("flows", []):
             flow = IPFlow.parse_from_json(raw_flow)
             flow.evidence = Evidence(source)
             interface.connection(flow)
+        return True

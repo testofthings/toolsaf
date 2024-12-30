@@ -2,7 +2,8 @@
 
 import json
 from zipfile import ZipFile
-from io import BytesIO
+from io import BufferedReader
+from typing import Set, Tuple
 
 from tdsaf.common.address import HWAddresses
 from tdsaf.core.event_interface import EventInterface
@@ -20,10 +21,11 @@ class CertMITMReader(SystemWideTool):
         self.tool.name = "certmitm tool"
         self.data_file_suffix = ".zip"
 
-    def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource) -> bool:
+    def process_file(self, data: BufferedReader, file_name: str, interface: EventInterface,
+                     source: EvidenceSource) -> bool:
         """Read log file"""
         evidence = Evidence(source)
-        connections = set()
+        connections: Set[Tuple[str, str, str]] = set()
 
         # certmitm stores found issues in JSON format to errors.txt
         with ZipFile(data) as zip_file:
@@ -34,11 +36,11 @@ class CertMITMReader(SystemWideTool):
                             conn = json.loads(conn)
                             connections.add((conn['client'], conn['destination']['ip'], conn['destination']['port']))
 
-        for conn in connections:
-            source, target, port = conn
+        for connection in connections:
+            connection_source, target, port = connection
             flow = IPFlow.tcp_flow(
-                HWAddresses.NULL.data, source, 0,
-                HWAddresses.NULL.data, target, int(port))
+                HWAddresses.NULL.data, connection_source, 0,
+                HWAddresses.NULL.data, target, int(port)) # type: ignore[arg-type]
             flow.evidence = evidence
             Properties.MITM.put_verdict(flow.properties, Verdict.FAIL)
             interface.connection(flow)

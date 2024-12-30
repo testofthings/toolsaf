@@ -4,7 +4,7 @@ import json
 from io import BytesIO
 from pathlib import Path
 from xml.etree import ElementTree
-from typing import Dict
+from typing import Dict, List
 
 from tdsaf.main import ConfigurationException
 from tdsaf.common.basics import HostType
@@ -26,30 +26,29 @@ class AndroidManifestScan(EndpointTool):
         self.tool.name = "Android Manifest"
         self.categories = self.load_categories()
 
-    def load_categories(self) -> Dict:
+    def load_categories(self) -> Dict[str, List[str]]:
         """Load our Android permission category info from json"""
         data_json_path = Path(__file__).parent / "data/android_permissions.json"
         with open(data_json_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            return json.load(f) # type: ignore[no-any-return]
 
     def process_endpoint(self, endpoint: AnyAddress, stream: BytesIO, interface: EventInterface,
-                         source: EvidenceSource):
+                         source: EvidenceSource) -> None:
         node = self.system.get_endpoint(endpoint)
         if node.host_type != HostType.MOBILE:
             raise ConfigurationException(f"Endpoint {endpoint} is not a Mobile application!")
 
-        software = Software.list_software(node)
-        if len(software) != 1:
+        if len(all_software := Software.list_software(node)) != 1:
             raise ConfigurationException(
-                f"Endpoint {endpoint} needs to have 1 SW component only. Current number is {len(software)}!")
-        software = software[0]
+                f"Endpoint {endpoint} needs to have 1 SW component only. Current number is {len(all_software)}!")
+        software = all_software[0]
 
         evidence = Evidence(source)
 
         tree = ElementTree.parse(stream)
         key_set = set()
         for uses_p in tree.getroot().iter('uses-permission'):
-            name = uses_p.attrib.get("{http://schemas.android.com/apk/res/android}name")
+            name = str(uses_p.attrib.get("{http://schemas.android.com/apk/res/android}name"))
             if "." in name:
                 name = name[name.rindex(".") + 1:]
 

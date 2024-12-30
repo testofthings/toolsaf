@@ -46,7 +46,7 @@ class SPDXReader(NodeComponentTool):
         return isinstance(component, Software)
 
     def process_component(self, component: NodeComponent, data_file: BytesIO, interface: EventInterface,
-                       source: EvidenceSource):
+                       source: EvidenceSource) -> bool:
         software = cast(Software, component)
         evidence = Evidence(source)
         properties = set()

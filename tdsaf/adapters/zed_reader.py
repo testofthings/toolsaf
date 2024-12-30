@@ -3,7 +3,7 @@
 from io import BytesIO
 import json
 from datetime import datetime
-from typing import List, Set
+from typing import List, Set, Any
 
 from tdsaf.common.address import EndpointAddress, Protocol, DNSName
 from tdsaf.core.event_interface import EventInterface, PropertyAddressEvent
@@ -45,7 +45,7 @@ class ZEDReader(SystemWideTool):
 
         return True
 
-    def _read_alerts(self, interface: EventInterface, evidence: Evidence, endpoint: EndpointAddress, raw: List) \
+    def _read_alerts(self, interface: EventInterface, evidence: Evidence, endpoint: EndpointAddress, raw: List[Any]) \
             -> Set[PropertyKey]:
         ps = set()
         for raw_a in raw:

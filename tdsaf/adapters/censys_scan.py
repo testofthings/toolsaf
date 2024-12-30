@@ -5,6 +5,7 @@ from io import BytesIO
 import json
 import logging
 import pathlib
+from typing import cast
 
 from censys.search import CensysHosts
 
@@ -27,7 +28,7 @@ class CensysScan(EndpointTool):
         return isinstance(node, Host)
 
     def process_endpoint(self, endpoint: AnyAddress, stream: BytesIO, interface: EventInterface,
-                         source: EvidenceSource):
+                         source: EvidenceSource) -> None:
         raw = json.load(stream)
 
         evidence = Evidence(source)
@@ -36,7 +37,7 @@ class CensysScan(EndpointTool):
         for s in raw.get('services', []):
             service_name = s.get('service_name', '')
             protocol = Protocol.get_protocol(service_name.upper())
-            transport = Protocol.get_protocol(s.get('transport_protocol'), Protocol.ANY)
+            transport = cast(Protocol, Protocol.get_protocol(s.get('transport_protocol'), Protocol.ANY))
             port = int(s['port'])
 
             self.logger.info("%s %s %d: %s", endpoint, transport, port, service_name)

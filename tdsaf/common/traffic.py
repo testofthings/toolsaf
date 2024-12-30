@@ -33,7 +33,7 @@ class EvidenceSource:
         """Get extra data as JSON"""
         return {}
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.name} {self.base_ref}"
 
 
@@ -47,7 +47,7 @@ class Evidence:
         """Get full reference"""
         return self.source.base_ref + self.tail_ref
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.source.name} {self.get_reference()}"
 
 
@@ -336,8 +336,8 @@ class IPFlow(Flow):
                       target=(HWAddress.new(target_hw), IPAddress.new(target_ip), target_port), protocol=Protocol.UDP)
 
     @classmethod
-    def tcp_flow(cls, source_hw=HWAddresses.NULL.data, source_ip="0.0.0.0", source_port=0,
-                 target_hw=HWAddresses.NULL.data, target_ip="0.0.0.0", target_port=0):
+    def tcp_flow(cls, source_hw: str=HWAddresses.NULL.data, source_ip: str="0.0.0.0", source_port: int=0,
+                 target_hw: str=HWAddresses.NULL.data, target_ip: str="0.0.0.0", target_port: str=0):
         """New TCP flow with both endpoints"""
         return IPFlow(NO_EVIDENCE, source=(HWAddress.new(source_hw), IPAddress.new(source_ip), source_port),
                       target=(HWAddress.new(target_hw), IPAddress.new(target_ip), target_port), protocol=Protocol.TCP)

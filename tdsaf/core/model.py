@@ -513,7 +513,7 @@ class Service(Addressable):
 
 class IoTSystem(NetworkNode):
     """An IoT system"""
-    def __init__(self, name="IoT system"):
+    def __init__(self, name="IoT system") -> None:
         super().__init__(name)
         self.concept_name = "system"
         self.status = Status.EXPECTED
