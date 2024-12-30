@@ -12,7 +12,8 @@ from diagrams.ibm.user import Browser
 from diagrams.generic import device, storage
 
 from tdsaf.common.verdict import Verdict
-from tdsaf.core.model import Host, HostType
+from tdsaf.common.basics import HostType
+from tdsaf.core.model import Host
 import tdsaf.builder_backend as BB
 
 
@@ -39,7 +40,7 @@ class DiagramVisualizer:
         if create_diagram is not None and show_diagram is not None:
             self.outformat = next((format for format in [create_diagram, show_diagram] if format != "png"), "png")
         else:
-            self.outformat = show_diagram if show_diagram is not None else create_diagram
+            self.outformat = str(show_diagram or create_diagram)
 
     def set_file_name(self, file_name: str = "") -> None:
         """Set filename for created diagram. Default is the system's name"""
@@ -127,6 +128,8 @@ class DiagramVisualizer:
     def _add_connections(self, host: Host) -> None:
         """Adds connections between nodes"""
         for connection in host.connections:
+            if connection.target.parent is None:
+                continue
             verdict = connection.get_verdict({})
             self.connections.add((
                 connection.source.name, connection.target.parent.name,

@@ -153,7 +153,7 @@ class NetworkNode(Entity):
             if c.status != Status.PLACEHOLDER:
                 yield c
 
-    def long_name(self):
+    def long_name(self) -> str:
         """Get longer name, or at least the name"""
         return self.name
 
