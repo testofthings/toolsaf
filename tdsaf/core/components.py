@@ -9,8 +9,8 @@ from tdsaf.core.model import IoTSystem, NodeComponent, Connection, NetworkNode, 
 
 class Software(NodeComponent):
     """Software, firmware, etc. Each real host has one or more software components."""
-    def __init__(self, entity: NetworkNode, name: str = None):
-        super().__init__(entity, self.default_name(entity) if name is None else name)
+    def __init__(self, entity: NetworkNode, name: str = "") -> None:
+        super().__init__(entity, name if name else self.default_name(entity))
         self.concept_name = "software"
         self.info = ReleaseInfo(self.name)
         self.components: Dict[str, SoftwareComponent] = {}
@@ -22,10 +22,10 @@ class Software(NodeComponent):
         """Default SW name"""
         return f"{entity.long_name()} SW"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.name}\n{self.info_string()}"
 
-    def reset(self):
+    def reset(self) -> None:
         super().reset()
         self.info = ReleaseInfo(self.name)
 
@@ -40,14 +40,14 @@ class Software(NodeComponent):
             s.append(f"Mean update interval {i.interval_days} days")
         return "\n".join(s)
 
-    def get_host(self) -> Host:
+    def get_host(self) -> Optional[Host]:
         """Software always has host"""
         host = self.entity
         assert isinstance(host, Addressable)
         return host.get_parent_host()
 
     @classmethod
-    def ensure_default_software(cls, entity: Host):
+    def ensure_default_software(cls, entity: Host) -> None:
         """Ensure host has at least the default software"""
         for s in entity.components:
             if isinstance(s, Software):
@@ -61,7 +61,7 @@ class Software(NodeComponent):
         return r
 
     @classmethod
-    def get_software(cls, entity: NetworkNode, name="") -> Optional['Software']:
+    def get_software(cls, entity: NetworkNode, name: str="") -> Optional['Software']:
         """Find software, first or by name"""
         for s in entity.components:
             if not isinstance(s, Software):
@@ -81,7 +81,7 @@ class CookieData:
 
 class Cookies(NodeComponent):
     """Browser cookies"""
-    def __init__(self, entity: NetworkNode, name="Cookies"):
+    def __init__(self, entity: NetworkNode, name: str="Cookies") -> None:
         super().__init__(entity, name)
         self.concept_name = "cookies"
         self.cookies: Dict[str, CookieData] = {}
@@ -106,13 +106,13 @@ class SoftwareComponent:
 
 class OperatingSystem(NodeComponent):
     """Operating system"""
-    def __init__(self, entity: NetworkNode):
+    def __init__(self, entity: NetworkNode) -> None:
         super().__init__(entity, "OS")
         self.concept_name = "os"
         self.process_map: Dict[str, List[str]] = {}  # owner: process names
 
     @classmethod
-    def get_os(cls, entity: NetworkNode, add=True) -> Optional['OperatingSystem']:
+    def get_os(cls, entity: NetworkNode, add: bool=True) -> Optional['OperatingSystem']:
         """Get the OS for network node"""
         for c in entity.components:
             if isinstance(c, OperatingSystem):
@@ -126,10 +126,10 @@ class OperatingSystem(NodeComponent):
 
 class StoredData(NodeComponent):
     """Critical data stored in IoT system or network node"""
-    def __init__(self, entity: NetworkNode):
+    def __init__(self, entity: NetworkNode) -> None:
         super().__init__(entity, "Stored critical data")
         self.concept_name = "stored-data"
-        self.sub_components: List[DataReference] = []
+        self.sub_components: List[DataReference] = [] # type: ignore[assignment]
 
     @classmethod
     def get_data(cls, entity: NetworkNode) -> 'StoredData':
@@ -151,7 +151,7 @@ class StoredData(NodeComponent):
 
 class DataReference(NodeComponent):
     """Critical data reference"""
-    def __init__(self, entity: NetworkNode, data: SensitiveData):
+    def __init__(self, entity: NetworkNode, data: SensitiveData) -> None:
         super().__init__(entity, data.name)
         self.concept_name = "data"
         self.data = data

@@ -1,4 +1,5 @@
 """Match events into system model"""
+# mypy: disable-error-code="var-annotated,assignment,arg-type,list-item"
 
 import itertools
 from typing import Self, Tuple, Dict, Optional, Set, List, Iterable
@@ -13,19 +14,19 @@ from tdsaf.common.verdict import Verdict
 
 class SystemMatcher(ModelListener):
     """Match system model"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         self.system = system
         self.engines: Dict[EvidenceSource, MatchEngine] = {}
         self.host_addresses = {c: c.addresses.copy() for c in system.children}
         system.model_listeners.append(self)
 
-    def reset(self) -> 'SystemMatcher':
+    def reset(self) -> Self:
         """Reset the model"""
         self.engines.clear()
         self.system.reset()
         return self
 
-    def address_change(self, host: Host):
+    def address_change(self, host: Host) -> None:
         ads = self.host_addresses.get(host, set())
         dns = any(isinstance(a, DNSName) for a in host.addresses)
         if not dns or ads == host.addresses:
@@ -62,7 +63,7 @@ class SystemMatcher(ModelListener):
 
 class MatchFlow:
     """Flow to match"""
-    def __init__(self, flow: Flow):
+    def __init__(self, flow: Flow) -> None:
         self.flow = flow
         source = flow.evidence.source
         self.address_map: Dict[AnyAddress, Addressable] = {}
@@ -72,30 +73,30 @@ class MatchFlow:
         # cache endpoint match results
         self.cache: Dict[Tuple[Addressable, bool], bool] = {}
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.flow.__repr__()
 
 
 class AddressMatch:
     """A match to address and endpoint"""
-    def __init__(self, address: AnyAddress, endpoint: 'MatchEndpoint'):
+    def __init__(self, address: AnyAddress, endpoint: 'MatchEndpoint') -> None:
         assert isinstance(address, EndpointAddress)
         self.address = address
         self.endpoint = endpoint
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.endpoint.entity.name} ? {self.address}"
 
 
 class ConnectionMatch:
     """A match to a connection"""
-    def __init__(self, connection: Connection, source: AddressMatch, target: AddressMatch, reply=False):
+    def __init__(self, connection: Connection, source: AddressMatch, target: AddressMatch, reply: bool=False) -> None:
         self.connection = connection
         self.source = source
         self.target = target
         self.reply = reply
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         se, te = self.connection.source.long_name(), self.connection.target.long_name()
         if self.reply:
             return f"{self.source.address} << {self.target.address} # {se} << {te}"
@@ -104,7 +105,7 @@ class ConnectionMatch:
 
 class ConnectionFinder:
     """Try to find the connection from given endpoints"""
-    def __init__(self, system: SystemMatcher, unexpected: bool):
+    def __init__(self, system: SystemMatcher, unexpected: bool) -> None:
         self.system = system
         self.sources: Dict[Addressable, AddressMatch] = {}
         self.targets: Dict[Addressable, AddressMatch] = {}
@@ -131,7 +132,7 @@ class ConnectionFinder:
         self.targets[target.endpoint.entity] = target
         return None
 
-    def add_matches(self, matches: List[AddressMatch], target: bool):
+    def add_matches(self, matches: List[AddressMatch], target: bool) -> Optional[ConnectionMatch]:
         """Add list of source or target ends, priority order"""
         for em in matches:
             m = self.add_target(em) if target else self.add_source(em)
@@ -159,7 +160,7 @@ class ConnectionFinder:
 
 class MatchEngine:
     """Match engine, can have engines for different sources"""
-    def __init__(self, system: SystemMatcher, source: EvidenceSource):
+    def __init__(self, system: SystemMatcher, source: EvidenceSource) -> None:
         self.system = system
         self.endpoints: Dict[AddressAtNetwork, List[MatchEndpoint]] = {}
         self.observed: Dict[Flow, ConnectionMatch] = {}
@@ -186,7 +187,7 @@ class MatchEngine:
                 if fs is not None:
                     me.external_activity = fs
 
-    def update_addresses(self, host: Host, old: Set[AnyAddress]):
+    def update_addresses(self, host: Host, old: Set[AnyAddress]) -> None:
         """Update addresses for a host"""
         # remove old mappings for the addresses
         for ad in old:
@@ -269,7 +270,7 @@ class MatchEngine:
             return rc
         return None
 
-    def create_unknown_service(self, match: ConnectionMatch):
+    def create_unknown_service(self, match: ConnectionMatch) -> None:
         """Create an unknown service due observing reply from it"""
         system = self.system.system
         conn = match.connection
@@ -442,14 +443,15 @@ class MatchEngine:
         am = self._match_existing_host(use_ad, flow, target)
         if am:
             return am  # not new host
+        ad: AnyAddress
         for ad in stack[1:]:
             am = self._match_existing_host(ad, flow, target)
             if am:
                 return am  # not new host
-            if isinstance(ad, IPAddress) and (system.is_external(ad) or ad.is_multicast()):
+            if isinstance(ad, IPAddress) and (system.is_external(ad) or ad.is_multicast()): # type: ignore[attr-defined]
                 use_ad = ad  # must use the IP address
                 break
-            if use_ad.is_null() and not ad.is_null():
+            if use_ad.is_null() and not ad.is_null(): # type: ignore[attr-defined]
                 use_ad = ad  # prefer non-null address
         host = system.get_endpoint(use_ad, at_network=flow.network)
         # target address with port
@@ -483,7 +485,7 @@ class MatchEngine:
         c = connection
         c.status = Status.UNEXPECTED
 
-        def set_external(e: Addressable):
+        def set_external(e: Addressable) -> None:
             if e.status == Status.UNEXPECTED and e.get_expected_verdict() == Verdict.INCON:
                 # entity is fresh and unexpected, make it external
                 e.status = Status.EXTERNAL
@@ -509,7 +511,7 @@ class MatchEngine:
                 set_external(c.target)
         return c
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         s = []
         for a, es in self.endpoints.items():
             s.append(f"{a} = " + " ".join([e.entity.name for e in es]))
@@ -518,7 +520,7 @@ class MatchEngine:
 
 class MatchEndpoint:
     """Match endpoint"""
-    def __init__(self, entity: Addressable, match_no_service=True, priority_services=False):
+    def __init__(self, entity: Addressable, match_no_service: bool=True, priority_services: bool=False) -> None:
         self.entity = entity
         self.addresses = set(a for a in entity.addresses if not a.is_tag())
         self.match_no_service = match_no_service    # match without service?
@@ -538,13 +540,13 @@ class MatchEndpoint:
 
     def is_same_host(self, other: Optional['MatchEndpoint']) -> bool:
         """Does the an other endpoint have the same host"""
-        return other and other.entity.get_parent_host() == self.entity.get_parent_host()
+        return other and other.entity.get_parent_host() == self.entity.get_parent_host() # type: ignore[return-value]
 
     def new_connections(self) -> bool:
         """Allow new connections with this endpoint"""
         return len(self.addresses) > 0  # 'any' host only for existing connections
 
-    def add_service(self, service: Service, priority_services=True):
+    def add_service(self, service: Service, priority_services: bool=True) -> None:
         """Add service matching to endpoint"""
         for a in service.addresses:
             assert isinstance(a, EndpointAddress), f"Non-endpoint address {a}"
@@ -567,7 +569,7 @@ class MatchEndpoint:
         return m_list
 
     def match_connection(self, source: AddressMatch, ends: Iterable[AddressMatch],
-                         unexpected=True) -> Optional[ConnectionMatch]:
+                         unexpected: bool=True) -> Optional[ConnectionMatch]:
         """Match connection originating from this end"""
         host = self.entity.get_parent_host()
         for c in host.connections:
@@ -584,8 +586,9 @@ class MatchEndpoint:
                 # connection from this host or service
                 reply = self.entity == c.target
                 return ConnectionMatch(c, source, end, reply)
+        return None
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         s = [('Host ' if self.entity.is_host() else 'Service ') + f"{self.entity.name}"]
         for a, es in self.services.items():
             s.append(f"{a} = " + " ".join([e.entity.name for e in es]))

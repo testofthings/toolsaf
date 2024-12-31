@@ -1,4 +1,5 @@
 """Model classes"""
+# mypy: disable-error-code="type-arg,assignment,return-value,arg-type"
 
 import ipaddress
 import itertools
@@ -41,7 +42,7 @@ class Connection(Entity):
     def is_admin(self) -> bool:
         return self.target.is_admin()
 
-    def is_relevant(self, ignore_ends=False) -> bool:
+    def is_relevant(self, ignore_ends: bool=False) -> bool:
         """Is this connection relevant, i.e. not placeholder or external?"""
         if self.status == Status.PLACEHOLDER:
             return False  # placeholder is never relevant
@@ -66,7 +67,7 @@ class Connection(Entity):
         """Is given entity either end of the connection?"""
         return entity in {self.source, self.target}
 
-    def reset_connection(self, system: 'IoTSystem'):
+    def reset_connection(self, system: 'IoTSystem') -> None:
         """Reset this connection"""
         self.reset()
         if self not in system.originals:
@@ -82,19 +83,19 @@ T = TypeVar("T")
 
 class SensitiveData:
     """Piece of sensitive, security-relevant, data"""
-    def __init__(self, name: str, personal=False, password=False):
+    def __init__(self, name: str, personal: bool=False, password: bool=False) -> None:
         assert not (personal and password), "Data cannot be both 'personal' and 'password'"
         self.name = name
         self.personal = personal
         self.password = password
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.name
 
 
 class NodeComponent(Entity):
     """Node internal components"""
-    def __init__(self, entity: 'NetworkNode', name: str):
+    def __init__(self, entity: 'NetworkNode', name: str) -> None:
         super().__init__()
         self.entity = entity
         self.name = name
@@ -116,19 +117,19 @@ class NodeComponent(Entity):
         self.sub_components.append(component)
         return component
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset model"""
         super().reset()
         for s in self.sub_components:
             s.reset()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.long_name()
 
 
 class NetworkNode(Entity):
     """Network node in the model"""
-    def __init__(self, name: str):
+    def __init__(self, name: str) -> None:
         super().__init__()
         self.name = name
         self.host_type = HostType.GENERIC
@@ -153,11 +154,11 @@ class NetworkNode(Entity):
             if c.status != Status.PLACEHOLDER:
                 yield c
 
-    def long_name(self):
+    def long_name(self) -> str:
         """Get longer name, or at least the name"""
         return self.name
 
-    def get_hosts(self, include_external=True) -> List['Host']:
+    def get_hosts(self, include_external: bool=True) -> List['Host']:
         """Get hosts"""
         return [c for c in self.children if isinstance(c, Host) and (include_external or c.is_relevant())]
 
@@ -193,7 +194,7 @@ class NetworkNode(Entity):
                 ns.append(nw)
         return ns
 
-    def get_connections(self, relevant_only=True) -> List[Connection]:
+    def get_connections(self, relevant_only: bool=True) -> List[Connection]:
         """Get relevant conneciions, filter out dupes"""
         cs = {}
         for c in self.children:
@@ -269,7 +270,7 @@ class NetworkNode(Entity):
     def is_host_reachable(self) -> bool:
         return isinstance(self, Host)  # NOTE: Also IoTSystem is
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset model"""
         super().reset()
         if not self.is_original():
@@ -283,7 +284,7 @@ class NetworkNode(Entity):
 
 class Addressable(NetworkNode):
     """Addressable entity"""
-    def __init__(self, name: str):
+    def __init__(self, name: str) -> None:
         super().__init__(name)
         self.parent: Optional[NetworkNode] = None
         self.addresses: Set[AnyAddress] = set()
@@ -322,7 +323,7 @@ class Addressable(NetworkNode):
     def is_multicast(self) -> bool:
         if self.parent and self.parent.is_multicast():
             return True
-        return self.addresses and any(a.is_multicast() for a in self.addresses)
+        return bool(self.addresses and any(a.is_multicast() for a in self.addresses))
 
     def get_networks(self) -> List[Network]:
         """Get networks"""
@@ -335,7 +336,7 @@ class Addressable(NetworkNode):
             return self.parent.get_networks_for(address)  # follow parent
         return super().get_networks_for(address)
 
-    def get_addresses(self, ads: Set[AnyAddress] = None) -> Set[AnyAddress]:
+    def get_addresses(self, ads: Optional[Set[AnyAddress]]=None) -> Set[AnyAddress]:
         """Get all addresses"""
         ads = set() if ads is None else ads
         p = self.parent
@@ -372,10 +373,10 @@ class Addressable(NetworkNode):
                         return c
         return None
 
-    def new_connection(self, connection: Connection, flow: Flow, target: bool):
+    def new_connection(self, connection: Connection, flow: Flow, target: bool) -> None:
         """New connection with this entity either as source or target"""
 
-    def set_seen_now(self, changes: List[Entity] = None) -> bool:
+    def set_seen_now(self, changes: Optional[List[Entity]]=None) -> Optional[bool]:
         r = super().set_seen_now(changes)
         if r and self.parent and not isinstance(self.parent, IoTSystem):
             # propagate to parent, it is also seen now
@@ -385,14 +386,14 @@ class Addressable(NetworkNode):
     def get_system(self) -> 'IoTSystem':
         return self.parent.get_system()
 
-    def get_parent_host(self) -> 'Host':
+    def get_parent_host(self) -> Optional['Host']:
         """Get the parent host"""
         return self.parent.addressable(lambda p: p.get_parent_host())
 
 
 class Host(Addressable):
     """A host"""
-    def __init__(self, parent: 'IoTSystem', name: str, tag: Optional[EntityTag] = None):
+    def __init__(self, parent: 'IoTSystem', name: str, tag: Optional[EntityTag] = None) -> None:
         super().__init__(name)
         if tag:
             self.addresses.add(tag)
@@ -408,7 +409,7 @@ class Host(Addressable):
         return self.host_type not in {HostType.MOBILE, HostType.BROWSER} and not self.any_host \
             and not self.is_multicast()
 
-    def get_connections(self, relevant_only=True) -> List[Connection]:
+    def get_connections(self, relevant_only: bool=True) -> List[Connection]:
         """Get relevant connections"""
         cs = []
         for c in self.connections:
@@ -424,7 +425,7 @@ class Host(Addressable):
                 return c
         return None
 
-    def get_parent_host(self) -> 'Host':
+    def get_parent_host(self) -> Self:
         return self
 
     def get_verdict(self, cache: Dict[Entity, Verdict]) -> Verdict:
@@ -444,7 +445,7 @@ class Host(Addressable):
 
 class Service(Addressable):
     """A service"""
-    def __init__(self, name: str, parent: Addressable):
+    def __init__(self, name: str, parent: Addressable) -> None:
         super().__init__(name)
         self.concept_name = "service"
         self.parent = parent
@@ -457,7 +458,7 @@ class Service(Addressable):
         self.reply_from_other_address = False  # reply comes from other port (DHCP)
 
     @classmethod
-    def make_name(cls, service_name: str, port=-1):
+    def make_name(cls, service_name: str, port: int=-1) -> str:
         """Make service name"""
         if not service_name:
             return f"{port}" if port >= 0 else "???"
@@ -471,7 +472,7 @@ class Service(Addressable):
     def is_service(self) -> bool:
         return True
 
-    def long_name(self):
+    def long_name(self) -> str:
         if self.parent.name != self.name:
             return f"{self.parent.name} {self.name}"
         return self.name
@@ -487,7 +488,7 @@ class Service(Addressable):
                 return EndpointAddress(tag, app[0], app[1])
         return None
 
-    def is_tcp_service(self):
+    def is_tcp_service(self) -> bool:
         """Is a TCP-based service"""
         for a in self.addresses:
             app = a.get_protocol_port()
@@ -507,13 +508,13 @@ class Service(Addressable):
                 return app[1]
         return -1
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.status_string()} {self.parent.long_name()} {self.name}"
 
 
 class IoTSystem(NetworkNode):
     """An IoT system"""
-    def __init__(self, name="IoT system") -> None:
+    def __init__(self, name: str="IoT system") -> None:
         super().__init__(name)
         self.concept_name = "system"
         self.status = Status.EXPECTED
@@ -572,9 +573,9 @@ class IoTSystem(NetworkNode):
                     # E.g. _dns.resolver.arpa - leave as name!
                     address = None
                 if address:
-                    add = self.get_endpoint(address)
-                    assert isinstance(add, Host)
-                    return add, False  # Did not add name to host (why?)
+                    endpoint = self.get_endpoint(address)
+                    assert isinstance(endpoint, Host)
+                    return endpoint, False  # Did not add name to host (why?)
 
         # find relevant hosts
         named = None
@@ -626,7 +627,7 @@ class IoTSystem(NetworkNode):
         named.addresses.add(address)
         return named, True
 
-    def learn_ip_address(self, host: Host, ip_address: IPAddress):
+    def learn_ip_address(self, host: Host, ip_address: IPAddress) -> None:
         """Learn IP address of a host. Remove the IP address from other hosts, if any"""
         pri = Addresses.get_prioritized(host.addresses)
         host.addresses.add(ip_address)
@@ -642,7 +643,7 @@ class IoTSystem(NetworkNode):
                 h.addresses.discard(ip_address)
                 self.call_listeners(lambda ln: ln.address_change(h))  # pylint: disable=cell-var-from-loop
 
-    def get_system(self) -> 'IoTSystem':
+    def get_system(self) -> Self:
         return self
 
     def get_endpoint(self, address: AnyAddress, at_network: Optional[Network] = None) -> Addressable:
@@ -701,7 +702,7 @@ class IoTSystem(NetworkNode):
 
     def get_addresses(self) -> Set[AnyAddress]:
         """Get all addresses"""
-        ads = set()
+        ads: Set[AnyAddress] = set()
         for c in self.children:
             c.get_addresses(ads)
         return ads
@@ -728,16 +729,16 @@ class IoTSystem(NetworkNode):
         return self.networks[0]
 
     def create_service(self, address: EndpointAddress) -> Service:
-        return NotImplementedError()
+        raise NotImplementedError()
 
-    def reset(self):
+    def reset(self) -> None:
         super().reset()
         for h in self.get_hosts():
             for c in h.connections:
                 c.reset_connection(self)
         self.connections.clear()
 
-    def call_listeners(self, fun: Callable[['ModelListener'], Any]):
+    def call_listeners(self, fun: Callable[['ModelListener'], Any]) -> None:
         """Call model listeners"""
         for ln in self.model_listeners:
             fun(ln)
@@ -762,7 +763,7 @@ class IoTSystem(NetworkNode):
             path = path[0:-1]
         return se, path
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         s = [self.long_name()]
         for h in self.get_hosts():
             s.append(f"{h.status.value} {h.name} {sorted(h.addresses)}")
@@ -773,33 +774,33 @@ class IoTSystem(NetworkNode):
 
 class ModelListener:
     """Listener for model changes"""
-    def connection_change(self, connection: Connection):
+    def connection_change(self, connection: Connection) -> None:
         """Connection created or changed"""
 
-    def host_change(self, host: Host):
+    def host_change(self, host: Host) -> None:
         """Host created or changed"""
 
-    def address_change(self, host: Host):
+    def address_change(self, host: Host) -> None:
         """Host addresses have changed"""
 
-    def service_change(self, service: Service):
+    def service_change(self, service: Service) -> None:
         """Service created or changed"""
 
-    def property_change(self, entity: Entity, value: Tuple[PropertyKey, Any]):
+    def property_change(self, entity: Entity, value: Tuple[PropertyKey, Any]) -> None:
         """Property changed. Not all changes create events, just the 'important' ones"""
 
 
 class EvidenceNetworkSource(EvidenceSource):
     """Evidence source with network data"""
-    def __init__(self, name: str, base_ref="", label="",
-                 address_map: Dict[AnyAddress, Addressable] = None,
-                 activity_map: Dict[NetworkNode, ExternalActivity] = None):
+    def __init__(self, name: str, base_ref: str="", label: str="",
+                 address_map: Optional[Dict[AnyAddress, Addressable]]=None,
+                 activity_map: Optional[Dict[NetworkNode, ExternalActivity]]=None):
         super().__init__(name, base_ref, label)
         self.address_map = address_map or {}
         self.activity_map = activity_map or {}
 
-    def rename(self, name: Optional[str] = None, target: Optional[str] = None, base_ref: Optional[str] = None,
-               label: Optional[str] = None) -> Self:
+    def rename(self, name: Optional[str] = None, target: Optional[str]=None, base_ref: Optional[str]=None,
+               label: Optional[str]=None) -> 'EvidenceNetworkSource':
         s = EvidenceNetworkSource(
             self.name if name is None else name,
             self.base_ref if base_ref is None else base_ref,

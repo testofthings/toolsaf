@@ -1,4 +1,5 @@
 """Intercept events and create a log of them"""
+# mypy: disable-error-code=assignment
 
 from logging import Logger
 import logging
@@ -17,13 +18,14 @@ from tdsaf.common.traffic import EvidenceSource, HostScan, ServiceScan, Flow, Ev
 
 class LoggingEvent:
     """Stored logging event"""
-    def __init__(self, event: Event, entity: Optional[Entity] = None, property_value: Tuple[PropertyKey, Any] = None):
+    def __init__(self, event: Event, entity: Optional[Entity] = None,
+                 property_value: Tuple[PropertyKey, Any] = None) -> None:
         self.event = event
         self.property_value = property_value  # implicit property set
         self.entity = entity
         self.verdict = Verdict.INCON
 
-    def pick_status_verdict(self, entity: Optional[Entity]):
+    def pick_status_verdict(self, entity: Optional[Entity]) -> None:
         """Pick current status verdict"""
         if entity is not None:
             self.entity = entity
@@ -53,7 +55,7 @@ class LoggingEvent:
             r.add(Properties.EXPECTED)  # default property
         return r
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         v = ""
         if self.entity:
             v += f"{self.entity.long_name()}"
@@ -63,7 +65,7 @@ class LoggingEvent:
 
 class EventLogger(EventInterface, ModelListener):
     """Event logger implementation"""
-    def __init__(self, inspector: Inspector):
+    def __init__(self, inspector: Inspector) -> None:
         self.inspector = inspector
         self.logs: List[LoggingEvent] = []
         self.current: Optional[LoggingEvent] = None  # current event
@@ -71,7 +73,7 @@ class EventLogger(EventInterface, ModelListener):
         self.event_logger: Optional[Logger] = None
         self.logger = logging.getLogger("events")
 
-    def print_event(self, log: LoggingEvent):
+    def print_event(self, log: LoggingEvent) -> None:
         """Print event for debugging"""
         e = log.event
         s = f"{log.entity.long_name()}," if log.entity else ""
@@ -91,7 +93,7 @@ class EventLogger(EventInterface, ModelListener):
         self.current = ev
         return ev
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset the log"""
         self.logs.clear()
         self.inspector.reset()
@@ -99,7 +101,7 @@ class EventLogger(EventInterface, ModelListener):
     def get_system(self) -> IoTSystem:
         return self.inspector.system
 
-    def property_change(self, entity: Entity, value: Tuple[PropertyKey, Any]):
+    def property_change(self, entity: Entity, value: Tuple[PropertyKey, Any]) -> None:
         if self.current is None:
             self.logger.warning("Property change without event to assign it: %s", value[0])
             return
@@ -131,7 +133,7 @@ class EventLogger(EventInterface, ModelListener):
         self.current = None
         return e
 
-    def property_update(self, update: PropertyEvent) -> Entity:
+    def property_update(self, update: PropertyEvent) -> Optional[Entity]:
         lo = self._add(update)
         e = self.inspector.property_update(update)
         lo.entity = e
@@ -169,7 +171,7 @@ class EventLogger(EventInterface, ModelListener):
 
     def collect_flows(self) -> Dict[Connection, List[Tuple[AnyAddress, AnyAddress, Flow]]]:
         """Collect relevant connection flows"""
-        r = {}
+        r: Dict[Connection, List[Tuple[AnyAddress, AnyAddress, Flow]]] = {}
         for c in self.inspector.system.get_connections():
             r[c] = []  # expected connections without flows
         for lo in self.logs:
@@ -187,7 +189,7 @@ class EventLogger(EventInterface, ModelListener):
         """Get log, possibly filtered by entity and key"""
         ent_set = set()
 
-        def add(n: Entity):
+        def add(n: Entity) -> None:
             ent_set.add(n)
             for c in n.get_children():
                 add(c)
@@ -216,8 +218,8 @@ class EventLogger(EventInterface, ModelListener):
 
     def get_all_property_sources(self) -> Dict[PropertyKey, Dict[EvidenceSource, List[Entity]]]:
         """Get all property sources"""
-        r = {}
+        r: Dict[PropertyKey, Dict[EvidenceSource, List[Entity]]] = {}
         for lo in self.logs:
             for p in lo.get_properties():
-                r.setdefault(p, {}).setdefault(lo.event.evidence.source, []).append(lo.entity)
+                r.setdefault(p, {}).setdefault(lo.event.evidence.source, []).append(lo.entity) # type: ignore[arg-type]
         return r
