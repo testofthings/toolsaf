@@ -16,7 +16,7 @@ from tdsaf.common.verdict import Verdict
 
 class ZEDReader(SystemWideTool):
     """Read ZED attack proxy scanning results for a software"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("zed", system)
         self.tool.name = "ZED Attack Proxy"
         self.data_file_suffix = ".json"

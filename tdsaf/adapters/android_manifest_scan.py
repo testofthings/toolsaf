@@ -21,7 +21,7 @@ from tdsaf.common.android import MobilePermissions
 
 class AndroidManifestScan(EndpointTool):
     """Android manifest XML tool"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("android", ".xml", system)
         self.tool.name = "Android Manifest"
         self.categories = self.load_categories()

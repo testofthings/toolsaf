@@ -8,7 +8,7 @@ from tdsaf.common.verdict import Verdictable
 
 class PropertyKey:
     """Property key"""
-    def __init__(self, name: str, *more: str):
+    def __init__(self, name: str, *more: str) -> None:
         """Create new property key"""
         self.segments: Tuple[str, ...] = name, *more
         self.model = False  # a model property?

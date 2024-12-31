@@ -18,7 +18,7 @@ from tdsaf.common.traffic import EvidenceSource, BLEAdvertisementFlow, Evidence
 
 class TSharkReader(SystemWideTool):
     """Read in TShark JSON input"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("pcap-tshark", system)
         self.tool.name = "TShark PCAP reader"
         self.data_file_suffix = ".json"

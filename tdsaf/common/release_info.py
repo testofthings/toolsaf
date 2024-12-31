@@ -8,7 +8,7 @@ from tdsaf.common.property import PropertyKey
 
 class ReleaseInfo:
     """Release information for software, firmware, etc. (NOTE: Not really used now)"""
-    def __init__(self, sw_name: str):
+    def __init__(self, sw_name: str) -> None:
         self.sw_name = sw_name
         self.latest_release: Optional[datetime.datetime] = None
         self.latest_release_name = "?"

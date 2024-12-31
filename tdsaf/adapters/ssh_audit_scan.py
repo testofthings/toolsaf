@@ -15,7 +15,7 @@ from tdsaf.common.verdict import Verdict
 
 class SSHAuditScan(EndpointTool):
     """Ssh-audit output reading tool"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("ssh-audit", ".json", system)
         self.tool.name = "SSH audit"
         self.property_key = Properties.PROTOCOL.append_key("ssh")

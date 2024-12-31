@@ -16,7 +16,7 @@ from tdsaf.common.verdict import Verdict
 
 class CertMITMReader(SystemWideTool):
     """Read MITM logs created by certmitm"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("certmitm", system)
         self.tool.name = "certmitm tool"
         self.data_file_suffix = ".zip"
@@ -40,7 +40,7 @@ class CertMITMReader(SystemWideTool):
             connection_source, target, port = connection
             flow = IPFlow.tcp_flow(
                 HWAddresses.NULL.data, connection_source, 0,
-                HWAddresses.NULL.data, target, int(port)) # type: ignore[arg-type]
+                HWAddresses.NULL.data, target, int(port))
             flow.evidence = evidence
             Properties.MITM.put_verdict(flow.properties, Verdict.FAIL)
             interface.connection(flow)

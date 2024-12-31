@@ -15,7 +15,7 @@ from tdsaf.common.verdict import Verdict
 
 class TestSSLScan(EndpointTool):
     """Testssl.sh output reading tool"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("testssl", ".json", system)
         self.tool.name = "Testssl.sh"
         self.property_key = Properties.PROTOCOL.append_key("tls")

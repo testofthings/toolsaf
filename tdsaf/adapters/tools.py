@@ -59,7 +59,7 @@ class SystemWideTool(ToolAdapter):
 
 class EndpointTool(ToolAdapter):
     """Tool applies to endpoints"""
-    def __init__(self, tool_label: str, data_file_suffix: str, system: IoTSystem):
+    def __init__(self, tool_label: str, data_file_suffix: str, system: IoTSystem) -> None:
         super().__init__(tool_label, system)
         # map from file names into addressable entities
         self.data_file_suffix = data_file_suffix
@@ -154,7 +154,7 @@ class NetworkNodeTool(ToolAdapter):
 
 class NodeComponentTool(ToolAdapter):
     """Tool applies to node components"""
-    def __init__(self, tool_label: str, data_file_suffix: str, system: IoTSystem):
+    def __init__(self, tool_label: str, data_file_suffix: str, system: IoTSystem) -> None:
         super().__init__(tool_label, system)
         self.data_file_suffix = data_file_suffix
         self.file_name_map: Dict[str, NodeComponent] = {}

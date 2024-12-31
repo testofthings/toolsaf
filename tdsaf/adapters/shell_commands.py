@@ -100,7 +100,7 @@ class ShellCommandPs(EndpointTool):
 
 class ShellCommandSs(EndpointTool):
     """Shell command 'ss' tool adapter"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("shell-ss", ".txt", system)
 
     def _parse_address(self, addr: str) -> Tuple[str, str, int]:

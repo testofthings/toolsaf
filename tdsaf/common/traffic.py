@@ -54,7 +54,7 @@ class Evidence:
 
 class Tool:
     """A tool for verification"""
-    def __init__(self, name: str):
+    def __init__(self, name: str) -> None:
         self.name = name
 
     def __gt__(self, other: 'Tool') -> bool:
@@ -347,9 +347,9 @@ class IPFlow(Flow):
         return IPFlow(NO_EVIDENCE, source=(HWAddress.new(source_hw), IPAddress.new(source_ip), source_port),
                       target=(HWAddress.new(target_hw), IPAddress.new(target_ip), target_port), protocol=Protocol.TCP)
 
-    def stack(self, target: bool) -> Tuple[AnyAddress, IPAddress, int]:
+    def stack(self, target: bool) -> Tuple[AnyAddress, ...]:
         end = self.target if target else self.source
-        return tuple(end[:2]) # type: ignore[return-value]
+        return tuple(end[:2])
 
     def port(self, target: bool=True) -> int:
         return self.target[2] if target else self.source[2]

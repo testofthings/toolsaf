@@ -15,7 +15,7 @@ from tdsaf.common.verdict import Verdict
 
 class PingCommand(SystemWideTool):
     """Ping command"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("ping", system)
         self.data_file_suffix = ".ping"
         self.tool.name = "Ping"

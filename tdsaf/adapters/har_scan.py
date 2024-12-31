@@ -18,7 +18,7 @@ from tdsaf.common.verdict import Verdict
 
 class HARScan(NetworkNodeTool):
     """HAR JSON tool"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("har", ".json", system)
         self.tool.name = "HAR"
 

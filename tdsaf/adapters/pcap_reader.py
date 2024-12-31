@@ -27,7 +27,7 @@ from tdsaf.common.traffic import IPFlow, EvidenceSource, Evidence, EthernetFlow,
 
 class PCAPReader(SystemWideTool):
     """PCAP reading tool"""
-    def __init__(self, system: IoTSystem, name: str="PCAP reader"):
+    def __init__(self, system: IoTSystem, name: str="PCAP reader") -> None:
         super().__init__("pcap", system)
         self.data_file_suffix = ".pcap"
         if name:

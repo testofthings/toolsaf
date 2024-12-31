@@ -13,7 +13,7 @@ from tdsaf.common.traffic import EvidenceSource, Evidence, ServiceScan, HostScan
 
 class NMAPScan(SystemWideTool):
     """Parse Nmap scan XML output"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("nmap", system)
         self.tool.name = "Nmap scan"
         self.data_file_suffix = ".xml"
@@ -71,7 +71,7 @@ class NMAPScan(SystemWideTool):
                 service_x = port_x.find("service")
                 ad = EndpointAddress(ip_addr, proto, port) # type: ignore[arg-type]
                 ad_name = service_x.attrib.get('name') if service_x is not None and 'name' in service_x.attrib else ""
-                scan = ServiceScan(evidence, ad, ad_name)
+                scan = ServiceScan(evidence, ad, ad_name) # type: ignore[arg-type]
                 interface.service_scan(scan)
                 host_services.add(ad)
 

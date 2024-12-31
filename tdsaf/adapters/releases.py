@@ -16,7 +16,7 @@ from tdsaf.common.release_info import ReleaseInfo
 
 class ReleaseReader(NodeComponentTool):
     """Read release data aquired from GitHub API"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("github-releases", ".json", system)
         self.tool.name = "GitHub releases"
 

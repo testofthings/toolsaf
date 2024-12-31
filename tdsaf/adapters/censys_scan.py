@@ -20,7 +20,7 @@ from tdsaf.common.verdict import Verdict
 
 class CensysScan(EndpointTool):
     """Censys scan tool"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("censys", ".json", system)
         self.tool.name = "Censys"
 

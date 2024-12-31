@@ -16,7 +16,7 @@ from tdsaf.common.verdict import Verdict
 
 class SPDXJson:
     """JSON format SPDX SBOM reader"""
-    def __init__(self, file: BytesIO):
+    def __init__(self, file: BytesIO) -> None:
         self.file = json.load(file)
 
     def read(self) -> list[SoftwareComponent]:
@@ -38,7 +38,7 @@ class SPDXJson:
 
 class SPDXReader(NodeComponentTool):
     """Read SPDX component description for a software"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("spdx", ".json", system)
         self.tool.name = "SPDX SBOM"
 

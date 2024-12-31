@@ -159,7 +159,7 @@ class ExplainableClaim(AbstractClaim):
 
 class SafeNameMap:
     """Safe names for entities"""
-    def __init__(self, prefix: str=""):
+    def __init__(self, prefix: str="") -> None:
         self.prefix = prefix
         self.safe_names: Dict[Any, str] = {}
         self.reverse_map: Dict[str, Any] = {}

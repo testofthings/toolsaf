@@ -15,7 +15,7 @@ from tdsaf.core.online_resources import OnlineResource
 
 class WebChecker(SystemWideTool):
     """Check web pages tool"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("web", system)  # no extension really
         self.data_file_suffix = ".http"
         self.tool.name = "Web check"

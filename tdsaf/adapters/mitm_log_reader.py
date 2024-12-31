@@ -15,7 +15,7 @@ from tdsaf.common.verdict import Verdict
 
 class MITMLogReader(SystemWideTool):
     """Read MITM log created the tls_check MITMproxy add-on"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("mitm", system)
         self.tool.name = "MITM tool"
         self.data_file_suffix = ".log"
@@ -59,7 +59,7 @@ class MITMLogReader(SystemWideTool):
                 flow = IPFlow.tcp_flow(
                     # we do not know HW addresses from the log
                     HWAddresses.NULL.data, s_add, int(s_port),
-                    HWAddresses.NULL.data, d_add, int(d_port)) # type: ignore[arg-type]
+                    HWAddresses.NULL.data, d_add, int(d_port))
                 flow.evidence = evidence
                 if d:
                     # learn SNI, no peers in event, the connection will be UNEXPECTED if it is not expected
