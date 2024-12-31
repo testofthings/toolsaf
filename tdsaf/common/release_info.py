@@ -25,7 +25,7 @@ class ReleaseInfo:
         """Print date object as string"""
         return date.strftime('%Y-%m-%d') if date else ""
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         r = f"Latest release {self.latest_release_name}"
         if self.latest_release:
             r += f" {self.print_time(self.latest_release)}"

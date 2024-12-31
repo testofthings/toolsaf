@@ -13,7 +13,7 @@ from tdsaf.common.verdict import Verdictable
 
 class Entity:
     """An entity, network node or connection"""
-    def __init__(self):
+    def __init__(self) -> None:
         self.concept_name = "other"
         self.status = Status.UNEXPECTED
         self.properties: Dict[PropertyKey, Any] = {}
@@ -22,7 +22,7 @@ class Entity:
         """Get long name, possibly with spaces"""
         return self.concept_name
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset entity and at least properties"""
         new_p: Dict[PropertyKey, Any] = {}
         for k, v in self.properties.items():
@@ -36,7 +36,7 @@ class Entity:
         self.properties[key_value[0]] = key_value[1]
         return self
 
-    def set_seen_now(self, changes: List['Entity'] = None) -> bool:
+    def set_seen_now(self, changes: Optional[List['Entity']] = None) -> Optional[bool]:
         """The entity is seen now, update and return if changes"""
         v = Properties.EXPECTED.get_verdict(self.properties)
         if self.status == Status.EXPECTED:
@@ -54,7 +54,7 @@ class Entity:
             changes.append(self)
         return True
 
-    def get_expected_verdict(self, default: Optional[Verdict] = Verdict.INCON) -> Verdict:
+    def get_expected_verdict(self, default: Optional[Verdict] = Verdict.INCON) -> Optional[Verdict]:
         """Get the expected verdict or undefined"""
         return Properties.EXPECTED.get_verdict(self.properties) or default
 
@@ -95,14 +95,14 @@ class Entity:
         """Are hosts reachable from here"""
         return False
 
-    def iterate(self, relevant_only=True) -> Iterator['Entity']:
+    def iterate(self, relevant_only: bool=True) -> Iterator['Entity']:
         """Iterate this and all child entities"""
         if not relevant_only or self.is_relevant():
             yield self
         for c in self.get_children():
             yield from c.iterate(relevant_only)
 
-    def status_verdict(self) -> Tuple[Status, Verdict]:
+    def status_verdict(self) -> Tuple[Status, Optional[Verdict]]:
         """Get status and expected verdict"""
         return self.status, self.get_expected_verdict()
 
@@ -114,7 +114,7 @@ class Entity:
             st = f"{st}/{v.value}"
         return st
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         s = f"{self.status_string()} {self.long_name()}"
         return s
 
@@ -128,7 +128,8 @@ class ClaimAuthority(enum.Enum):
 
 class ClaimStatus:
     """Status of a claim"""
-    def __init__(self, claim: AbstractClaim, explanation="", verdict=Verdict.INCON, authority=ClaimAuthority.MODEL):
+    def __init__(self, claim: AbstractClaim, explanation: str="",
+                 verdict: Verdict=Verdict.INCON, authority: ClaimAuthority=ClaimAuthority.MODEL):
         assert claim is not None and verdict is not None
         self.claim = claim
         self.verdict = verdict
@@ -158,7 +159,7 @@ class ExplainableClaim(AbstractClaim):
 
 class SafeNameMap:
     """Safe names for entities"""
-    def __init__(self, prefix = ""):
+    def __init__(self, prefix: str=""):
         self.prefix = prefix
         self.safe_names: Dict[Any, str] = {}
         self.reverse_map: Dict[str, Any] = {}
@@ -184,7 +185,7 @@ class SafeNameMap:
         return sn
 
     @classmethod
-    def replace_non_alphanumeric(cls, string):
+    def replace_non_alphanumeric(cls, string: str) -> str:
         """Replace any character that is NOT alphanumeric or underscore with an underscore"""
         s = re.sub(r'[^a-zA-Z0-9_]', '_', string)
         s = re.sub(r'_+', '_', s)  # repeated _:s
