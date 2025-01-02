@@ -205,7 +205,7 @@ class FileMetaInfo:
         return sorted_files
 
     def __repr__(self) -> str:
-        return f"file_type: {self.file_type}, label: {self.label}"
+        return f"{self.name}: file_type: {self.file_type}, label: {self.label}"
 
 
 class BatchData:
