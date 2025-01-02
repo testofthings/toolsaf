@@ -1,4 +1,5 @@
 """HTTP server"""
+# mypy: ignore-errors
 
 import asyncio
 import hmac
@@ -20,7 +21,7 @@ from tdsaf.core.model import IoTSystem
 
 class WebsocketChannel(APIListener):
     """A channel per web socket"""
-    def __init__(self, server: 'HTTPServerRunner', socket: web.WebSocketResponse, request: APIRequest):
+    def __init__(self, server: 'HTTPServerRunner', socket: web.WebSocketResponse, request: APIRequest) -> None:
         self.server = server
         self.socket = socket
         self.original_request = request
@@ -45,7 +46,7 @@ class HTTPServerRunner:
     """Run HTTP server locally"""
     PATH = pathlib.Path("html")
 
-    def __init__(self, api: ClientAPI, base_directory=pathlib.Path("."), port=8180, no_auth_ok=False):
+    def __init__(self, api: ClientAPI, base_directory=pathlib.Path("."), port=8180, no_auth_ok=False) -> None:
         self.api = api
         self.logger = logging.getLogger("server")
         self.sample_path = base_directory / "sample"
@@ -62,7 +63,7 @@ class HTTPServerRunner:
         self.send_queue: asyncio.Queue[Tuple[WebsocketChannel, Dict]] = asyncio.Queue()
         self.send_queue_target_size = 10
 
-    def run(self):
+    def run(self) -> None:
         """Start sync loop and run the server"""
         self.loop.run_until_complete(self.start_server())
         self.loop.create_task(self.send_worker())

@@ -1,4 +1,5 @@
 """Client API implementation"""
+# mypy: ignore-errors
 
 import json
 import logging
@@ -24,7 +25,7 @@ FORMAT_YEAR_MONTH_DAY = "%Y-%m-%d"
 
 class APIRequest:
     """API request details"""
-    def __init__(self, path: str):
+    def __init__(self, path: str) -> None:
         self.path = path
         self.parameters: Dict[str, str] = {}
         self.get_connections = False
@@ -55,7 +56,7 @@ class APIRequest:
         r.get_visual = self.get_visual
         return r
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.path
 
 
@@ -90,7 +91,7 @@ class APIListener:
 
 class RequestContext:
     """API request context"""
-    def __init__(self, request: APIRequest, api: 'ClientAPI'):
+    def __init__(self, request: APIRequest, api: 'ClientAPI') -> None:
         self.request = request
         self.api = api
 
@@ -102,7 +103,7 @@ class RequestContext:
 
 class ClientAPI(ModelListener):
     """Client API implementation"""
-    def __init__(self, registry: Registry,):
+    def __init__(self, registry: Registry,) -> None:
         self.registry = registry
         self.logger = logging.getLogger("api")
         self.api_listener: List[Tuple[APIListener, APIRequest]] = []

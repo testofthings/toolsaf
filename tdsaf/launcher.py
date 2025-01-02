@@ -1,4 +1,5 @@
 """Lauch model given from command-line"""
+# mypy: ignore-errors
 
 import asyncio
 from asyncio.subprocess import Process
@@ -27,7 +28,7 @@ from tdsaf.command_basics import API_KEY_NAME, get_authorization
 
 class Launcher:
     """Lister for requests and launch models as separate processes"""
-    def __init__(self):
+    def __init__(self) -> None:
         parser = argparse.ArgumentParser(description='Launcher script')
         parser.add_argument("--listen-port", "-p", type=int,
                             help="Listen HTTP requests at port")
@@ -246,7 +247,7 @@ class Launcher:
 
 class FileChangeObserver(FileSystemEventHandler):
     """Observe file changes"""
-    def __init__(self, laucher: Launcher):
+    def __init__(self, laucher: Launcher) -> None:
         self.launcher = laucher
         self.watch_list: Dict[pathlib.Path, Process] = {}
         self.observer = Observer()

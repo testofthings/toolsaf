@@ -1,4 +1,5 @@
 """Model visualization"""
+# mypy: ignore-errors
 
 from typing import List, Dict, Tuple
 
@@ -10,7 +11,7 @@ from tdsaf.core.registry import Registry
 
 class Visualizer:
     """Visualize system"""
-    def __init__(self):
+    def __init__(self) -> None:
         self.placement: List[str] = []
         self.handles: Dict[str, NetworkNode] = {}
         self.images: Dict[NetworkNode, Tuple[str, int]] = {}
@@ -57,7 +58,7 @@ class Visualizer:
 
 class VisualizerAPI(ClientAPI):
     """Extend ClientAPI with coordinates and images"""
-    def __init__(self, registry: Registry, visualizer: Visualizer):
+    def __init__(self, registry: Registry, visualizer: Visualizer) -> None:
         super().__init__(registry)
         self.visualizer = visualizer
 

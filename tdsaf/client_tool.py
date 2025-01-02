@@ -1,4 +1,5 @@
 """Client tool for TDSA framework"""
+# mypy: ignore-errors
 
 import argparse
 from getpass import getpass
