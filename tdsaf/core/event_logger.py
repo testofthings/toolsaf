@@ -200,7 +200,7 @@ class EventLogger(EventInterface, ModelListener):
         for lo in self.logs:
             if entity is not None and lo.entity not in ent_set:
                 continue
-            if key is not None and key in lo.get_properties():
+            if key is not None and key not in lo.get_properties():
                 continue
             r.append(lo)
         return r

@@ -1236,7 +1236,7 @@ class SystemBackendRunner(SystemBackend):
         report.source_count = 3 if with_files else 0
         report.show = args.show
         report.no_truncate = bool(args.no_truncate)
-        report.c = bool(args.color)
+        report.use_color_flag = bool(args.color)
         report.print_report(sys.stdout)
 
         if args.create_diagram is not None or args.show_diagram is not None:

@@ -45,7 +45,7 @@ class Evidence:
         self.tail_ref = tail_ref
 
     def get_reference(self) -> str:
-        """Get full reference"""
+        """Get full reference. Returns an empty string if there is no info"""
         return self.source.base_ref + self.tail_ref
 
     def __repr__(self) -> str:
