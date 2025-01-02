@@ -280,7 +280,7 @@ class Report:
     def get_connection_status(self, connection: Connection, cache: Dict [Entity, Verdict]) -> str:
         """Returns status string for a connection"""
         if connection.con_type == ConnectionType.LOGICAL:
-            return connection.con_type.value
+            return connection.con_type.value # type: ignore[no-any-return]
         verdict = connection.get_verdict(cache)
         if verdict not in [Verdict.PASS, Verdict.FAIL]:
             return connection.status.value
