@@ -110,6 +110,16 @@ pylint tdsaf/
 ```
 Samples and tests are not lint-compatible.
 
+## Static Typing Check
+To perform a typing check, install _mypy_
+```shell
+pip install mypy
+```
+then:
+```shell
+mypy tdsaf/
+```
+
 ## Future plans
 In the long run the framework is intended to support JSON-based security statement descripitons and to cover even more tools. Check the [roadmap](Roadmap.md) for upcoming features.
 
