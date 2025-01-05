@@ -3,12 +3,72 @@
 import os
 import json
 import argparse
+from io import BufferedReader
 from pathlib import Path
-from typing import List, Dict, Union, Any, cast
+from typing import List, Dict, Union, Any, Set, cast
 from shodan.client import Shodan
 from shodan.exception import APIError
 
+from tdsaf.adapters.tools import SystemWideTool
+from tdsaf.core.model import IoTSystem, Service
+from tdsaf.core.event_interface import EventInterface, PropertyEvent
+from tdsaf.common.traffic import EvidenceSource, Evidence, ServiceScan
 from tdsaf.main import ConfigurationException
+from tdsaf.common.address import IPAddress, Protocol, EndpointAddress
+from tdsaf.common.property import Properties, PropertyKey
+from tdsaf.common.verdict import Verdict
+
+
+class ShodanScan(SystemWideTool):
+    """Process Shodan scan results"""
+    def __init__(self, system: IoTSystem) -> None:
+        super().__init__("shodan", system)
+        self.tool.name = "Shodan tool"
+        self.data_file_suffix = ".json"
+
+    def determine_protocol(self, entry: Dict[str, Any]) -> Protocol:
+        """Determine used protocol"""
+        if "ssl" in entry or "tls" in entry:
+            return Protocol.TLS
+        if "http" in entry:
+            return Protocol.HTTP
+        if (protocol := Protocol.get_protocol(entry["product"])) is None:
+            raise ConfigurationException(f"Protocol {entry['product']} not defined")
+        return protocol
+
+    def process_file(self, data: BufferedReader, file_name: str,
+                     interface: EventInterface, source: EvidenceSource) -> bool:
+        """Process file"""
+        evidence = Evidence(source)
+
+        scan = cast(Dict[str, Any], json.load(data))
+        ip_addr = IPAddress.new(file_name.split("-")[-1].replace(self.data_file_suffix, ""))
+
+        entry: Dict[str, Any]
+        for entry in scan.get("data", []):
+            # Open ports
+            port: int = entry["port"]
+            protocol = self.determine_protocol(entry)
+            transport = cast(Protocol, Protocol.get_protocol(entry["transport"]))
+
+            endpoint_addr = EndpointAddress(ip_addr, transport, port)
+            service_scan = ServiceScan(evidence, endpoint_addr, protocol.value)
+            a: Service = interface.service_scan(service_scan)
+
+            # Vulnerabilities
+            key_set: Set[PropertyKey] = set()
+            for vulnerability in entry.get("vulns", {}):
+                if (key := PropertyKey(self.tool_label, vulnerability)) not in key_set:
+                    key_set.add(key)
+                    veridct = Verdict.FAIL
+                    ev = PropertyEvent(evidence, a, key.verdict(veridct))
+                    interface.property_update(ev)
+
+            if self.send_events:
+                ev = PropertyEvent(evidence, a, Properties.VULNERABILITIES.value_set(key_set))
+                interface.property_update(ev)
+
+        return True
 
 
 class ShodanScanner:
@@ -99,7 +159,7 @@ class ShodanScanner:
         try:
             info = self.api.host(ip)
             with file.open("w") as file_obj:
-                json.dump(info, file_obj, indent=4)
+                json.dump(info, file_obj, indent=4, sort_keys=True)
         except APIError as err:
             print(f"{ip}: Error: {err}")
 
