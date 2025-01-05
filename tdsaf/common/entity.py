@@ -106,10 +106,10 @@ class Entity:
         """Get status and expected verdict"""
         return self.status, self.get_expected_verdict()
 
-    def status_string(self) -> str:
+    def status_string(self, cache: Optional[Dict['Entity', Verdict]]=None) -> str:
         """Get a status string"""
         st = self.status.value
-        v = Properties.EXPECTED.get_verdict(self.properties)
+        v = self.get_verdict(cache if cache else {})
         if v is not None:
             st = f"{st}/{v.value}"
         return st
