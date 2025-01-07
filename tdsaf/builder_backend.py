@@ -22,7 +22,7 @@ from tdsaf.core.event_interface import PropertyEvent
 from tdsaf.common.release_info import ReleaseInfo
 from tdsaf.common.property import PropertyVerdictValue
 from tdsaf.http_server import HTTPServerRunner
-from tdsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP, IP, TLS,
+from tdsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP, IP, TLS, MQTT,
                         BLEAdvertisement, ClaimBuilder, ClaimSetBuilder, ConnectionBuilder,
                         CookieBuilder, HostBuilder, NetworkBuilder, NodeBuilder, NodeVisualBuilder,
                         ConfigurationException, OSBuilder, ProtocolConfigurer, ProtocolType,
@@ -862,6 +862,14 @@ class IPBackend(ProtocolBackend):
             self.con_type = ConnectionType.ADMINISTRATIVE
 
 
+class MQTTBackend(ProtocolBackend):
+    """MQTT protocol backend"""
+
+    def __init__(self, configurer: MQTT):
+        super().__init__(Protocol.TCP, port=configurer.port, protocol=Protocol.MQTT, name=configurer.name)
+
+
+
 class TLSBackend(ProtocolBackend):
     """TLS protocol backend"""
 
@@ -946,6 +954,7 @@ class ProtocolConfigurers:
         HTTP: HTTPBackend,
         ICMP: ICMPBackend,
         IP: IPBackend,
+        MQTT: MQTTBackend,
         TLS: TLSBackend,
         NTP: NTPBackend,
         SSH: SSHBackend,
