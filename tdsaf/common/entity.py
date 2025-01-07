@@ -110,7 +110,7 @@ class Entity:
         """Get a status string"""
         st = self.status.value
         v = self.get_verdict(cache if cache else {})
-        if v is not None:
+        if v is not None and v is not Verdict.INCON:
             st = f"{st}/{v.value}"
         return st
 
