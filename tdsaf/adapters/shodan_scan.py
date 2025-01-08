@@ -5,7 +5,7 @@ import json
 import argparse
 from io import BufferedReader
 from pathlib import Path
-from typing import List, Dict, Union, Tuple, Any, Set, cast
+from typing import List, Dict, Union, Tuple, Optional, Any, Set, cast
 from shodan.client import Shodan
 from shodan.exception import APIError
 
@@ -18,9 +18,6 @@ from tdsaf.common.traffic import EvidenceSource, Evidence, ServiceScan
 from tdsaf.common.address import IPAddress, Protocol, EndpointAddress
 from tdsaf.common.property import Properties, PropertyKey
 from tdsaf.common.verdict import Verdict
-
-# FIXME: DOCUMENT SHODAN
-# FIXME: UTEST
 
 
 class ShodanScan(SystemWideTool):
@@ -56,17 +53,18 @@ class ShodanScan(SystemWideTool):
         if protocol in [Protocol.HTTP, Protocol.TLS]:
             status_code = str(entry["http"]["status"])
             key_part = "http" if protocol == Protocol.HTTP else "https"
-            key = PropertyKey("shodan", key_part, "status", status_code)
-            prop_addr_event = PropertyEvent(self._evidence, service, key.verdict(Verdict.PASS))
-            self._interface.property_update(prop_addr_event)
+            key = PropertyKey(self.tool_label, key_part, "status", status_code)
+            prop_event = PropertyEvent(self._evidence, service, key.verdict(Verdict.IGNORE))
+            self._interface.property_update(prop_event)
 
     def add_vulnerabilities(self, vulnerabilities: Dict[str, Any], service: Service) -> None:
         """Add vulnerability to service's properties"""
-        for vulnerability in vulnerabilities:
+        for vulnerability, info in vulnerabilities.items():
             if (key := PropertyKey(self.tool_label, vulnerability)) not in self.key_set:
                 self.key_set.add(key)
                 veridct = Verdict.FAIL
-                prop_event = PropertyEvent(self._evidence, service, key.verdict(veridct))
+                comment = info["summary"] if "summary" in info else ""
+                prop_event = PropertyEvent(self._evidence, service, key.verdict(veridct, comment))
                 self._interface.property_update(prop_event)
 
     def add_heartbleed(self, opts: Dict[str, str], service: Service) -> None:
@@ -78,18 +76,28 @@ class ShodanScan(SystemWideTool):
             prop_event = PropertyEvent(self._evidence, service, key.verdict(verdict, comment))
             self._interface.property_update(prop_event)
 
+    def parse_cpe(self, cpe: str) -> Tuple[str, Optional[str]]:
+        """Extracts the product and version number (if included) from a given CPE 2.3 string.
+            CPE 2.3 parts are cpe:2.3:<part>:<vendor>:<product>:<version>:...
+        """
+        components = cpe.split(":")
+        product = components[4]
+        version = components[5] if len(components) > 5 and components[5] else None
+        return product, version
+
     def add_cpes(self, cpe23: List[str], service: Service) -> None:
         """Add Common Platform Enumeration info to SW component and assign verdict based on statement SBOM"""
         parent = cast(NetworkNode, service.parent)
         if len(parent.components) > 0:
             parent_sw = cast(Software, parent.components[0])
             for entry in cpe23:
-                software_str, version = entry.split(":")[-2:]
-                software = SoftwareComponent(software_str)
+                product, version = self.parse_cpe(entry)
+                software = SoftwareComponent(product)
                 verdict = Verdict.PASS if software in parent_sw.components.values() else Verdict.FAIL
-                key = PropertyKey("component", software_str)
+                key = PropertyKey("component", product)
+                comment = f"v{version}, Shodan CPE 2.3" if version else "Shodan CPE 2.3"
                 self._interface.property_update(
-                    PropertyEvent(self._evidence, parent_sw, key.verdict(verdict, f"v{version}, Shodan CPE 2.3"))
+                    PropertyEvent(self._evidence, parent_sw, key.verdict(verdict, comment))
                 )
 
     def process_file(self, data: BufferedReader, file_name: str,
@@ -136,8 +144,8 @@ class ShodanScanner:
         """Parse command line arguments"""
         arg_parser = argparse.ArgumentParser()
         arg_parser.add_argument("--base-dir", default="shodan", help="Base dir to create files into")
-        arg_parser.add_argument("command", choices=["scan", "iplookup", "dnslookup", "credits"],
-                                help="Command to use. scan = On-demand scan, iplookup = Host IP lookup, " +
+        arg_parser.add_argument("command", choices=["iplookup", "dnslookup", "credits"],
+                                help="Command to use. iplookup = Host IP lookup, " +
                                 "dnslookup = IP lookup based on DNS info, credits = Show remaining credits")
         arg_parser.add_argument("address", nargs="*", help="IP Address to scan using Shodan")
         args = arg_parser.parse_args()
@@ -149,8 +157,6 @@ class ShodanScanner:
     def perform_command(self) -> None:
         """Perform action based on selected command"""
         match self.command:
-            case "scan":
-                self.scan()
             case "iplookup":
                 self.ip_lookup()
             case "dnslookup":
@@ -159,32 +165,6 @@ class ShodanScanner:
                 self.display_remaining_credits()
             case _:
                 raise ConfigurationException(f"Unknown command {self.command}")
-
-    def scan(self) -> None:
-        # A scan done with the API will not give you this info
-        # "No open ports found or the host has been recently crawled and cant get scanned again so soon."
-        """Request on-demand scan for given IP addresses
-        if len(self.addresses) == 0:
-            scan_reqs = glob.glob("./" + self.base_dir.as_posix() + "/scan-req-*.json")
-            for req in scan_reqs:
-                with open(req, "r") as f:
-                    id = json.load(f)["id"]
-                    if self.api.scan_status(id)["status"] == "DONE":
-                        print(f"Scan ID {id} is done")
-                        file_id = req.split("scan-req-")[-1]
-
-                        with (self.base_dir / f"scan-{'file_id'}").open("w") as f:
-                            for banner in self.api.search_cursor(f"scan:{id}"):
-                                json.dump(banner, f, indent=4, sort_keys=True)
-
-        for address in self.addresses:
-            print(f"Requesting On-Demand scan for {address}")
-            info = self.api.scan(address, True)
-            file = self.base_dir / f"scan-req-{address}.json"
-
-            with file.open("w") as f:
-                json.dump(info, f, indent=4)
-        """
 
     def ip_lookup(self) -> None:
         """Perform host lookup on given IP addresses"""
@@ -197,7 +177,7 @@ class ShodanScanner:
             domain_info = cast(Dict[str, Any], self.api.dns.domain_info(domain))
             domain_file = self.base_dir / f"domain-{domain}.json"
             with domain_file.open("w") as file_obj:
-                json.dump(domain_info, file_obj, indent=4, sort_keys=True)
+                json.dump(domain_info, file_obj, indent=4)
 
             record: Dict[str, Any]
             for record in domain_info.get("data", []):
@@ -211,7 +191,7 @@ class ShodanScanner:
         try:
             info = self.api.host(ip)
             with file.open("w") as file_obj:
-                json.dump(info, file_obj, indent=4, sort_keys=True)
+                json.dump(info, file_obj, indent=4)
         except APIError as err:
             print(f"{ip}: Error: {err}")
 
