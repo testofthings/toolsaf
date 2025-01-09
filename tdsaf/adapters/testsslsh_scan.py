@@ -1,8 +1,8 @@
 """Testssl.sh output reading tool"""
 
-from io import BytesIO
+from io import BufferedReader
 import json
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 from tdsaf.common.address import AnyAddress
 from tdsaf.core.event_interface import EventInterface, PropertyAddressEvent
@@ -23,13 +23,13 @@ class TestSSLScan(EndpointTool):
     def filter_node(self, node: NetworkNode) -> bool:
         return isinstance(node, Service)
 
-    def process_endpoint(self,  endpoint: AnyAddress, stream: BytesIO, interface: EventInterface,
+    def process_endpoint(self,  endpoint: AnyAddress, stream: BufferedReader, interface: EventInterface,
                        source: EvidenceSource) -> None:
         raw = json.load(stream)
         evi = Evidence(source)
         self.do_scan(interface, endpoint, raw, evi)
 
-    def do_scan(self, event_sink: EventInterface, endpoint: AnyAddress, raw: Dict[str, Any],
+    def do_scan(self, event_sink: EventInterface, endpoint: AnyAddress, raw: List[Dict[str, Any]],
                 evidence: Evidence) -> None:
         """Scan TLS service"""
         bp_keys = set()  # best practices

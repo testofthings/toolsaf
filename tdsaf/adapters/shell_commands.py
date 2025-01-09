@@ -1,9 +1,11 @@
 """Shell command 'ps'"""
 # mypy: disable-error-code = "arg-type,assignment,attr-defined"
 
-from io import BytesIO, TextIOWrapper
+from io import BufferedReader, TextIOWrapper
 import re
 from typing import Any, Dict, List, Set, Tuple
+
+from tdsaf.main import ConfigurationException
 from tdsaf.common.address import AddressEnvelope, Addresses, AnyAddress, EndpointAddress, HWAddresses, IPAddress
 from tdsaf.core.components import OperatingSystem
 from tdsaf.core.event_interface import EventInterface, PropertyEvent
@@ -21,12 +23,14 @@ class ShellCommandPs(EndpointTool):
     def __init__(self, system: IoTSystem) -> None:
         super().__init__("shell-ps", ".txt", system)
 
-    def process_endpoint(self, endpoint: AnyAddress, stream: BytesIO, interface: EventInterface,
+    def process_endpoint(self, endpoint: AnyAddress, stream: BufferedReader, interface: EventInterface,
                          source: EvidenceSource) -> None:
         node = self.system.get_endpoint(endpoint)
 
         columns: Dict[str, int] = {}
         os = OperatingSystem.get_os(node, add=self.load_baseline)
+        if not isinstance(os, OperatingSystem):
+            raise ConfigurationException(f"Unknown operating system for node {node}")
 
         # expected processes as regexps
         regexp_map = {}
@@ -112,7 +116,7 @@ class ShellCommandSs(EndpointTool):
     LOCAL_ADDRESS = "Local_Address"
     PEER_ADDRESS = "Peer_Address"
 
-    def process_endpoint(self, endpoint: AnyAddress, stream: BytesIO, interface: EventInterface,
+    def process_endpoint(self, endpoint: AnyAddress, stream: BufferedReader, interface: EventInterface,
                          source: EvidenceSource) -> None:
         columns: Dict[str, int] = {}
         local_ads = set()

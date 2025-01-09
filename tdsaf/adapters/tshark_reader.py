@@ -6,7 +6,7 @@ import datetime
 from io import BufferedReader
 import json
 import pathlib
-from typing import Dict, Optional, Self, Any
+from typing import Dict, Optional, Any
 
 from tdsaf.common.address import HWAddress
 from tdsaf.core.event_interface import EventInterface
@@ -26,17 +26,17 @@ class TSharkReader(SystemWideTool):
         self.source: Optional[EvidenceSource] = None
 
     def process_file(self, data: BufferedReader, file_name: str, interface: EventInterface,
-                     source: EvidenceSource) -> Self:
+                     source: EvidenceSource) -> bool:
         # not for large files, very Python-style
         raw = json.load(data)
         self.source = source
         self.parse(raw, interface)
-        return self
+        return True
 
-    def read(self, data_file: pathlib.Path, interface: EventInterface, source: EvidenceSource) -> Self:
+    def read(self, data_file: pathlib.Path, interface: EventInterface, source: EvidenceSource) -> None:
         """Read PCAP file"""
         with data_file.open("r") as f:
-            return self.process_file(f, data_file.name, interface, source)
+            self.process_file(f, data_file.name, interface, source)
 
     def parse(self, raw: Dict[Any, Any], interface: EventInterface) -> None:
         """Parse JSON"""
@@ -47,7 +47,7 @@ class TSharkReader(SystemWideTool):
             if pf:
                 ev = Evidence(self.source, f":{nr + 1}")
                 r_time = float(fl["frame"]["frame.time_epoch"])
-                self.source.timestamp = datetime.datetime.fromtimestamp(round(r_time))
+                self.source.timestamp = datetime.datetime.fromtimestamp(round(r_time)) # type: ignore[union-attr]
                 ad = self.parse_hvc_event(pf, interface, ev)
                 ads.add(ad)
 

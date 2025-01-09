@@ -1,7 +1,7 @@
 """Tool to read Android manifest XML"""
 
 import json
-from io import BytesIO
+from io import BufferedReader
 from pathlib import Path
 from xml.etree import ElementTree
 from typing import Dict, List
@@ -32,7 +32,7 @@ class AndroidManifestScan(EndpointTool):
         with open(data_json_path, "r", encoding="utf-8") as f:
             return json.load(f) # type: ignore[no-any-return]
 
-    def process_endpoint(self, endpoint: AnyAddress, stream: BytesIO, interface: EventInterface,
+    def process_endpoint(self, endpoint: AnyAddress, stream: BufferedReader, interface: EventInterface,
                          source: EvidenceSource) -> None:
         node = self.system.get_endpoint(endpoint)
         if node.host_type != HostType.MOBILE:

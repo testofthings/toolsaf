@@ -1,6 +1,6 @@
 """Ssh-audit output reading tool"""
 
-from io import BytesIO
+from io import BufferedReader
 import json
 from typing import Dict, Set
 
@@ -25,7 +25,7 @@ class SSHAuditScan(EndpointTool):
             return False
         return node.protocol == Protocol.SSH
 
-    def process_endpoint(self, endpoint: AnyAddress, stream: BytesIO, interface: EventInterface,
+    def process_endpoint(self, endpoint: AnyAddress, stream: BufferedReader, interface: EventInterface,
                        source: EvidenceSource) -> None:
         """Scan network node"""
         raw = json.load(stream)

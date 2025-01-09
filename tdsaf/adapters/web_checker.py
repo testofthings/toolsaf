@@ -3,7 +3,7 @@
 import re
 from typing import Union
 from urllib import parse
-from io import BytesIO, TextIOWrapper
+from io import BufferedReader, TextIOWrapper
 
 from tdsaf.core.event_interface import PropertyEvent, EventInterface
 from tdsaf.core.model import IoTSystem
@@ -40,7 +40,7 @@ class WebChecker(SystemWideTool):
     def get_status_code_from_data(self, data: TextIOWrapper) -> int:
         """Extracts HTTP status code from data. It should be on line 2"""
         try:
-            return int(self.regexp.match(data.readline()).group(1))
+            return int(self.regexp.match(data.readline()).group(1)) # type: ignore[union-attr]
         except (AttributeError, ValueError) as e:
             raise ValueError("Proper status code not found on line two") from e
 
@@ -55,7 +55,8 @@ class WebChecker(SystemWideTool):
                 return True
         return not bool(keywords)
 
-    def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource) -> bool:
+    def process_file(self, data: BufferedReader, file_name: str,
+                     interface: EventInterface, source: EvidenceSource) -> bool:
         with TextIOWrapper(data) as f:
             url = self.get_url_from_data(f)
             if (resource := self.get_online_resource_for_url(url)) is None:

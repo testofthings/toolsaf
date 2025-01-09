@@ -1,6 +1,6 @@
 """ZED attack proxy result reader"""
 
-from io import BytesIO
+from io import BufferedReader
 import json
 from datetime import datetime
 from typing import List, Set, Any
@@ -21,7 +21,8 @@ class ZEDReader(SystemWideTool):
         self.tool.name = "ZED Attack Proxy"
         self.data_file_suffix = ".json"
 
-    def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource) -> bool:
+    def process_file(self, data: BufferedReader, file_name: str,
+                     interface: EventInterface, source: EvidenceSource) -> bool:
         raw_file = json.load(data)
 
         evidence = Evidence(source)

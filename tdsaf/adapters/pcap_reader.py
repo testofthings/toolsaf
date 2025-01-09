@@ -4,7 +4,7 @@
 from datetime import datetime
 from io import BufferedReader
 import pathlib
-from typing import Optional, Dict, Self, Tuple, Any
+from typing import Optional, Dict, Tuple, Any
 
 from framing.backends import RawFrame
 from framing.frame_types import dns_frames
@@ -53,7 +53,7 @@ class PCAPReader(SystemWideTool):
         return r
 
     def process_file(self, data: BufferedReader, file_name: str, interface: EventInterface,
-                     source: EvidenceSource) -> Self:
+                     source: EvidenceSource) -> bool:
         self.source = source
         self.interface = interface
         raw_data = Raw.stream(data, request_size=1024 * 1024)
@@ -61,7 +61,7 @@ class PCAPReader(SystemWideTool):
             self.parse(raw_data)
         finally:
             raw_data.close()
-        return self
+        return True
 
     def parse(self, raw: RawData) -> int:
         """Parse packets from PCAP data"""

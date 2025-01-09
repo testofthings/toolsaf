@@ -1,7 +1,7 @@
 """Censys scan result tool"""
 
 import argparse
-from io import BytesIO
+from io import BufferedReader
 import json
 import logging
 import pathlib
@@ -27,7 +27,7 @@ class CensysScan(EndpointTool):
     def filter_node(self, node: NetworkNode) -> bool:
         return isinstance(node, Host)
 
-    def process_endpoint(self, endpoint: AnyAddress, stream: BytesIO, interface: EventInterface,
+    def process_endpoint(self, endpoint: AnyAddress, stream: BufferedReader, interface: EventInterface,
                          source: EvidenceSource) -> None:
         raw = json.load(stream)
 

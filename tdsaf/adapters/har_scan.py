@@ -1,6 +1,6 @@
 """HAR JSON tool"""
 
-from io import BytesIO
+from io import BufferedReader
 import json
 import urllib.parse
 from datetime import datetime
@@ -25,7 +25,7 @@ class HARScan(NetworkNodeTool):
     def filter_node(self, node: NetworkNode) -> bool:
         return isinstance(node, Host)
 
-    def process_node(self, node: NetworkNode, data_file: BytesIO, interface: EventInterface,
+    def process_node(self, node: NetworkNode, data_file: BufferedReader, interface: EventInterface,
                      source: EvidenceSource) -> None:
         host = cast(Host, node)
 

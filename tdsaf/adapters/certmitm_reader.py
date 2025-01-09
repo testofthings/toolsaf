@@ -3,7 +3,7 @@
 import json
 from zipfile import ZipFile
 from io import BufferedReader
-from typing import Set, Tuple
+from typing import Set, Tuple, Dict, Any, cast
 
 from tdsaf.common.address import HWAddresses
 from tdsaf.core.event_interface import EventInterface
@@ -32,9 +32,11 @@ class CertMITMReader(SystemWideTool):
             for file in zip_file.filelist:
                 if "errors.txt" in file.filename:
                     with zip_file.open(file.filename) as error_file:
-                        for conn in error_file.read().decode("utf-8").rstrip().split("\n"):
-                            conn = json.loads(conn)
-                            connections.add((conn['client'], conn['destination']['ip'], conn['destination']['port']))
+                        for conn_str in error_file.read().decode("utf-8").rstrip().split("\n"):
+                            conn_json = cast(Dict[str, Any], json.loads(conn_str))
+                            connections.add(
+                                (conn_json['client'], conn_json['destination']['ip'], conn_json['destination']['port'])
+                            )
 
         for connection in connections:
             connection_source, target, port = connection

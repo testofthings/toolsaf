@@ -1,7 +1,7 @@
 """Release data reading"""
 
 import datetime
-from io import BytesIO
+from io import BufferedReader
 import json
 from statistics import mean
 from typing import Tuple, List, cast
@@ -24,7 +24,7 @@ class ReleaseReader(NodeComponentTool):
         """Filter checked entities"""
         return isinstance(component, Software)
 
-    def process_component(self, component: NodeComponent, data_file: BytesIO, interface: EventInterface,
+    def process_component(self, component: NodeComponent, data_file: BufferedReader, interface: EventInterface,
                        source: EvidenceSource) -> None:
         software = cast(Software, component)
 

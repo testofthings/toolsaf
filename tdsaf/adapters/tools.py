@@ -109,7 +109,7 @@ class EndpointTool(ToolAdapter):
         ads_sorted.extend([a for a in addresses if isinstance(a.get_host(), IPAddress)])
         for a in ads_sorted:
             a_file_name = self.get_file_by_endpoint(a)
-            if a_file_name not in self.file_name_map:
+            if a_file_name not in self.file_name_map and isinstance(a_file_name, str):
                 self.file_name_map[a_file_name] = a
 
 
