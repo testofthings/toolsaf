@@ -7,7 +7,7 @@ from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
 
 from tdsaf.main import ConfigurationException
-from tdsaf.common.address import IPAddress, HWAddress, EndpointAddress, Protocol
+from tdsaf.common.address import IPAddress, HWAddress, EndpointAddress, Protocol, AnyAddress
 from tdsaf.core.event_interface import EventInterface
 from tdsaf.core.model import IoTSystem
 from tdsaf.adapters.tools import SystemWideTool
@@ -20,6 +20,9 @@ class NMAPScan(SystemWideTool):
         super().__init__("nmap", system)
         self.tool.name = "Nmap scan"
         self.data_file_suffix = ".xml"
+        self.host_services: Set[EndpointAddress] = set()
+        self._interface: EventInterface
+        self._evidence: Evidence
 
     def get_sub_element(self, element: Element, *names: str) -> Element:
         """Get sub element from element based on given element names"""
@@ -50,6 +53,20 @@ class NMAPScan(SystemWideTool):
             self.get_sub_element(host, "status"), "state"
         ) == "up"
 
+    def get_addresses(self, host: Element) -> Tuple[Optional[IPAddress], Optional[HWAddress]]:
+        """Get IP and or HW address from given xml element"""
+        ip_addr, hw_addr = None, None
+        for addr_info in host.iter("address"):
+            raw_addr = self.get_from_element(addr_info, "addr")
+            match self.get_from_element(addr_info, "addrtype"):
+                case "ipv4":
+                    ip_addr = IPAddress.new(raw_addr)
+                case "mac":
+                    hw_addr = HWAddress.new(raw_addr)
+                case _:
+                    self.logger.warning("Ignoring scanned address: %s", raw_addr)
+        return ip_addr, hw_addr
+
     def get_port_info(self, port_info: Element) -> Tuple[Protocol, int, Optional[str]]:
         """Get protocol, port, and optional service name from port element"""
         protocol = Protocol.get_protocol(self.get_from_element(port_info, "protocol"))
@@ -64,46 +81,36 @@ class NMAPScan(SystemWideTool):
             pass
         return protocol, port, service_name
 
+    def add_scans_to_addr(self, addr: AnyAddress, host: Element) -> None:
+        """Adds service and host scan results, based on xml element, to given address"""
+        for port_info in self.get_sub_element(host, "ports").iter("port"):
+            protocol, port, service_name = self.get_port_info(port_info)
+            endpoint_addr = EndpointAddress(addr, protocol, port)
+            service_scan = ServiceScan(self._evidence, endpoint_addr, service_name or "")
+            self._interface.service_scan(service_scan)
+            self.host_services.add(endpoint_addr)
+
+        scan = HostScan(self._evidence, addr, self.host_services)
+        self._interface.host_scan(scan)
+
     def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource) -> bool:
         tree = ElementTree.parse(data)
-
         if not isinstance((root := tree.getroot()), Element):
             raise ConfigurationException("Incorrect nmap .xml file formatting")
 
         source.timestamp = self.get_timestamp(root)
-        evidence = Evidence(source)
+        self._evidence = Evidence(source)
+        self._interface = interface
 
         for host in root.iter("host"):
             if not self.host_state_is_up(host):
                 continue
 
-            host_services: Set[EndpointAddress] = set()
-            ip_addr: IPAddress
-            hw_addr: HWAddress
-            for address_info in host.iter("address"):
-                raw_addr = self.get_from_element(address_info, "addr")
-                addr_type = self.get_from_element(address_info, "addrtype")
-
-                if addr_type == "ipv4":
-                    ip_addr = IPAddress.new(raw_addr)
-                elif addr_type == "mac":
-                    hw_addr = HWAddress.new(raw_addr)
-                else:
-                    self.logger.warning("Ignoring scanned address: %s", raw_addr)
-                    continue
-
-            system_addresses = self.system.get_addresses()
-            addr_in_system = ip_addr in system_addresses or hw_addr in system_addresses
-
-            for port_info in self.get_sub_element(host, "ports").iter("port"):
-                protocol, port, service_name = self.get_port_info(port_info)
-                endpoint_addr = EndpointAddress(ip_addr, protocol, port)
-                service_scan = ServiceScan(evidence, endpoint_addr, service_name or "")
-                interface.service_scan(service_scan)
-                host_services.add(endpoint_addr)
-
-            if addr_in_system:
-                scan = HostScan(evidence, ip_addr or hw_addr, host_services)
-                interface.host_scan(scan)
+            ip_addr, hw_addr = self.get_addresses(host)
+            self.host_services = set()
+            if isinstance(ip_addr, IPAddress):
+                self.add_scans_to_addr(ip_addr, host)
+            elif isinstance(hw_addr, HWAddress):
+                self.add_scans_to_addr(hw_addr, host)
 
         return True
