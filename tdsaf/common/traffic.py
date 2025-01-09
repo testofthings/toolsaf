@@ -30,7 +30,7 @@ class EvidenceSource:
         s.model_override = self.model_override
         return s
 
-    def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict[None, None]:
+    def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict[str, Any]:
         """Get extra data as JSON"""
         return {}
 
@@ -91,7 +91,7 @@ class Event:
         """Short event information"""
         return self.get_value_string() or self.evidence.source.name
 
-    def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict[None, None]:
+    def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict[str, Any]:
         """Get JSON representation of data"""
         return {}
 
@@ -108,6 +108,8 @@ class Event:
         return self.evidence.__hash__()
 
     def __eq__(self, v: object) -> bool:
+        if not isinstance(v, Event):
+            return False
         return self.evidence == v.evidence
 
 
@@ -219,6 +221,8 @@ class Flow(Event):
         return self.protocol.__hash__() ^ hash(self.properties)
 
     def __eq__(self, v: object) -> bool:
+        if not isinstance(v, Flow):
+            return False
         return self.protocol == v.protocol and self.properties == v.properties and self.network == v.network
 
 

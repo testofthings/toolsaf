@@ -46,7 +46,7 @@ class AnyAddress:
         """Get possible hardware address here"""
         return None
 
-    def get_host(self) -> Optional['AnyAddress']:
+    def get_host(self) -> 'AnyAddress':
         """Get host or self"""
         return self
 
@@ -54,9 +54,9 @@ class AnyAddress:
         """Open address envelope, if any. If none, return this address"""
         return self
 
-    def get_protocol_port(self) -> Optional[Tuple[Protocol, int]]:
+    def get_protocol_port(self) -> Tuple[Optional[Protocol], int]:
         """Get protocol and port, if any"""
-        return None
+        return None # type: ignore[return-value]
 
     def is_null(self) -> bool:
         """Is null address?"""
@@ -442,7 +442,7 @@ class EndpointAddress(AnyAddress):
     def get_hw_address(self) -> Optional[HWAddress]:
         return self.host.get_hw_address()
 
-    def get_host(self) -> Optional[AnyAddress]:
+    def get_host(self) -> AnyAddress:
         return self.host
 
     def get_protocol_port(self) ->  Tuple[Optional[Protocol], int]:
@@ -543,10 +543,10 @@ class AddressEnvelope(AnyAddress):
     def get_hw_address(self) -> Optional[HWAddress]:
         return self.address.get_hw_address()
 
-    def get_host(self) -> Optional[AnyAddress]:
+    def get_host(self) -> AnyAddress:
         return self.address
 
-    def get_protocol_port(self) -> Optional[Tuple[Protocol, int]]:
+    def get_protocol_port(self) -> Tuple[Optional[Protocol], int]:
         return self.address.get_protocol_port()
 
     def change_host(self, host: 'AnyAddress') -> 'AddressEnvelope':
