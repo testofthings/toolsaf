@@ -60,7 +60,7 @@ class Tool:
     def __gt__(self, other: 'Tool') -> bool:
         return self.name.__gt__(other.name)
 
-    def __eq__(self, other: 'Tool') -> bool:
+    def __eq__(self, other: object ) -> bool:
         return isinstance(other, Tool) and other.name == self.name
 
     def __hash__(self) -> int:
@@ -107,7 +107,7 @@ class Event:
     def __hash__(self) -> int:
         return self.evidence.__hash__()
 
-    def __eq__(self, v: 'Event') -> bool:
+    def __eq__(self, v: object) -> bool:
         return self.evidence == v.evidence
 
 
@@ -218,7 +218,7 @@ class Flow(Event):
     def __hash__(self) -> int:
         return self.protocol.__hash__() ^ hash(self.properties)
 
-    def __eq__(self, v: 'Flow') -> bool:
+    def __eq__(self, v: object) -> bool:
         return self.protocol == v.protocol and self.properties == v.properties and self.network == v.network
 
 
@@ -298,7 +298,7 @@ class EthernetFlow(Flow):
         return self.source.__hash__() ^ self.target.__hash__() ^ self.payload ^ self.protocol.__hash__() \
             ^ hash(self.network)
 
-    def __eq__(self, other: 'EthernetFlow') -> bool:
+    def __eq__(self, other: object ) -> bool:
         if not isinstance(other, EthernetFlow):
             return False
         return self.source == other.source and self.payload == other.payload and self.target == other.target \
@@ -424,7 +424,7 @@ class IPFlow(Flow):
     def __hash__(self) -> int:
         return self.source.__hash__() ^ self.target.__hash__() ^ self.protocol.__hash__() ^ hash(self.network)
 
-    def __eq__(self, other: 'IPFlow') -> bool:
+    def __eq__(self, other: object ) -> bool:
         if not isinstance(other, IPFlow):
             return False
         return self.source == other.source and self.target == other.target and super().__eq__(other)
@@ -499,7 +499,7 @@ class BLEAdvertisementFlow(Flow):
     def __hash__(self) -> int:
         return self.source.__hash__() ^ self.event_type ^ self.protocol.__hash__() ^ hash(self.network)
 
-    def __eq__(self, other: 'BLEAdvertisementFlow') -> bool:
+    def __eq__(self, other: object ) -> bool:
         if not isinstance(other, BLEAdvertisementFlow):
             return False
         return self.source == other.source and self.event_type == other.event_type and super().__eq__(other)

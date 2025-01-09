@@ -85,7 +85,7 @@ class NameEvent(Event):
         assert all(p for p in peers)
         return NameEvent(evidence, service, name, tag, address, peers)
 
-    def __eq__(self, other: 'NameEvent') -> bool:
+    def __eq__(self, other: object ) -> bool:
         if not isinstance(other, NameEvent):
             return False
         return self.service == other.service and self.name == other.name and self.address == other.address

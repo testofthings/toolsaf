@@ -134,7 +134,7 @@ class EntityTag(AnyAddress):
     def get_parseable_value(self) -> str:
         return f"{self.tag}"  # tag is the default
 
-    def __eq__(self, other: 'EntityTag') -> bool:
+    def __eq__(self, other: object ) -> bool:
         if not isinstance(other, EntityTag):
             return False
         return self.tag == other.tag
@@ -287,7 +287,7 @@ class HWAddress(AnyAddress):
     def get_parseable_value(self) -> str:
         return f"{self.data}|hw"
 
-    def __eq__(self, other: 'HWAddress') -> bool:
+    def __eq__(self, other: object ) -> bool:
         if not isinstance(other, HWAddress):
             return False
         return self.data == other.data
@@ -346,7 +346,7 @@ class IPAddress(AnyAddress):
     def get_parseable_value(self) -> str:
         return f"{self.data}"  # IP address is unambiguous
 
-    def __eq__(self, other: 'IPAddress') -> bool:
+    def __eq__(self, other: object ) -> bool:
         if not isinstance(other, IPAddress):
             return False
         return self.data == other.data
@@ -383,7 +383,7 @@ class DNSName(AnyAddress):
     def get_parseable_value(self) -> str:
         return f"{self.name}|name"
 
-    def __eq__(self, other: 'DNSName') -> bool:
+    def __eq__(self, other: object ) -> bool:
         if not isinstance(other, DNSName):
             return False
         return self.name == other.name
@@ -477,7 +477,7 @@ class EndpointAddress(AnyAddress):
         prot = f"/{self.protocol.value}" if self.protocol != Protocol.ANY else ""
         return f"{self.host.get_parseable_value()}{prot}{port}"
 
-    def __eq__(self, other: 'EndpointAddress') -> bool:
+    def __eq__(self, other: object ) -> bool:
         if not isinstance(other, EndpointAddress):
             return False
         return self.host == other.host and self.protocol == other.protocol and self.port == other.port
@@ -515,7 +515,7 @@ class Network:
         # FIXME: Broadcast for IPv6 not implemented  pylint: disable=fixme
         return False
 
-    def __eq__(self, other: 'Network') -> bool:
+    def __eq__(self, other: object ) -> bool:
         return isinstance(other, Network) and self.name == other.name
 
     def __hash__(self) -> int:
@@ -576,7 +576,7 @@ class AddressEnvelope(AnyAddress):
     def get_parseable_value(self) -> str:
         return f"{self.address.get_parseable_value()}({self.content.get_parseable_value()})"
 
-    def __eq__(self, other: 'AddressEnvelope') -> bool:
+    def __eq__(self, other: object ) -> bool:
         if not isinstance(other, AddressEnvelope):
             return False
         return self.address == other.address and self.content == other.content

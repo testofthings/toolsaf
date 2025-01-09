@@ -101,7 +101,7 @@ class PropertyEvent(Event, Verdictable):
     def __hash__(self) -> int:
         return super().__hash__() ^ hash(self.entity) ^ hash(self.key_value)
 
-    def __eq__(self, v: 'PropertyEvent') -> bool:
+    def __eq__(self, v: object) -> bool:
         return super().__eq__(v) and self.entity == v.entity and self.key_value == v.key_value
 
 
@@ -146,7 +146,7 @@ class PropertyAddressEvent(Event, Verdictable):
     def __hash__(self) -> int:
         return super().__hash__() ^ hash(self.address) ^ hash(self.key_value)
 
-    def __eq__(self, v: 'PropertyAddressEvent') -> bool:
+    def __eq__(self, v: object) -> bool:
         return super().__eq__(v) and self.address == v.address and self.key_value == v.key_value
 
 

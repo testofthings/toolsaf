@@ -234,7 +234,7 @@ class PropertyClaim(RequirementClaim):
 
     # NOTE: We assume that key alone separates claims
 
-    def __eq__(self, other: 'PropertyClaim') -> bool:
+    def __eq__(self, other: object ) -> bool:
         return isinstance(other, PropertyClaim) and other.property_key == self.property_key
 
     def __hash__(self) -> int:
@@ -266,7 +266,7 @@ class AlternativeClaim(RequirementClaim):
         """Make alternative claim"""
         return AlternativeClaim(self.sequence + (other,))
 
-    def __eq__(self, other: 'AlternativeClaim') -> bool:
+    def __eq__(self, other: object ) -> bool:
         return isinstance(other, AlternativeClaim) and other.sequence == self.sequence
 
     def __hash__(self) -> int:
@@ -318,7 +318,7 @@ class AggregateClaim(RequirementClaim):
     def __mul__(self, other: RequirementClaim) -> 'AggregateClaim':
         return AggregateClaim(self.sequence + (other,))
 
-    def __eq__(self, other: 'AggregateClaim') -> bool:
+    def __eq__(self, other: object ) -> bool:
         return isinstance(other, AlternativeClaim) and other.sequence == self.sequence
 
     def __hash__(self) -> int:
@@ -410,7 +410,7 @@ class AvailabilityClaim(PropertyClaim):
     def get_base_claim(self) -> RequirementClaim:
         return self.base_claim or self
 
-    def __eq__(self, other: 'AvailabilityClaim') -> bool:
+    def __eq__(self, other: object ) -> bool:
         return isinstance(other, AvailabilityClaim) and other.property_key == self.property_key
 
     def __hash__(self) -> int:
@@ -432,7 +432,7 @@ class ContentClaim(AvailabilityClaim):
         c.base_claim = self.get_base_claim()
         return c
 
-    def __eq__(self, other: 'AvailabilityClaim') -> bool:
+    def __eq__(self, other: object ) -> bool:
         return isinstance(other, ContentClaim) and other.property_key == self.property_key
 
     def __hash__(self) -> int:

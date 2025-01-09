@@ -84,7 +84,7 @@ class PropertyKey:
     def __hash__(self) -> int:
         return self.segments.__hash__()
 
-    def __eq__(self, other: 'PropertyKey') -> bool:
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, PropertyKey):
             return False
         return self.segments == other.segments
