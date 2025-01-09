@@ -295,6 +295,8 @@ class Addressable(NetworkNode):
         raise NotImplementedError()
 
     def create_service(self, address: EndpointAddress) -> 'Service':
+        if address.protocol is None:
+            raise ValueError(f"Address {address} protocol is None")
         s_name = Service.make_name(f"{address.protocol.value.upper()}", address.port)
         nw = []
         if address.get_ip_address():
@@ -386,7 +388,7 @@ class Addressable(NetworkNode):
     def get_system(self) -> 'IoTSystem':
         return self.parent.get_system()
 
-    def get_parent_host(self) -> Optional['Host']:
+    def get_parent_host(self) -> 'Host':
         """Get the parent host"""
         return self.parent.addressable(lambda p: p.get_parent_host())
 
@@ -607,6 +609,8 @@ class IoTSystem(NetworkNode):
             if isinstance(name, EntityTag):
                 return None, False  # do not create hosts for unknown tags
             named = self.get_endpoint(name)
+
+        assert named, "named is None"
 
         if not add:
             # just use the named

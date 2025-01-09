@@ -107,10 +107,10 @@ class Event:
     def __hash__(self) -> int:
         return self.evidence.__hash__()
 
-    def __eq__(self, v: object) -> bool:
-        if not isinstance(v, Event):
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Event):
             return False
-        return self.evidence == v.evidence
+        return self.evidence == other.evidence
 
 
 class ServiceScan(Event):
@@ -220,10 +220,10 @@ class Flow(Event):
     def __hash__(self) -> int:
         return self.protocol.__hash__() ^ hash(self.properties)
 
-    def __eq__(self, v: object) -> bool:
-        if not isinstance(v, Flow):
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Flow):
             return False
-        return self.protocol == v.protocol and self.properties == v.properties and self.network == v.network
+        return self.protocol == other.protocol and self.properties == other.properties and self.network == other.network
 
 
 class EthernetFlow(Flow):
