@@ -116,6 +116,13 @@ class ConnectionSerializer(Serializer):
         stream.write_field("source", stream.id_for(obj.source))
         stream.write_field("target", stream.id_for(obj.target))
         if not self.root.miniature:
+            stream.write_field("source_long_name", obj.source.long_name())
+            stream.write_field("target_long_name", obj.target.long_name())
+
+            s_tag, d_tag = obj.source.get_tag(), obj.target.get_tag()
+            if s_tag and d_tag:
+                # front-end can use this to identify connection
+                stream.write_field("tag", f"{s_tag}--{d_tag}")
             stream.write_field("name", obj.target.name)
             stream.write_field("long_name", obj.long_name())
 
