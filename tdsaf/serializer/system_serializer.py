@@ -54,6 +54,7 @@ class IoTSystemSerializer(NetworkNodeSerializer):
 
     def write(self, obj: IoTSystem, stream: SerializerStream):
         super().write(obj, stream)
+        stream.write_field("tag", "_")  # NOTE: A 'tag' for UI
         for c in obj.get_connections():
             stream.push_object(c, at_object=obj)
 
