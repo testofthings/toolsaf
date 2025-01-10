@@ -1,5 +1,4 @@
 """Base class and default database implementation"""
-# mypy: disable-error-code="assignment,var-annotated"
 
 import logging
 from typing import Any, Iterable, Optional, Dict, List
@@ -19,7 +18,7 @@ class EntityDatabase:
         """Restore stored events after model is loaded"""
         return []
 
-    def reset(self, source_filter: Dict[str, bool] = None) -> None:
+    def reset(self, source_filter: Optional[Dict[str, bool]] = None) -> None:
         """Reset database cursor"""
 
     def next_pending(self) -> Optional[Event]:
@@ -54,7 +53,7 @@ class InMemoryDatabase(EntityDatabase):
         self.trail_filter: Dict[str, bool] = {}  # key is label, not present == False
         self.cursor = 0
 
-    def reset(self, source_filter: Dict[str, bool] = None) -> None:
+    def reset(self, source_filter: Optional[Dict[str, bool]] = None) -> None:
         self.cursor = 0
         self.trail_filter = source_filter or {}
 
@@ -87,7 +86,7 @@ class InMemoryDatabase(EntityDatabase):
         self.trail_filter.setdefault(source.label, True)
 
     def get_souces(self) -> List[EvidenceSource]:
-        sources = {}
+        sources: Dict[EvidenceSource, Event] = {}
         for e in self.trail:
             sources.setdefault(e.evidence.source, e)
         return list(sources.keys())

@@ -1,5 +1,4 @@
 """Intercept events and create a log of them"""
-# mypy: disable-error-code=assignment
 
 from logging import Logger
 import logging
@@ -19,7 +18,7 @@ from tdsaf.common.traffic import EvidenceSource, HostScan, ServiceScan, Flow, Ev
 class LoggingEvent:
     """Stored logging event"""
     def __init__(self, event: Event, entity: Optional[Entity] = None,
-                 property_value: Tuple[PropertyKey, Any] = None) -> None:
+                 property_value: Optional[Tuple[PropertyKey, Any]] = None) -> None:
         self.event = event
         self.property_value = property_value  # implicit property set
         self.entity = entity
@@ -86,7 +85,7 @@ class EventLogger(EventInterface, ModelListener):
         self.event_logger.info(s)
 
     def _add(self, event: Event, entity: Optional[Entity] = None,
-             property_value: Tuple[PropertyKey, Any] = None) -> LoggingEvent:
+             property_value: Optional[Tuple[PropertyKey, Any]] = None) -> LoggingEvent:
         """Add new current log entry"""
         ev = LoggingEvent(event, entity, property_value)
         self.logs.append(ev)

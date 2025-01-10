@@ -1,5 +1,5 @@
 """Model classes"""
-# mypy: disable-error-code="type-arg,assignment,return-value,arg-type"
+# mypy: disable-error-code="assignment,arg-type"
 
 import ipaddress
 import itertools
@@ -147,12 +147,12 @@ class NetworkNode(Entity):
     def iterate_all(self) -> Iterator['Entity']:
         """Iterate all entities"""
         yield self
-        for c in self.children:
-            if c.status != Status.PLACEHOLDER:
-                yield from c.iterate_all()
-        for c in self.components:
-            if c.status != Status.PLACEHOLDER:
-                yield c
+        for child in self.children:
+            if child.status != Status.PLACEHOLDER:
+                yield from child.iterate_all()
+        for component in self.components:
+            if component.status != Status.PLACEHOLDER:
+                yield component
 
     def long_name(self) -> str:
         """Get longer name, or at least the name"""
@@ -298,9 +298,9 @@ class Addressable(NetworkNode):
         if address.protocol is None:
             raise ValueError(f"Address {address} protocol is None")
         s_name = Service.make_name(f"{address.protocol.value.upper()}", address.port)
-        nw = []
-        if address.get_ip_address():
-            nw = self.get_networks_for(address.get_ip_address())
+        nw: List[Network] = []
+        if (ip_address := address.get_ip_address()):
+            nw = self.get_networks_for(ip_address)
             if len(nw) == 1 and nw[0] == self.get_system().get_default_network():
                 nw = []  # default network not explicitlyt specified
             # update name with network, if non-default
@@ -390,7 +390,7 @@ class Addressable(NetworkNode):
 
     def get_parent_host(self) -> 'Host':
         """Get the parent host"""
-        return self.parent.addressable(lambda p: p.get_parent_host())
+        return self.parent.addressable(lambda p: p.get_parent_host()) # type: ignore[return-value]
 
 
 class Host(Addressable):
@@ -556,7 +556,8 @@ class IoTSystem(NetworkNode):
                 return False
         return True
 
-    def learn_named_address(self, name: Union[DNSName, EntityTag], address: Optional[AnyAddress]) -> Tuple[Host, bool]:
+    def learn_named_address(self, name: Union[DNSName, EntityTag],
+                            address: Optional[AnyAddress]) -> Tuple[Optional[Host], bool]:
         """Learn addresses for host, return the named host and if any changes"""
         # pylint: disable=too-many-return-statements
 
@@ -581,7 +582,7 @@ class IoTSystem(NetworkNode):
 
         # find relevant hosts
         named = None
-        by_ip = []
+        by_ip: List[Host] = []
         for h in self.get_hosts():
             if name in h.addresses:
                 named = h
@@ -676,10 +677,11 @@ class IoTSystem(NetworkNode):
             e = e.create_service(e_add)
         return e
 
-    def find_endpoint(self, address: AnyAddress, at_network: Optional[Network] = None) -> Optional['Addressable']:
+    def find_endpoint(self, address: AnyAddress, at_network: Optional[Network] = None) -> Optional[Addressable]:
         h_add = address.get_host()
         e_add = address.open_envelope()  # scan from inside is in envelope
         network = at_network or self.get_default_network()
+        e: Optional[Addressable]
         for e in self.children:
             if e.networks and network not in e.networks:
                 continue  # not in the right network
@@ -757,7 +759,9 @@ class IoTSystem(NetworkNode):
             port = 80 if proto == Protocol.HTTP else 443
         else:
             port = u.port
-        sadd = EndpointAddress(DNSName.name_or_ip(u.hostname), Protocol.TCP, port)
+        if (hostname := u.hostname) is None:
+            raise ValueError(f"{u} hostname was None")
+        sadd = EndpointAddress(DNSName.name_or_ip(hostname), Protocol.TCP, port)
         se = self.get_endpoint(sadd)
         assert isinstance(se, Service)
         path = u.path
@@ -814,7 +818,7 @@ class EvidenceNetworkSource(EvidenceSource):
         s.model_override = self.model_override
         return s
 
-    def get_data_json(self, id_resolver: Callable[[Any], Any]) -> Dict:
+    def get_data_json(self, id_resolver: Callable[[Any], Any]) -> Dict[str, Any]:
         r = super().get_data_json(id_resolver)
         if self.address_map:
             r["address_map"] = {k.get_parseable_value(): id_resolver(v) for k, v in self.address_map.items()}
@@ -823,7 +827,7 @@ class EvidenceNetworkSource(EvidenceSource):
             r["activity_map"] = [[id_resolver(k), v.value] for k, v in self.activity_map.items()]
         return r
 
-    def decode_data_json(self, data: Dict, id_resolver: Callable[[Any], Any]) -> 'EvidenceNetworkSource':
+    def decode_data_json(self, data: Dict[str, Any], id_resolver: Callable[[Any], Any]) -> 'EvidenceNetworkSource':
         """Parse data from JSON"""
         for a, e in data.get("address_map", {}).items():
             ent = id_resolver(e)

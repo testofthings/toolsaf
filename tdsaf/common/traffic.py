@@ -2,7 +2,7 @@
 # mypy: disable-error-code=arg-type
 
 import datetime
-from typing import Any, Callable, Tuple, Set, Optional, Self, Dict
+from typing import Any, Callable, Tuple, Set, Optional, Self, Dict, cast
 
 from tdsaf.common.address import HWAddress, IPAddress, HWAddresses, IPAddresses, Network, Protocol, EndpointAddress, \
     AnyAddress, Addresses
@@ -260,7 +260,10 @@ class EthernetFlow(Flow):
     @classmethod
     def decode_data_json(cls, evidence: Evidence, data: Dict[str, Any],
                          _entity_resolver: Callable[[Any], Any]) -> 'EthernetFlow':
-        protocol = Protocol.get_protocol(data.get("protocol"), Protocol.ETHERNET)
+        if (protocol_data := data.get("protocol")):
+            protocol = cast(Protocol, Protocol.get_protocol(protocol_data, Protocol.ETHERNET))
+        else:
+            protocol = Protocol.ETHERNET
         source = HWAddress.new(data["source"])
         target = HWAddress.new(data["target"])
         payload = data.get("payload", -1)
@@ -399,12 +402,13 @@ class IPFlow(Flow):
     def decode_data_json(cls, evidence: Evidence, data: Dict[str, Any],
                          entity_resolver: Callable[[Any], Any]) -> 'IPFlow':
         protocol = Protocol.get_protocol(data["protocol"])
-        s_hw = HWAddress.new(data.get("source_hw")) if "source_hw" in data else HWAddresses.NULL
-        s_ip = IPAddress.new(data.get("source")) if "source" in data else IPAddresses.NULL
+        s_hw = HWAddress.new(data["source_hw"]) if "source_hw" in data else HWAddresses.NULL
+        s_ip = IPAddress.new(data["source"]) if "source" in data else IPAddresses.NULL
         s_port = data.get("source_port", -1)
-        t_hw = HWAddress.new(data.get("target_hw")) if "target_hw" in data else HWAddresses.NULL
-        t_ip = IPAddress.new(data.get("target")) if "target" in data else IPAddresses.NULL
+        t_hw = HWAddress.new(data["target_hw"]) if "target_hw" in data else HWAddresses.NULL
+        t_ip = IPAddress.new(data["target"]) if "target" in data else IPAddresses.NULL
         t_port = data.get("target_port", -1)
+        assert protocol is not None, "Protocol is None"
         r = IPFlow(evidence, source=(s_hw, s_ip, s_port), target=(t_hw, t_ip, t_port), protocol=protocol)
         r.decode_properties_json(data)
         if data.get("reverse", False):
@@ -442,10 +446,13 @@ class IPFlow(Flow):
             p_value = value[protocol_str]
             s_hw, s_ip, s_port = p_value["source"]
             t_hw, t_ip, t_port = p_value["target"]
+            protocol = Protocol.get_protocol(protocol_str)
+            assert protocol is not None, "Protocol is none"
             return IPFlow(NO_EVIDENCE, (HWAddress.new(s_hw), IPAddress.new(s_ip), s_port),
-                      (HWAddress.new(t_hw), IPAddress.new(t_ip), t_port), protocol=Protocol.get_protocol(protocol_str))
+                      (HWAddress.new(t_hw), IPAddress.new(t_ip), t_port), protocol=protocol)
         # Form 2
         protocol = Protocol.get_protocol(value["protocol"])
+        assert protocol is not None, "Protocol is None"
         s_ip, s_port = IPAddress.parse_with_port(value["source"])
         t_ip, t_port = IPAddress.parse_with_port(value["target"])
         s_hw = HWAddress.new(value["source_hw"]) if "source_hw" in value else HWAddress.from_ip(s_ip)

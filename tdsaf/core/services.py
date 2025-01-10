@@ -1,5 +1,4 @@
 """Services with dedicated logic"""
-# mypy: disable-error-code=arg-type
 
 from typing import Any, Callable, Dict, List, Set, Optional, Union
 
@@ -76,11 +75,11 @@ class NameEvent(Event):
     def decode_data_json(cls, evidence: Evidence, data: Dict[str, Any],
                          entity_resolver: Callable[[Any], Any]) -> 'NameEvent':
         """Decode event from JSON"""
-        name = DNSName(data.get("name")) if "name" in data else None
-        tag = EntityTag(data.get("tag")) if "tag" in data else None
-        service = entity_resolver(data.get("service")) if "service" in data else None
+        name = DNSName(data["name"]) if "name" in data else None
+        tag = EntityTag(data["tag"]) if "tag" in data else None
+        service = entity_resolver(data["service"]) if "service" in data else None
         assert service is None or isinstance(service, DNSService), f"Bad service {service.__class__.__name__}"
-        address = IPAddress.new(data.get("address")) if "address" in data else None
+        address = IPAddress.new(data["address"]) if "address" in data else None
         peers = [entity_resolver(p) for p in data.get("peers", [])]
         assert all(p for p in peers)
         return NameEvent(evidence, service, name, tag, address, peers)
