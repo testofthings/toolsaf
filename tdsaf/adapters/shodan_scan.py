@@ -5,7 +5,7 @@ import json
 import argparse
 from io import BufferedReader
 from pathlib import Path
-from typing import List, Dict, Union, Tuple, Optional, Any, Set, cast
+from typing import List, Dict, Tuple, Optional, Any, Set, cast
 from shodan.client import Shodan
 from shodan.exception import APIError
 
@@ -26,10 +26,9 @@ class ShodanScan(SystemWideTool):
         super().__init__("shodan", system)
         self.tool.name = "Shodan tool"
         self.data_file_suffix = ".json"
-        self.key_set: Set[PropertyKey]
+        self._key_set: Set[PropertyKey]
         self._interface: EventInterface
         self._evidence: Evidence
-        self._key = Properties.FUZZ
 
     def determine_protocol(self, entry: Dict[str, Any]) -> Protocol:
         """Determine used protocol"""
@@ -60,38 +59,38 @@ class ShodanScan(SystemWideTool):
     def add_vulnerabilities(self, vulnerabilities: Dict[str, Any], service: Service) -> None:
         """Add vulnerability to service's properties"""
         for vulnerability, info in vulnerabilities.items():
-            if (key := PropertyKey(self.tool_label, vulnerability)) not in self.key_set:
-                self.key_set.add(key)
+            if (key := PropertyKey(self.tool_label, vulnerability)) not in self._key_set:
+                self._key_set.add(key)
                 veridct = Verdict.FAIL
                 comment = info["summary"] if "summary" in info else ""
                 prop_event = PropertyEvent(self._evidence, service, key.verdict(veridct, comment))
                 self._interface.property_update(prop_event)
 
-    def add_heartbleed(self, opts: Dict[str, str], service: Service) -> None:
+    def add_heartbleed(self, opts_item: Dict[str, str], service: Service) -> None:
         """Add Heartbleed verdict to service's properties"""
-        if "heartbleed" in opts and (key := PropertyKey(self.tool_label, "heartbleed")) not in self.key_set:
-            self.key_set.add(key)
-            comment = opts["heartbleed"].strip().split(" - ")[1]
+        if "heartbleed" in opts_item and (key := PropertyKey(self.tool_label, "heartbleed")) not in self._key_set:
+            self._key_set.add(key)
+            comment = opts_item["heartbleed"].strip().split(" - ")[1]
             verdict = Verdict.PASS if comment.upper() == "SAFE" else Verdict.FAIL
             prop_event = PropertyEvent(self._evidence, service, key.verdict(verdict, comment))
             self._interface.property_update(prop_event)
 
-    def parse_cpe(self, cpe: str) -> Tuple[str, Optional[str]]:
+    def parse_cpe23(self, cpe23: str) -> Tuple[str, Optional[str]]:
         """Extracts the product and version number (if included) from a given CPE 2.3 string.
             CPE 2.3 parts are cpe:2.3:<part>:<vendor>:<product>:<version>:...
         """
-        components = cpe.split(":")
+        components = cpe23.split(":")
         product = components[4]
         version = components[5] if len(components) > 5 and components[5] else None
         return product, version
 
-    def add_cpes(self, cpe23: List[str], service: Service) -> None:
+    def add_cpes(self, cpe23_items: List[str], service: Service) -> None:
         """Add Common Platform Enumeration info to SW component and assign verdict based on statement SBOM"""
         parent = cast(NetworkNode, service.parent)
         if len(parent.components) > 0:
             parent_sw = cast(Software, parent.components[0])
-            for entry in cpe23:
-                product, version = self.parse_cpe(entry)
+            for entry in cpe23_items:
+                product, version = self.parse_cpe23(entry)
                 software = SoftwareComponent(product)
                 verdict = Verdict.PASS if software in parent_sw.components.values() else Verdict.FAIL
                 key = PropertyKey("component", product)
@@ -111,7 +110,7 @@ class ShodanScan(SystemWideTool):
 
         entry: Dict[str, Any]
         for entry in scan.get("data", []):
-            self.key_set = set()
+            self._key_set = set()
 
             port, transport, protocol = self.get_open_port_info(entry)
             endpoint_addr = EndpointAddress(ip_addr, transport, port)
@@ -124,8 +123,8 @@ class ShodanScan(SystemWideTool):
             self.add_heartbleed(entry.get("opts", {}), service)
             self.add_cpes(entry.get("cpe23", []), service)
 
-            if self.send_events and self.key_set:
-                prop_event = PropertyEvent(self._evidence, service, Properties.VULNERABILITIES.value_set(self.key_set))
+            if self.send_events and self._key_set:
+                prop_event = PropertyEvent(self._evidence, service, Properties.VULNERABILITIES.value_set(self._key_set))
                 interface.property_update(prop_event)
 
         return True
@@ -133,7 +132,7 @@ class ShodanScan(SystemWideTool):
 
 class ShodanScanner:
     """Class for using Shodan API"""
-    def __init__(self, api_key: Union[str, None]) -> None:
+    def __init__(self, api_key: Optional[str]) -> None:
         assert api_key, "Env variable SHODAN_API_KEY must be set"
         self.api = Shodan(api_key)
         self.base_dir: Path

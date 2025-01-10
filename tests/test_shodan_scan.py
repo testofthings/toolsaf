@@ -60,7 +60,7 @@ def _mock_system(protocol: Optional[Protocol]=None) -> Tuple[ShodanScan, Service
     scan = ShodanScan(setup.get_system())
     scan._interface = setup.get_inspector()
     scan._evidence = MagicMock()
-    scan.key_set = set()
+    scan._key_set = set()
 
     ip_addr = IPAddress.new("1.2.3.4")
     backend = setup.system.backend("test").serve(HTTP)
@@ -121,7 +121,7 @@ def test_add_heartbleed(opts, exp_verdict, exp_comment):
 
 
 @pytest.mark.parametrize(
-    "cpe, exp_product, exp_version",
+    "cpe23, exp_product, exp_version",
     [
         ("cpe:2.3:a:example:software:1.0", "software", "1.0"),
         ("cpe:2.3:a:example:software:", "software", None),
@@ -129,9 +129,9 @@ def test_add_heartbleed(opts, exp_verdict, exp_comment):
         ("cpe:2.3:a:example:software:2.0:extra", "software", "2.0"),
     ]
 )
-def test_parse_cpe(cpe, exp_product, exp_version):
+def test_parse_cpe23(cpe23, exp_product, exp_version):
     scan = ShodanScan(Setup().get_system())
-    product, version = scan.parse_cpe(cpe)
+    product, version = scan.parse_cpe23(cpe23)
     assert product == exp_product
     assert version == exp_version
 
@@ -150,7 +150,7 @@ def test_add_cpes(cpe23, exp_verdict, exp_comment):
 
     scan.add_cpes(cpe23, service)
     for i, entry in enumerate(cpe23):
-        product, _ = scan.parse_cpe(entry)
+        product, _ = scan.parse_cpe23(entry)
         assert service.parent.components[0].properties[PropertyKey("component", product)].verdict == exp_verdict
         assert service.parent.components[0].properties[PropertyKey("component", product)].explanation == exp_comment[i]
 
