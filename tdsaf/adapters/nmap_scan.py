@@ -20,9 +20,7 @@ class NMAPScan(SystemWideTool):
         super().__init__("nmap", system)
         self.tool.name = "Nmap scan"
         self.data_file_suffix = ".xml"
-        self.host_services: Set[EndpointAddress] = set()
-        self._interface: EventInterface
-        self._evidence: Evidence
+        self._host_services: Set[EndpointAddress] = set()
 
     def get_sub_element(self, element: Element, *names: str) -> Element:
         """Get sub element from element based on given element names"""
@@ -81,17 +79,18 @@ class NMAPScan(SystemWideTool):
             pass
         return protocol, port, service_name
 
-    def add_scans_to_addr(self, addr: AnyAddress, host: Element) -> None:
+    def add_scans_to_address(self, address: AnyAddress, host: Element,
+                          interface: EventInterface, evidence: Evidence) -> None:
         """Adds service and host scan results, based on xml element, to given address"""
         for port_info in self.get_sub_element(host, "ports").iter("port"):
             protocol, port, service_name = self.get_port_info(port_info)
-            endpoint_addr = EndpointAddress(addr, protocol, port)
-            service_scan = ServiceScan(self._evidence, endpoint_addr, service_name or "")
-            self._interface.service_scan(service_scan)
-            self.host_services.add(endpoint_addr)
+            endpoint_addr = EndpointAddress(address, protocol, port)
+            service_scan = ServiceScan(evidence, endpoint_addr, service_name or "")
+            interface.service_scan(service_scan)
+            self._host_services.add(endpoint_addr)
 
-        scan = HostScan(self._evidence, addr, self.host_services)
-        self._interface.host_scan(scan)
+        scan = HostScan(evidence, address, self._host_services)
+        interface.host_scan(scan)
 
     def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource) -> bool:
         tree = ElementTree.parse(data)
@@ -99,18 +98,17 @@ class NMAPScan(SystemWideTool):
             raise ConfigurationException("Incorrect nmap .xml file formatting")
 
         source.timestamp = self.get_timestamp(root)
-        self._evidence = Evidence(source)
-        self._interface = interface
+        evidence = Evidence(source)
 
         for host in root.iter("host"):
             if not self.host_state_is_up(host):
                 continue
 
             ip_addr, hw_addr = self.get_addresses(host)
-            self.host_services = set()
+            self._host_services = set()
             if isinstance(ip_addr, IPAddress):
-                self.add_scans_to_addr(ip_addr, host)
+                self.add_scans_to_address(ip_addr, host, interface, evidence)
             elif isinstance(hw_addr, HWAddress):
-                self.add_scans_to_addr(hw_addr, host)
+                self.add_scans_to_address(hw_addr, host, interface, evidence)
 
         return True

@@ -150,11 +150,9 @@ def test_get_port_info(xml_data, exp_protocol, exp_port, exp_service_name):
         assert service_name == exp_service_name
 
 
-def test_add_scans_to_addr():
+def test_add_scans_to_address():
     setup = Setup()
     scan = NMAPScan(setup.get_system())
-    scan._evidence = MagicMock()
-    scan._interface = setup.get_inspector()
 
     xml_data = """
     <host>
@@ -172,7 +170,7 @@ def test_add_scans_to_addr():
     device.new_address_(ip_addr)
     device / HTTP
 
-    scan.add_scans_to_addr(ip_addr, host)
+    scan.add_scans_to_address(ip_addr, host, setup.get_inspector(), MagicMock())
     assert len(device.entity.children) == 2
     http = device.entity.children[0]
     ssh = device.entity.children[1]
@@ -183,8 +181,6 @@ def test_add_scans_to_addr():
 def test_process_file():
     setup = Setup()
     scan = NMAPScan(setup.get_system())
-    scan._interface = setup.get_inspector()
-    scan._evidence = MagicMock()
 
     xml_data = """
     <nmaprun>
@@ -209,7 +205,7 @@ def test_process_file():
     device.new_address_(ip_addr)
     device / HTTP
 
-    scan.process_file(xml_data_bytes, "test.xml", scan._interface, source)
+    scan.process_file(xml_data_bytes, "test.xml", setup.get_inspector(), source)
 
     assert source.timestamp == datetime.fromtimestamp(1633024800)
     assert len(device.entity.children) == 2
