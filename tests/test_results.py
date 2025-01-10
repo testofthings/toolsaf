@@ -259,7 +259,7 @@ def test_build_host_structure():
             "srcs": ["@1", "@2"], "address": "Mobile_App", "verdict": "Expected/Pass",
             "check:mitm": {"srcs": ["@1", "@2"], "verdict": "Pass", "text": "check:mitm"},
             "Test [Component]": {
-                "srcs": ["@1", "@2"], "address": "", "verdict": "Expected",
+                "srcs": ["@1", "@2"], "address": "", "verdict": "Expected/Fail",
                 "check:fuzz": {"srcs": ["@1", "@2"], "verdict": "Fail", "text": "check:fuzz"},
             },
         },
