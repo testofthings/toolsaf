@@ -32,7 +32,8 @@ class ReleaseReader(NodeComponentTool):
 
         releases: List[Tuple[datetime.datetime, str]] = []
         for rel in root:
-            ts = cast(datetime.datetime, ReleaseInfo.parse_time(rel['published_at'][:10]))
+            ts = ReleaseInfo.parse_time(rel['published_at'][:10])
+            assert ts, "parse_time returned None"
             n = rel['tag_name']
             releases.append((ts, n))
         releases = sorted(releases, key=lambda r: r[0], reverse=True)

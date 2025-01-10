@@ -2,7 +2,7 @@
 # mypy: disable-error-code=arg-type
 
 import datetime
-from typing import Any, Callable, Tuple, Set, Optional, Self, Dict, cast
+from typing import Any, Callable, Tuple, Set, Optional, Self, Dict
 
 from tdsaf.common.address import HWAddress, IPAddress, HWAddresses, IPAddresses, Network, Protocol, EndpointAddress, \
     AnyAddress, Addresses
@@ -261,7 +261,7 @@ class EthernetFlow(Flow):
     def decode_data_json(cls, evidence: Evidence, data: Dict[str, Any],
                          _entity_resolver: Callable[[Any], Any]) -> 'EthernetFlow':
         if (protocol_data := data.get("protocol")):
-            protocol = cast(Protocol, Protocol.get_protocol(protocol_data, Protocol.ETHERNET))
+            protocol = Protocol.get_protocol(protocol_data, Protocol.ETHERNET)
         else:
             protocol = Protocol.ETHERNET
         source = HWAddress.new(data["source"])
