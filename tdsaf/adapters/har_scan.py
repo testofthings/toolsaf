@@ -1,10 +1,10 @@
 """HAR JSON tool"""
 
-from io import BytesIO
+from io import BufferedReader
 import json
 import urllib.parse
 from datetime import datetime
-from typing import cast
+from typing import cast, Optional
 
 from tdsaf.common.address import EndpointAddress, DNSName, Protocol
 from tdsaf.core.components import Cookies, CookieData
@@ -18,14 +18,15 @@ from tdsaf.common.verdict import Verdict
 
 class HARScan(NetworkNodeTool):
     """HAR JSON tool"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("har", ".json", system)
         self.tool.name = "HAR"
 
     def filter_node(self, node: NetworkNode) -> bool:
         return isinstance(node, Host)
 
-    def process_node(self, node: NetworkNode, data_file: BytesIO, interface: EventInterface, source: EvidenceSource):
+    def process_node(self, node: NetworkNode, data_file: BufferedReader, interface: EventInterface,
+                     source: EvidenceSource) -> None:
         host = cast(Host, node)
 
         component = Cookies.cookies_for(host)
@@ -54,6 +55,7 @@ class HARScan(NetworkNodeTool):
 
             request = raw["request"]
             req_url = request["url"]
+            cookie: Optional[CookieData]
             for raw_c in request.get("cookies"):
                 name = decode(raw_c["name"])
                 p_key = PropertyKey("cookie", name)
@@ -96,8 +98,9 @@ class HARScan(NetworkNodeTool):
                 ru = urllib.parse.urlparse(req_url)
                 ep = EndpointAddress(DNSName.name_or_ip(str(ru.hostname)), Protocol.TCP, ru.port or 80)
                 txt = f"{response.get('status', '?')} {response.get('statusText', '?')}"
-                ev = PropertyAddressEvent(evidence, ep, Properties.HTTP_REDIRECT.verdict(Verdict.PASS, txt))
-                interface.property_address_update(ev)
+                interface.property_address_update(
+                    PropertyAddressEvent(evidence, ep, Properties.HTTP_REDIRECT.verdict(Verdict.PASS, txt))
+                )
 
         for n, cookie in component.cookies.items():
             if n in unseen:

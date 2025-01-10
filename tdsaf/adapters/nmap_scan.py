@@ -1,6 +1,6 @@
 """Nmap scan result XML parser"""
 
-from io import BytesIO
+from io import BufferedReader
 from datetime import datetime
 from typing import Set, Tuple, Optional
 from xml.etree import ElementTree
@@ -16,7 +16,7 @@ from tdsaf.common.traffic import EvidenceSource, Evidence, ServiceScan, HostScan
 
 class NMAPScan(SystemWideTool):
     """Parse Nmap scan XML output"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("nmap", system)
         self.tool.name = "Nmap scan"
         self.data_file_suffix = ".xml"
@@ -92,7 +92,8 @@ class NMAPScan(SystemWideTool):
         scan = HostScan(evidence, address, self._host_services)
         interface.host_scan(scan)
 
-    def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource) -> bool:
+    def process_file(self, data: BufferedReader, file_name: str, interface: EventInterface,
+                     source: EvidenceSource) -> bool:
         tree = ElementTree.parse(data)
         if not isinstance((root := tree.getroot()), Element):
             raise ConfigurationException("Incorrect nmap .xml file formatting")
