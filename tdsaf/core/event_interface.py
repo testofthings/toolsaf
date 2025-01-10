@@ -5,7 +5,7 @@ from typing import Dict, Optional, Type, Callable, Any, Tuple
 from tdsaf.common.address import Addresses, AnyAddress
 from tdsaf.common.verdict import Verdict
 from tdsaf.common.entity import Entity
-from tdsaf.core.model import IoTSystem
+from tdsaf.core.model import IoTSystem, Service
 from tdsaf.common.property import PropertyKey
 from tdsaf.core.services import NameEvent
 from tdsaf.common.traffic import ServiceScan, HostScan, Event, Flow, IPFlow, EthernetFlow, BLEAdvertisementFlow, \
@@ -35,7 +35,7 @@ class EventInterface:
         """Update to property value by address"""
         raise NotImplementedError()
 
-    def service_scan(self, scan: ServiceScan) -> None:
+    def service_scan(self, scan: ServiceScan) -> Optional[Service]:
         """The given address has a service"""
         raise NotImplementedError()
 

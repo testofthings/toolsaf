@@ -12,6 +12,7 @@ from tdsaf.adapters.ping_command import PingCommand
 from tdsaf.adapters.releases import ReleaseReader
 from tdsaf.adapters.setup_reader import SetupCSVReader
 from tdsaf.adapters.shell_commands import ShellCommandPs, ShellCommandSs
+from tdsaf.adapters.shodan_scan import ShodanScan
 from tdsaf.adapters.spdx_reader import SPDXReader
 from tdsaf.adapters.ssh_audit_scan import SSHAuditScan
 from tdsaf.adapters.testsslsh_scan import TestSSLScan
@@ -86,6 +87,7 @@ class ToolFinderImplementation:
         self.setup = ToolDepiction("setup", SetupCSVReader, extension="csv")
         self.shell_ps = ToolDepiction("shell-ps", ShellCommandPs)
         self.shell_ss = ToolDepiction("shell-ss", ShellCommandSs)
+        self.shodan = ToolDepiction("shodan", ShodanScan, extension="json")
         self.sdpx = ToolDepiction("spdx", SPDXReader)
         self.ssh_audit = ToolDepiction("ssh-audit", SSHAuditScan)
         self.testssl = ToolDepiction("testssl", TestSSLScan)

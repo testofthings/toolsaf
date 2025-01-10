@@ -24,6 +24,7 @@ class Protocol(enum.Enum):
     TLS = "tls"  # or SSL
     UDP = "udp"
     NTP = "ntp"
+    MQTT = "mqtt"
 
     BLE = "ble"
 
