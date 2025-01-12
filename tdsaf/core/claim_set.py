@@ -16,7 +16,7 @@ from tdsaf.common.verdict import Verdict, Verdictable
 
 class ClaimContext:
     """The context where a claim is resolved"""
-    def __init__(self):
+    def __init__(self) -> None:
         # Properties read by the claims, with their values (converted to bool, when possible)
         self.properties: Dict[Tuple[Entity, AbstractClaim], Dict[PropertyKey, Any]] = {}
 
@@ -60,7 +60,7 @@ class ClaimContext:
         self.properties.setdefault((entity, claim), {})[key] = ver == Verdict.PASS
         return ver
 
-    def mark_coverage(self, entity: Entity, claim: AbstractClaim, key: PropertyKey, value: Any):
+    def mark_coverage(self, entity: Entity, claim: AbstractClaim, key: PropertyKey, value: Any) -> None:
         """Just mark property asked, without it being in entity"""
         kv = self.properties.setdefault((entity, claim), {})
         if key not in kv:
@@ -69,7 +69,7 @@ class ClaimContext:
 
 class RequirementClaim(ExplainableClaim):
     """A claim in requirement"""
-    def __init__(self, description=""):
+    def __init__(self, description: str="") -> None:
         super().__init__(description)
         self.property_key: Optional[PropertyKey] = None
 
@@ -90,7 +90,7 @@ class RequirementClaim(ExplainableClaim):
         """Many possible claims, all must pass"""
         return AggregateClaim((self, other))
 
-    def __mod__(self, name: str) -> 'Self':
+    def __mod__(self, name: str) -> Self:
         """Rename"""
         self.description = name
         return self
@@ -112,18 +112,18 @@ class RequirementClaim(ExplainableClaim):
     @classmethod
     def get_all_claims(cls, claim: AbstractClaim) -> Set['RequirementClaim']:
         """Get all stacked entity claims"""
-        s = set()
+        s: Set['RequirementClaim'] = set()
         if not isinstance(claim, RequirementClaim):
             return s
 
-        def unpack(claim: RequirementClaim):
+        def unpack(claim: RequirementClaim) -> None:
             s.add(claim)
             for c in claim.get_sub_claims():
                 unpack(c)
         unpack(claim)
         return s
 
-    def assert_system(self, entity: Entity, condition: Callable[[Host], bool] = None, message="") -> IoTSystem:
+    def assert_system(self, entity: Entity, condition: Callable[[Host], bool]=None, message: str="") -> IoTSystem:
         """Assert entity is the IoT system and get it or give custom message if not"""
         assert isinstance(entity, IoTSystem), \
             message or f"Claim '{self.description}' applies only to system, not: {entity}"
@@ -132,7 +132,7 @@ class RequirementClaim(ExplainableClaim):
                 message or f"Claim '{self.description}' condition not met for {entity}"
         return entity
 
-    def assert_host(self, entity: Entity, condition: Callable[[Host], bool] = None, message="") -> Host:
+    def assert_host(self, entity: Entity, condition: Callable[[Host], bool]=None, message: str="") -> Host:
         """Assert entity is a host and get it or give custom message if not"""
         assert isinstance(entity, Host), \
             message or f"Claim '{self.description}' applies only to host, not: {entity}"
@@ -141,7 +141,7 @@ class RequirementClaim(ExplainableClaim):
                 message or f"Claim '{self.description}' condition not met for {entity}"
         return entity
 
-    def assert_node(self, entity: Entity, condition: Callable[[Host], bool] = None, message="") -> NetworkNode:
+    def assert_node(self, entity: Entity, condition: Callable[[Host], bool]=None, message: str="") -> NetworkNode:
         """Assert entity is a network node and get it or give custom message if not"""
         assert isinstance(entity, NetworkNode), \
             message or f"Claim '{self.description}' applies only to network nodes, not: {entity}"
@@ -150,7 +150,7 @@ class RequirementClaim(ExplainableClaim):
                 message or f"Claim '{self.description}' condition not met for {entity}"
         return entity
 
-    def assert_software(self, entity: Entity, condition: Callable[[Software], bool] = None, message="") -> Software:
+    def assert_software(self, entity: Entity, condition: Callable[[Software], bool]=None, message: str="") -> Software:
         """Assert entity is software and get it or give custom message if not"""
         assert isinstance(entity, Software), \
             message or f"Claim '{self.description}' applies only to SW, not: {entity}"
@@ -162,7 +162,7 @@ class RequirementClaim(ExplainableClaim):
 
 class NamedClaim(RequirementClaim):
     """Named claim"""
-    def __init__(self, name: str, claim: RequirementClaim):
+    def __init__(self, name: str, claim: RequirementClaim) -> None:
         super().__init__(name)
         self.named_claim = claim
 
@@ -172,7 +172,7 @@ class NamedClaim(RequirementClaim):
     def get_override_key(self, entity: Entity) -> Optional[PropertyKey]:
         return self.named_claim.get_override_key(entity)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.description}"
 
     def get_sub_claims(self) -> List['RequirementClaim']:
@@ -181,7 +181,7 @@ class NamedClaim(RequirementClaim):
 
 class ConnectionClaim(RequirementClaim):
     """Base class to for connection claims"""
-    def __init__(self, description="Connection"):
+    def __init__(self, description: str="Connection") -> None:
         super().__init__(description)
 
     def check(self, entity: Entity, _context: ClaimContext) -> Optional[ClaimStatus]:
@@ -190,7 +190,7 @@ class ConnectionClaim(RequirementClaim):
 
 class HostClaim(RequirementClaim):
     """Host claim"""
-    def __init__(self, description="Host"):
+    def __init__(self, description: str="Host") -> None:
         super().__init__(description)
 
     def check(self, entity: Entity, _context: ClaimContext) -> Optional[ClaimStatus]:
@@ -199,7 +199,7 @@ class HostClaim(RequirementClaim):
 
 class PropertyClaim(RequirementClaim):
     """Claim simple property value match"""
-    def __init__(self, description: str, key: PropertyKey):
+    def __init__(self, description: str, key: PropertyKey) -> None:
         super().__init__(description)
         self.property_key = key
         self.default_to: Optional[Verdict] = None
@@ -233,16 +233,16 @@ class PropertyClaim(RequirementClaim):
 
     # NOTE: We assume that key alone separates claims
 
-    def __eq__(self, other):
+    def __eq__(self, other: object ) -> bool:
         return isinstance(other, PropertyClaim) and other.property_key == self.property_key
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return self.property_key.__hash__()
 
 
 class AlternativeClaim(RequirementClaim):
     """List of alternative claims"""
-    def __init__(self, claims: tuple[RequirementClaim, ...], description=""):
+    def __init__(self, claims: tuple[RequirementClaim, ...], description: str="") -> None:
         super().__init__(description or (" | " .join([f"{s}" for s in claims])))
         self.sequence = claims
 
@@ -265,16 +265,16 @@ class AlternativeClaim(RequirementClaim):
         """Make alternative claim"""
         return AlternativeClaim(self.sequence + (other,))
 
-    def __eq__(self, other):
+    def __eq__(self, other: object ) -> bool:
         return isinstance(other, AlternativeClaim) and other.sequence == self.sequence
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.sequence)
 
 
 class AggregateClaim(RequirementClaim):
     """Aggregate claim made up of sub claims"""
-    def __init__(self, claims: Tuple[RequirementClaim, ...], description="", one_pass=False):
+    def __init__(self, claims: Tuple[RequirementClaim, ...], description: str="", one_pass: bool=False) -> None:
         super().__init__(description or ((" + " if one_pass else " * ") .join([f"{s}" for s in claims])))
         self.sequence = claims
         self.one_pass = one_pass
@@ -317,16 +317,16 @@ class AggregateClaim(RequirementClaim):
     def __mul__(self, other: RequirementClaim) -> 'AggregateClaim':
         return AggregateClaim(self.sequence + (other,))
 
-    def __eq__(self, other):
+    def __eq__(self, other: object ) -> bool:
         return isinstance(other, AlternativeClaim) and other.sequence == self.sequence
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.sequence)
 
 
 class ServiceClaim(RequirementClaim):
     """Base class for service claims"""
-    def __init__(self, description="Service"):
+    def __init__(self, description: str="Service") -> None:
         super().__init__(description)
 
     def check(self, entity: Entity, _context: ClaimContext) -> Optional[ClaimStatus]:
@@ -335,7 +335,8 @@ class ServiceClaim(RequirementClaim):
 
 class SensitiveDataClaim(PropertyClaim):
     """Sensitive data claim, possible filtering by private info"""
-    def __init__(self, private: Optional[bool] = None, pass_no_data=False, description="Information"):
+    def __init__(self, private: Optional[bool] = None, pass_no_data: bool=False,
+                 description: str="Information") -> None:
         super().__init__(description, Properties.DATA_CONFIRMED)
         self.private = private
         self.pass_no_data = pass_no_data
@@ -348,7 +349,7 @@ class SensitiveDataClaim(PropertyClaim):
 
 class NoUnexpectedConnections(HostClaim):
     """No unexpected connections from known hosts"""
-    def __init__(self, description="No unexpected connections found"):
+    def __init__(self, description: str="No unexpected connections found") -> None:
         super().__init__(description)
 
     def check(self, entity: Entity, _context: ClaimContext) -> Optional[ClaimStatus]:
@@ -372,7 +373,7 @@ class NoUnexpectedConnections(HostClaim):
 
 class SoftwareClaim(RequirementClaim):
     """Host software claim"""
-    def __init__(self, description="Software"):
+    def __init__(self, description: str="Software") -> None:
         super().__init__(description)
 
     def check(self, entity: Entity, _context: ClaimContext) -> Optional[ClaimStatus]:
@@ -381,7 +382,7 @@ class SoftwareClaim(RequirementClaim):
 
 class AvailabilityClaim(PropertyClaim):
     """Check if a document, e.g. web page, is available"""
-    def __init__(self, resource_key="undefined", key=Properties.DOCUMENT_AVAILABILITY):
+    def __init__(self, resource_key: str="undefined", key: Properties=Properties.DOCUMENT_AVAILABILITY) -> None:
         super().__init__("Availability of " + resource_key, key)
         self.resource_key = resource_key
         self.base_claim: Optional[AvailabilityClaim] = None
@@ -408,37 +409,38 @@ class AvailabilityClaim(PropertyClaim):
     def get_base_claim(self) -> RequirementClaim:
         return self.base_claim or self
 
-    def __eq__(self, other):
+    def __eq__(self, other: object ) -> bool:
         return isinstance(other, AvailabilityClaim) and other.property_key == self.property_key
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return self.property_key.__hash__() ^ self.resource_key.__hash__()
 
 
 class ContentClaim(AvailabilityClaim):
     """Need to check document, web-page, etc. content"""
-    def __init__(self, resource_key="undefined", review_hint="", key=Properties.DOCUMENT_CONTENT):
+    def __init__(self, resource_key: str="undefined", review_hint: str="",
+                 key: Properties=Properties.DOCUMENT_CONTENT) -> None:
         super().__init__(resource_key, key)
         self.description = "Contents of " + resource_key + (f" ({review_hint})" if review_hint else "")
         self.default_to = Verdict.INCON  # someone just need to do it
         self.review_hint = review_hint
 
-    def resource(self, key: str, review_hint="") -> 'ContentClaim':
+    def resource(self, key: str, review_hint: str="") -> 'ContentClaim':
         """Create new claim"""
         c = ContentClaim(key, review_hint)
         c.base_claim = self.get_base_claim()
         return c
 
-    def __eq__(self, other):
+    def __eq__(self, other: object ) -> bool:
         return isinstance(other, ContentClaim) and other.property_key == self.property_key
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return self.property_key.__hash__() ^ self.resource_key.__hash__()
 
 
 class NoUnexpectedServices(RequirementClaim):
     """No unexpected services, covers also administrative services"""
-    def __init__(self, description="No unexpected services found"):
+    def __init__(self, description: str="No unexpected services found") -> None:
         super().__init__(description)
 
     def check(self, entity: Entity, context: ClaimContext) -> ClaimStatus:
@@ -482,7 +484,7 @@ class NoUnexpectedServices(RequirementClaim):
 
 class AuthenticationClaim(PropertyClaim):
     """Is service authenticated"""
-    def __init__(self, description="Authenticated", key=Properties.AUTHENTICATION):
+    def __init__(self, description: str="Authenticated", key: Properties=Properties.AUTHENTICATION) -> None:
         super().__init__(description, key)
 
     def pre_filter(self, entity: Entity, _context: ClaimContext) -> bool:
@@ -491,7 +493,7 @@ class AuthenticationClaim(PropertyClaim):
 
 class UpdateClaim(SoftwareClaim):
     """Claim for presence of an update channel"""
-    def __init__(self, description="Update mechanism is defined"):
+    def __init__(self, description: str="Update mechanism is defined") -> None:
         super().__init__(description)
         self.property_key = PropertyKey("check", "update-mechanism")
 
@@ -526,7 +528,7 @@ class UpdateClaim(SoftwareClaim):
 
 class UnexpectedUpdateClaim(PropertyClaim):
     """Claim for presence of an unexpected update channel"""
-    def __init__(self, description="Unexpected update mechanism"):
+    def __init__(self, description: str="Unexpected update mechanism") -> None:
         super().__init__(description, PropertyKey("check", "no-update-mechanism"))
 
     def pre_filter(self, entity: Entity, _context: ClaimContext) -> bool:
@@ -553,7 +555,7 @@ class UnexpectedUpdateClaim(PropertyClaim):
 
 class BOMClaim(PropertyClaim):
     """Claim for bill of material"""
-    def __init__(self, description="SBOM", key=Properties.COMPONENTS):
+    def __init__(self, description: str="SBOM", key: Properties=Properties.COMPONENTS) -> None:
         super().__init__(description, key)
 
     def pre_filter(self, entity: Entity, _context: ClaimContext) -> bool:
@@ -563,14 +565,14 @@ class BOMClaim(PropertyClaim):
 
 class NoVulnerabilitiesClaim(BOMClaim):
     """Claim that no vulnerabilities"""
-    def __init__(self, description="No vulnerabilities", key=Properties.VULNERABILITIES):
+    def __init__(self, description: str="No vulnerabilities", key: Properties=Properties.VULNERABILITIES) -> None:
         super().__init__(description, key)
 
 
 class ProtocolClaim(ServiceClaim):
     """Check for protocol features"""
-    def __init__(self, description="Protocol best practices check", tail: Optional[str] = None,
-                 encrypted: Optional[bool] = None):
+    def __init__(self, description: str="Protocol best practices check", tail: Optional[str] = None,
+                 encrypted: Optional[bool] = None) -> None:
         super().__init__(description)
         self.property_tail = tail
         self.encrypted = encrypted
@@ -620,7 +622,7 @@ class ProtocolClaim(ServiceClaim):
 
 class EncryptionClaim(PropertyClaim):
     """Check that service or connection is encrypted"""
-    def __init__(self, description="Strong encryption protocol chosen"):
+    def __init__(self, description: str="Strong encryption protocol chosen") -> None:
         super().__init__(description, key=Properties.ENCRYPTION)
 
     def pre_filter(self, entity: Entity, _context: ClaimContext) -> bool:
@@ -633,7 +635,7 @@ class EncryptionClaim(PropertyClaim):
 
 class HTTPRedirectClaim(PropertyClaim):
     """Is a service a HTTP redirection to HTTPS?"""
-    def __init__(self, description="HTTP redirect to HTTPS"):
+    def __init__(self, description: str="HTTP redirect to HTTPS") -> None:
         super().__init__(description, key=Properties.HTTP_REDIRECT)
 
     def pre_filter(self, entity: Entity, _context: ClaimContext) -> bool:
@@ -642,7 +644,7 @@ class HTTPRedirectClaim(PropertyClaim):
 
 class MITMClaim(PropertyClaim):
     """Check that connection cannot be MITMed"""
-    def __init__(self, description="MITM"):
+    def __init__(self, description: str="MITM") -> None:
         super().__init__(description, key=Properties.MITM)
 
     def pre_filter(self, entity: Entity, _context: ClaimContext) -> bool:
@@ -651,7 +653,7 @@ class MITMClaim(PropertyClaim):
 
 class FuzzingClaim(PropertyClaim):
     """Fuzz testing performed"""
-    def __init__(self, description="Fuzz testing"):
+    def __init__(self, description: str="Fuzz testing") -> None:
         super().__init__(description, key=Properties.FUZZ)
 
     def pre_filter(self, entity: Entity, _context: ClaimContext) -> bool:
@@ -660,7 +662,7 @@ class FuzzingClaim(PropertyClaim):
 
 class PermissionClaim(SoftwareClaim):
     """Claim for permissions, mobile for now"""
-    def __init__(self, description="permissions are listed"):
+    def __init__(self, description: str="permissions are listed") -> None:
         super().__init__(description)
 
     def check(self, entity: Entity, context: ClaimContext) -> Optional[ClaimStatus]:
@@ -676,7 +678,7 @@ class PermissionClaim(SoftwareClaim):
 
 class ReleaseClaim(SoftwareClaim):
     """Claim for presence of release history"""
-    def __init__(self, description="Release history is available"):
+    def __init__(self, description: str="Release history is available") -> None:
         super().__init__(description)
         self.property_key = PropertyKey("check", "release-history")
 
@@ -691,7 +693,7 @@ class ReleaseClaim(SoftwareClaim):
 
 class SystemClaim(RequirementClaim):
     """Claim about the whole system"""
-    def __init__(self, description="System"):
+    def __init__(self, description: str="System") -> None:
         super().__init__(description)
 
     def check(self, entity: Entity, _context: ClaimContext) -> Optional[ClaimStatus]:
@@ -700,14 +702,14 @@ class SystemClaim(RequirementClaim):
 
 class UserInterfaceClaim(PropertyClaim):
     """Need to manipulate user interface"""
-    def __init__(self, description="User interface use and checks"):
+    def __init__(self, description: str="User interface use and checks") -> None:
         super().__init__(description, Properties.UI)
         self.default_to = Verdict.INCON  # 'Eihän se oo ku tekkee'
 
 
 class PhysicalManipulationClaim(PropertyClaim):
     """Need to manipulate physically"""
-    def __init__(self, description="Physical manipulation and checks"):
+    def __init__(self, description: str="Physical manipulation and checks") -> None:
         super().__init__(description, Properties.PHYSICAL)
         self.default_to = Verdict.INCON
 
@@ -716,47 +718,47 @@ class Claim:
     """Claim factory"""
 
     @classmethod
-    def expected(cls, name="Expected") -> PropertyClaim:
+    def expected(cls, name: str="Expected") -> PropertyClaim:
         """Expected entity"""
         return PropertyClaim(name, Properties.EXPECTED)
 
     @classmethod
-    def authentication(cls, name="Authenticated") -> AuthenticationClaim:
+    def authentication(cls, name: str="Authenticated") -> AuthenticationClaim:
         """Authentication claim"""
         return AuthenticationClaim(name)
 
     @classmethod
-    def encryption(cls, name="Encryption used") -> EncryptionClaim:
+    def encryption(cls, name: str="Encryption used") -> EncryptionClaim:
         """Encryption claim"""
         return EncryptionClaim(name)
 
     @classmethod
-    def protocol_best_practices(cls, name="Protoćol best practices used") -> ProtocolClaim:
+    def protocol_best_practices(cls, name: str="Protoćol best practices used") -> ProtocolClaim:
         """Protocol best practice claim"""
         return ProtocolClaim(name)
 
     @classmethod
-    def web_best_practices(cls, name="Web best practices") -> PropertyClaim:
+    def web_best_practices(cls, name: str="Web best practices") -> PropertyClaim:
         """Web best practices claim"""
         return PropertyClaim(name, Properties.WEB_BEST)
 
     @classmethod
-    def http_redirect(cls, name="HTTP redirection") -> HTTPRedirectClaim:
+    def http_redirect(cls, name: str="HTTP redirection") -> HTTPRedirectClaim:
         """HTTP redirection claim"""
         return HTTPRedirectClaim(name)
 
     @classmethod
-    def updateable(cls, name="Update mechanism") -> UpdateClaim:
+    def updateable(cls, name: str="Update mechanism") -> UpdateClaim:
         """Update mechanism claim"""
         return UpdateClaim(name)
 
     @classmethod
-    def sbom(cls, name="SBOM is accurate") -> BOMClaim:
+    def sbom(cls, name: str="SBOM is accurate") -> BOMClaim:
         """SBOM claim"""
         return BOMClaim(name)
 
     @classmethod
-    def no_vulnerabilities(cls, name="No known vulnerabilities") -> NoVulnerabilitiesClaim:
+    def no_vulnerabilities(cls, name: str="No known vulnerabilities") -> NoVulnerabilitiesClaim:
         """No vulnerabilities claim"""
         return NoVulnerabilitiesClaim(name)
 
@@ -766,17 +768,17 @@ class Claim:
         return AvailabilityClaim(resource_key)
 
     @classmethod
-    def sensitive_data(cls, name="Sensitive data defined") -> SensitiveDataClaim:
+    def sensitive_data(cls, name: str="Sensitive data defined") -> SensitiveDataClaim:
         """Sensitive data claim"""
         return SensitiveDataClaim(name)
 
     @classmethod
-    def releases(cls, name="Releases are available") -> ReleaseClaim:
+    def releases(cls, name: str="Releases are available") -> ReleaseClaim:
         """Releases claim"""
         return ReleaseClaim(name)
 
     @classmethod
-    def permissions(cls, name="Permissions are defined") -> PermissionClaim:
+    def permissions(cls, name: str="Permissions are defined") -> PermissionClaim:
         """Mobile permission claim"""
         return PermissionClaim(name)
 
