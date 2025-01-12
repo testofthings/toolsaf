@@ -47,7 +47,7 @@ class AnyAddress:
         """Get possible hardware address here"""
         return None
 
-    def get_host(self) -> Optional['AnyAddress']:
+    def get_host(self) -> 'AnyAddress':
         """Get host or self"""
         return self
 
@@ -55,7 +55,7 @@ class AnyAddress:
         """Open address envelope, if any. If none, return this address"""
         return self
 
-    def get_protocol_port(self) -> Optional[Tuple[Protocol, int]]:
+    def get_protocol_port(self) -> Tuple[Optional[Protocol], int]:
         """Get protocol and port, if any"""
         return None
 
@@ -99,13 +99,13 @@ class AnyAddress:
         """Get value which can be unambigiously parsed"""
         return str(self)
 
-    def __lt__(self, other):
+    def __lt__(self, other: 'AnyAddress') -> bool:
         return self.__repr__() < other.__repr__()
 
 
 class EntityTag(AnyAddress):
     """An unique tag for entity"""
-    def __init__(self, tag: str):
+    def __init__(self, tag: str) -> None:
         assert tag and not tag[0].isdigit(), f"Tag '{tag}' must be non-empty and not start with digit"
         self.tag = tag
 
@@ -135,21 +135,21 @@ class EntityTag(AnyAddress):
     def get_parseable_value(self) -> str:
         return f"{self.tag}"  # tag is the default
 
-    def __eq__(self, other):
+    def __eq__(self, other: object ) -> bool:
         if not isinstance(other, EntityTag):
             return False
         return self.tag == other.tag
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return self.tag.__hash__()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.tag
 
 
 class PseudoAddress(AnyAddress):
     """Pseudo-address"""
-    def __init__(self, name: str, wildcard=False, multicast=False, hardware=False):
+    def __init__(self, name: str, wildcard: bool=False, multicast: bool=False, hardware: bool=False) -> None:
         self.name = name
         self.wildcard = wildcard
         self.multicast = multicast
@@ -170,7 +170,7 @@ class PseudoAddress(AnyAddress):
     def priority(self) -> int:
         return 3
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.name
 
 
@@ -184,7 +184,8 @@ class Addresses:
     BLE_Ad = PseudoAddress("BLE_Ad", multicast=True, hardware=True)
 
     @classmethod
-    def get_prioritized(cls, addresses: Iterable[AnyAddress], ip=True, hw=True, dns=True) -> AnyAddress:
+    def get_prioritized(cls, addresses: Iterable[AnyAddress],ip: bool=True,
+                        hw: bool=True, dns: bool=True) -> AnyAddress:
         """Get prioritized address"""
         add = None
         for a in addresses:
@@ -248,7 +249,7 @@ class Addresses:
 
 class HWAddress(AnyAddress):
     """Hardware address, e.g. Ethernet"""
-    def __init__(self, data: str):
+    def __init__(self, data: str) -> None:
         self.data = data.lower()
         assert len(self.data) == 17, f"Expecting HW address syntax dd:dd:dd:dd:dd:dd, got {data}"
 
@@ -287,15 +288,15 @@ class HWAddress(AnyAddress):
     def get_parseable_value(self) -> str:
         return f"{self.data}|hw"
 
-    def __eq__(self, other):
+    def __eq__(self, other: object ) -> bool:
         if not isinstance(other, HWAddress):
             return False
         return self.data == other.data
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return self.data.__hash__()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.data
 
 
@@ -309,7 +310,7 @@ class HWAddresses:
 
 class IPAddress(AnyAddress):
     """IP address, either IPv4 or IPv6"""
-    def __init__(self, data: Union[IPv4Address, IPv6Address]):
+    def __init__(self, data: Union[IPv4Address, IPv6Address]) -> None:
         self.data = data
 
     def get_ip_address(self) -> Optional['IPAddress']:
@@ -323,7 +324,7 @@ class IPAddress(AnyAddress):
         return IPAddress(ipaddress.ip_address(address))
 
     @classmethod
-    def parse_with_port(cls, address: str, default_port=0) -> Tuple['IPAddress', int]:
+    def parse_with_port(cls, address: str, default_port: int=0) -> Tuple['IPAddress', int]:
         """Parse IPv4 address, possibly with port"""
         ad, _, p = address.partition(":")
         return cls.new(ad), default_port if p == "" else int(p)
@@ -346,15 +347,15 @@ class IPAddress(AnyAddress):
     def get_parseable_value(self) -> str:
         return f"{self.data}"  # IP address is unambiguous
 
-    def __eq__(self, other):
+    def __eq__(self, other: object ) -> bool:
         if not isinstance(other, IPAddress):
             return False
         return self.data == other.data
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return self.data.__hash__()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self.data)
 
 
@@ -368,7 +369,7 @@ class IPAddresses:
 
 class DNSName(AnyAddress):
     """DNS name"""
-    def __init__(self, name: str):
+    def __init__(self, name: str) -> None:
         self.name = name
 
     def is_global(self) -> bool:
@@ -383,15 +384,15 @@ class DNSName(AnyAddress):
     def get_parseable_value(self) -> str:
         return f"{self.name}|name"
 
-    def __eq__(self, other):
+    def __eq__(self, other: object ) -> bool:
         if not isinstance(other, DNSName):
             return False
         return self.name == other.name
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return self.name.__hash__()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.name
 
     @classmethod
@@ -415,7 +416,7 @@ class DNSName(AnyAddress):
 
 class EndpointAddress(AnyAddress):
     """Endpoint address made up from host, protocol, and port"""
-    def __init__(self, host: AnyAddress, protocol: Protocol, port=-1):
+    def __init__(self, host: AnyAddress, protocol: Union[Protocol, None], port: int=-1) -> None:
         assert isinstance(host, AnyAddress)
         self.host = host
         self.protocol = protocol
@@ -442,13 +443,13 @@ class EndpointAddress(AnyAddress):
     def get_hw_address(self) -> Optional[HWAddress]:
         return self.host.get_hw_address()
 
-    def get_host(self) -> Optional[AnyAddress]:
+    def get_host(self) -> AnyAddress:
         return self.host
 
-    def get_protocol_port(self) -> Optional[Tuple[Protocol, int]]:
+    def get_protocol_port(self) ->  Tuple[Optional[Protocol], int]:
         return self.protocol, self.port
 
-    def change_host(self, host: 'AnyAddress') -> Self:
+    def change_host(self, host: 'AnyAddress') -> 'EndpointAddress':
         return EndpointAddress(host, self.protocol, self.port)
 
     def is_null(self) -> bool:
@@ -477,12 +478,12 @@ class EndpointAddress(AnyAddress):
         prot = f"/{self.protocol.value}" if self.protocol != Protocol.ANY else ""
         return f"{self.host.get_parseable_value()}{prot}{port}"
 
-    def __eq__(self, other):
+    def __eq__(self, other: object ) -> bool:
         if not isinstance(other, EndpointAddress):
             return False
         return self.host == other.host and self.protocol == other.protocol and self.port == other.port
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return self.host.__hash__() ^ self.protocol.__hash__() ^ self.port
 
     @classmethod
@@ -492,7 +493,7 @@ class EndpointAddress(AnyAddress):
             return ""
         return f"{value[0].value}:{value[1]}" if value[1] >= 0 else f"{value[0].value}"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         port = f":{self.port}" if self.port >= 0 else ""
         prot = f"/{self.protocol.value}" if self.protocol != Protocol.ANY else ""
         return f"{self.host}{prot}{port}"
@@ -515,13 +516,13 @@ class Network:
         # FIXME: Broadcast for IPv6 not implemented  pylint: disable=fixme
         return False
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object ) -> bool:
         return isinstance(other, Network) and self.name == other.name
 
     def __hash__(self) -> int:
         return self.name.__hash__()
 
-    def __lt__(self, other):
+    def __lt__(self, other: 'Network') -> bool:
         return self.name < other.name
 
     def __repr__(self) -> str:
@@ -530,7 +531,7 @@ class Network:
 
 class AddressEnvelope(AnyAddress):
     """Address envelope carrying content address"""
-    def __init__(self, address: AnyAddress, content: AnyAddress):
+    def __init__(self, address: AnyAddress, content: AnyAddress) -> None:
         self.address = address
         self.content = content
 
@@ -543,13 +544,13 @@ class AddressEnvelope(AnyAddress):
     def get_hw_address(self) -> Optional[HWAddress]:
         return self.address.get_hw_address()
 
-    def get_host(self) -> Optional[AnyAddress]:
+    def get_host(self) -> AnyAddress:
         return self.address
 
-    def get_protocol_port(self) -> Optional[Tuple[Protocol, int]]:
+    def get_protocol_port(self) -> Tuple[Optional[Protocol], int]:
         return self.address.get_protocol_port()
 
-    def change_host(self, host: 'AnyAddress') -> Self:
+    def change_host(self, host: 'AnyAddress') -> 'AddressEnvelope':
         return AddressEnvelope(self.address.change_host(host), self.content)
 
     def is_null(self) -> bool:
@@ -576,12 +577,12 @@ class AddressEnvelope(AnyAddress):
     def get_parseable_value(self) -> str:
         return f"{self.address.get_parseable_value()}({self.content.get_parseable_value()})"
 
-    def __eq__(self, other):
+    def __eq__(self, other: object ) -> bool:
         if not isinstance(other, AddressEnvelope):
             return False
         return self.address == other.address and self.content == other.content
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return self.address.__hash__() ^ self.content.__hash__()
 
     def __repr__(self) -> str:
