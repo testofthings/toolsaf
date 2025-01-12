@@ -2,7 +2,8 @@
 
 from typing import Dict, List, Optional, Self, Tuple, Type, Union
 from tdsaf.common.address import AnyAddress, HWAddress, HWAddresses, IPAddress, IPAddresses, Network
-from tdsaf.core.selector import AbstractSelector, Host
+from tdsaf.core.model import Host
+from tdsaf.core.selector import AbstractSelector
 from tdsaf.common.basics import ConnectionType, HostType, ExternalActivity
 from tdsaf.common.verdict import Verdict
 from tdsaf.common.android import MobilePermissions
@@ -16,37 +17,37 @@ ServiceOrGroup = Union['ServiceBuilder', 'ServiceGroupBuilder']
 
 class ConfigurationException(Exception):
     """Feature or function misconfigured"""
-    def __init__(self, message: str):
+    def __init__(self, message: str) -> None:
         super().__init__(message)
 
 
 class SystemBuilder:
     """System model builder"""
-    def network(self, subnet="") -> 'NetworkBuilder':
+    def network(self, subnet: str="") -> 'NetworkBuilder':
         """Configure network or subnetwork"""
         raise NotImplementedError()
 
-    def device(self, name="") -> 'HostBuilder':
+    def device(self, name: str="") -> 'HostBuilder':
         """IoT device"""
         raise NotImplementedError()
 
-    def backend(self, name="") -> 'HostBuilder':
+    def backend(self, name: str="") -> 'HostBuilder':
         """Backend service"""
         raise NotImplementedError()
 
-    def mobile(self, name="") -> 'HostBuilder':
+    def mobile(self, name: str="") -> 'HostBuilder':
         """Mobile device"""
         raise NotImplementedError()
 
-    def browser(self, name="") -> 'HostBuilder':
+    def browser(self, name: str="") -> 'HostBuilder':
         """Browser"""
         raise NotImplementedError()
 
-    def any(self, name="", node_type: HostType = None) -> 'HostBuilder':
+    def any(self, name: str="", node_type: Optional[HostType] = None) -> 'HostBuilder':
         """Any host"""
         raise NotImplementedError()
 
-    def infra(self, name="") -> 'HostBuilder':
+    def infra(self, name: str="") -> 'HostBuilder':
         """Part of the testing infrastructure, not part of the system itself"""
         raise NotImplementedError()
 
@@ -58,7 +59,7 @@ class SystemBuilder:
         """IP broadcast target"""
         raise NotImplementedError()
 
-    def data(self, names: List[str], personal=False, password=False) -> 'SensitiveDataBuilder':
+    def data(self, names: List[str], personal: bool=False, password: bool=False) -> 'SensitiveDataBuilder':
         """Declare pieces of security-relevant data"""
         raise NotImplementedError()
 
@@ -82,14 +83,14 @@ class SystemBuilder:
         """Load built-in evidence"""
         raise NotImplementedError()
 
-    def claims(self, base_label="explain") -> 'ClaimSetBuilder':
+    def claims(self, base_label: str="explain") -> 'ClaimSetBuilder':
         """Make claims"""
         raise NotImplementedError()
 
 
 class NodeBuilder:
     """Node builder base class"""
-    def __init__(self, system: SystemBuilder):
+    def __init__(self, system: SystemBuilder) -> None:
         self.system = system
 
     def name(self, name: str) -> Self:
@@ -147,7 +148,7 @@ class ServiceGroupBuilder:
 
 class HostBuilder(NodeBuilder):
     """Host builder"""
-    def __init__(self, system: SystemBuilder):
+    def __init__(self, system: SystemBuilder) -> None:
         NodeBuilder.__init__(self, system)
 
     def hw(self, address: str) -> Self:
@@ -186,7 +187,7 @@ class HostBuilder(NodeBuilder):
         """Ignore DNS name requests for these names"""
         raise NotImplementedError()
 
-    def set_property(self, *key: str):
+    def set_property(self, *key: str) -> Self:
         """Set a model properties"""
         raise NotImplementedError()
 
@@ -197,7 +198,7 @@ class HostBuilder(NodeBuilder):
 
 class SensitiveDataBuilder:
     """Sensitive data builder"""
-    def __init__(self, parent: SystemBuilder):
+    def __init__(self, parent: SystemBuilder) -> None:
         self.parent = parent
 
     def used_by(self, hosts: List[HostBuilder]) -> Self:
@@ -214,7 +215,7 @@ class ConnectionBuilder:
 
 class NetworkBuilder:
     """Network or subnet builder"""
-    def __init__(self, network: Network):
+    def __init__(self, network: Network) -> None:
         self.network = network
 
     def mask(self, mask: str) -> Self:
@@ -236,18 +237,18 @@ class SoftwareBuilder:
         """Support end time YYYY-MM-DD"""
         raise NotImplementedError()
 
-    def update_frequency(self, days: float) -> Self:
+    def update_frequency(self, days: int) -> Self:
         """Target update frequency, days"""
         raise NotImplementedError()
 
-    def sbom(self, components: List[str]=None, file_path: str=""):
+    def sbom(self, components: Optional[List[str]]=None, file_path: str="") -> Self:
         """Add an SBOM from given list or SPDX JSON file.
            file_path is relative to the statement"""
         raise NotImplementedError()
 
 class CookieBuilder:
     """Cookies in a browser"""
-    def set(self, cookies: Dict[str, Tuple[str, str, str]]):
+    def set(self, cookies: Dict[str, Tuple[str, str, str]]) -> Self:
         """Set cookies, name: domain, path, explanation"""
         raise NotImplementedError()
 
@@ -258,7 +259,7 @@ class NodeVisualBuilder:
         """Hide this node from visualization"""
         raise NotImplementedError()
 
-    def image(self, url: str, scale=100) -> Self:
+    def image(self, url: str, scale: int=100) -> Self:
         """Set URL to node image"""
         raise NotImplementedError()
 
@@ -296,9 +297,9 @@ class DiagramVisualizer:
 
 class ProtocolConfigurer:
     """Protocol configurer base class"""
-    def __init__(self, name: str):
+    def __init__(self, name: str) -> None:
         self.name = name
-        self.networks = []
+        self.networks: List[NetworkBuilder] = []
         self.address: Optional[AnyAddress] = None
 
     def in_network(self, *network: NetworkBuilder) -> Self:
@@ -317,25 +318,25 @@ class ProtocolConfigurer:
 
 class ARP(ProtocolConfigurer):
     """ARP configurer"""
-    def __init__(self):
+    def __init__(self) -> None:
         ProtocolConfigurer.__init__(self, "ARP")
 
 
 class DHCP(ProtocolConfigurer):
     """DHCP configurer"""
-    def __init__(self, port=67):
+    def __init__(self, port: int=67) -> None:
         ProtocolConfigurer.__init__(self, "DHCP")
         self.port = port
 
     @classmethod
-    def client(cls, port=68) -> 'UDP':
+    def client(cls, port: int=68) -> 'UDP':
         """DHCP client port"""
         return UDP(port, name="DHCP client", administrative=True)
 
 
 class DNS(ProtocolConfigurer):
     """DNS configurer"""
-    def __init__(self, port=53, captive=False):
+    def __init__(self, port: int=53, captive: bool=False) -> None:
         ProtocolConfigurer.__init__(self, "DNS")
         self.port = port
         self.captive = captive
@@ -343,13 +344,13 @@ class DNS(ProtocolConfigurer):
 
 class EAPOL(ProtocolConfigurer):
     """EAPOL configurer"""
-    def __init__(self):
+    def __init__(self) -> None:
         ProtocolConfigurer.__init__(self, "EAPOL")
 
 
 class HTTP(ProtocolConfigurer):
     """HTTP configurer"""
-    def __init__(self, port=80, auth: Optional[bool] = None):
+    def __init__(self, port: int=80, auth: Optional[bool] = None) -> None:
         ProtocolConfigurer.__init__(self, "HTTP")
         self.port = port
         self.auth = auth
@@ -363,13 +364,13 @@ class HTTP(ProtocolConfigurer):
 
 class ICMP(ProtocolConfigurer):
     """ICMP configurer"""
-    def __init__(self):
+    def __init__(self) -> None:
         ProtocolConfigurer.__init__(self, "ICMP")
 
 
 class IP(ProtocolConfigurer):
     """IPv4 or v6 configurer"""
-    def __init__(self, name="IP", administration=False):
+    def __init__(self, name: str="IP", administration: bool=False) -> None:
         ProtocolConfigurer.__init__(self, name)
         self.administration = administration
 
@@ -383,7 +384,7 @@ class MQTT(ProtocolConfigurer):
 
 class TLS(ProtocolConfigurer):
     """TLS configurer"""
-    def __init__(self, port=443, auth: Optional[bool] = None):
+    def __init__(self, port: int=443, auth: Optional[bool] = None) -> None:
         ProtocolConfigurer.__init__(self, "TLS")
         self.port = port
         self.auth = auth
@@ -391,21 +392,21 @@ class TLS(ProtocolConfigurer):
 
 class NTP(ProtocolConfigurer):
     """NTP configurer"""
-    def __init__(self, port=123):
+    def __init__(self, port: int=123) -> None:
         ProtocolConfigurer.__init__(self, "NTP")
         self.port = port
 
 
 class SSH(ProtocolConfigurer):
     """SSH configurer"""
-    def __init__(self, port=22):
+    def __init__(self, port: int=22) -> None:
         ProtocolConfigurer.__init__(self, "SSH")
         self.port = port
 
 
 class TCP(ProtocolConfigurer):
     """TCP configurer"""
-    def __init__(self, port: int, name="TCP", administrative=False):
+    def __init__(self, port: int, name: str="TCP", administrative: bool=False) -> None:
         ProtocolConfigurer.__init__(self, name)
         self.port = port
         self.name = name
@@ -414,7 +415,7 @@ class TCP(ProtocolConfigurer):
 
 class UDP(ProtocolConfigurer):
     """UDP configurer"""
-    def __init__(self, port: int, name="UDP", administrative=False):
+    def __init__(self, port: int, name: str="UDP", administrative: bool=False) -> None:
         ProtocolConfigurer.__init__(self, name)
         self.port = port
         self.name = name
@@ -423,7 +424,7 @@ class UDP(ProtocolConfigurer):
 
 class BLEAdvertisement(ProtocolConfigurer):
     """BLE advertisement configurer"""
-    def __init__(self, event_type: int):
+    def __init__(self, event_type: int) -> None:
         ProtocolConfigurer.__init__(self, "BLE Ad")
         self.event_type = event_type
 
@@ -453,11 +454,11 @@ class ClaimBuilder:
         """Override verdict to pass"""
         raise NotImplementedError()
 
-    def at(self, *locations: Union[SystemBuilder, NodeBuilder, ConnectionBuilder]) -> 'Self':
+    def at(self, *locations: Union[SystemBuilder, NodeBuilder, ConnectionBuilder]) -> Self:
         """Set claimed location(s)"""
         raise NotImplementedError()
 
-    def software(self, *locations: NodeBuilder) -> 'Self':
+    def software(self, *locations: NodeBuilder) -> Self:
         """Claims for software in the locations"""
         raise NotImplementedError()
 
@@ -472,20 +473,20 @@ class ClaimSetBuilder:
         """Set label for the claims"""
         raise NotImplementedError()
 
-    def claim(self, explanation: str, verdict=Verdict.PASS) -> ClaimBuilder:
+    def claim(self, explanation: str, verdict: Verdict=Verdict.PASS) -> ClaimBuilder:
         """Self-made claims"""
         raise NotImplementedError()
 
-    def reviewed(self, explanation="", verdict=Verdict.PASS) -> ClaimBuilder:
+    def reviewed(self, explanation: str="", verdict: Verdict=Verdict.PASS) -> ClaimBuilder:
         """Make reviewed claims"""
         raise NotImplementedError()
 
-    def ignore(self, explanation="") -> ClaimBuilder:
+    def ignore(self, explanation: str="") -> ClaimBuilder:
         """Ignore claims or requirements"""
         raise NotImplementedError()
 
-    def plan_tool(self, tool_name: str, group: Tuple[str, str], location: AbstractSelector,
-                  *key: Tuple[str, ...]):
+    def plan_tool(self, tool_name: str, group: Tuple[str, str],
+                  location: AbstractSelector, *key: Tuple[str, ...]):
         """Plan use of a tool using the property keys it is supposed to set"""
         raise NotImplementedError()
 
@@ -518,7 +519,7 @@ class TrafficDataBuilder:
 
 class FlowBuilder:
     """Flow builder"""
-    def __init__(self, protocol: str, source: Tuple[HWAddress, IPAddress, int]):
+    def __init__(self, protocol: str, source: Tuple[HWAddress, IPAddress, int]) -> None:
         self.protocol = protocol
         self.source = source
         self.target = HWAddresses.NULL, IPAddresses.NULL, 0
@@ -536,7 +537,7 @@ class FlowBuilder:
 class Builder:
     """Factory for creating builders"""
     @classmethod
-    def new(cls, name="Unnamed system") -> SystemBuilder:
+    def new(cls, name: str="Unnamed system") -> SystemBuilder:
         """Create a new system builder"""
         # avoid circular import
         from tdsaf.builder_backend import SystemBackendRunner  # pylint: disable=import-outside-toplevel

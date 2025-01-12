@@ -24,7 +24,7 @@ FORMAT_YEAR_MONTH_DAY = "%Y-%m-%d"
 
 class APIRequest:
     """API request details"""
-    def __init__(self, path: str):
+    def __init__(self, path: str) -> None:
         self.path = path
         self.parameters: Dict[str, str] = {}
         self.get_connections = False
@@ -55,42 +55,42 @@ class APIRequest:
         r.get_visual = self.get_visual
         return r
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.path
 
 
 class APIListener:
     """Model change listener through API"""
-    def note_system_reset(self, data: Dict, _system: IoTSystem):
+    def note_system_reset(self, data: Dict[str, Any], _system: IoTSystem) -> None:
         """System reset event"""
         self.note_event(data)
 
-    def note_connection_change(self, data: Dict, _connection: Connection):
+    def note_connection_change(self, data: Dict[str, Any], _connection: Connection) -> None:
         """Connection change event"""
         self.note_event(data)
 
-    def note_host_change(self, data: Dict, _host: Host):
+    def note_host_change(self, data: Dict[str, Any], _host: Host) -> None:
         """Host change event"""
         self.note_event(data)
 
-    def note_address_change(self, data: Dict, _host: Host):
+    def note_address_change(self, data: Dict[str, Any], _host: Host) -> None:
         """Address change event"""
         self.note_event(data)
 
-    def note_property_change(self, data: Dict, _entity: Entity):
+    def note_property_change(self, data: Dict[str, Any], _entity: Entity) -> None:
         """Property change event"""
         self.note_event(data)
 
-    def note_evidence_change(self, data: Dict):
+    def note_evidence_change(self, data: Dict[str, Any]) -> None:
         """Evidence change event"""
         self.note_event(data)
 
-    def note_event(self, _data: Dict):
+    def note_event(self, _data: Dict[str, Any]) -> None:
         """Any API event"""
 
 class RequestContext:
     """API request context"""
-    def __init__(self, request: APIRequest, api: 'ClientAPI'):
+    def __init__(self, request: APIRequest, api: 'ClientAPI') -> None:
         self.request = request
         self.api = api
 
@@ -102,7 +102,7 @@ class RequestContext:
 
 class ClientAPI(ModelListener):
     """Client API implementation"""
-    def __init__(self, registry: Registry,):
+    def __init__(self, registry: Registry,) -> None:
         self.registry = registry
         self.logger = logging.getLogger("api")
         self.api_listener: List[Tuple[APIListener, APIRequest]] = []
@@ -112,7 +112,7 @@ class ClientAPI(ModelListener):
         # local IDs strings for entities and connections
         self.ids: Dict[Any, str] = {}
 
-    def api_get(self, request: APIRequest, pretty=False)  -> str:
+    def api_get(self, request: APIRequest, pretty: bool=False)  -> str:
         """Get API data"""
         context = RequestContext(request, self)
         path = request.path
@@ -128,7 +128,7 @@ class ClientAPI(ModelListener):
             raise FileNotFoundError("Bad API request")
         return json.dumps(r, indent=4 if pretty else None)
 
-    def api_post(self, request: APIRequest, data: Optional[BinaryIO]) -> Dict:
+    def api_post(self, request: APIRequest, data: Optional[BinaryIO]) -> Dict[str, Any]:
         """Post API data"""
         path = request.path
         r = {}
@@ -152,7 +152,7 @@ class ClientAPI(ModelListener):
             raise FileNotFoundError("Unknown API endpoint")
         return r
 
-    def api_exit(self, _request: APIRequest, data: bytes) -> Dict:
+    def api_exit(self, _request: APIRequest, data: bytes) -> Dict[str, Any]:
         """Reload model"""
         param = json.loads(data) if data else {}
         clear_db = bool(param.get("clear_db", False))
@@ -160,7 +160,7 @@ class ClientAPI(ModelListener):
             self.registry.clear_database()
         return param
 
-    def api_post_file(self, request: APIRequest, data_file: pathlib.Path) -> Dict:
+    def api_post_file(self, request: APIRequest, data_file: pathlib.Path) -> Dict[str, Any]:
         """Post API data in ZIP file"""
         path = request.path
         if path != "batch":
@@ -175,7 +175,7 @@ class ClientAPI(ModelListener):
                 ln.note_evidence_change(change_event)
         return {}
 
-    def system_reset(self, filter_list: Dict, include_all: bool = False):
+    def system_reset(self, filter_list: Dict[str, Any], include_all: bool = False) -> None:
         """Reset, set new evidence filter and reset the model"""
         fs = {ev.label: ev for ev in self.registry.all_evidence}
         e_filter = {}
@@ -193,9 +193,9 @@ class ClientAPI(ModelListener):
         # reapply all events after reset
         self.registry.apply_all_events()
 
-    def get_log(self, entity="", key="") -> Dict:
+    def get_log(self, entity: str="", key: str="") -> Dict[str, Any]:
         """Get log"""
-        rs = {}
+        rs: Dict[str, Any] = {}
         if entity:
             e = self.get_by_id(entity)
             if e is None:
@@ -227,17 +227,18 @@ class ClientAPI(ModelListener):
             lr.append(ls)
         return rs
 
-    def get_status_verdict(self, status: Status, verdict: Verdict) -> Dict:
+    def get_status_verdict(self, status: Status, verdict: Verdict) -> str:
         """Get status and verdict for an entity"""
         return f"{status.value}/{verdict.value}"
 
-    def get_properties(self, properties: Dict[PropertyKey, Any], json_dict: Dict = None) -> Dict:
+    def get_properties(self, properties: Dict[PropertyKey, Any],
+                       json_dict: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Get properties"""
         cs = {} if json_dict is None else json_dict
         for key, p  in properties.items():
             if key == Properties.EXPECTED:
                 continue  # this property is shown by status
-            vs = {
+            vs: Dict[str, Any] = {
                 "name": key.get_name(short=True),
             }
             if isinstance(p, PropertyVerdictValue):
@@ -253,10 +254,11 @@ class ClientAPI(ModelListener):
             cs[key.get_name()] = vs
         return cs
 
-    def get_components(self, entity: NetworkNode, _context: RequestContext) -> Iterable[Tuple[NodeComponent, Dict]]:
+    def get_components(self, entity: NetworkNode, _context: RequestContext) \
+            -> Iterable[Tuple[NodeComponent, Dict[str, Any]]]:
         """Get components of an entity"""
-        def sub(component: NodeComponent) -> Dict:
-            com_cs = {
+        def sub(component: NodeComponent) -> Dict[str, Any]:
+            com_cs: Dict[str, Any] = {
                 "name": component.name,
                 "id": self.get_id(component),
                 "node_id": self.get_id(entity),
@@ -271,7 +273,7 @@ class ClientAPI(ModelListener):
             root_list.append(sub(com))
         return root_list
 
-    def get_entity(self, parent: NetworkNode, context: RequestContext) -> Tuple[NetworkNode, Dict]:
+    def get_entity(self, parent: NetworkNode, context: RequestContext) -> Tuple[NetworkNode, Dict[str, Any]]:
         """Get entity data by path"""
         path = context.request.path
         if path == ".":
@@ -311,10 +313,11 @@ class ClientAPI(ModelListener):
             r["parent_id"] = self.get_id(entity.parent)
         return entity, r
 
-    def get_connection(self, connection: Connection, _context: RequestContext) -> Dict:
+    def get_connection(self, connection: Connection, _context: RequestContext) -> Dict[str, Any]:
         """GET connection"""
         def location(entity: NetworkNode) -> List[str]:
             if isinstance(entity, Addressable):
+                assert entity.parent, f"{entity}.parent is None"
                 loc = location(entity.parent)
                 loc.append(entity.name)
                 return loc
@@ -334,7 +337,7 @@ class ClientAPI(ModelListener):
         }
         return cr
 
-    def get_system_info(self, _context: RequestContext) -> Dict:
+    def get_system_info(self, _context: RequestContext) -> Dict[str, Any]:
         """Get system information"""
         s = self.registry.system
         si = {
@@ -343,7 +346,7 @@ class ClientAPI(ModelListener):
         }
         return si
 
-    def get_evidence_filter(self) -> Dict:
+    def get_evidence_filter(self) -> Dict[str, Any]:
         """Get evidence filter"""
         r = {}
         ev_filter = self.registry.evidence_filter
@@ -357,7 +360,7 @@ class ClientAPI(ModelListener):
                 sr["time_s"] = ev.timestamp.strftime(FORMAT_YEAR_MONTH_DAY)
         return r
 
-    def _yield_property_update(self, entity: Entity) -> Iterable[Dict]:
+    def _yield_property_update(self, entity: Entity) -> Iterable[Dict[str, Any]]:
         """Yield property update, if properites to show"""
         pr = self.get_properties(entity.properties)
         if not pr:
@@ -368,7 +371,7 @@ class ClientAPI(ModelListener):
         }}
         yield r
 
-    def api_iterate_all(self, request: APIRequest) -> Iterable[Dict]:
+    def api_iterate_all(self, request: APIRequest) -> Iterable[Dict[str, Any]]:
         """Iterate all model entities and connections"""
         context = RequestContext(request, self)
         system = self.registry.system
@@ -401,7 +404,7 @@ class ClientAPI(ModelListener):
         _, _, i = id_string.partition("-")
         return self.registry.get_entity(int(i))
 
-    def get_id(self, entity) -> str:
+    def get_id(self, entity: Any) -> str:
         """Get ID for an entity prefixed by type"""
         # Must be valid as DOM class or id
         int_id = self.registry.get_id(entity)
@@ -419,7 +422,7 @@ class ClientAPI(ModelListener):
             raise ValueError(f"Unknown entity type {type(entity)}")
         return f"{p}-{int_id}"
 
-    def connection_change(self, connection: Connection):
+    def connection_change(self, connection: Connection) -> None:
         if not connection.is_relevant(ignore_ends=True):
             return
         for ln, req in self.api_listener:
@@ -430,13 +433,13 @@ class ClientAPI(ModelListener):
         self._find_verdict_changes(connection.source)
         self._find_verdict_changes(connection.target)
 
-    def host_change(self, host: Host):
+    def host_change(self, host: Host) -> None:
         for ln, req in self.api_listener:
             context = RequestContext(req.change_path("."), self)
             _, d = self.get_entity(host, context)
             ln.note_host_change({"host": d}, host)
 
-    def address_change(self, host: Host):
+    def address_change(self, host: Host) -> None:
         d = {
             "host_id": self.get_id(host),
             "host_name": host.long_name(),  # to help reading JSON events
@@ -445,7 +448,7 @@ class ClientAPI(ModelListener):
         for ln, _ in self.api_listener:
             ln.note_address_change({"address": d}, host)
 
-    def service_change(self, service: Service):
+    def service_change(self, service: Service) -> None:
         for ln, req in self.api_listener:
             context = RequestContext(req.change_path("."), self)
             _, d = self.get_entity(service, context)
@@ -453,9 +456,9 @@ class ClientAPI(ModelListener):
         # service affect parent verdict
         self._find_verdict_changes(service.get_parent_host())
 
-    def property_change(self, entity: Entity, value: Tuple[PropertyKey, Any]):
+    def property_change(self, entity: Entity, value: Tuple[PropertyKey, Any]) -> None:
         props = self.get_properties({value[0]: value[1]})
-        d = {
+        d: Dict[str, Any] = {
             "id": self.get_id(entity),
             "ent_name": entity.long_name(),  # to help reading JSON events
         }
@@ -475,7 +478,7 @@ class ClientAPI(ModelListener):
             ln.note_property_change(js, entity)
         self._find_verdict_changes(entity)
 
-    def _find_verdict_changes(self, entity: Entity):
+    def _find_verdict_changes(self, entity: Entity) -> None:
         """Find parent verdict changes and send updates, as required"""
         old_v = self.verdict_cache.pop(entity, None)
         new_v = entity.get_verdict(self.verdict_cache)

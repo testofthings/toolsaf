@@ -1,6 +1,6 @@
 """Model visualization"""
 
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Any
 
 from tdsaf.client_api import ClientAPI, RequestContext
 from tdsaf.main import ConfigurationException
@@ -10,14 +10,14 @@ from tdsaf.core.registry import Registry
 
 class Visualizer:
     """Visualize system"""
-    def __init__(self):
+    def __init__(self) -> None:
         self.placement: List[str] = []
         self.handles: Dict[str, NetworkNode] = {}
         self.images: Dict[NetworkNode, Tuple[str, int]] = {}
         self.coordinates: Dict[NetworkNode, Tuple[float, float]] = {}
         self.dimensions = 0, 0
-        self.top_line = []
-        self.bot_line = []
+        self.top_line: List[Any] = []
+        self.bot_line: list[Any] = []
 
     def place(self, entity: NetworkNode) -> Tuple[int, int]:
         """Place an entity"""
@@ -40,7 +40,7 @@ class Visualizer:
             self.coordinates[entity] = xy
         return round(xy[0] / self.dimensions[0] * 1000), round(xy[1] / self.dimensions[1] * 1000)
 
-    def _resolve_coordinates(self):
+    def _resolve_coordinates(self) -> None:
         """Resolve planned coordinates"""
         # leave space in top and bottom for new ones
         max_x, max_y = 1, 2
@@ -57,11 +57,11 @@ class Visualizer:
 
 class VisualizerAPI(ClientAPI):
     """Extend ClientAPI with coordinates and images"""
-    def __init__(self, registry: Registry, visualizer: Visualizer):
+    def __init__(self, registry: Registry, visualizer: Visualizer) -> None:
         super().__init__(registry)
         self.visualizer = visualizer
 
-    def get_entity(self, parent: NetworkNode, context: RequestContext) -> Tuple[NetworkNode, Dict]:
+    def get_entity(self, parent: NetworkNode, context: RequestContext) -> Tuple[NetworkNode, Dict[str, Any]]:
         e, r = super().get_entity(parent, context)
         # Note: external hosts are listed, but without coordinates
         if not context.request.get_visual or not isinstance(e, Host) or not e.is_relevant() or not e.visual:
@@ -71,7 +71,7 @@ class VisualizerAPI(ClientAPI):
             r["image"] = self.visualizer.images[e]
         return e, r
 
-    def get_connection(self, connection: Connection, context: RequestContext) -> Dict:
+    def get_connection(self, connection: Connection, context: RequestContext) -> Dict[str, Any]:
         r = super().get_connection(connection, context)
         # Note: external connections are listed, but without coordinates
         if not context.request.get_visual or not connection.is_relevant():

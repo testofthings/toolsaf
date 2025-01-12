@@ -8,7 +8,7 @@ import pathlib
 import sys
 import tempfile
 import traceback
-from typing import BinaryIO, Dict, Optional, Tuple, List
+from typing import BinaryIO, Dict, Optional, Tuple, List, Any, Union
 import zipfile
 
 from aiohttp import web, WSMsgType
@@ -20,22 +20,22 @@ from tdsaf.core.model import IoTSystem
 
 class WebsocketChannel(APIListener):
     """A channel per web socket"""
-    def __init__(self, server: 'HTTPServerRunner', socket: web.WebSocketResponse, request: APIRequest):
+    def __init__(self, server: 'HTTPServerRunner', socket: web.WebSocketResponse, request: APIRequest) -> None:
         self.server = server
         self.socket = socket
         self.original_request = request
         self.subscribed = False  # subscribed?
         self.server.api.api_listener.append((self, self.original_request))
 
-    def note_system_reset(self, _data: Dict, _system: IoTSystem):
+    def note_system_reset(self, _data: Dict[str, Any], _system: IoTSystem) -> None:
         if self.subscribed:
             self.server.dump_model(self)
 
-    def note_event(self, data: Dict):
+    def note_event(self, data: Dict[str, Any]) -> None:
         if self.subscribed:
             self.server.send_queue.put_nowait((self, data))
 
-    def close(self):
+    def close(self)-> None:
         """Close the channel"""
         self.subscribed = False
         self.server.api.api_listener.remove((self, self.original_request))
@@ -45,11 +45,12 @@ class HTTPServerRunner:
     """Run HTTP server locally"""
     PATH = pathlib.Path("html")
 
-    def __init__(self, api: ClientAPI, base_directory=pathlib.Path("."), port=8180, no_auth_ok=False):
+    def __init__(self, api: ClientAPI, base_directory: pathlib.Path=pathlib.Path("."),
+                 port: int=8180, no_auth_ok: bool=False) -> None:
         self.api = api
         self.logger = logging.getLogger("server")
         self.sample_path = base_directory / "sample"
-        self.host = "127.0.0.1"
+        self.host: Optional[str] = "127.0.0.1"
         self.port = port
         self.auth_token = get_api_key()
         if not self.auth_token and not no_auth_ok:
@@ -59,16 +60,16 @@ class HTTPServerRunner:
         self.component_delay = 0
         self.channels: List[WebsocketChannel] = []
         self.loop = asyncio.get_event_loop()
-        self.send_queue: asyncio.Queue[Tuple[WebsocketChannel, Dict]] = asyncio.Queue()
+        self.send_queue: asyncio.Queue[Tuple[WebsocketChannel, Dict[str, Any]]] = asyncio.Queue()
         self.send_queue_target_size = 10
 
-    def run(self):
+    def run(self) -> None:
         """Start sync loop and run the server"""
         self.loop.run_until_complete(self.start_server())
         self.loop.create_task(self.send_worker())
         self.loop.run_forever()
 
-    async def start_server(self):
+    async def start_server(self) -> None:
         """Start the Web server"""
         app = web.Application()
         app.add_routes([
@@ -86,7 +87,7 @@ class HTTPServerRunner:
         self.logger.info("HTTP server running at %s:%s...", self.host or "*", self.port)
         await site.start()
 
-    async def send_worker(self):
+    async def send_worker(self) -> None:
         """A worker to send data to websockets"""
         while True:
             channel, d = await self.send_queue.get()
@@ -98,7 +99,7 @@ class HTTPServerRunner:
                 # artificial delay for testing
                 await asyncio.sleep(self.component_delay)
 
-    def check_permission(self, request, from_query=""):
+    def check_permission(self, request: web.Request, from_query: str="") -> None:
         """Check permissions"""
         auth_t = from_query
         if not auth_t:
@@ -113,11 +114,11 @@ class HTTPServerRunner:
             if not hmac.compare_digest(token_1, token_2):
                 raise PermissionError("Invalid API key")
 
-    async def handle_ping(self, _request: web.Request):
+    async def handle_ping(self, _request: web.Request) -> web.Response:
         """Handle ping request"""
         return web.Response(text="{}")
 
-    async def handle_http(self, request: web.Request):
+    async def handle_http(self, request: web.Request) -> web.Response:
         """Handle normal HTTP GET or POST request"""
         try:
             self.check_permission(request)
@@ -153,7 +154,7 @@ class HTTPServerRunner:
             traceback.print_exc()
             return web.Response(status=500)
 
-    async def read_stream_to_file(self, request, file: BinaryIO) -> Optional[BinaryIO]:
+    async def read_stream_to_file(self, request: web.Request, file: BinaryIO) -> Optional[BinaryIO]:
         """Read stream to a file, return data or None if no data"""
         r_size = 0
         b = await request.content.read(1024)
@@ -164,7 +165,7 @@ class HTTPServerRunner:
         file.seek(0)
         return file if r_size > 0 else None
 
-    async def read_multipart_form_to_file(self, request, file: BinaryIO) -> Optional[BinaryIO]:
+    async def read_multipart_form_to_file(self, request: web.Request, file: BinaryIO) -> Optional[BinaryIO]:
         """Read multipart form to a file, return data or None if no data"""
         reader = await request.multipart()
         r_size = 0
@@ -187,7 +188,7 @@ class HTTPServerRunner:
         file.seek(0)
         return file if r_size > 0 else None
 
-    async def api_post_zip(self, api_request: APIRequest, request):
+    async def api_post_zip(self, api_request: APIRequest, request: web.Request) -> Dict[str, Any]:
         """Handle POST request with zip file"""
         # unzip stream to temporary directory
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -203,7 +204,7 @@ class HTTPServerRunner:
             res = self.api.api_post_file(api_request, pathlib.Path(temp_dir))
         return res
 
-    async def handle_ws(self, request: web.Request):
+    async def handle_ws(self, request: web.Request) -> Union[web.Response, web.WebSocketResponse, None]:
         """Handle websocket HTTP request"""
         assert request.path_qs.startswith("/api1/ws/")
         req = APIRequest.parse(request.path_qs[9:])
@@ -221,7 +222,7 @@ class HTTPServerRunner:
             # no permission to proceed, communicate error using WS
             await ws.close(code=4401, message=b"Permission check failed")  # 4000 + HTTP code
             self.logger.warning('Permission check failed')
-            return
+            return None
 
         self.logger.info('WS loop started')
 
@@ -233,7 +234,7 @@ class HTTPServerRunner:
             self.dump_model(channel)
         self.channels.append(channel)
 
-        async def receive_loop():
+        async def receive_loop() -> None:
             # we expect nothing from client
             while True:
                 msg = await ws.receive()
@@ -248,7 +249,7 @@ class HTTPServerRunner:
             self.channels.remove(channel)
         return ws
 
-    async def handle_login(self, request: web.Request):
+    async def handle_login(self, request: web.Request) -> web.Response:
         """Handle login or proxy query, which is launcher job. This should only be used in development."""
         req = APIRequest.parse(request.path_qs)
         try:
@@ -261,7 +262,7 @@ class HTTPServerRunner:
             traceback.print_exc()
             return web.Response(status=500)
 
-    async def handle_reload(self, request: web.Request):
+    async def handle_reload(self, request: web.Request) -> web.Response:
         """Handle reload request"""
         self.check_permission(request)
         req = APIRequest.parse(request.path_qs)
@@ -271,7 +272,7 @@ class HTTPServerRunner:
         res = {}  # do not return the parameters
 
         # reload means exiting this process, delay it for response to be sent
-        def do_exit():
+        def do_exit() -> None:
             # return code 0 for successful exit
             sys.exit(0)  # pylint: disable=consider-using-sys-exit
 
@@ -281,7 +282,7 @@ class HTTPServerRunner:
             do_exit()  # no response will be sent
         return web.Response(text=json.dumps(res))
 
-    def dump_model(self, channel: WebsocketChannel):
+    def dump_model(self, channel: WebsocketChannel) -> None:
         """Dump the whole model into channel"""
         if not channel.subscribed:
             return

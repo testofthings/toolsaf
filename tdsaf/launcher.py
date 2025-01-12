@@ -27,7 +27,7 @@ from tdsaf.command_basics import API_KEY_NAME, get_authorization
 
 class Launcher:
     """Lister for requests and launch models as separate processes"""
-    def __init__(self):
+    def __init__(self) -> None:
         parser = argparse.ArgumentParser(description='Launcher script')
         parser.add_argument("--listen-port", "-p", type=int,
                             help="Listen HTTP requests at port")
@@ -60,12 +60,12 @@ class Launcher:
         self.loop = asyncio.get_event_loop()
         self.run()
 
-    def run(self):
+    def run(self) -> None:
         """Start sync loop and run the server"""
         self.loop.run_until_complete(self.start_server())
         self.loop.run_forever()
 
-    async def start_server(self):
+    async def start_server(self) -> None:
         """Start the Web server"""
         app = web.Application()
         app.add_routes([
@@ -79,11 +79,11 @@ class Launcher:
         self.logger.info("HTTP server running at %s:%s...", self.host or "*", self.port)
         await site.start()
 
-    async def handle_ping(self, _request: web.Request):
+    async def handle_ping(self, _request: web.Request) -> web.Response:
         """Handle ping request"""
         return web.Response(text="{}")
 
-    async def handle_login(self, request: web.Request):
+    async def handle_login(self, request: web.Request) -> web.Response:
         """Handle login and loading new endpoint"""
         try:
             if request.method != "GET":
@@ -188,7 +188,7 @@ class Launcher:
         stdout_task = asyncio.create_task(self.save_stream_to_file(process.stdout, stdout_file))
         stderr_task = asyncio.create_task(self.save_stream_to_file(process.stderr, stderr_file))
 
-        async def wait_process():
+        async def wait_process() -> None:
             await process.wait()
             await stdout_task
             await stderr_task
@@ -226,7 +226,7 @@ class Launcher:
             self.change_observer.update_watch_list(process, add=app_file.parent)
         return client_port
 
-    async def save_stream_to_file(self, stream, file_path):
+    async def save_stream_to_file(self, stream, file_path) -> None:
         """Save data from stream to a file asynchronously"""
         async with aiofiles.open(file_path, 'wb') as f:
             while True:
@@ -246,14 +246,14 @@ class Launcher:
 
 class FileChangeObserver(FileSystemEventHandler):
     """Observe file changes"""
-    def __init__(self, laucher: Launcher):
+    def __init__(self, laucher: Launcher) -> None:
         self.launcher = laucher
         self.watch_list: Dict[pathlib.Path, Process] = {}
         self.observer = Observer()
         self.observer.start()
 
     def update_watch_list(self, process: Process,
-                          add: Optional[pathlib.Path] = None, remove: Optional[pathlib.Path] = None):
+                          add: Optional[pathlib.Path] = None, remove: Optional[pathlib.Path] = None) -> None:
         """Update watch list"""
         if add:
             path = add.as_posix()
