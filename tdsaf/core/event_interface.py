@@ -5,7 +5,7 @@ from typing import Dict, Optional, Type, Callable, Any, Tuple
 from tdsaf.common.address import Addresses, AnyAddress
 from tdsaf.common.verdict import Verdict
 from tdsaf.common.entity import Entity
-from tdsaf.core.model import IoTSystem, Service
+from tdsaf.core.model import Connection, Host, IoTSystem, Service
 from tdsaf.common.property import PropertyKey
 from tdsaf.core.services import NameEvent
 from tdsaf.common.traffic import ServiceScan, HostScan, Event, Flow, IPFlow, EthernetFlow, BLEAdvertisementFlow, \
@@ -19,19 +19,19 @@ class EventInterface:
         """Access system model"""
         raise NotImplementedError()
 
-    def connection(self, flow: Flow) -> None:
+    def connection(self, flow: Flow) -> Optional[Connection]:
         """Inspect the given flow"""
         raise NotImplementedError()
 
-    def name(self, event: NameEvent) -> None:
+    def name(self, event: NameEvent) -> Optional[Host]:
         """Learn a name"""
         raise NotImplementedError()
 
-    def property_update(self, update: 'PropertyEvent') -> None:
+    def property_update(self, update: 'PropertyEvent') -> Optional[Entity]:
         """Update to property value"""
         raise NotImplementedError()
 
-    def property_address_update(self, update: 'PropertyAddressEvent') -> None:
+    def property_address_update(self, update: 'PropertyAddressEvent') -> Optional[Entity]:
         """Update to property value by address"""
         raise NotImplementedError()
 
@@ -39,13 +39,13 @@ class EventInterface:
         """The given address has a service"""
         raise NotImplementedError()
 
-    def host_scan(self, scan: HostScan) -> None:
+    def host_scan(self, scan: HostScan) -> Optional[Host]:
         """The given host have these services and not other ones"""
         raise NotImplementedError()
 
     def consume(self, event: Event) -> None:
         """Consume event and call the proper method"""
-        methods: Dict[Type, Callable[[Any], Any]] = {
+        methods: Dict[Type[Event], Callable[[Any], Any]] = {
             IPFlow: self.connection,
             EthernetFlow: self.connection,
             BLEAdvertisementFlow: self.connection,

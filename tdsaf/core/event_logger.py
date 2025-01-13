@@ -74,6 +74,7 @@ class EventLogger(EventInterface, ModelListener):
 
     def print_event(self, log: LoggingEvent) -> None:
         """Print event for debugging"""
+        assert self.event_logger
         e = log.event
         s = f"{log.entity.long_name()}," if log.entity else ""
         s = f"{s:<40}"
@@ -220,5 +221,6 @@ class EventLogger(EventInterface, ModelListener):
         r: Dict[PropertyKey, Dict[EvidenceSource, List[Entity]]] = {}
         for lo in self.logs:
             for p in lo.get_properties():
-                r.setdefault(p, {}).setdefault(lo.event.evidence.source, []).append(lo.entity)
+                if lo.entity:
+                    r.setdefault(p, {}).setdefault(lo.event.evidence.source, []).append(lo.entity)
         return r
