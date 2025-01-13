@@ -15,9 +15,10 @@ from tdsaf.common.verdict import Verdict
 from tdsaf.common.basics import HostType
 from tdsaf.core.model import Host
 import tdsaf.builder_backend as BB
+from tdsaf.main import DiagramVisualizer as DV
 
 
-class DiagramVisualizer:
+class DiagramVisualizer(DV):
     """Security statement visualizer"""
 
     __font_size_node = "18"
