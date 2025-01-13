@@ -2,8 +2,9 @@
 
 from datetime import datetime
 from io import BufferedReader
+from ipaddress import IPv4Address, IPv6Address
 import pathlib
-from typing import Optional, Dict, Tuple, Any
+from typing import List, Optional, Dict, Tuple, Any
 
 from framing.backends import RawFrame
 from framing.frame_types import dns_frames
@@ -37,8 +38,7 @@ class PCAPReader(SystemWideTool):
         self.frame_number = 0
         self.timestamp = datetime.fromtimestamp(0)
         self.ip_reassembler = IPReassembler()
-        self.flows: Dict[Tuple[Any], Flow] = {}
-        self.dns_names: Dict[str, Any] = {}  # report one just once
+        self.dns_names: Dict[Any, str] = {}  # report one just once
 
     @classmethod
     def inspect(cls, pcap_file: pathlib.Path, interface: EventInterface) -> 'PCAPReader':
@@ -69,6 +69,7 @@ class PCAPReader(SystemWideTool):
         Ethernet_Payloads.add_to(pcap)
         IP_Payloads.add_to(pcap)
 
+        assert self.source, "Source is not set"
         count = 0
         for rec in PCAPFile.Packet_Records.iterate(pcap):
             self.frame_number = count + 1
@@ -102,6 +103,8 @@ class PCAPReader(SystemWideTool):
             protocol = Protocol.ETHERNET
         else:
             pl_type = -1
+        assert self.source, "Source is not set"
+        assert self.interface, "Interface is not set"
         ev = Evidence(self.source, f":{self.frame_number}")
         fl = EthernetFlow(ev,
                           source=HWAddress.new(EthernetII.source[frame].as_hw_address()),
@@ -141,6 +144,9 @@ class PCAPReader(SystemWideTool):
 
     def _udp_frame(self, ethernet: EthernetII, ip: IPv4, frame: UDP) -> None:
         """Parse UDP frame"""
+        assert self.source, "Source is not set"
+        assert self.interface, "Interface is not set"
+
         s, d = self.ip_flow_ends(ethernet, ip, UDP.Source_port[frame], UDP.Destination_port[frame])
         flow = IPFlow(Evidence(self.source, f":{self.frame_number}"), s, d, Protocol.UDP)
         flow.timestamp = self.timestamp
@@ -148,9 +154,9 @@ class PCAPReader(SystemWideTool):
         proto = self.system.message_listeners.get(conn.target) if conn else None
         if proto:
             proc = {
-                Protocol.DNS: lambda: self._dns_message((conn.source, conn.target), frame, conn)
+                Protocol.DNS: lambda: self._dns_message([conn.source, conn.target], frame, conn)
             }[proto]
-            proc()
+            proc() # type: ignore [no-untyped-call]
 
         # We used to track packets
         # le = UDP.Data[frame].byte_length()
@@ -158,8 +164,11 @@ class PCAPReader(SystemWideTool):
         # ts = int(delta.total_seconds() * 1000)
         # self.interface.flow_data_update(flow, [ts, le])
 
-    def _dns_message(self, peers: Tuple[IPAddress], udp: UDP, connection: Connection) -> None:
+    def _dns_message(self, peers: List[IPAddress], udp: UDP, connection: Connection) -> None:
         """Parse DNS message"""
+        assert self.source, "Source is not set"
+        assert self.interface, "Interface is not set"
+
         rd = UDP.Data[udp]
         frame = dns_frames.DNSMessage(Frames.dissect(rd))
         evidence = Evidence(self.source, f":{self.frame_number}")
@@ -170,10 +179,10 @@ class PCAPReader(SystemWideTool):
         for rd in dns_frames.DNSMessage.Question.iterate(frame):
             name = dns_frames.DNSName.string(rd, dns_frames.DNSQuestion.QNAME)
             if name not in self.dns_names:
-                self.dns_names[name] = None
+                self.dns_names[name] = ""
                 events.append(NameEvent(evidence, service, name=DNSName(name), peers=peers))
 
-        def learn_name(name: str, ip: IPAddress) -> None:
+        def learn_name(name: str, ip: IPv4Address | IPv6Address) -> None:
             old = self.dns_names.get(ip)
             if old == name:
                 return
@@ -200,12 +209,14 @@ class PCAPReader(SystemWideTool):
 
     def _tcp_frame(self, ethernet: EthernetII, ip: IPv4, frame: TCP) -> None:
         """Parse TCP frame"""
+        assert self.source, "Source is not set"
+        assert self.interface, "Interface is not set"
+
         if TCP.Flags[frame] & TCPFlag.SYN:
             # SYN marks connection attempt and accepting it
             s, d = self.ip_flow_ends(ethernet, ip, TCP.Source_port[frame], TCP.Destination_port[frame])
             flow = IPFlow(Evidence(self.source, f":{self.frame_number}"), s, d, Protocol.TCP)
             flow.timestamp = self.timestamp
-            self.flows[(s, d)] = flow
             self.interface.connection(flow)
         # We used to track packets
         # else:
@@ -220,6 +231,9 @@ class PCAPReader(SystemWideTool):
             #         self.interface.flow_data_update(flow, [ts, le])
 
     def _other_ip_frame(self, ethernet: EthernetII, ip: IPv4) -> None:
+        assert self.source, "Source is not set"
+        assert self.interface, "Interface is not set"
+
         proto = IPv4.Protocol[ip]
         s, d = self.ip_flow_ends(ethernet, ip, proto, proto)
         flow = IPFlow(Evidence(self.source, f":{self.frame_number}"), s, d, Protocol.IP)
@@ -233,4 +247,4 @@ class PCAPReader(SystemWideTool):
         # self.interface.flow_data_update(flow, [ts, le])
 
     def __repr__(self) -> str:
-        return f"{self.source}:{self.frame_number}"
+        return f"{self.source or '???'}:{self.frame_number}"
