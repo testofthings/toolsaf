@@ -156,7 +156,11 @@ class HostScan(Event):
                          _entity_resolver: Callable[[Any], Any]) -> 'HostScan':
         """Decode event from JSON"""
         host = Addresses.parse_endpoint(data["host"])
-        endpoints = {Addresses.parse_endpoint(e) for e in data.get("endpoints", [])}
+        endpoints = set()
+        for ep in data.get("endpoints", []):
+            address = Addresses.parse_endpoint(ep)
+            assert isinstance(address, EndpointAddress), f"Expected endpoint address, not {ep}"
+            endpoints.add(address)
         return HostScan(evidence, host, endpoints)
 
 
@@ -170,7 +174,7 @@ class Flow(Event):
         self.timestamp: Optional[datetime.datetime] = None
         self.properties: Dict[PropertyKey, Any] = {}  # optional properties for the connection
 
-    def stack(self, target: bool) -> Tuple[AnyAddress]:
+    def stack(self, target: bool) -> Tuple[AnyAddress, ...]:
         """Get source or target address stack"""
         raise NotImplementedError()
 
@@ -234,7 +238,7 @@ class EthernetFlow(Flow):
         self.target = target
         self.payload = payload
 
-    def stack(self, target: bool) -> Tuple[AnyAddress]:
+    def stack(self, target: bool) -> Tuple[AnyAddress, ...]:
         return (self.target,) if target else (self.source,)
 
     def port(self, _target: bool=True) -> int:
@@ -467,7 +471,7 @@ class BLEAdvertisementFlow(Flow):
         self.source = source
         self.event_type = event_type
 
-    def stack(self, target: bool) -> Tuple[AnyAddress]:
+    def stack(self, target: bool) -> Tuple[AnyAddress, ...]:
         return (Addresses.BLE_Ad,) if target else (self.source,)
 
     def port(self, target: bool=True) -> int:

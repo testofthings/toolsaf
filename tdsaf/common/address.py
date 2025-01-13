@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import enum
 import ipaddress
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network
-from typing import Union, Optional, Tuple, Iterable, Self, Any
+from typing import Union, Optional, Tuple, Iterable, Self
 
 
 class Protocol(enum.Enum):
@@ -60,7 +60,7 @@ class AnyAddress:
         """Open address envelope, if any. If none, return this address"""
         return self
 
-    def get_protocol_port(self) -> Tuple[Optional[Protocol], int]:
+    def get_protocol_port(self) -> Optional[Tuple[Protocol, int]]:
         """Get protocol and port, if any"""
         return None
 
@@ -451,8 +451,8 @@ class EndpointAddress(AnyAddress):
     def get_host(self) -> AnyAddress:
         return self.host
 
-    def get_protocol_port(self) -> Tuple[Protocol, int]:
-        return self.protocol, self.port
+    def get_protocol_port(self) -> Optional[Tuple[Protocol, int]]:
+        return (self.protocol, self.port) if self.protocol else None
 
     def change_host(self, host: Optional['AnyAddress']) -> Self:
         return EndpointAddress(host or self.host, self.protocol, self.port)

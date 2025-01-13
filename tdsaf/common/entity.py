@@ -45,7 +45,7 @@ class Entity:
             v = Verdict.PASS
         elif self.status == Status.UNEXPECTED:
             if v == Verdict.FAIL:
-                return None  # already not ok
+                return False  # already not ok
             v = Verdict.FAIL
         else:
             return False  # does not matter if seen or not

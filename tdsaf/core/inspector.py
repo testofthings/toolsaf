@@ -117,7 +117,7 @@ class Inspector(EventInterface):
                 update_seen_status(target)
 
         # these entities to send events, in this order
-        entities = [conn, source, source.get_parent_host(), target, target.get_parent_host()]
+        entities: List[Entity] = [conn, source, source.get_parent_host(), target, target.get_parent_host()]
         for ent in entities:
             is_new = self._check_entity(ent)
             if is_new:
@@ -134,7 +134,9 @@ class Inspector(EventInterface):
         for ent in entities:
             if ent not in updated:
                 continue
-            ev = Properties.EXPECTED.verdict(ent.get_expected_verdict())
+            exp_ver = ent.get_expected_verdict()
+            assert exp_ver, f"Entity in update list, but verdict unkonwn {ent.long_name()}"
+            ev = Properties.EXPECTED.verdict(exp_ver)
             self.system.call_listeners(lambda ln: ln.property_change(ent, ev))  # pylint: disable=cell-var-from-loop
             updated.discard(ent)
         return conn
