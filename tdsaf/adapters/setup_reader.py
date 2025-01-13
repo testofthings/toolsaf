@@ -1,7 +1,8 @@
 """Setup documentation reading"""
 import csv
+from typing import Dict
 
-from io import BytesIO, TextIOWrapper
+from io import BufferedReader, TextIOWrapper
 from tdsaf.common.address import DNSName, EntityTag
 from tdsaf.core.event_interface import EventInterface
 from tdsaf.core.model import IoTSystem
@@ -12,13 +13,14 @@ from tdsaf.common.traffic import Evidence, EvidenceSource
 
 class SetupCSVReader(ToolAdapter):
     """Read setup documentation CSV files"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("setup-doc", system)
 
-    def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource) -> bool:
+    def process_file(self, data: BufferedReader, file_name: str, interface: EventInterface,
+                     source: EvidenceSource) -> bool:
         # read csv file from data
         reader = csv.reader(TextIOWrapper(data))
-        columns = {}
+        columns: Dict[str, int] = {}
         host_i = -1
         address_i = -1
         ev = Evidence(source)
