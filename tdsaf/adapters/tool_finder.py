@@ -56,7 +56,10 @@ class ToolDepiction:
             tc = next(iter(self.tools.values()), None)
         if tc is None:
             return None
-        return tc(system)
+        # NOTE: All constructors are assumed to only consume system, and provide name for ToolAdapter
+        tool = tc(system)  # type: ignore [call-arg, arg-type]
+        assert tool.system == system  # ...try to assert that this happens
+        return tool
 
     def __repr__(self) -> str:
         return self.file_type

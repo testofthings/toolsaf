@@ -22,7 +22,7 @@ from tdsaf.core.event_interface import EventInterface
 from tdsaf.core.model import Connection, IoTSystem
 from tdsaf.core.services import NameEvent, DNSService
 from tdsaf.adapters.tools import SystemWideTool
-from tdsaf.common.traffic import IPFlow, EvidenceSource, Evidence, EthernetFlow, Flow
+from tdsaf.common.traffic import IPFlow, EvidenceSource, Evidence, EthernetFlow
 
 
 class PCAPReader(SystemWideTool):

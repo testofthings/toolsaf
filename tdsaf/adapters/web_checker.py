@@ -40,8 +40,11 @@ class WebChecker(SystemWideTool):
     def get_status_code_from_data(self, data: TextIOWrapper) -> int:
         """Extracts HTTP status code from data. It should be on line 2"""
         try:
-            return int(self.regexp.match(data.readline()).group(1))
-        except (AttributeError, ValueError) as e:
+            m = self.regexp.match(data.readline())
+            if m is None:
+                raise ValueError("Proper status code not found on line two")
+            return int(m.group(1))
+        except (ValueError) as e:
             raise ValueError("Proper status code not found on line two") from e
 
     def check_keywords(self, resource: OnlineResource, data: TextIOWrapper) -> bool:

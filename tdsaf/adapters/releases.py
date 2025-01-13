@@ -8,7 +8,7 @@ from typing import Tuple, List, cast
 
 from tdsaf.core.components import Software
 from tdsaf.core.event_interface import EventInterface, PropertyEvent
-from tdsaf.core.model import IoTSystem, NetworkNode, NodeComponent
+from tdsaf.core.model import IoTSystem, NodeComponent
 from tdsaf.adapters.tools import NodeComponentTool
 from tdsaf.common.traffic import EvidenceSource, Evidence
 from tdsaf.common.release_info import ReleaseInfo
@@ -20,7 +20,7 @@ class ReleaseReader(NodeComponentTool):
         super().__init__("github-releases", ".json", system)
         self.tool.name = "GitHub releases"
 
-    def filter_component(self, component: NetworkNode) -> bool:
+    def filter_component(self, component: NodeComponent) -> bool:
         """Filter checked entities"""
         return isinstance(component, Software)
 
@@ -42,7 +42,6 @@ class ReleaseReader(NodeComponentTool):
             d.append((releases[idx - 1][0] - releases[idx][0]).days)
 
         info = ReleaseInfo(software.name)
-        info.latest_release = "No releases", datetime.datetime.fromtimestamp(0)
         info.first_release = info.latest_release
         info.interval_days = 0
         if releases:
