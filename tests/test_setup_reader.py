@@ -17,7 +17,9 @@ class Setup_1(Setup):
 
 def test_setup_csv():
     su = Setup_1()
+    dev1 = su.device1.entity
+    dev2 = su.device2.entity
     BatchImporter(su.get_inspector()).import_batch(pathlib.Path("tests/samples/setup-doc"))
-    assert su.device1.entity.addresses == {EntityTag("Device"), DNSName("example.com"), IPAddress.new("192.168.2.5")}
-    assert su.device2.entity.addresses == {EntityTag("Device_2")}
+    assert dev1.addresses == {EntityTag("Device"), DNSName("example.com"), IPAddress.new("192.168.2.5")}
+    assert dev2.addresses == {EntityTag("Device_2")}
 
