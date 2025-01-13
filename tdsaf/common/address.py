@@ -30,8 +30,13 @@ class Protocol(enum.Enum):
 
     @classmethod
     def get_protocol(cls, value: str, default: Optional['Protocol'] = None) -> Optional['Protocol']:
-        """Get protocol by name"""
+        """Get protocol by name or default if given"""
         return PROTOCOL_LOOKUP.get(value.lower(), default)
+
+    @classmethod
+    def protocol(cls, value: str, default: 'Protocol') -> 'Protocol':
+        """Get protocol by name or the default"""
+        return PROTOCOL_LOOKUP.get(value.lower()) or default
 
 # Protocol lookup dict
 PROTOCOL_LOOKUP = {p.value: p for p in Protocol}
