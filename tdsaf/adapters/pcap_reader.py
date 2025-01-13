@@ -1,9 +1,9 @@
 """PCAP tool"""
 
 from datetime import datetime
-from io import BytesIO
+from io import BufferedReader
 import pathlib
-from typing import Optional, Dict, Self, Tuple
+from typing import Optional, Dict, Tuple, Any
 
 from framing.backends import RawFrame
 from framing.frame_types import dns_frames
@@ -26,7 +26,7 @@ from tdsaf.common.traffic import IPFlow, EvidenceSource, Evidence, EthernetFlow,
 
 class PCAPReader(SystemWideTool):
     """PCAP reading tool"""
-    def __init__(self, system: IoTSystem, name="PCAP reader"):
+    def __init__(self, system: IoTSystem, name: str="PCAP reader") -> None:
         super().__init__("pcap", system)
         self.data_file_suffix = ".pcap"
         if name:
@@ -37,8 +37,8 @@ class PCAPReader(SystemWideTool):
         self.frame_number = 0
         self.timestamp = datetime.fromtimestamp(0)
         self.ip_reassembler = IPReassembler()
-        self.flows: Dict[Tuple, Flow] = {}
-        self.dns_names = {}  # report one just once
+        self.flows: Dict[Tuple[Any], Flow] = {}
+        self.dns_names: Dict[str, Any] = {}  # report one just once
 
     @classmethod
     def inspect(cls, pcap_file: pathlib.Path, interface: EventInterface) -> 'PCAPReader':
@@ -51,7 +51,8 @@ class PCAPReader(SystemWideTool):
             r.process_file(f, pcap_file.name, interface, ev)
         return r
 
-    def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource) -> Self:
+    def process_file(self, data: BufferedReader, file_name: str, interface: EventInterface,
+                     source: EvidenceSource) -> bool:
         self.source = source
         self.interface = interface
         raw_data = Raw.stream(data, request_size=1024 * 1024)
@@ -59,7 +60,7 @@ class PCAPReader(SystemWideTool):
             self.parse(raw_data)
         finally:
             raw_data.close()
-        return self
+        return True
 
     def parse(self, raw: RawData) -> int:
         """Parse packets from PCAP data"""
@@ -83,7 +84,7 @@ class PCAPReader(SystemWideTool):
             count += 1
         return count
 
-    def _ethernet_frame(self, frame: EthernetII):
+    def _ethernet_frame(self, frame: EthernetII) -> None:
         """Parse ethernet frame"""
         self.logger.debug("Parse PCAP frame %s", self.frame_number)
         EthernetII.data.process_frame(frame, {
@@ -91,7 +92,7 @@ class PCAPReader(SystemWideTool):
             RawFrame: lambda _: self._other_ethernet_frame(frame),
         })
 
-    def _other_ethernet_frame(self, frame: EthernetII):
+    def _other_ethernet_frame(self, frame: EthernetII) -> None:
         # we have names for some protocols, use them or use the type number
         pl_type = EthernetII.type[frame]
         protocol = {
@@ -116,7 +117,7 @@ class PCAPReader(SystemWideTool):
         # ts = int(delta.total_seconds() * 1000)
         # self.interface.flow_data_update(fl, [ts, le])
 
-    def _ipv4_frame(self, ethernet: EthernetII, frame: IPv4):
+    def _ipv4_frame(self, ethernet: EthernetII, frame: IPv4) -> None:
         """Parse IPv4 frame"""
         pl = self.ip_reassembler.push_frame(frame)
         Frames.process(pl, {
@@ -126,7 +127,8 @@ class PCAPReader(SystemWideTool):
         })
 
     @classmethod
-    def ip_flow_ends(cls, ethernet: EthernetII, ip: IPv4, source_port: int, destination_port: int):
+    def ip_flow_ends(cls, ethernet: EthernetII, ip: IPv4, source_port: int, destination_port: int) \
+                    -> Tuple[Tuple[Any, Any, Any], Tuple[Any, Any, Any]]:
         """Resolve ends for IP flow object"""
         return (
             HWAddress.new(EthernetII.source[ethernet].as_hw_address()),
@@ -137,7 +139,7 @@ class PCAPReader(SystemWideTool):
             destination_port
         )
 
-    def _udp_frame(self, ethernet: EthernetII, ip: IPv4, frame: UDP):
+    def _udp_frame(self, ethernet: EthernetII, ip: IPv4, frame: UDP) -> None:
         """Parse UDP frame"""
         s, d = self.ip_flow_ends(ethernet, ip, UDP.Source_port[frame], UDP.Destination_port[frame])
         flow = IPFlow(Evidence(self.source, f":{self.frame_number}"), s, d, Protocol.UDP)
@@ -156,7 +158,7 @@ class PCAPReader(SystemWideTool):
         # ts = int(delta.total_seconds() * 1000)
         # self.interface.flow_data_update(flow, [ts, le])
 
-    def _dns_message(self, peers: Tuple[IPAddress], udp: UDP, connection: Connection):
+    def _dns_message(self, peers: Tuple[IPAddress], udp: UDP, connection: Connection) -> None:
         """Parse DNS message"""
         rd = UDP.Data[udp]
         frame = dns_frames.DNSMessage(Frames.dissect(rd))
@@ -171,7 +173,7 @@ class PCAPReader(SystemWideTool):
                 self.dns_names[name] = None
                 events.append(NameEvent(evidence, service, name=DNSName(name), peers=peers))
 
-        def learn_name(name: str, ip: IPAddress):
+        def learn_name(name: str, ip: IPAddress) -> None:
             old = self.dns_names.get(ip)
             if old == name:
                 return
@@ -196,7 +198,7 @@ class PCAPReader(SystemWideTool):
         for e in events:
             self.interface.name(e)
 
-    def _tcp_frame(self, ethernet: EthernetII, ip: IPv4, frame: TCP):
+    def _tcp_frame(self, ethernet: EthernetII, ip: IPv4, frame: TCP) -> None:
         """Parse TCP frame"""
         if TCP.Flags[frame] & TCPFlag.SYN:
             # SYN marks connection attempt and accepting it
@@ -217,7 +219,7 @@ class PCAPReader(SystemWideTool):
             #         ts = int(delta.total_seconds() * 1000)
             #         self.interface.flow_data_update(flow, [ts, le])
 
-    def _other_ip_frame(self, ethernet: EthernetII, ip: IPv4):
+    def _other_ip_frame(self, ethernet: EthernetII, ip: IPv4) -> None:
         proto = IPv4.Protocol[ip]
         s, d = self.ip_flow_ends(ethernet, ip, proto, proto)
         flow = IPFlow(Evidence(self.source, f":{self.frame_number}"), s, d, Protocol.IP)
@@ -230,5 +232,5 @@ class PCAPReader(SystemWideTool):
         # ts = int(delta.total_seconds() * 1000)
         # self.interface.flow_data_update(flow, [ts, le])
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.source}:{self.frame_number}"

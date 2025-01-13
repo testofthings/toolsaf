@@ -1,12 +1,11 @@
 """Batch tool-data import"""
 
-from ast import Set
 from datetime import datetime
 import json
 import logging
 import pathlib
-import io
-from typing import Dict, List, Optional
+from io import BufferedReader
+from typing import Dict, List, Optional, Any, Set
 
 from tdsaf.common.address import Addresses
 from tdsaf.common.basics import ExternalActivity
@@ -18,7 +17,8 @@ from tdsaf.common.traffic import EvidenceSource
 
 class BatchImporter:
     """Batch importer for importing a batch of files from a directory."""
-    def __init__(self, interface: EventInterface, label_filter: 'LabelFilter' = None, load_baseline=False) -> None:
+    def __init__(self, interface: EventInterface, label_filter: Optional['LabelFilter'] = None,
+                 load_baseline: bool=False) -> None:
         self.interface = interface
         self.system = interface.get_system()
         self.label_filter = label_filter or LabelFilter()
@@ -29,16 +29,16 @@ class BatchImporter:
         # collect evidence sources from visited tools
         self.evidence: Dict[str, List[EvidenceSource]] = {}
 
-    def import_batch(self, file: pathlib.Path):
+    def import_batch(self, file: pathlib.Path) -> None:
         """Import a batch of files from a directory or zip file recursively."""
-        if file.is_dir:
+        if file.is_dir():
             self._import_batch(file, FileMetaInfo())
             if not self.meta_file_count:
                 self.logger.warning("No 00meta.json files found")
         else:
             raise ValueError(f"Expected directory, got {file.as_posix()}")
 
-    def _import_batch(self, file: pathlib.Path, parent_info: 'FileMetaInfo'):
+    def _import_batch(self, file: pathlib.Path, parent_info: 'FileMetaInfo') -> None:
         """Import a batch of files from a directory or zip file recursively."""
         self.logger.info("scanning %s", file.as_posix())
         if file.is_dir():
@@ -105,8 +105,8 @@ class BatchImporter:
                 else:
                     self._import_batch(a_file, info)
 
-    def _do_process(self, stream: io.BytesIO, file_path: pathlib.Path, info: 'FileMetaInfo', tool: ToolDepiction,
-                    skip_processing: bool):
+    def _do_process(self, stream: BufferedReader, file_path: pathlib.Path, info: 'FileMetaInfo', tool: ToolDepiction,
+                    skip_processing: bool) -> None:
         """Process a file """
         if not skip_processing:
             self.logger.info("processing (%s) %s", info.label, file_path.as_posix())
@@ -134,9 +134,11 @@ class BatchImporter:
         self.logger.info("skipping unsupported '%s' type %s", file_name, info.file_type)
 
     def _do_process_files(self, files: List[pathlib.Path], info: 'FileMetaInfo', tool: ToolDepiction,
-                          skip_processing: bool):
+                          skip_processing: bool) -> None:
         """Process files"""
         reader = tool.create_tool(self.system)
+        if not reader:
+            return
         reader.load_baseline = info.load_baseline or self.load_baseline
 
         if skip_processing:
@@ -165,7 +167,7 @@ class BatchImporter:
 
 class FileMetaInfo:
     """Batch file information."""
-    def __init__(self, label="", file_type="", parent: Optional['FileMetaInfo'] = None) -> None:
+    def __init__(self, label: str="", file_type: str="", parent: Optional['FileMetaInfo'] = None) -> None:
         self.label = label
         self.file_load_order: List[str] = []
         self.file_type = file_type
@@ -178,13 +180,13 @@ class FileMetaInfo:
             self.source.activity_map.update(parent.source.activity_map)
 
     @classmethod
-    def parse_from_stream(cls, stream: io.BytesIO, directory_name: str, system: IoTSystem,
+    def parse_from_stream(cls, stream: BufferedReader, directory_name: str, system: IoTSystem,
                           parent: Optional['FileMetaInfo'] = None) -> 'FileMetaInfo':
         """Parse from stream"""
         return cls.parse_from_json(json.load(stream), directory_name, system, parent)
 
     @classmethod
-    def parse_from_json(cls, json_data: Dict, directory_name: str, system: IoTSystem,
+    def parse_from_json(cls, json_data: Dict[str, Any], directory_name: str, system: IoTSystem,
                           parent: Optional['FileMetaInfo'] = None) -> 'FileMetaInfo':
         """Parse from JSON"""
         label = str(json_data.get("label", directory_name))
@@ -232,7 +234,7 @@ class FileMetaInfo:
 
 class LabelFilter:
     """Filter labels"""
-    def __init__(self, label_specification="") -> None:
+    def __init__(self, label_specification: str="") -> None:
         """Initialize the filter"""
         self.explicit_include = True
         self.included: Set[str] = set()

@@ -3,7 +3,7 @@
 import re
 from typing import Union
 from urllib import parse
-from io import BytesIO, TextIOWrapper
+from io import BufferedReader, TextIOWrapper
 
 from tdsaf.core.event_interface import PropertyEvent, EventInterface
 from tdsaf.core.model import IoTSystem
@@ -15,7 +15,7 @@ from tdsaf.core.online_resources import OnlineResource
 
 class WebChecker(SystemWideTool):
     """Check web pages tool"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("web", system)  # no extension really
         self.data_file_suffix = ".http"
         self.tool.name = "Web check"
@@ -55,7 +55,8 @@ class WebChecker(SystemWideTool):
                 return True
         return not bool(keywords)
 
-    def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource) -> bool:
+    def process_file(self, data: BufferedReader, file_name: str,
+                     interface: EventInterface, source: EvidenceSource) -> bool:
         with TextIOWrapper(data) as f:
             url = self.get_url_from_data(f)
             if (resource := self.get_online_resource_for_url(url)) is None:

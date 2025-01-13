@@ -11,7 +11,7 @@ from shodan.exception import APIError
 
 from tdsaf.main import ConfigurationException
 from tdsaf.adapters.tools import SystemWideTool
-from tdsaf.core.model import IoTSystem, Service, NetworkNode
+from tdsaf.core.model import IoTSystem, Service
 from tdsaf.core.components import Software, SoftwareComponent
 from tdsaf.core.event_interface import EventInterface, PropertyEvent
 from tdsaf.common.traffic import EvidenceSource, Evidence, ServiceScan
@@ -43,7 +43,8 @@ class ShodanScan(SystemWideTool):
     def get_open_port_info(self, entry: Dict[str, Any]) -> Tuple[int, Protocol, Protocol]:
         """Add open ports to endpoint"""
         port: int = entry["port"]
-        transport = cast(Protocol, Protocol.get_protocol(entry["transport"]))
+        transport = Protocol.get_protocol(entry["transport"])
+        assert transport, "get_protocol returned None"
         protocol = self.determine_protocol(entry)
         return port, transport, protocol
 
@@ -86,7 +87,8 @@ class ShodanScan(SystemWideTool):
 
     def add_cpes(self, cpe23_items: List[str], service: Service) -> None:
         """Add Common Platform Enumeration info to SW component and assign verdict based on statement SBOM"""
-        parent = cast(NetworkNode, service.parent)
+        parent = service.parent
+        assert parent, f"{service} parent was None"
         if len(parent.components) > 0:
             parent_sw = cast(Software, parent.components[0])
             for entry in cpe23_items:
@@ -114,9 +116,10 @@ class ShodanScan(SystemWideTool):
 
             port, transport, protocol = self.get_open_port_info(entry)
             endpoint_addr = EndpointAddress(ip_addr, transport, port)
-            service: Service = interface.service_scan(
+            service = interface.service_scan(
                 ServiceScan(self._evidence, endpoint_addr, protocol.value)
             )
+            assert service is not None, "Service is None"
 
             self.add_http_status(protocol, entry, service)
             self.add_vulnerabilities(entry.get("vulns", {}), service)
