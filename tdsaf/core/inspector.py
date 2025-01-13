@@ -141,11 +141,13 @@ class Inspector(EventInterface):
 
     def name(self, event: NameEvent) -> Optional[Host]:
         address = event.address
-        if event.service and event.service.captive_portal and event.address in event.service.parent.addresses:
+        if event.service and event.service.captive_portal \
+                and event.address in event.service.get_parent_host().addresses:
             address = None  # it is just redirecting to itself
         name = event.tag or event.name
+        assert name, "Name event without tag or name"
         h, changes = self.system.learn_named_address(name, address)
-        if h not in self.known_entities:
+        if h is not None and h not in self.known_entities:
             # new host
             if h.status == Status.UNEXPECTED:
                 # unexpected host, check if it can be external
@@ -164,7 +166,8 @@ class Inspector(EventInterface):
         elif not changes:
             # old host and nothing learned -> stop this maddness to save resources
             return None
-        self.system.call_listeners(lambda ln: ln.address_change(h))
+        if h:
+            self.system.call_listeners(lambda ln: ln.address_change(h))
         return h
 
     def property_update(self, update: PropertyEvent) -> Optional[Entity]:

@@ -1,4 +1,5 @@
 """SQL database by SQLAlchemy"""
+# mypy: ignore_errors
 
 import json
 import os

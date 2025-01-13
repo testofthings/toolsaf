@@ -183,8 +183,10 @@ class NetworkNode(Entity):
         """Get effective networks"""
         return self.networks
 
-    def get_networks_for(self, address: AnyAddress) -> List[Network]:
+    def get_networks_for(self, address: Optional[AnyAddress]) -> List[Network]:
         """Resolve network for an address"""
+        if not address:
+            return []
         if address.get_ip_address() is None:
             return [self.get_system().get_default_network()]
         ns = []
@@ -255,10 +257,6 @@ class NetworkNode(Entity):
         self.components.append(component)
         return component
 
-    def addressable(self, func: Callable[['Addressable'], T]) -> Optional[T]:
-        """Call and return function for addressable entity, if this is one"""
-        return func(self) if isinstance(self, Addressable) else None
-
     def is_addressable(self) -> bool:
         """Is addressable entity?"""
         return isinstance(self, Addressable)
@@ -283,9 +281,9 @@ class NetworkNode(Entity):
 
 class Addressable(NetworkNode):
     """Addressable entity"""
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, parent: NetworkNode) -> None:
         super().__init__(name)
-        self.parent: Optional[NetworkNode] = None
+        self.parent = parent
         self.addresses: Set[AnyAddress] = set()
         self.any_host = False  # can be one or many hosts
 
@@ -328,12 +326,12 @@ class Addressable(NetworkNode):
 
     def get_networks(self) -> List[Network]:
         """Get networks"""
-        if self.networks:
+        if self.networks or not self.parent:
             return self.networks
         return self.parent.get_networks()
 
-    def get_networks_for(self, address: AnyAddress) -> List[Network]:
-        if not self.networks:
+    def get_networks_for(self, address: Optional[AnyAddress]) -> List[Network]:
+        if not self.networks and self.parent:
             return self.parent.get_networks_for(address)  # follow parent
         return super().get_networks_for(address)
 
@@ -377,7 +375,7 @@ class Addressable(NetworkNode):
     def new_connection(self, connection: Connection, flow: Flow, target: bool) -> None:
         """New connection with this entity either as source or target"""
 
-    def set_seen_now(self, changes: Optional[List[Entity]]=None) -> Optional[bool]:
+    def set_seen_now(self, changes: Optional[List[Entity]] = None) -> bool:
         r = super().set_seen_now(changes)
         if r and self.parent and not isinstance(self.parent, IoTSystem):
             # propagate to parent, it is also seen now
@@ -389,13 +387,13 @@ class Addressable(NetworkNode):
 
     def get_parent_host(self) -> 'Host':
         """Get the parent host"""
-        return self.parent.addressable(lambda p: p.get_parent_host())
+        raise NotImplementedError()
 
 
 class Host(Addressable):
     """A host"""
     def __init__(self, parent: 'IoTSystem', name: str, tag: Optional[EntityTag] = None) -> None:
-        super().__init__(name)
+        super().__init__(name, parent=parent)
         if tag:
             self.addresses.add(tag)
         self.concept_name = "node"
@@ -447,9 +445,9 @@ class Host(Addressable):
 class Service(Addressable):
     """A service"""
     def __init__(self, name: str, parent: Addressable) -> None:
-        super().__init__(name)
+        super().__init__(name, parent=parent)
         self.concept_name = "service"
-        self.parent = parent
+        self.parent: Addressable = parent
         self.networks = [] # follow parent
         self.protocol: Optional[Protocol] = None  # known protocol
         self.host_type = parent.host_type
@@ -508,6 +506,9 @@ class Service(Addressable):
             if app:
                 return app[1]
         return -1
+
+    def get_parent_host(self) -> 'Host':
+        return self.parent.get_parent_host()
 
     def __repr__(self) -> str:
         return f"{self.status_string()} {self.parent.long_name()} {self.name}"
@@ -608,7 +609,9 @@ class IoTSystem(NetworkNode):
         if named is None:
             if isinstance(name, EntityTag):
                 return None, False  # do not create hosts for unknown tags
-            named = self.get_endpoint(name)
+            ep = self.get_endpoint(name)
+            assert isinstance(ep, Host)
+            named = ep
 
         assert named, "named is None"
 
@@ -627,8 +630,9 @@ class IoTSystem(NetworkNode):
             return add, True
 
         # IP address shared by two hosts, use the latest as things change between captures
-        add.addresses.remove(address)
-        named.addresses.add(address)
+        if address:
+            add.addresses.remove(address)
+            named.addresses.add(address)
         return named, True
 
     def learn_ip_address(self, host: Host, ip_address: IPAddress) -> None:
@@ -652,6 +656,8 @@ class IoTSystem(NetworkNode):
 
     def get_endpoint(self, address: AnyAddress, at_network: Optional[Network] = None) -> Addressable:
         h_add = address.get_host()
+        assert h_add, f"Cannot find endpoint by address {address}"
+
         e_add = address.open_envelope()  # scan from inside is in envelope
         network = at_network or self.get_default_network()
         for e in self.children:
@@ -723,9 +729,9 @@ class IoTSystem(NetworkNode):
                     return nw
         raise ValueError(f"Network {name} not found")
 
-    def get_networks_for(self, address: AnyAddress) -> List[Network]:
+    def get_networks_for(self, address: Optional[AnyAddress]) -> List[Network]:
         ns = super().get_networks_for(address)
-        if not ns:
+        if not ns and address:
             return [self.get_default_network()]
         return ns
 

@@ -92,7 +92,7 @@ class AnyAddress:
         """Is entity tag?"""
         return False
 
-    def change_host(self, _host: 'AnyAddress') -> Self:
+    def change_host(self, _host: Optional['AnyAddress']) -> Self:
         """Change host to given address. As default, returns this address"""
         return self
 
@@ -447,14 +447,14 @@ class EndpointAddress(AnyAddress):
     def get_hw_address(self) -> Optional[HWAddress]:
         return self.host.get_hw_address()
 
-    def get_host(self) -> Optional[AnyAddress]:
+    def get_host(self) -> AnyAddress:
         return self.host
 
-    def get_protocol_port(self) -> Optional[Tuple[Protocol, int]]:
+    def get_protocol_port(self) -> Tuple[Protocol, int]:
         return self.protocol, self.port
 
-    def change_host(self, host: 'AnyAddress') -> Self:
-        return EndpointAddress(host, self.protocol, self.port)
+    def change_host(self, host: Optional['AnyAddress']) -> Self:
+        return EndpointAddress(host or self.host, self.protocol, self.port)
 
     def is_null(self) -> bool:
         return self.host.is_null()
@@ -554,7 +554,7 @@ class AddressEnvelope(AnyAddress):
     def get_protocol_port(self) -> Optional[Tuple[Protocol, int]]:
         return self.address.get_protocol_port()
 
-    def change_host(self, host: 'AnyAddress') -> Self:
+    def change_host(self, host: Optional['AnyAddress']) -> Self:
         return AddressEnvelope(self.address.change_host(host), self.content)
 
     def is_null(self) -> bool:

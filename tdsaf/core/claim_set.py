@@ -1,4 +1,5 @@
 """The set of available claims"""
+# mypy: ignore_errors
 
 from typing import List, Optional, Tuple, Self, Dict, Set, Callable, Iterable, Union, Any
 

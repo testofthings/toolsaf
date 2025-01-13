@@ -73,7 +73,7 @@ class MatchFlow:
         self.cache: Dict[Tuple[Addressable, bool], bool] = {}
 
     def __repr__(self) -> str:
-        return self.flow.__repr__()
+        return str(self.flow)
 
 
 class AddressMatch:
@@ -199,10 +199,11 @@ class MatchEngine:
         self._add_host(host)
 
     def _add_host(self, entity: Addressable) -> 'MatchEndpoint':
+        ads: Iterable[AnyAddress]
         if entity.any_host:
             ads = []  # always match by wildcards
         else:
-            ads = {a.get_host(): None for a in entity.get_addresses() if not a.is_tag()}.keys()
+            ads = {h: None for a in entity.get_addresses() if not a.is_tag() and (h := a.get_host()) is not None}.keys()
 
         if ads:
             # addressed host
@@ -278,10 +279,13 @@ class MatchEngine:
         n_service_ep = match.target.address
         assert conn not in target_h.connections, "Connection already added to target host"
         assert isinstance(n_service_ep, EndpointAddress), "Expected endpoint address from observation cache"
+
         # change connection to point the new service
         n_service = target_h.get_endpoint(n_service_ep)  # NOTE: Network not specified - how can there be many?
         if n_service is None:
             n_service = target_h.create_service(n_service_ep)
+        assert isinstance(n_service, Service)
+
         if target_h.external_activity >= ExternalActivity.UNLIMITED and conn.status == Status.EXTERNAL \
             and n_service.status == Status.UNEXPECTED:
             # host is free to provide unlisted services
@@ -348,6 +352,7 @@ class MatchEngine:
         for a, es in self.endpoints.items():
             for end in es:
                 for nw in end.entity.get_networks_for(host):
+                    assert host  # we would not iterate if this was null
                     atn = AddressAtNetwork(host, nw)
                     if atn == a:
                         if not address.get_protocol_port():
@@ -371,10 +376,10 @@ class MatchEngine:
             for ad in match_ads:
                 ends = self.endpoints.get(ad, [])
                 for end in ends:
-                    am = end.match_service(ad.address, flow, target)
-                    m = finder.add_matches(am, target)
-                    if m:
-                        return m
+                    am1 = end.match_service(ad.address, flow, target)
+                    m1 = finder.add_matches(am1, target)
+                    if m1:
+                        return m1
 
         # 2. match hosts by address
         for target, match_ads in match_address.items():
@@ -382,10 +387,10 @@ class MatchEngine:
                 ends = self.endpoints.get(ad, [])
                 for end in ends:
                     if not target or end.match_no_service:
-                        am = AddressMatch(EndpointAddress(ad.address, flow.protocol, flow.port(target)), end)
-                        m = finder.add_matches([am], target)
-                        if m:
-                            return m
+                        am2 = AddressMatch(EndpointAddress(ad.address, flow.protocol, flow.port(target)), end)
+                        m2 = finder.add_matches([am2], target)
+                        if m2:
+                            return m2
 
         # Works in some cases, but not in others. Not needed if we drop learning addresses
         # wild_match_address = {}
@@ -405,20 +410,20 @@ class MatchEngine:
         for target, match_ads in match_address.items():
             for end in wild_ends:
                 for ad in match_ads:
-                    am = end.match_service(ad.address, flow, target)
-                    m = finder.add_matches(am, target)
-                    if m:
-                        return m
+                    am3 = end.match_service(ad.address, flow, target)
+                    m3 = finder.add_matches(am3, target)
+                    if m3:
+                        return m3
 
         # 4. match hosts with wildcard address
         for target, match_ads in match_address.items():
             for end in wild_ends:
                 if end.match_no_service:
                     for ad in match_ads:
-                        am = AddressMatch(EndpointAddress(ad.address, flow.protocol, flow.port(target)), end)
-                        m = finder.add_matches([am], target)
-                        if m:
-                            return m
+                        am4 = AddressMatch(EndpointAddress(ad.address, flow.protocol, flow.port(target)), end)
+                        m4 = finder.add_matches([am4], target)
+                        if m4:
+                            return m4
         return None
 
     def _match_addresses(self, flow: Flow, target: bool) -> Tuple[AddressAtNetwork, ...]:
@@ -447,15 +452,16 @@ class MatchEngine:
             am = self._match_existing_host(ad, flow, target)
             if am:
                 return am  # not new host
-            if isinstance(ad, IPAddress) and (system.is_external(ad) or ad.is_multicast()):
-                use_ad = ad  # must use the IP address
-                break
+            if isinstance(ad, IPAddress):
+                if system.is_external(ad) or ad.is_multicast():
+                    use_ad = ad  # must use the IP address
+                    break
             if use_ad.is_null() and not ad.is_null():
                 use_ad = ad  # prefer non-null address
         host = system.get_endpoint(use_ad, at_network=flow.network)
         # target address with port
-        ad = EndpointAddress(use_ad, flow.protocol, flow.port(target))
-        return AddressMatch(ad, self._add_host(host))
+        end = EndpointAddress(use_ad, flow.protocol, flow.port(target))
+        return AddressMatch(end, self._add_host(host))
 
     def _match_existing_host(self, address: AnyAddress, flow: Flow, target: bool) -> Optional[AddressMatch]:
         """Match existing host as endpoint for unexpected conncetion, use also per-evidence source mappings"""
@@ -539,7 +545,7 @@ class MatchEndpoint:
 
     def is_same_host(self, other: Optional['MatchEndpoint']) -> bool:
         """Does the an other endpoint have the same host"""
-        return other and other.entity.get_parent_host() == self.entity.get_parent_host()
+        return other is not None and other.entity.get_parent_host() == self.entity.get_parent_host()
 
     def new_connections(self) -> bool:
         """Allow new connections with this endpoint"""

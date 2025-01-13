@@ -45,7 +45,7 @@ class NameEvent(Event):
     """Name or tag and address event"""
     def __init__(self, evidence: Evidence, service: Optional[DNSService], name: Optional[DNSName] = None,
                  tag: Optional[EntityTag] = None, address: Optional[AnyAddress] = None,
-                 peers: List[NetworkNode] = None):
+                 peers: Optional[List[NetworkNode]] = None):
         super().__init__(evidence)
         assert name or tag, "Name or tag must be set"
         self.service = service

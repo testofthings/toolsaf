@@ -90,7 +90,7 @@ class HostSelector(AbstractSelector):
 
         class Selector(HostSelector):
             """The modified selector"""
-            def select(self, entity: Entity, context: SelectorContext) -> Iterator[Entity]:
+            def select(self, entity: Entity, context: SelectorContext) -> Iterator[Host]:
                 return (c for c in parent.select(entity, context) if c.host_type in types)
         return Selector()
 
@@ -100,7 +100,7 @@ class HostSelector(AbstractSelector):
 
         class Selector(HostSelector):
             """The modified selector"""
-            def select(self, entity: Entity, context: SelectorContext) -> Iterator[Entity]:
+            def select(self, entity: Entity, context: SelectorContext) -> Iterator[Host]:
                 return (c for c in parent.select(entity, context) if key in c.properties)
         return Selector()
 
@@ -157,7 +157,7 @@ class ServiceSelector(AbstractSelector):
 
         class Selector(ServiceSelector):
             """The modified selector"""
-            def select(self, entity: Entity, context: SelectorContext) -> Iterator[Connection]:
+            def select(self, entity: Entity, context: SelectorContext) -> Iterator[Service]:
                 for c in parent.select(entity, context):
                     if not c.is_multicast() and Properties.HTTP_REDIRECT.get(c.properties) is None:
                         yield c
@@ -376,7 +376,7 @@ class Finder:
     @classmethod
     def find(cls, system: IoTSystem, specifier: Dict[str, Any]) -> Optional[Entity]:
         """Find entity by JSON specifier"""
-        entity = None
+        entity: Optional[Entity] = None
         addr_s = specifier.get("system")
         if addr_s:
             entity = system
@@ -397,10 +397,10 @@ class Finder:
                 t = system.find_endpoint(addrs[1])
                 if not t:
                     raise ValueError(f"Cannot find connection target: {add_r}")
-                entity = s.find_connection(t)
+                entity = s.get_parent_host().find_connection(t)
         comp_s = specifier.get("software")
         if comp_s:
-            if not entity:
+            if not isinstance(entity, NetworkNode):
                 raise ValueError(f"Cannot find software without entity: {comp_s}")
             entity = Software.get_software(entity, comp_s)
             if not entity:
@@ -408,10 +408,10 @@ class Finder:
             return entity
         data_s = specifier.get("data")
         if data_s:
-            if not entity:
+            if not isinstance(entity, NetworkNode):
                 raise ValueError(f"Cannot find data without entity: {comp_s}")
             store = StoredData.find_data(entity)
-            entity = next(r for r in store.sub_components if r.data.name == data_s)
+            entity = next(r for r in store.sub_components if r.data.name == data_s) if store else None
             if not entity:
                 raise ValueError(f"Cannot find data: {comp_s}")
             return entity
@@ -434,10 +434,10 @@ class Finder:
                 raise ValueError(f"Cannot specify entity without tag: {ent}")
             r["address"] = tag.get_parseable_value()
         elif isinstance(ent, Connection):
-            tag = ent.get_tag()
-            if tag is None:
+            c_tag = ent.get_tag()
+            if c_tag is None:
                 raise ValueError(f"Cannot specify connection without both tags: {ent}")
-            r["connection"] = [t.get_parseable_value() for t in tag]
+            r["connection"] = [t.get_parseable_value() for t in c_tag]
         else:
             raise ValueError(f"Cannot specify entity: {entity}")
         return r
