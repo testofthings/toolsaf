@@ -11,7 +11,7 @@ from tdsaf.core.registry import Registry
 class Visualizer:
     """Visualize system"""
     def __init__(self) -> None:
-        self.placement: List[str] = []
+        self.placement: Tuple[str, ...] = ()
         self.handles: Dict[str, NetworkNode] = {}
         self.images: Dict[NetworkNode, Tuple[str, int]] = {}
         self.coordinates: Dict[NetworkNode, Tuple[float, float]] = {}

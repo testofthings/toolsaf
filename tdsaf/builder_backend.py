@@ -572,7 +572,7 @@ class SoftwareBackend(SoftwareBuilder):
 
     def __sbom_from_file(self, statement_file_path: pathlib.Path, file_path: str) -> None:
         try:
-            with open((statement_file_path / file_path).resolve(), 'r', encoding="utf-8") as f:
+            with (statement_file_path / file_path).resolve().open("rb") as f:
                 for c in SPDXJson(f).read():
                     self.sw.components[c.name] = c
                     key = PropertyKey("component", c.name)
@@ -1029,6 +1029,7 @@ class ClaimBackend(ClaimBuilder):
         return self
 
     def at(self, *locations: Union[SystemBackend, NodeBackend, ConnectionBackend]) -> Self:
+        loc: Any
         for lo in locations:
             if isinstance(lo, SystemBackend):
                 loc = lo.system
@@ -1036,6 +1037,7 @@ class ClaimBackend(ClaimBuilder):
                 loc = lo.entity
             else:
                 loc = lo.connection
+            assert loc
             self.locations.append(loc)
         return self
 
@@ -1063,6 +1065,7 @@ class ClaimBackend(ClaimBuilder):
 
             def __init__(self) -> None:
                 super().__init__("Manual checks")
+                assert this.source, "source was None"
                 self.source_label = this.source.label
 
             def load(self, registry: Registry, label_filter: LabelFilter) -> None:
@@ -1263,5 +1266,5 @@ class SystemBackendRunner(SystemBackend):
         if args.http_server:
             server = HTTPServerRunner(
                 api, port=args.http_server, no_auth_ok=args.no_auth_ok)
-            server.component_delay = (args.test_delay or 0) / 1000
+            server.component_delay = (args.test_delay or 0) // 1000
             server.run()
