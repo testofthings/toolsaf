@@ -1,8 +1,7 @@
 """Model builder"""
 
-from typing import Dict, List, Optional, Self, Tuple, Type, Union
+from typing import Dict, List, Optional, Self, Tuple, Type, Union, Any
 from tdsaf.common.address import AnyAddress, HWAddress, HWAddresses, IPAddress, IPAddresses, Network
-from tdsaf.core.model import Host
 from tdsaf.core.selector import AbstractSelector
 from tdsaf.common.basics import ConnectionType, HostType, ExternalActivity
 from tdsaf.common.verdict import Verdict
@@ -277,16 +276,16 @@ class VisualizerBuilder:
 
 class DiagramVisualizer:
     """Security statement visualizer"""
-    def visualize(self) -> Self:
+    def visualize(self) -> None:
         """Visualize statement"""
         raise NotImplementedError()
 
-    def add_images(self, host_image_dict: Dict[Host, str]) -> Self:
+    def add_images(self, host_image_dict: Dict[Any, str]) -> Self:
         """Use locally stored images for specified nodes in visualization.
             Must be .png images"""
         raise NotImplementedError()
 
-    def add_remote_images(self, host_image_url_dict: Dict[Host, str]) -> Self:
+    def add_remote_images(self, host_image_url_dict: Dict[Any, str]) -> Self:
         """Use images from the internet for specified nodes"""
         raise NotImplementedError()
 
