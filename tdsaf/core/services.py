@@ -2,7 +2,7 @@
 
 from typing import Any, Callable, Dict, List, Set, Optional
 
-from tdsaf.common.address import DNSName, EndpointAddress, EntityTag, Protocol, IPAddress
+from tdsaf.common.address import AnyAddress, DNSName, EndpointAddress, EntityTag, Protocol, IPAddress
 from tdsaf.common.basics import ConnectionType, HostType
 from tdsaf.core.model import Service, NetworkNode, Connection, Host, Addressable
 from tdsaf.common.traffic import IPFlow, Flow, Event, Evidence
@@ -44,7 +44,7 @@ class DNSService(Service):
 class NameEvent(Event):
     """Name or tag and address event"""
     def __init__(self, evidence: Evidence, service: Optional[DNSService], name: Optional[DNSName] = None,
-                 tag: Optional[EntityTag] = None, address: Optional[IPAddress] = None,
+                 tag: Optional[EntityTag] = None, address: Optional[AnyAddress] = None,
                  peers: List[NetworkNode] = None):
         super().__init__(evidence)
         assert name or tag, "Name or tag must be set"

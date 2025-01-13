@@ -2,7 +2,7 @@
 
 from io import BufferedReader, TextIOWrapper
 import re
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from tdsaf.main import ConfigurationException
 from tdsaf.common.address import AddressEnvelope, Addresses, AnyAddress, EndpointAddress, HWAddresses, IPAddress
