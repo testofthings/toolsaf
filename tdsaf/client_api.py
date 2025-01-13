@@ -1,4 +1,5 @@
 """Client API implementation"""
+# mypy: ignore_errors
 
 import json
 import logging

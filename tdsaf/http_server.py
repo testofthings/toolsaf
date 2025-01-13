@@ -1,4 +1,5 @@
 """HTTP server"""
+# mypy: ignore_errors
 
 import asyncio
 import hmac

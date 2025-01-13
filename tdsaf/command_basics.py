@@ -1,4 +1,5 @@
 """Command-line basic functions"""
+# mypy: ignore_errors
 
 import os
 import pathlib

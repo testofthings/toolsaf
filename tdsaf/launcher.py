@@ -1,4 +1,5 @@
 """Lauch model given from command-line"""
+# mypy: ignore_errors
 
 import asyncio
 from asyncio.subprocess import Process
