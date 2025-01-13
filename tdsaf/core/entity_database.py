@@ -8,7 +8,7 @@ from tdsaf.common.traffic import Event, EvidenceSource
 
 class EntityDatabase:
     """Store and retrieve events, later entities, etc."""
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logging.getLogger("database")
         # local ID integers for entities and connections, usable for persistent DB
         self.ids: Dict[Any, int] = {}
@@ -18,14 +18,14 @@ class EntityDatabase:
         """Restore stored events after model is loaded"""
         return []
 
-    def reset(self, source_filter: Dict[str, bool] = None):
+    def reset(self, source_filter: Optional[Dict[str, bool]] = None) -> None:
         """Reset database cursor"""
 
     def next_pending(self) -> Optional[Event]:
         """Fetch next pending event, if any"""
         return None
 
-    def get_id(self, entity) -> int:
+    def get_id(self, entity: Any) -> int:
         """Get ID for an entity or whatever, int"""
         raise NotImplementedError()
 
@@ -33,11 +33,11 @@ class EntityDatabase:
         """Get entity by id, if any"""
         raise NotImplementedError()
 
-    def put_event(self, event: Event):
+    def put_event(self, event: Event) -> None:
         """Store an event"""
         raise NotImplementedError()
 
-    def clear_database(self):
+    def clear_database(self) -> None:
         """Clear the database, from the disk"""
 
     def get_souces(self) -> List[EvidenceSource]:
@@ -47,13 +47,13 @@ class EntityDatabase:
 
 class InMemoryDatabase(EntityDatabase):
     """Store and retrieve events, later entities, etc."""
-    def __init__(self):
+    def __init__(self) -> None:
         EntityDatabase.__init__(self)
         self.trail: List[Event] = []
         self.trail_filter: Dict[str, bool] = {}  # key is label, not present == False
         self.cursor = 0
 
-    def reset(self, source_filter: Dict[str, bool] = None):
+    def reset(self, source_filter: Optional[Dict[str, bool]] = None) -> None:
         self.cursor = 0
         self.trail_filter = source_filter or {}
 
@@ -68,7 +68,7 @@ class InMemoryDatabase(EntityDatabase):
             self.logger.debug("filtered #%d %s", self.cursor, e)
         return None
 
-    def get_id(self, entity) -> int:
+    def get_id(self, entity: Any) -> int:
         i = self.ids.get(entity, -1)
         if i == -1:
             self.ids[entity] = i = len(self.ids)
@@ -78,7 +78,7 @@ class InMemoryDatabase(EntityDatabase):
     def get_entity(self, id_value: int) -> Optional[Any]:
         return self.reverse_id[id_value] if id_value < len(self.reverse_id) else None
 
-    def put_event(self, event: Event):
+    def put_event(self, event: Event) -> None:
         if  self.cursor == len(self.trail):
             self.cursor += 1
         self.trail.append(event)
@@ -86,7 +86,7 @@ class InMemoryDatabase(EntityDatabase):
         self.trail_filter.setdefault(source.label, True)
 
     def get_souces(self) -> List[EvidenceSource]:
-        sources = {}
+        sources: Dict[EvidenceSource, Event] = {}
         for e in self.trail:
             sources.setdefault(e.evidence.source, e)
         return list(sources.keys())

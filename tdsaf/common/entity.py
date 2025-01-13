@@ -36,7 +36,7 @@ class Entity:
         self.properties[key_value[0]] = key_value[1]
         return self
 
-    def set_seen_now(self, changes: List['Entity'] = None) -> bool:
+    def set_seen_now(self, changes: Optional[List['Entity']] = None) -> bool:
         """The entity is seen now, update and return if changes"""
         v = Properties.EXPECTED.get_verdict(self.properties)
         if self.status == Status.EXPECTED:

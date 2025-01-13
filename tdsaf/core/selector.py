@@ -1,6 +1,6 @@
 """Requirement selectors"""
 
-from typing import Dict, List, Optional, TypeVar, Generic, Iterator
+from typing import Dict, List, Optional, TypeVar, Generic, Iterator, Any
 
 from tdsaf.common.address import Addresses, Protocol
 from tdsaf.common.basics import HostType
@@ -27,7 +27,7 @@ class AbstractSelector(EntitySelector):
 
 class NamedSelector(AbstractSelector):
     """A named selector"""
-    def __init__(self, name: str, sub: EntitySelector):
+    def __init__(self, name: str, sub: EntitySelector) -> None:
         assert sub is not None, f"Naming null to {name}"
         self.name = name
         self.sub = sub
@@ -48,7 +48,7 @@ class SystemSelector(AbstractSelector):
 
 class HostSelector(AbstractSelector):
     """Select hosts"""
-    def __init__(self, with_unexpected=False):
+    def __init__(self, with_unexpected: bool=False) -> None:
         self.with_unexpected = with_unexpected
 
     def select(self, entity: Entity, context: SelectorContext) -> Iterator[Host]:
@@ -90,7 +90,7 @@ class HostSelector(AbstractSelector):
 
         class Selector(HostSelector):
             """The modified selector"""
-            def select(self, entity: Entity, context: SelectorContext) -> Iterator[Entity]:
+            def select(self, entity: Entity, context: SelectorContext) -> Iterator[Host]:
                 return (c for c in parent.select(entity, context) if c.host_type in types)
         return Selector()
 
@@ -100,14 +100,14 @@ class HostSelector(AbstractSelector):
 
         class Selector(HostSelector):
             """The modified selector"""
-            def select(self, entity: Entity, context: SelectorContext) -> Iterator[Entity]:
+            def select(self, entity: Entity, context: SelectorContext) -> Iterator[Host]:
                 return (c for c in parent.select(entity, context) if key in c.properties)
         return Selector()
 
 
 class ServiceSelector(AbstractSelector):
     """Select services"""
-    def __init__(self, with_unexpected=False):
+    def __init__(self, with_unexpected: bool=False) -> None:
         self.with_unexpected = with_unexpected
 
     def select(self, entity: Entity, context: SelectorContext) -> Iterator[Service]:
@@ -131,7 +131,7 @@ class ServiceSelector(AbstractSelector):
                 return (c for c in parent.select(entity, context) if c.get_parent_host().is_concrete())
         return Selector()
 
-    def authenticated(self, value=True) -> 'ServiceSelector':
+    def authenticated(self, value: bool=True) -> 'ServiceSelector':
         """Select authenticated services"""
         parent = self
 
@@ -157,7 +157,7 @@ class ServiceSelector(AbstractSelector):
 
         class Selector(ServiceSelector):
             """The modified selector"""
-            def select(self, entity: Entity, context: SelectorContext) -> Iterator[Connection]:
+            def select(self, entity: Entity, context: SelectorContext) -> Iterator[Service]:
                 for c in parent.select(entity, context):
                     if not c.is_multicast() and Properties.HTTP_REDIRECT.get(c.properties) is None:
                         yield c
@@ -166,7 +166,7 @@ class ServiceSelector(AbstractSelector):
 
 class ConnectionSelector(AbstractSelector):
     """Select connections"""
-    def __init__(self, with_unexpected=False):
+    def __init__(self, with_unexpected: bool=False) -> None:
         self.with_unexpected = with_unexpected
 
     def select(self, entity: Entity, context: SelectorContext) -> Iterator[Connection]:
@@ -225,20 +225,6 @@ class ConnectionSelector(AbstractSelector):
                         yield c
         return Selector()
 
-    def endpoint(self, endpoint: AbstractSelector) -> 'ConnectionSelector':
-        """Select connections by endpoint"""
-        parent = self
-
-        class Selector(ConnectionSelector):
-            """The modified selector"""
-            def select(self, entity: Entity, context: SelectorContext) -> Iterator[Connection]:
-                for c in parent.select(entity, context):
-                    s = endpoint.select(c.source, context)
-                    yield from s
-                    t = endpoint.select(c.target, context)
-                    yield from t
-        return Selector()
-
 
 class UpdateConnectionSelector(ConnectionSelector):
     """Select update connections of a software"""
@@ -266,7 +252,7 @@ class DataSelector(AbstractSelector):
         for ch in entity.children:
             yield from self.select(ch, _context)
 
-    def personal(self, value=True) -> 'DataSelector':
+    def personal(self, value: bool=True) -> 'DataSelector':
         """Select personal data"""
         parent = self
 
@@ -276,7 +262,7 @@ class DataSelector(AbstractSelector):
                 return (c for c in parent.select(entity, context) if c.data.personal == value)
         return Selector()
 
-    def passwords(self, value=True) -> 'DataSelector':
+    def passwords(self, value: bool=True) -> 'DataSelector':
         """Select password security parameters"""
         parent = self
 
@@ -286,7 +272,7 @@ class DataSelector(AbstractSelector):
                 return (c for c in parent.select(entity, context) if c.data.password == value)
         return Selector()
 
-    def parameters(self, value=True) -> 'DataSelector':
+    def parameters(self, value: bool=True) -> 'DataSelector':
         """Select security parameter data"""
         # NOTE: Currently we only have private OR parameter data
         return self.personal(not value)
@@ -297,7 +283,7 @@ SS = TypeVar("SS", bound='EntitySelector')
 
 class SequenceSelector(Generic[SS], AbstractSelector):
     """Sequence of selectors"""
-    def __init__(self, pre: List[AbstractSelector], sub: SS):
+    def __init__(self, pre: List[AbstractSelector], sub: SS) -> None:
         super().__init__()
         self.pre = pre
         self.sub = sub
@@ -305,7 +291,7 @@ class SequenceSelector(Generic[SS], AbstractSelector):
     def select(self, entity: Entity, context: SelectorContext) -> Iterator[SS]:
         e_set = [entity]
         for s in self.pre:
-            n_set = []
+            n_set: List[Entity] = []
             for e in e_set:
                 n_set.extend(s.select(e, context))
             if not n_set:
@@ -322,7 +308,7 @@ class SequenceSelector(Generic[SS], AbstractSelector):
 
 class AlternativeSelectors(AbstractSelector):
     """Alternative selectors"""
-    def __init__(self, sub: List[AbstractSelector]):
+    def __init__(self, sub: List[AbstractSelector]) -> None:
         super().__init__()
         self.sub = sub
 
@@ -337,17 +323,17 @@ class AlternativeSelectors(AbstractSelector):
 class Select:
     """Factory for selectors"""
     @classmethod
-    def host(cls, unexpected=False) -> HostSelector:
+    def host(cls, unexpected: bool=False) -> HostSelector:
         """Select hosts"""
         return HostSelector(unexpected)
 
     @classmethod
-    def service(cls, unexpected=False) -> ServiceSelector:
+    def service(cls, unexpected: bool=False) -> ServiceSelector:
         """Select services"""
         return ServiceSelector(unexpected)
 
     @classmethod
-    def connection(cls, unexpected=False) -> ConnectionSelector:
+    def connection(cls, unexpected: bool=False) -> ConnectionSelector:
         """Select connections"""
         return ConnectionSelector(unexpected)
 
@@ -374,9 +360,9 @@ class Finder:
     """Find entities by specifiers"""
 
     @classmethod
-    def find(cls, system: IoTSystem, specifier: Dict) -> Optional[Entity]:
+    def find(cls, system: IoTSystem, specifier: Dict[str, Any]) -> Optional[Entity]:
         """Find entity by JSON specifier"""
-        entity = None
+        entity: Optional[Entity] = None
         addr_s = specifier.get("system")
         if addr_s:
             entity = system
@@ -397,10 +383,10 @@ class Finder:
                 t = system.find_endpoint(addrs[1])
                 if not t:
                     raise ValueError(f"Cannot find connection target: {add_r}")
-                entity = s.find_connection(t)
+                entity = s.get_parent_host().find_connection(t)
         comp_s = specifier.get("software")
         if comp_s:
-            if not entity:
+            if not isinstance(entity, NetworkNode):
                 raise ValueError(f"Cannot find software without entity: {comp_s}")
             entity = Software.get_software(entity, comp_s)
             if not entity:
@@ -408,10 +394,10 @@ class Finder:
             return entity
         data_s = specifier.get("data")
         if data_s:
-            if not entity:
+            if not isinstance(entity, NetworkNode):
                 raise ValueError(f"Cannot find data without entity: {comp_s}")
             store = StoredData.find_data(entity)
-            entity = next(r for r in store.sub_components if r.data.name == data_s)
+            entity = next(r for r in store.sub_components if r.data.name == data_s) if store else None
             if not entity:
                 raise ValueError(f"Cannot find data: {comp_s}")
             return entity
@@ -419,9 +405,9 @@ class Finder:
         return entity
 
     @classmethod
-    def specify(cls, entity: Entity) -> Dict:
+    def specify(cls, entity: Entity) -> Dict[str, Any]:
         """Create JSON specifier for entity"""
-        r = {}
+        r: Dict[str, Any] = {}
         ent = entity
         if isinstance(entity, NodeComponent):
             ent = entity.entity
@@ -434,10 +420,10 @@ class Finder:
                 raise ValueError(f"Cannot specify entity without tag: {ent}")
             r["address"] = tag.get_parseable_value()
         elif isinstance(ent, Connection):
-            tag = ent.get_tag()
-            if tag is None:
+            c_tag = ent.get_tag()
+            if c_tag is None:
                 raise ValueError(f"Cannot specify connection without both tags: {ent}")
-            r["connection"] = [t.get_parseable_value() for t in tag]
+            r["connection"] = [t.get_parseable_value() for t in c_tag]
         else:
             raise ValueError(f"Cannot specify entity: {entity}")
         return r
