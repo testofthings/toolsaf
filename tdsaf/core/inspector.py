@@ -140,7 +140,7 @@ class Inspector(EventInterface):
         return conn
 
     def name(self, event: NameEvent) -> Optional[Host]:
-        address = event.address
+        address = event.address or event.name
         if event.service and event.service.captive_portal and event.address in event.service.parent.addresses:
             address = None  # it is just redirecting to itself
         name = event.tag or event.name

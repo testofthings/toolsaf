@@ -47,7 +47,7 @@ class NameEvent(Event):
                  tag: Optional[EntityTag] = None, address: Optional[IPAddress] = None,
                  peers: List[NetworkNode] = None):
         super().__init__(evidence)
-        assert bool(name) != bool(tag), "Name or tag must be set"
+        assert name or tag, "Name or tag must be set"
         self.service = service
         self.name = name
         self.tag = tag

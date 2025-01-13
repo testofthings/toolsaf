@@ -39,6 +39,9 @@ class SetupCSVReader(ToolAdapter):
                 continue
             for a in ads:
                 address = DNSName.name_or_ip(a)
-                event = NameEvent(ev, None, tag=EntityTag(host_tag), address=address)
+                if isinstance(address, DNSName):
+                    event = NameEvent(ev, None, tag=EntityTag(host_tag), name=address)
+                else:
+                    event = NameEvent(ev, None, tag=EntityTag(host_tag), address=address)
                 interface.name(event)
         return True
