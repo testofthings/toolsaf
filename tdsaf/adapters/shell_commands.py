@@ -1,8 +1,10 @@
 """Shell command 'ps'"""
 
-from io import BytesIO, TextIOWrapper
+from io import BufferedReader, TextIOWrapper
 import re
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
+
+from tdsaf.main import ConfigurationException
 from tdsaf.common.address import AddressEnvelope, Addresses, AnyAddress, EndpointAddress, HWAddresses, IPAddress
 from tdsaf.core.components import OperatingSystem
 from tdsaf.core.event_interface import EventInterface, PropertyEvent
@@ -10,21 +12,24 @@ from tdsaf.core.model import IoTSystem
 from tdsaf.common.property import PropertyKey
 from tdsaf.core.services import NameEvent
 from tdsaf.adapters.tools import EndpointTool
-from tdsaf.common.traffic import Evidence, EvidenceSource, IPFlow, Protocol, ServiceScan
+from tdsaf.common.address import Protocol
+from tdsaf.common.traffic import Evidence, EvidenceSource, IPFlow, ServiceScan
 from tdsaf.common.verdict import Verdict
 
 
 class ShellCommandPs(EndpointTool):
     """Shell command 'ps' tool adapter"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("shell-ps", ".txt", system)
 
-    def process_endpoint(self, endpoint: AnyAddress, stream: BytesIO, interface: EventInterface,
-                         source: EvidenceSource):
+    def process_endpoint(self, endpoint: AnyAddress, stream: BufferedReader, interface: EventInterface,
+                         source: EvidenceSource) -> None:
         node = self.system.get_endpoint(endpoint)
 
         columns: Dict[str, int] = {}
         os = OperatingSystem.get_os(node, add=self.load_baseline)
+        if not isinstance(os, OperatingSystem):
+            raise ConfigurationException(f"Unknown operating system for node {node}")
 
         # expected processes as regexps
         regexp_map = {}
@@ -79,12 +84,12 @@ class ShellCommandPs(EndpointTool):
         if self.send_events:
             # send pass or fail properties per process and set-value per user
             evidence = Evidence(source)
-            for user, ps in sorted(properties.items()):
+            for user, props in sorted(properties.items()):
                 # seen processes, expected or not
-                for prop in ps:
+                for prop in props:
                     ev = PropertyEvent(evidence, os, prop)
                     interface.property_update(ev)
-                set_p = PropertyKey("process", user).value_set(set(p[0] for p in ps))
+                set_p = PropertyKey("process", user).value_set(set(p[0] for p in props))
                 ev = PropertyEvent(evidence, os, set_p)
                 interface.property_update(ev)
                 # unseen processes
@@ -98,7 +103,7 @@ class ShellCommandPs(EndpointTool):
 
 class ShellCommandSs(EndpointTool):
     """Shell command 'ss' tool adapter"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("shell-ss", ".txt", system)
 
     def _parse_address(self, addr: str) -> Tuple[str, str, int]:
@@ -110,12 +115,12 @@ class ShellCommandSs(EndpointTool):
     LOCAL_ADDRESS = "Local_Address"
     PEER_ADDRESS = "Peer_Address"
 
-    def process_endpoint(self, endpoint: AnyAddress, stream: BytesIO, interface: EventInterface,
-                         source: EvidenceSource):
+    def process_endpoint(self, endpoint: AnyAddress, stream: BufferedReader, interface: EventInterface,
+                         source: EvidenceSource) -> None:
         columns: Dict[str, int] = {}
-        local_ads = set()
+        local_ads: Set[AnyAddress] = set()
         services: Set[EndpointAddress] = set()
-        conns = set()
+        conns: Set[Tuple[EndpointAddress, EndpointAddress]] = set()
 
         node = self.system.get_endpoint(endpoint)
         tag = Addresses.get_tag(node.addresses)
@@ -141,7 +146,7 @@ class ShellCommandSs(EndpointTool):
                 local_ip, local_inf, local_port = self._parse_address(cols[columns[self.LOCAL_ADDRESS]])
                 peer_ip, _, peer_port = self._parse_address(cols[columns[self.PEER_ADDRESS]])
                 self.logger.debug("Local %s:%d Peer %s:%d", local_ip, local_port, peer_ip, peer_port)
-                local_add = IPAddress.new(local_ip) if local_ip else None
+                local_add: Optional[AnyAddress] = IPAddress.new(local_ip) if local_ip else None
                 peer_add = IPAddress.new(peer_ip) if peer_ip else None
                 if local_inf == "lo" or (local_add and local_add.is_loopback()):
                     continue  # loopback is not external
@@ -190,9 +195,10 @@ class ShellCommandSs(EndpointTool):
                 if s.host in local_ads:
                     # incoming connection
                     t, s = conn
+                s_ip, t_ip = s.host, t.host
+                assert isinstance(s_ip, IPAddress) and isinstance(t_ip, IPAddress)
                 flow = IPFlow(evidence,
-                              source=(HWAddresses.NULL, s.host, s.port),
-                              target=(HWAddresses.NULL, t.host, t.port),
+                              source=(HWAddresses.NULL, s_ip, s.port), target=(HWAddresses.NULL, t_ip, t.port),
                               protocol=s.protocol)
                 interface.connection(flow)
                 # these are established connections, both ways
