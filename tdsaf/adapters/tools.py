@@ -24,6 +24,7 @@ class ToolAdapter:
         self.logger = logging.getLogger(tool_label)
         self.send_events = True  # True to send events to interface
         self.load_baseline = False  # True to load baseline, false to check it
+        self.file_name_map: Dict[str, AnyAddress] = {}  # For tools consuming all files from directory
 
     def process_file(self, data: BufferedReader, file_name: str,
                      interface: EventInterface, source: EvidenceSource) -> bool:
@@ -62,7 +63,6 @@ class EndpointTool(ToolAdapter):
         super().__init__(tool_label, system)
         # map from file names into addressable entities
         self.data_file_suffix = data_file_suffix
-        self.file_name_map: Dict[str, Addressable] = {}
         self.create_file_name_map()
 
     def filter_node(self, _node: NetworkNode) -> bool:
@@ -187,8 +187,8 @@ class NodeComponentTool(ToolAdapter):
                 if not tool.filter_component(c):
                     continue
                 self.file_name_map[tool.get_file_by_name(c.name)] = c
-            for c in node.children:
-                check_component(c)
+            for n in node.children:
+                check_component(n)
         check_component(self.system)
 
 

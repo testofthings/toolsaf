@@ -36,7 +36,7 @@ class CensysScan(EndpointTool):
         for s in raw.get('services', []):
             service_name = s.get('service_name', '')
             protocol = Protocol.get_protocol(service_name.upper())
-            transport = Protocol.get_protocol(s.get('transport_protocol'), Protocol.ANY)
+            transport = Protocol.protocol(s.get('transport_protocol'), Protocol.ANY)
             port = int(s['port'])
 
             self.logger.info("%s %s %d: %s", endpoint, transport, port, service_name)

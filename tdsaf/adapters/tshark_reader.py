@@ -34,11 +34,12 @@ class TSharkReader(SystemWideTool):
 
     def read(self, data_file: pathlib.Path, interface: EventInterface, source: EvidenceSource) -> None:
         """Read PCAP file"""
-        with data_file.open("r") as f:
+        with data_file.open("rb") as f:
             self.process_file(f, data_file.name, interface, source)
 
     def parse(self, raw: Dict[Any, Any], interface: EventInterface) -> None:
         """Parse JSON"""
+        assert self.source
         ads = set()
         for nr, sf in enumerate(raw):
             fl = sf["_source"]["layers"]

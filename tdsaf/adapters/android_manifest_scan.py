@@ -4,7 +4,7 @@ import json
 from io import BufferedReader
 from pathlib import Path
 from xml.etree import ElementTree
-from typing import Dict, List
+from typing import Dict, List, cast
 
 from tdsaf.main import ConfigurationException
 from tdsaf.common.basics import HostType
@@ -30,7 +30,8 @@ class AndroidManifestScan(EndpointTool):
         """Load our Android permission category info from json"""
         data_json_path = Path(__file__).parent / "data/android_permissions.json"
         with open(data_json_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            r = json.load(f)
+            return cast(Dict[str, List[str]], r)
 
     def process_endpoint(self, endpoint: AnyAddress, stream: BufferedReader, interface: EventInterface,
                          source: EvidenceSource) -> None:
