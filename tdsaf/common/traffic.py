@@ -193,11 +193,11 @@ class Flow(Event):
 
     def get_source_address(self) -> AnyAddress:
         """Get source top address"""
-        return NotImplementedError()
+        raise NotImplementedError()
 
     def get_target_address(self) -> AnyAddress:
         """Get target top address"""
-        return NotImplementedError()
+        raise NotImplementedError()
 
     def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict[str, Any]:
         r = {}  # protocol set by subclass, which knows the default
@@ -263,6 +263,7 @@ class EthernetFlow(Flow):
             protocol = Protocol.get_protocol(data["protocol"], Protocol.ETHERNET)
         else:
             protocol = Protocol.ETHERNET
+        assert protocol
         source = HWAddress.new(data["source"])
         target = HWAddress.new(data["target"])
         payload = data.get("payload", -1)

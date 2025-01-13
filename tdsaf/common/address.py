@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import enum
 import ipaddress
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network
-from typing import Union, Optional, Tuple, Iterable, Self
+from typing import Union, Optional, Tuple, Iterable, Self, Any
 
 
 class Protocol(enum.Enum):
@@ -479,6 +479,7 @@ class EndpointAddress(AnyAddress):
         return self.host.priority() + 1
 
     def get_parseable_value(self) -> str:
+        assert self.protocol, "protocol was None"
         port = f":{self.port}" if self.port >= 0 else ""
         prot = f"/{self.protocol.value}" if self.protocol != Protocol.ANY else ""
         return f"{self.host.get_parseable_value()}{prot}{port}"
@@ -499,6 +500,7 @@ class EndpointAddress(AnyAddress):
         return f"{value[0].value}:{value[1]}" if value[1] >= 0 else f"{value[0].value}"
 
     def __repr__(self) -> str:
+        assert self.protocol, "protocol was None"
         port = f":{self.port}" if self.port >= 0 else ""
         prot = f"/{self.protocol.value}" if self.protocol != Protocol.ANY else ""
         return f"{self.host}{prot}{port}"
@@ -516,7 +518,7 @@ class Network:
         h = address.get_host()
         if h.is_multicast() or h.is_null() or not isinstance(h, IPAddress):
             return True
-        if h.data in self.ip_network:
+        if self.ip_network and h.data in self.ip_network:
             return True
         # FIXME: Broadcast for IPv6 not implemented  pylint: disable=fixme
         return False
