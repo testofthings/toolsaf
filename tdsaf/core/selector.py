@@ -225,20 +225,6 @@ class ConnectionSelector(AbstractSelector):
                         yield c
         return Selector()
 
-    def endpoint(self, endpoint: AbstractSelector) -> 'ConnectionSelector':
-        """Select connections by endpoint"""
-        parent = self
-
-        class Selector(ConnectionSelector):
-            """The modified selector"""
-            def select(self, entity: Entity, context: SelectorContext) -> Iterator[Connection]:
-                for c in parent.select(entity, context):
-                    s = endpoint.select(c.source, context)
-                    yield from s
-                    t = endpoint.select(c.target, context)
-                    yield from t
-        return Selector()
-
 
 class UpdateConnectionSelector(ConnectionSelector):
     """Select update connections of a software"""
