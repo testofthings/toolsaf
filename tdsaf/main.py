@@ -347,6 +347,13 @@ class EAPOL(ProtocolConfigurer):
         ProtocolConfigurer.__init__(self, "EAPOL")
 
 
+class FTP(ProtocolConfigurer):
+    """FTP configurer"""
+    def __init__(self, port: int=21) -> None:
+        ProtocolConfigurer.__init__(self, "FTP")
+        self.port = port
+
+
 class HTTP(ProtocolConfigurer):
     """HTTP configurer"""
     def __init__(self, port=80, auth: Optional[bool] = None):

@@ -22,7 +22,7 @@ from tdsaf.core.event_interface import PropertyEvent
 from tdsaf.common.release_info import ReleaseInfo
 from tdsaf.common.property import PropertyVerdictValue
 from tdsaf.http_server import HTTPServerRunner
-from tdsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP, IP, TLS, MQTT,
+from tdsaf.main import (ARP, DHCP, DNS, EAPOL, FTP, ICMP, NTP, SSH, HTTP, TCP, UDP, IP, TLS, MQTT,
                         BLEAdvertisement, ClaimBuilder, ClaimSetBuilder, ConnectionBuilder,
                         CookieBuilder, HostBuilder, NetworkBuilder, NodeBuilder, NodeVisualBuilder,
                         ConfigurationException, OSBuilder, ProtocolConfigurer, ProtocolType,
@@ -816,6 +816,12 @@ class EAPOLBackend(ProtocolBackend):
         self.port_to_name = False
 
 
+class FTPBackend(ProtocolBackend):
+    """FTP protocol backend"""
+
+    def __init__(self, configurer: FTP):
+        super().__init__(Protocol.TCP, port=configurer.port, protocol=Protocol.FTP, name=configurer.name)
+
 class HTTPBackend(ProtocolBackend):
     """HTTP protocol backend"""
 
@@ -951,6 +957,7 @@ class ProtocolConfigurers:
         DHCP: DHCPBackend,
         DNS: DNSBackend,
         EAPOL: EAPOLBackend,
+        FTP: FTPBackend,
         HTTP: HTTPBackend,
         ICMP: ICMPBackend,
         IP: IPBackend,
