@@ -62,7 +62,7 @@ class EndpointTool(ToolAdapter):
         super().__init__(tool_label, system)
         # map from file names into addressable entities
         self.data_file_suffix = data_file_suffix
-        self.file_name_map: Dict[str, Addressable] = {}
+        self.file_name_map: Dict[str, AnyAddress] = {}
         self.create_file_name_map()
 
     def filter_node(self, _node: NetworkNode) -> bool:
