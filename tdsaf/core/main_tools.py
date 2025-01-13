@@ -8,8 +8,8 @@ from tdsaf.adapters.batch_import import LabelFilter
 from tdsaf.core.event_interface import PropertyEvent
 from tdsaf.main import EvidenceBuilder, FlowBuilder, TrafficDataBuilder, NodeBuilder, SystemBuilder
 from tdsaf.core.entity_selector import SelectorContext
-from tdsaf.core.selector import Select
-from tdsaf.core.model import EvidenceNetworkSource
+from tdsaf.core.selector import AbstractSelector, Select
+from tdsaf.core.model import Addressable, EvidenceNetworkSource
 from tdsaf.common.property import PropertyKey
 from tdsaf.core.registry import Registry
 from tdsaf.common.traffic import NO_EVIDENCE, Evidence, Flow, IPFlow
@@ -17,8 +17,8 @@ from tdsaf.common.traffic import NO_EVIDENCE, Evidence, Flow, IPFlow
 
 class NodeManipulator:
     """Interface to interact with other backend"""
-    def get_node(self) -> NodeBuilder:
-        """Get manipulated node"""
+    def get_node(self) -> Addressable:
+        """Get manipulated addressable node"""
         raise NotImplementedError()
 
 
@@ -120,7 +120,7 @@ class ToolPlanLoader(SubLoader):
     def __init__(self, group: Tuple[str, str]) -> None:
         super().__init__(group[1])    # group[0] is e.g. 'basic-tools', 'advanced-tools', 'custom-tools'
         self.source_label = group[1]  # group[1] is fancy names for them (just captialize?)
-        self.location = Select.system()
+        self.location: AbstractSelector = Select.system()
         self.properties: Dict[PropertyKey, Any] = {}
         self.groups = ["planning", group[0]]
 

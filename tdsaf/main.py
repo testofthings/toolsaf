@@ -1,6 +1,6 @@
 """Model builder"""
 
-from typing import Dict, List, Optional, Self, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Self, Tuple, Type, Union
 from tdsaf.common.address import AnyAddress, HWAddress, HWAddresses, IPAddress, IPAddresses, Network
 from tdsaf.core.model import Host
 from tdsaf.core.selector import AbstractSelector
@@ -486,7 +486,7 @@ class ClaimSetBuilder:
         raise NotImplementedError()
 
     def plan_tool(self, tool_name: str, group: Tuple[str, str],
-                  location: AbstractSelector, *key: Tuple[str, ...]):
+                  location: AbstractSelector, *key: Tuple[str, ...]) -> Any:
         """Plan use of a tool using the property keys it is supposed to set"""
         raise NotImplementedError()
 
@@ -555,4 +555,4 @@ class Builder:
 
 
 if __name__ == "__main__":
-    Builder.new().run()
+    Builder.new().run()  # type: ignore [attr-defined]
