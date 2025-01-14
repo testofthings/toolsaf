@@ -23,7 +23,7 @@ class NodeManipulator:
 
 
 class SubLoader:
-    """Base class for direct evidence/claim loaders"""
+    """Base class for direct evidence loaders"""
     def __init__(self, name: str) -> None:
         self.loader_name = name
         self.base_ref = ""
