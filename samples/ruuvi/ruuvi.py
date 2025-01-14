@@ -47,8 +47,12 @@ tags.set_property("default", "sensors")  # ETSI TS 103 701 requires this info
 fw_esp32 = gateway.software("ESP32 Firmware").updates_from(backend_2)
 fw_nRF52811 = gateway.software("nRF52811 Firmware").updates_from(backend_2)
 
-system.online_resource("privacy-policy", url="https://ruuvi.com/privacy/")
-system.online_resource("security-policy", url="https://ruuvi.com/terms/vulnerability-policy/")
+system.online_resource("privacy-policy", url="https://ruuvi.com/privacy/",
+                       keywords=["privacy policy"]
+)
+system.online_resource("security-policy", url="https://ruuvi.com/terms/vulnerability-policy/",
+                       keywords=["security@ruuvi.com"]
+)
 
 # sensitive data
 user_email = system.data(["User e-mail"])

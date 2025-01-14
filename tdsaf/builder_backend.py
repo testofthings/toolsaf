@@ -8,6 +8,7 @@ import logging
 import pathlib
 import shutil
 import sys
+import inspect
 from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union
 
 from tdsaf.common.address import (AddressAtNetwork, Addresses, AnyAddress, DNSName, EndpointAddress, EntityTag,
@@ -19,8 +20,9 @@ from tdsaf.core.components import CookieData, Cookies, DataReference, StoredData
 from tdsaf.common.entity import ClaimAuthority, Entity
 from tdsaf.core.event_interface import PropertyEvent
 from tdsaf.common.release_info import ReleaseInfo
+from tdsaf.common.property import PropertyVerdictValue
 from tdsaf.http_server import HTTPServerRunner
-from tdsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP, IP, TLS,
+from tdsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP, IP, TLS, MQTT,
                         BLEAdvertisement, ClaimBuilder, ClaimSetBuilder, ConnectionBuilder,
                         CookieBuilder, HostBuilder, NetworkBuilder, NodeBuilder, NodeVisualBuilder,
                         ConfigurationException, OSBuilder, ProtocolConfigurer, ProtocolType,
@@ -32,12 +34,15 @@ from tdsaf.common.property import Properties, PropertyKey
 from tdsaf.core.registry import Registry
 from tdsaf.core.inspector import Inspector
 from tdsaf.core.result import Report
+from tdsaf.core.components import SoftwareComponent
 from tdsaf.core.selector import AbstractSelector
 from tdsaf.core.services import DHCPService, DNSService
 from tdsaf.core.sql_database import SQLDatabase
+from tdsaf.core.online_resources import OnlineResource
 from tdsaf.common.traffic import Evidence, EvidenceSource
 from tdsaf.common.verdict import Verdict
 from tdsaf.common.android import MobilePermissions
+from tdsaf.adapters.spdx_reader import SPDXJson
 from tdsaf.visualizer import Visualizer, VisualizerAPI
 from tdsaf.diagram_visualizer import DiagramVisualizer
 
@@ -126,8 +131,12 @@ class SystemBackend(SystemBuilder):
              for n in names]
         return SensitiveDataBackend(self, d)
 
-    def online_resource(self, key: str, url: str) -> Self:
-        self.system.online_resources[key] = url
+    def online_resource(self, name: str, url: str, keywords: List[str]) -> Self:
+        if len(keywords) == 0:
+            raise ConfigurationException("You must provide at least 1 keyword")
+        self.system.online_resources.append(
+            OnlineResource(name, url, keywords)
+        )
         return self
 
     def attach_file(self, file_path: str, relative_to: Optional[str] = None) -> Self:
@@ -555,6 +564,33 @@ class SoftwareBackend(SoftwareBuilder):
         self.sw.info.interval_days = days
         return self
 
+    def sbom(self, components: List[str]=None, file_path: str="") -> Self:
+        """Add an SBOM from given list or SPDX JSON file.
+           file_path is relative to statement"""
+        if not components and not file_path:
+            raise ConfigurationException("Provide either components list of file")
+        if file_path and not file_path.endswith(".json"):
+            raise ConfigurationException("Given SBOM file must be SPDX JSON")
+
+        if components:
+            for c in components:
+                self.sw.components[c] = SoftwareComponent(c, version="")
+                key = PropertyKey("component", c)
+                self.sw.properties[key] = PropertyVerdictValue(Verdict.INCON)
+        else:
+            statement_file_path = pathlib.Path(inspect.stack()[1].filename).parent
+            try:
+                with open((statement_file_path / file_path).resolve(), 'r', encoding="utf-8") as f:
+                    for c in SPDXJson(f).read():
+                        self.sw.components[c.name] = c
+                        key = PropertyKey("component", c.name)
+                        self.sw.properties[key] =\
+                            PropertyVerdictValue(Verdict.INCON, explanation=f"version {c.version}")
+            except FileNotFoundError as e:
+                raise ConfigurationException(f"Could not find SBOM file {e.filename}") from e
+
+        return self
+
     # Backend methods
 
     def get_software(self, _name: Optional[str] = None) -> Software:
@@ -826,6 +862,14 @@ class IPBackend(ProtocolBackend):
             self.con_type = ConnectionType.ADMINISTRATIVE
 
 
+class MQTTBackend(ProtocolBackend):
+    """MQTT protocol backend"""
+
+    def __init__(self, configurer: MQTT):
+        super().__init__(Protocol.TCP, port=configurer.port, protocol=Protocol.MQTT, name=configurer.name)
+
+
+
 class TLSBackend(ProtocolBackend):
     """TLS protocol backend"""
 
@@ -910,6 +954,7 @@ class ProtocolConfigurers:
         HTTP: HTTPBackend,
         ICMP: ICMPBackend,
         IP: IPBackend,
+        MQTT: MQTTBackend,
         TLS: TLSBackend,
         NTP: NTPBackend,
         SSH: SSHBackend,
@@ -1192,7 +1237,7 @@ class SystemBackendRunner(SystemBackend):
         report.source_count = 3 if with_files else 0
         report.show = args.show
         report.no_truncate = bool(args.no_truncate)
-        report.c = bool(args.color)
+        report.use_color_flag = bool(args.color)
         report.print_report(sys.stdout)
 
         if args.create_diagram is not None or args.show_diagram is not None:

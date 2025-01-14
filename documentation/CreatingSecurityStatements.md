@@ -224,6 +224,44 @@ Our permission categories are: `CALLS`, `SMS`, `CONTACTS`, `CALENDAR`, `LOCATION
 
 An up-to-date list of categories can always be found [here](../tdsaf/common/android.py). You can check into which category a permission belongs to from [this json file](../tdsaf/adapters/data/android_permissions.json). Currently, if a permission is not in the _.json_ file, its category will be `UNCATEGORIZED`.
 
+### Software Bill of Materials
+A Software Bill of Materials (SBOM) is a comprehensive inventory of the software components, libraries, dependencies, and other elements that make up the software of an (IoT) system. Our DSL provides a method, `sbom(components, file_path)`, to specify an SBOM for the system's software components. Here's how it can be used:
+```python
+device.software().sbom(
+    components=["component1", "component2", ...]
+)
+# OR
+device.software().sbom(
+    file_path="../sbom.json"
+)
+```
+The SBOM's contents can be provided either manually using the `components` parameter or in a JSON-format SPDX file via the `file_path` parameter. The `components` parameter accepts a list of software component names. The minimal contents of SPDX files, referenced by `file_path`, are as follows:
+```json
+{
+    "packages": [
+        {
+            "name": "component1"
+        }
+    ]
+}
+```
+TDSAF also reads the `versionInfo` field of individual packages if it is included in the file. SBOM file paths are provided relative to the statement's location. The file can be generated, for example, using an open-source SBOM generator.
+
+### Online Resources
+Our DSL provides the `online_resources(name, url, keywords)` method to document web-based information relevant to the system, such as privacy, security, and cookie policies. However, it can also be any web page.
+
+Online resources can be added to the security statement using the following syntax:
+```python
+system.online_resource(
+    name="privacy-policy",
+    url="https://example.com/privacy/",
+    keywords=["privacy policy", "personal data", ...]
+)
+```
+It is recommended to name online resources descriptively, based on their purpose. For example, a link to a vulnerability policy should be named `vulnerability-policy`.
+
+In addition to the `name` and the resource's `url`, `online_resource` also requires the user to provide a list of keywords. You can decide what keywords to add. However, they should all be found on the page. These keywords are used during verification to ensure that the page and its contents was actually accessible during the verification process.
+
 ## When the Statement is Defined
 To ensure that your statement is filled in properly, run the statement file with Python. This way you can be sure that its free of runtime errors.
 ```shell

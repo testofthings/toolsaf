@@ -1,4 +1,5 @@
 """SQL database by SQLAlchemy"""
+# mypy: ignore_errors
 
 import json
 import os
@@ -51,7 +52,7 @@ class TableEvent(Base):
 
 class SQLDatabase(EntityDatabase, ModelListener):
     """Use SQL database for storage"""
-    def __init__(self, db_uri: str):
+    def __init__(self, db_uri: str) -> None:
         super().__init__()
         self.db_uri = db_uri
         self.engine = create_engine(db_uri)
@@ -71,10 +72,10 @@ class SQLDatabase(EntityDatabase, ModelListener):
         self._fill_cache()
         # keep state of pending reads
         self.pending_offset = 0
-        self.pending_batch = []
-        self.pending_source_ids = set()
+        self.pending_batch: List[Any] = []
+        self.pending_source_ids: Set[Any] = set()
 
-    def clear_database(self):
+    def clear_database(self) -> None:
         # check if DB is a local file
         self.engine.dispose()
         u = urlparse(self.db_uri)
@@ -84,7 +85,7 @@ class SQLDatabase(EntityDatabase, ModelListener):
             if path.exists():
                 os.remove(path)
 
-    def _fill_cache(self):
+    def _fill_cache(self) -> None:
         """Fill entity cache from database"""
         with Session(self.engine) as ses:
             # assuming limited number of entities, read all IDs
@@ -106,12 +107,12 @@ class SQLDatabase(EntityDatabase, ModelListener):
                 self.free_source_id = max(self.free_source_id, src.id)
             self.free_source_id += 1
 
-    def _purge_model_events(self):
+    def _purge_model_events(self) -> None:
         """Purge model events from the database"""
         with Session(self.engine) as ses:
             with ses.begin():
                 # collect source_ids of model sources
-                ids = set()
+                ids: Set[Any] = set()
                 sel = select(TableEvidenceSource.id).where(
                     TableEvidenceSource.model == True)  # pylint: disable=singleton-comparison
                 ids.update(ses.execute(sel).scalars())
@@ -135,10 +136,10 @@ class SQLDatabase(EntityDatabase, ModelListener):
         # Read all events from database
         return self.read_events(interface)
 
-    def host_change(self, host: Host):
+    def host_change(self, host: Host) -> None:
         self.get_id(host) # learn new hosts
 
-    def service_change(self, service: Service):
+    def service_change(self, service: Service) -> None:
         self.get_id(Service)  # learn new services
 
     def read_events(self, _interface: EventInterface) -> Iterator[Event]:
@@ -172,7 +173,7 @@ class SQLDatabase(EntityDatabase, ModelListener):
 
         off = offset
         r_size = 8196
-        batch = []
+        batch: List[Tuple[Any]] = []
         with Session(self.engine) as ses:
             with ses.begin():
                 sel = select(TableEvent)
@@ -207,7 +208,7 @@ class SQLDatabase(EntityDatabase, ModelListener):
         event = event_type.decode_data_json(evi, js, self.get_entity)
         return event
 
-    def reset(self, source_filter: Dict[str, bool] = None):
+    def reset(self, source_filter: Optional[Dict[str, bool]]=None) -> None:
         # Clear state
         self.pending_offset = 0
         self.pending_batch = []
@@ -238,7 +239,7 @@ class SQLDatabase(EntityDatabase, ModelListener):
         self.pending_batch = self.pending_batch[1:]
         return ev
 
-    def get_id(self, entity) -> int:
+    def get_id(self, entity: Any) -> int:
         id_i = self.id_cache.get(entity, -1)
         if id_i >= 0:
             return id_i
@@ -301,7 +302,7 @@ class SQLDatabase(EntityDatabase, ModelListener):
     def get_entity(self, id_value: int) -> Optional[Any]:
         return self.entity_cache.get(id_value)
 
-    def put_event(self, event: Event):
+    def put_event(self, event: Event) -> None:
         # store event to database - NOTE: Slow, should use bulk insert
         type_s = self.event_names.get(type(event))
         if type_s is None:

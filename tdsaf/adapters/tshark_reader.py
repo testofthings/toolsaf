@@ -2,10 +2,10 @@
 
 import argparse
 import datetime
-from io import BytesIO
+from io import BufferedReader
 import json
 import pathlib
-from typing import Dict, Optional, Self
+from typing import Dict, Optional, Any
 
 from tdsaf.common.address import HWAddress
 from tdsaf.core.event_interface import EventInterface
@@ -17,27 +17,29 @@ from tdsaf.common.traffic import EvidenceSource, BLEAdvertisementFlow, Evidence
 
 class TSharkReader(SystemWideTool):
     """Read in TShark JSON input"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("pcap-tshark", system)
         self.tool.name = "TShark PCAP reader"
         self.data_file_suffix = ".json"
         # current frame
         self.source: Optional[EvidenceSource] = None
 
-    def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource) -> Self:
+    def process_file(self, data: BufferedReader, file_name: str, interface: EventInterface,
+                     source: EvidenceSource) -> bool:
         # not for large files, very Python-style
         raw = json.load(data)
         self.source = source
         self.parse(raw, interface)
-        return self
+        return True
 
-    def read(self, data_file: pathlib.Path, interface: EventInterface, source: EvidenceSource):
+    def read(self, data_file: pathlib.Path, interface: EventInterface, source: EvidenceSource) -> None:
         """Read PCAP file"""
-        with data_file.open("r") as f:
-            return self.process_file(f, data_file.name, interface, source)
+        with data_file.open("rb") as f:
+            self.process_file(f, data_file.name, interface, source)
 
-    def parse(self, raw: Dict, interface: EventInterface):
+    def parse(self, raw: Dict[Any, Any], interface: EventInterface) -> None:
         """Parse JSON"""
+        assert self.source
         ads = set()
         for nr, sf in enumerate(raw):
             fl = sf["_source"]["layers"]
@@ -49,7 +51,7 @@ class TSharkReader(SystemWideTool):
                 ad = self.parse_hvc_event(pf, interface, ev)
                 ads.add(ad)
 
-    def parse_hvc_event(self, raw: Dict, interface: EventInterface, evidence: Evidence) -> HWAddress:
+    def parse_hvc_event(self, raw: Dict[str, Any], interface: EventInterface, evidence: Evidence) -> HWAddress:
         """Parse HVC event"""
         bd_addr = raw['bthci_evt.bd_addr']
         ev_code = int(raw['bthci_evt.le_advts_event_type'], 16)

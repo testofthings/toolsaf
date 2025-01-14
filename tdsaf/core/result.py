@@ -5,14 +5,13 @@ import sys
 import shutil
 import logging
 from functools import cached_property
-from typing import TextIO, List, Dict
+from typing import TextIO, List, Dict, Tuple, Union, Any
 from colored import Fore, Style
 
 from tdsaf.common.basics import ConnectionType
 from tdsaf.common.entity import Entity
 from tdsaf.common.verdict import Verdict
-from tdsaf.core.model import Host, NetworkNode, Connection
-from tdsaf.core.components import SoftwareComponent
+from tdsaf.core.model import Host, Connection, Addressable, NodeComponent, IoTSystem
 from tdsaf.common.property import Properties, PropertyKey, PropertyVerdictValue
 from tdsaf.core.registry import Registry
 
@@ -23,16 +22,16 @@ class Report:
         self.registry = registry
         self.system = registry.system
         self.source_count = 3
-        self.show = []
+        self.show: List[str] = []
         self.no_truncate = False
-        self.c = False
+        self.use_color_flag = False
         self.logger = logging.getLogger("reporter")
         self.width = self.get_terminal_width()
 
     @cached_property
     def use_color(self) -> bool:
         """Determines if color text should be colored"""
-        return self.c or sys.stdout.isatty()
+        return self.use_color_flag or sys.stdout.isatty()
 
     @cached_property
     def green(self) -> str:
@@ -64,7 +63,12 @@ class Report:
         """Should all info be printed without text truncation"""
         return "all" in self.show
 
-    def get_system_verdict(self, cache: dict) -> Verdict:
+    def get_terminal_width(self) -> int:
+        """Returns terminal width or fallback value"""
+        width, _ = shutil.get_terminal_size(fallback=(90, 30))
+        return width
+
+    def get_system_verdict(self, cache: Dict [Entity, Verdict]) -> Verdict:
         """Get verdict for the entire system based on cached verdicts."""
         verdicts = cache.values()
         if Verdict.FAIL in verdicts:
@@ -73,7 +77,7 @@ class Report:
             return Verdict.PASS
         return Verdict.INCON
 
-    def get_verdict_color(self, verdict: any) -> str:
+    def get_verdict_color(self, verdict: Union[Verdict, str]) -> str:
         """Returns color value for Verdict or string"""
         if isinstance(verdict, Verdict):
             if verdict == Verdict.INCON:
@@ -82,8 +86,8 @@ class Report:
         if isinstance(verdict, str):
             verdict = verdict.lower()
             if "/" in verdict:
-                v = verdict.split("/")[1]
-                return [self.red, self.green, ""][["fail", "pass", "incon"].index(v)]
+                verdict_value = verdict.split("/")[1]
+                return [self.red, self.green, ""][["fail", "pass", "incon"].index(verdict_value)]
             if "pass" in verdict:
                 return self.green
             if "fail" in verdict:
@@ -91,22 +95,6 @@ class Report:
             if "ignore" in verdict:
                 return self.yellow
         return ""
-
-    def get_terminal_width(self) -> int:
-        """Returns terminal width or fallback value"""
-        w, _ = shutil.get_terminal_size(fallback=(90, 30))
-        return w
-
-    def crop_text(self, text: str) -> str:
-        """Crop text to fit on one line. Cropping can be disabled with cmd argument"""
-        if self.show_all or self.no_truncate:
-            return text
-        if len(text) > self.width:
-            new_end = "\n" if "\n" in text else ""
-            if self.reset != "" and self.reset in text:
-                new_end = self.reset + new_end
-            return text[:self.width - 3] + "..." + new_end
-        return text
 
     def print_title(self, text: str, writer: TextIO,
                     top_symbol: str="", bottom_symbol: str="") -> None:
@@ -117,186 +105,250 @@ class Report:
         if bottom_symbol:
             writer.write(bottom_symbol * self.width + "\n")
 
-    def get_properties_to_print(self, e: NetworkNode) -> tuple[list[tuple], int]:
+    def _get_sources(self, entity: Entity, key: PropertyKey=Properties.EXPECTED) -> List[str]:
+        """Returns max self.source_count source strs for entity; if any"""
+        if not self.source_count:
+            return []
+        sources = set(filter(None, [
+            event.event.evidence.get_reference()
+            for event in self.registry.logging.get_log(entity, key)
+        ]))
+
+        return list(sources)[:self.source_count]
+
+    def get_properties_to_print(self, entity: Union[IoTSystem, Host, Addressable, NodeComponent, Connection]) \
+                                -> List[Tuple[PropertyKey, Any]]:
         """Retuns properties that should be printed and the number of properties"""
-        prop_items = [(k,v) for k,v in e.properties.items() if k!=Properties.EXPECTED]
+        property_items = [(key, value) for key, value in entity.properties.items() if key!=Properties.EXPECTED]
         if self.show_all:
-            return prop_items, len(prop_items)
+            return property_items
 
         result = []
-        for k, v in prop_items:
-            if (is_inst:=isinstance(v, PropertyVerdictValue)) and (
-                v.verdict == Verdict.FAIL or
-                v.verdict == Verdict.IGNORE and "ignored" in self.show or
-                v.verdict != Verdict.IGNORE and "properties" in self.show
-            ) or not is_inst and "properties" in self.show:
-                result += [(k, v)]
-        return result, len(result)
+        for key, value in property_items:
+            if (is_instance:=isinstance(value, PropertyVerdictValue)) and (
+                value.verdict == Verdict.FAIL or
+                value.verdict == Verdict.IGNORE and "ignored" in self.show or
+                value.verdict != Verdict.IGNORE and "properties" in self.show
+            ) or not is_instance and "properties" in self.show:
+                result += [(key, value)]
+        return result
 
-    def get_symbol_for_addresses(self, h: Host) -> str:
-        """Returns appropriate dir tree symbol for addresses"""
-        if len(h.components) == 0 and len(h.children) == 0:
-            return "└──"
-        return "│  "
+    def _get_addresses(self, host: Host) -> str:
+        """Get addresses for given host"""
+        addresses = [f"{address}" for address in sorted(host.addresses)]
+        addresses = [address for address in addresses if address != host.name]
+        return ", ".join(addresses)
 
-    def get_symbol_for_property(self, idx: int, total_num: int) -> str:
-        """Returns appropriate dir tree symbol for property"""
-        if idx + 1 < total_num:
-            return "├──"
-        return "└──"
+    def _get_text(self, key: PropertyKey, value: Any) -> str:
+        """Get text to print"""
+        value_string = key.get_value_string(value)
+        comment = key.get_explanation(value)
+        comment = f" # {comment}" if comment else ""
+        if isinstance(value, PropertyVerdictValue) or "=verdict" in value_string.lower():
+            value_string = value_string.split("=")[0]
+        return f"{value_string}{comment}"
 
-    def get_symbol_for_service(self, idx: int, h: Host) -> str:
-        """Returns appropriate dir tree symbol for service"""
-        if idx + 1 == len(h.children) and len(h.components) == 0:
-            return "└──"
-        return "├──"
+    def _get_properties(self, entity: Union[IoTSystem, Host, Addressable, NodeComponent, Connection]) \
+                        -> Dict[str, Dict[str, Any]]:
+        """Get a dictionary of properties for given entity"""
+        properties = {}
+        key: PropertyKey
+        for key, value in self.get_properties_to_print(entity):
+            text = self._get_text(key, value)
+            verdict = key.get_verdict(entity.properties)
 
-    def get_symbol_for_component(self, idx: int, h: Host) -> str:
-        """Returns appropriate dir tree symbol for component"""
-        if idx + 1 == len(h.components) or len(h.components) == 1:
-            return "└──"
-        return "├──"
+            properties[key.get_name()] = {
+                "srcs": self._get_sources(entity, key),
+                "verdict": verdict.value if verdict is not None else "",
+                "text": text
+            }
+        return properties
 
-    def get_symbol_for_info(self, idx: int, h: Host, c: SoftwareComponent) -> str:
-        """Returns appropriate dir tree symbol for info"""
-        if (self.show_all or self.show and 'properties' in self.show) and len(c.properties) > 0:
-            return "├──"
-        if idx + 1 != len(h.components):
-            return "│  "
-        return "└──"
+    def _crop_text(self, text: str, lead: str, indent: int) -> str:
+        """Crop text that would be longer than the terminal's width"""
+        if self.show_all or self.no_truncate:
+            return text
+        total_length = len(text) + len(lead) + indent
+        if total_length > self.width:
+            return text[:(self.width - len(lead) - indent - 3)] + "..."
+        return text
 
-    def print_properties(self, entity: NetworkNode, writer: TextIO, leading: str="", indent: int=0):
-        """Print properties from entity"""
-        prop_items, num = self.get_properties_to_print(entity)
+    def _print_text(self, text: str, verdict: str, lead: str, writer: TextIO,
+                    indent: int=17, use_bold: bool=False) -> None:
+        """Prints a cropped version of given text. Adds color if verdict is given"""
+        text = self._crop_text(text, lead, indent)
+        if verdict:
+            color = self.get_verdict_color(verdict)
+            if use_bold:
+                text = self.bold + text
+            writer.write(
+                f"{color}{'[' + verdict + ']':<{indent}}{self.reset}{lead}{color}{text}{self.reset}\n"
+            )
+        else:
+            writer.write(f"{'':<{indent}}{lead}{text}\n")
 
-        set_indent = indent == 0
-        if not set_indent and leading:
-            indent -= 3
+    def _get_sub_structure(self, entity: Union[Host, Addressable, NodeComponent]) -> Dict[str, Any]:
+        """Get sub structure based on given entity"""
+        return {
+            "srcs": self._get_sources(entity),
+            "verdict": entity.status_string(),
+            "address": self._get_addresses(entity) if isinstance(entity, Host) else "",
+            **self._get_properties(entity)
+        }
 
-        k: PropertyKey
-        for i, (k, v) in enumerate(prop_items):
-            com = k.get_explanation(v)
-            com = f" # {com}" if com else ""
-            s = k.get_value_string(v)
+    def build_host_structure(self, entities: List[Host]) -> Dict[str, Dict[str, Any]]:
+        """Build printable host and service tree structure"""
+        structure = {}
 
-            symbol = self.get_symbol_for_property(i, num)
-            if set_indent:
-                indent = 17 if isinstance(entity, Connection) else 20
+        for entity in entities:
+            structure[entity.name] = self._get_sub_structure(entity)
 
-            if leading:
-                symbol = leading + "  " + symbol
-                if set_indent:
-                    indent -= 3
+            for child in entity.children:
+                structure[entity.name][child.name] = self._get_sub_structure(child)
 
-            if isinstance(v, PropertyVerdictValue):
-                s = s.split("=")[0]
-                color = self.get_verdict_color(v.verdict)
-                text = f"{s}{com}"
-                writer.write(self.crop_text(
-                    f"{color}{'['+v.verdict.value+']':<{indent}}{self.reset}{symbol}{color}{text}{self.reset}\n"
-                ))
+            for component in entity.components:
+                structure[entity.name][component.name + " [Component]"] = self._get_sub_structure(component)
+
+        return structure
+
+    def _print_host_structure(self, level: int, structure: Dict[str, Any], writer: TextIO,
+                              lead: str="", parent_has_next: bool=False) -> None:
+        """Print given host and service tree structure"""
+        for index, entry in enumerate(structure):
+            if entry == "verdict":
+                continue
+
+            # Hosts are at level -1
+            if level < 0:
+                verdict = structure[entry]["verdict"]
+                self._print_text(entry, verdict, "", writer, use_bold=True)
+                self._print_host_structure(level+1, structure[entry], writer, "│  ", False)
+
+            elif isinstance(structure[entry], dict):
+                verdict = structure[entry]['verdict']
+                symbol = "└──" if index == len(structure)-1 else "├──"
+                # Strip end from lead, it will be replace by symbol
+                current_lead = lead[:-3] + symbol
+                text = structure[entry]["text"] if "text" in structure[entry] else entry
+
+                if verdict:
+                    self._print_text(text, verdict, current_lead, writer)
+                else:
+                    self._print_text(text, "", current_lead, writer)
+
+                # Check entity relations
+                parent_has_next = any(
+                    (isinstance(structure[key], dict) for key in list(structure.keys())[index:] if key != entry)
+                ) if level >= 1 else False
+                entity_has_children = any(
+                    isinstance(structure[entry][key], dict) for key in structure[entry] if key != entry
+                )
+                is_last_entity = index == len(structure)-1
+
+                if not is_last_entity:
+                    current_lead = lead + "│  " if entity_has_children else lead + "   "
+                    self._print_host_structure(
+                        level+1, structure[entry], writer, lead=current_lead, parent_has_next=parent_has_next
+                    )
+                else:
+                    # Special handling for symbols of last entities
+                    if level == 0:
+                        lead = "   "
+                    if entity_has_children:
+                        # Remove 2nd to last "|" from lead, so symbols allign properly
+                        current_lead = lead[:-3] + "   " + "│  "
+                    else:
+                        current_lead = lead + "   "
+                    self._print_host_structure(
+                        level+1, structure[entry], writer, lead=current_lead, parent_has_next=parent_has_next
+                    )
+
             else:
-                writer.write(self.crop_text(f"{'':<{indent}}{symbol}{s}{com}\n"))
+                has_next_entity = any(isinstance(structure[key], dict) for key in structure)
+                current_lead = lead
+                if not has_next_entity:
+                    if level > 1 and not parent_has_next:
+                        current_lead = lead[::-1].replace('│', ' ', 1)[::-1]
 
-            self._print_source(writer, entity, 2, k)
+                if entry == "srcs":
+                    for source in structure[entry]:
+                        self._print_text(f"@{source}", "", current_lead, writer)
 
-    def get_connection_status(self, connection: Connection, cache: dict) -> str:
+                if entry == "address" and structure[entry]:
+                    self._print_text(f"Addresses: {structure[entry]}", "", current_lead, writer)
+
+    def get_connection_status(self, connection: Connection, cache: Dict [Entity, Verdict]) -> str:
         """Returns status string for a connection"""
         if connection.con_type == ConnectionType.LOGICAL:
             return connection.con_type.value
-        v = connection.get_verdict(cache)
-        if v not in [Verdict.PASS, Verdict.FAIL]:
+        verdict = connection.get_verdict(cache)
+        if verdict not in [Verdict.PASS, Verdict.FAIL]:
             return connection.status.value
-        return f"{connection.status.value}/{v.value}"
+        return f"{connection.status.value}/{verdict.value}"
 
-    def print_report(self, writer: TextIO):
+    def build_connection_structure(self, connections: List[Connection], cache: Dict[Entity, Verdict]) -> Dict[str, Any]:
+        """Build a printable tree structure out of given connections"""
+        structure: Dict[str, List[Dict[str, Any]]] = {"connections": []}
+        for connection in connections:
+            structure["connections"].append({
+                "verdict": self.get_connection_status(connection, cache),
+                "source": connection.source.long_name(),
+                "target": connection.target.long_name(),
+                "srcs": self._get_sources(connection),
+                **self._get_properties(connection)
+            })
+        return structure
+
+    def _print_connection_structure(self, structure: Dict[str, Any], writer: TextIO,
+                                    lead: str="", symbol: str="") -> None:
+        """Print given connection tree structure"""
+        verdict = structure['verdict']
+        children = [key for key in structure if isinstance(structure[key], dict)]
+        current_lead = lead[:-3] + symbol
+        if "source" in structure:
+            self._print_text(f"{structure['source']:<33}{structure['target']}", verdict, current_lead, writer)
+        else:
+            self._print_text(structure["text"], verdict, current_lead, writer)
+
+        current_lead = lead + "│  " if children else lead + "   "
+        for source in structure["srcs"]:
+            self._print_text(f"@{source}", "", current_lead, writer)
+
+        for child in children:
+            symbol = "├──" if child != children[-1] else "└──"
+            self._print_connection_structure(structure[child], writer, lead=lead + "   ", symbol=symbol)
+
+    def print_report(self, writer: TextIO) -> None:
         """Print textual report"""
         cache: Dict[Entity, Verdict] = {}
+        relevant_only = not (self.show_all or (self.show and "irrelevant" in self.show))
 
-        hosts = self.system.get_hosts()
-        for h in hosts:
-            h.get_verdict(cache)
+        hosts = [host for host in self.system.get_hosts() if host.is_relevant()]
+        for host in hosts:
+            host.get_verdict(cache)
 
+        connections = self.system.get_connections(relevant_only=relevant_only)
+        for connection in connections:
+            connection.get_verdict(cache)
+
+        # System level
         system_verdict = self.get_system_verdict(cache)
-        color = self.get_verdict_color(system_verdict)
-
         self.print_title(f"{self.bold}{'Verdict:':<17}System:{self.reset}", writer, "=", "-")
-        writer.write(f"{color}{'['+system_verdict.value+']':<17}{self.bold}{self.system.long_name()}{self.reset}\n")
-        self.print_properties(self.system, writer, indent=17)
+        self._print_text(self.system.long_name(), system_verdict.value, "", writer, use_bold=True)
+        system_properties = self._get_properties(self.system)
+        if system_properties:
+            self._print_host_structure(0, system_properties, writer, lead="│  ")
 
+        # Hosts and services
         self.print_title(f"{self.bold}{'Verdict:':<17}Hosts and Services:{self.reset}", writer, "=", "-")
-        rev_map: Dict[str, List[Host]] = {}
-        for h in hosts:
-            if not h.is_relevant():
-                continue
+        host_structure = self.build_host_structure(hosts)
+        self._print_host_structure(-1, host_structure, writer, "", False)
 
-            h_name = h.name
-            aggregate_verdict = f"{h.status.value}/{h.get_verdict(cache).value}"
-            color = self.get_verdict_color(aggregate_verdict)
-            if "/Incon" in aggregate_verdict:
-                aggregate_verdict = aggregate_verdict.split("/", maxsplit=1)[0]
-            writer.write(self.crop_text(f"{color}{'['+aggregate_verdict+']':<17}{self.bold}{h_name}{self.reset}\n"))
-
-            self._print_source(writer, h, 1)
-            ads = [f"{a}" for a in sorted(h.addresses)]
-            for a in ads:
-                rev_map.setdefault(a, []).append(h)
-            ads = [a for a in ads if a != h_name]
-            if ads:
-                symbol = self.get_symbol_for_addresses(h)
-                writer.write(self.crop_text(f"{'':<17}{symbol}Addresses: {', '.join(ads)}\n"))
-
-            self.print_properties(h, writer, leading="│")
-            for i, s in enumerate(h.children):
-                v = s.status_string()
-                color = self.get_verdict_color(v)
-
-                symbol = self.get_symbol_for_service(i, h)
-                writer.write(self.crop_text(f"{color}{'['+v+']':<17}{self.reset}{symbol}{color}{s.name}{self.reset}\n"))
-                self._print_source(writer, s, 2)
-
-                if i < len(h.children)-1:
-                    self.print_properties(s, writer, leading="│")
-
-            for i, comp in enumerate(h.components):
-                symbol = self.get_symbol_for_component(i, h)
-                writer.write(self.crop_text(f"{'':<17}{symbol}{comp.name} [Component]\n"))
-                sw_info = comp.info_string()
-                if sw_info:
-                    symbol = self.get_symbol_for_info(i, h, comp)
-                    writer.write(self.crop_text(f"{'':<20}{symbol}Info: {sw_info}\n"))
-                self._print_source(writer, comp, 2)
-                leading = "│" if i != len(h.components)-1 else ""
-                self.print_properties(comp, writer, leading=leading)
-
-        for ad, hs in sorted(rev_map.items()):
-            if len(hs) > 1:
-                self.logger.warning("DOUBLE mapped %s: %s", ad, ", ".join([f"{h}" for h in hs]))
-
+        # Connections
         self.print_title(
             f"{self.bold}Connections\n{'Verdict:':<17}{'Source:':<33}Target:{self.reset}", writer, "=", "-"
         )
-        relevant_only = not (self.show_all or (self.show and "irrelevant" in self.show))
-        for conn in self.system.get_connections(relevant_only=relevant_only):
-            stat = self.get_connection_status(conn, cache)
-            color = self.get_verdict_color(stat)
-            writer.write(self.crop_text(
-                f"{color}{'['+stat+']':<17}{conn.source.long_name():<32} {conn.target.long_name()}{self.reset}\n"
-            ))
-            self._print_source(writer, conn, 2)
-            self.print_properties(conn, writer)
 
-    def _print_source(self, writer: TextIO, entity: Entity, indentation: int, key: PropertyKey = Properties.EXPECTED):
-        """Print source of entity"""
-        if not self.source_count:
-            return
-        events = self.registry.logging.get_log(entity, {key})
-        logged = set()
-        for e in events:
-            if e.event.evidence in logged:
-                continue
-            logged.add(e.event.evidence)
-            src = e.event.evidence.get_reference()
-            writer.write(f"{'  ' * indentation}@{src}\n")
-            if len(logged) >= self.source_count:
-                break
+        connection_structure = self.build_connection_structure(connections, cache)
+        for structure in connection_structure["connections"]:
+            self._print_connection_structure(structure, writer)
