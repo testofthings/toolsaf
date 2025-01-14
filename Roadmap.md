@@ -4,7 +4,7 @@ The following provides a rough overview of how we see the Tool-Driven Security A
 
 ## Core features
 
-The following features are planned in the core functionality of the framework: security statements, claims, tool output processing, verdict assignment.
+The following features are planned in the core functionality of the framework: security statements, tool output processing, verdict assignment.
 
  * Add and update security statement features
  * Add and update tool support
