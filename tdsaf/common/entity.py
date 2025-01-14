@@ -1,12 +1,10 @@
 """Base entity class and related classes"""
 
-import enum
 import re
 from typing import Dict, Optional, Self, List, Any, Tuple, Iterable, Iterator
 
 from tdsaf.common.basics import Status
 from tdsaf.common.verdict import Verdict
-from tdsaf.common.claim import AbstractClaim
 from tdsaf.common.property import Properties, PropertyKey
 from tdsaf.common.verdict import Verdictable
 
@@ -117,44 +115,6 @@ class Entity:
     def __repr__(self) -> str:
         s = f"{self.status_string()} {self.long_name()}"
         return s
-
-
-class ClaimAuthority(enum.Enum):
-    """Claim or claim status authority"""
-    MODEL = "Model"          # Model claim, inferred from model
-    TOOL = "Tool"            # Tool verified claim
-    MANUAL = "Manual"        # Manually verified claim
-
-
-class ClaimStatus:
-    """Status of a claim"""
-    def __init__(self, claim: AbstractClaim, explanation: str="",
-                 verdict: Verdict=Verdict.INCON, authority: ClaimAuthority=ClaimAuthority.MODEL):
-        assert claim is not None and verdict is not None
-        self.claim = claim
-        self.verdict = verdict
-        self.explanation = explanation
-        self.authority = authority
-        self.silent = False
-        self.aggregate_of: List[ClaimStatus] = []
-
-    def get_explanation(self) -> str:
-        """Get explanation"""
-        if isinstance(self.claim, ExplainableClaim):
-            return self.claim.explain(self)
-        return self.claim.text()
-
-    def __repr__(self) -> str:
-        return f"{self.verdict.value} {self.get_explanation()}"
-
-
-class ExplainableClaim(AbstractClaim):
-    """A claim which can be explained, with or without status"""
-    def explain(self, status: Optional[ClaimStatus]) -> str:
-        """Explain the claim and status. Status can be null"""
-        if status and status.explanation:
-            return status.explanation
-        return str(self)
 
 
 class SafeNameMap:
