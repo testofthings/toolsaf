@@ -1,12 +1,9 @@
 """Model builder backend"""
 
 import argparse
-import io
 import ipaddress
-import json
 import logging
 import pathlib
-import shutil
 import sys
 import inspect
 from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union
@@ -15,13 +12,11 @@ from tdsaf.common.address import (AddressAtNetwork, Addresses, AnyAddress, DNSNa
                                   HWAddress, HWAddresses, IPAddress, IPAddresses, Network, Protocol)
 from tdsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status
 from tdsaf.adapters.batch_import import BatchImporter, LabelFilter
-from tdsaf.client_api import APIRequest
 from tdsaf.core.components import CookieData, Cookies, DataReference, StoredData, OperatingSystem, Software
 from tdsaf.common.entity import ClaimAuthority, Entity
 from tdsaf.core.event_interface import PropertyEvent
 from tdsaf.common.release_info import ReleaseInfo
 from tdsaf.common.property import PropertyVerdictValue
-from tdsaf.http_server import HTTPServerRunner
 from tdsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP, IP, TLS, MQTT,
                         BLEAdvertisement, ClaimBuilder, ClaimSetBuilder, ConnectionBuilder,
                         CookieBuilder, HostBuilder, NetworkBuilder, NodeBuilder, NodeVisualBuilder,
@@ -43,7 +38,7 @@ from tdsaf.common.traffic import Evidence, EvidenceSource
 from tdsaf.common.verdict import Verdict
 from tdsaf.common.android import MobilePermissions
 from tdsaf.adapters.spdx_reader import SPDXJson
-from tdsaf.visualizer import Visualizer, VisualizerAPI
+from tdsaf.visualizer import Visualizer
 from tdsaf.diagram_visualizer import DiagramVisualizer
 
 
@@ -1140,19 +1135,7 @@ class SystemBackendRunner(SystemBackend):
                             help="Add default DNS server handling")
         parser.add_argument("-l", "--log", dest="log_level", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                             help="Set the logging level", default=None)
-
         parser.add_argument("--db", type=str, help="Connect to SQL database")
-        parser.add_argument("--http-server", type=int,
-                            help="Listen HTTP requests at port")
-        parser.add_argument("--test-delay", type=int,
-                            help="HTTP request artificial test delay, ms")
-        parser.add_argument("--no-auth-ok", action="store_true",
-                            help="Skip check for auth token in TDSAF_SERVER_API_KEY")
-
-        parser.add_argument("--test-get", action="append",
-                            help="Test API GET, repeat for many")
-        parser.add_argument("--test-post", nargs=2, help="Test API POST")
-
         parser.add_argument(
             "--log-events", action="store_true", help="Log events")
 
@@ -1207,27 +1190,6 @@ class SystemBackendRunner(SystemBackend):
             for sub in ln.subs:
                 sub.load(registry, label_filter=label_filter)
 
-        api = VisualizerAPI(registry, self.visualizer)
-        if args.test_post:
-            res, data = args.test_post
-            request = APIRequest.parse(res)
-            if data.strip().startswith("{"):
-                # assuming JSON
-                resp = api.api_post(request, io.BytesIO(data.encode()))
-            else:
-                # assuming file
-                api.logger.info("POST file %s", data)
-                resp = api.api_post_file(request, pathlib.Path(data))
-            print(json.dumps(resp, indent=4))
-            return
-        if args.test_get:
-            wid, hei = shutil.get_terminal_size()[0], 0  # only width specified
-            for res in args.test_get:
-                api_req = APIRequest.parse(res)
-                api_req.set_param("screen", f"{wid}x{hei}")
-                print(api.api_get(api_req, pretty=True))
-            return
-
         if custom_arguments is not None:
             # custom arguments, return without 'running' anything
             return
@@ -1245,9 +1207,3 @@ class SystemBackendRunner(SystemBackend):
             self.diagram.set_file_name(args.diagram_name)
             self.diagram.show = bool(args.show_diagram)
             self.diagram.create_diagram()
-
-        if args.http_server:
-            server = HTTPServerRunner(
-                api, port=args.http_server, no_auth_ok=args.no_auth_ok)
-            server.component_delay = (args.test_delay or 0) / 1000
-            server.run()
