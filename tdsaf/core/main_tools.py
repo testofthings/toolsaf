@@ -102,7 +102,9 @@ class FabricationLoader(SubLoader, TrafficDataBuilder):
     def connection(self, flow: FlowBuilder) -> Self:
         """Add a connection"""
         # NOTE: Only UDP and TCP are implemented at this point
-        f = IPFlow(NO_EVIDENCE, flow.source, flow.target, Protocol.get_protocol(flow.protocol))
+        protocol = Protocol.get_protocol(flow.protocol)
+        assert protocol, "Protocol was None"
+        f = IPFlow(NO_EVIDENCE, flow.source, flow.target, protocol)
         self.flows.append(f)
         return self
 
