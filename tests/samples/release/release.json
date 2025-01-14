@@ -1,0 +1,14 @@
+[
+    {
+        "published_at": "2025-01-14T00:00:00Z",
+        "tag_name": "v3.0"
+    },
+    {
+        "published_at": "2025-01-12T00:00:00Z",
+        "tag_name": "v2.0"
+    },
+    {
+        "published_at": "2025-01-10T00:00:00Z",
+        "tag_name": "v1.0"
+    }
+]
