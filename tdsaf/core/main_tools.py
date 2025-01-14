@@ -24,7 +24,7 @@ class NodeManipulator:
 
 class SubLoader:
     """Base class for direct evidence/claim loaders"""
-    def __init__(self, name: str):
+    def __init__(self, name: str) -> None:
         self.loader_name = name
         self.base_ref = ""
         self.mappings: Dict[AnyAddress, NodeManipulator] = {}
@@ -68,25 +68,25 @@ class SubLoader:
         s.model_override = True
         return s
 
-    def load(self, registry: Registry, label_filter: LabelFilter):
+    def load(self, registry: Registry, label_filter: LabelFilter) -> None:
         """Load evidence"""
 
 
 class EvidenceLoader(EvidenceBuilder):
     """Load evidence files"""
-    def __init__(self, builder: SystemBuilder):
+    def __init__(self, builder: SystemBuilder) -> None:
         super().__init__()
         self.builder = builder
         self.subs: List[SubLoader] = []
 
-    def traffic(self, label="Fab data") -> 'FabricationLoader':
+    def traffic(self, label: str="Fab data") -> 'FabricationLoader':
         """Fabricate evidence for testing or visualization"""
         sl = FabricationLoader(label)
         self.subs.append(sl)
         return sl
 
     @classmethod
-    def group(cls, group_label: str, *tools: 'ToolPlanLoader'):
+    def group(cls, group_label: str, *tools: 'ToolPlanLoader') -> None:
         """Create a group of tools"""
         for t in tools:
             # t.load_label = group_label  # label in source filtering
@@ -95,7 +95,7 @@ class EvidenceLoader(EvidenceBuilder):
 
 class FabricationLoader(SubLoader, TrafficDataBuilder):
     """Fabricate evidence for testing or visualization"""
-    def __init__(self, source_label: str):
+    def __init__(self, source_label: str) -> None:
         super().__init__(source_label)
         self.flows: List[Flow] = []
 
@@ -106,7 +106,7 @@ class FabricationLoader(SubLoader, TrafficDataBuilder):
         self.flows.append(f)
         return self
 
-    def load(self, registry: Registry, label_filter: LabelFilter):
+    def load(self, registry: Registry, label_filter: LabelFilter) -> None:
         if not label_filter.filter(self.source_label):
             return
         evi = Evidence(self.get_source())
@@ -117,14 +117,14 @@ class FabricationLoader(SubLoader, TrafficDataBuilder):
 
 class ToolPlanLoader(SubLoader):
     """Load plans for future tools"""
-    def __init__(self, group: Tuple[str, str]):
+    def __init__(self, group: Tuple[str, str]) -> None:
         super().__init__(group[1])    # group[0] is e.g. 'basic-tools', 'advanced-tools', 'custom-tools'
         self.source_label = group[1]  # group[1] is fancy names for them (just captialize?)
         self.location = Select.system()
         self.properties: Dict[PropertyKey, Any] = {}
         self.groups = ["planning", group[0]]
 
-    def load(self, registry: Registry, label_filter: LabelFilter):
+    def load(self, registry: Registry, label_filter: LabelFilter) -> None:
         for g in self.groups:
             if g in label_filter.excluded:
                 return  # explicitly excluded

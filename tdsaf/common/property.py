@@ -8,7 +8,7 @@ from tdsaf.common.verdict import Verdictable
 
 class PropertyKey:
     """Property key"""
-    def __init__(self, name: str, *more: str):
+    def __init__(self, name: str, *more: str) -> None:
         """Create new property key"""
         self.segments: Tuple[str, ...] = name, *more
         self.model = False  # a model property?
@@ -22,11 +22,11 @@ class PropertyKey:
         """Is this a protected property?"""
         return self.segments[0] in Properties.PROTECTED
 
-    def append_key(self, segment: str) -> Self:
+    def append_key(self, segment: str) -> 'PropertyKey':
         """Add key segment"""
         return self.create(self.segments + (segment, ))
 
-    def prefix_key(self, segment: str, append="") -> Self:
+    def prefix_key(self, segment: str, append: str="") -> 'PropertyKey':
         """Prefix key segment, with possibly also adding a key segment"""
         return self.create((segment, ) + self.segments + ((append, ) if append else ()))
 
@@ -47,7 +47,7 @@ class PropertyKey:
             return PropertyVerdictValue(Verdict.INCON) if isinstance(value, PropertyVerdictValue) else value
         return None
 
-    def get_name(self, short=False) -> str:
+    def get_name(self, short: bool=False) -> str:
         """Name string"""
         if short:
             return self.segments[-1]
@@ -71,7 +71,7 @@ class PropertyKey:
             return value.explanation
         return ""
 
-    def update(self, properties: 'PropertyDict', value: Any):
+    def update(self, properties: 'PropertyDict', value: Any) -> None:
         """Update existing property dictionary with new value"""
         if isinstance(value, PropertyVerdictValue):
             self.update_verdict(properties, value)
@@ -81,18 +81,18 @@ class PropertyKey:
             # simple override
             properties[self] = value
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return self.segments.__hash__()
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, PropertyKey):
             return False
         return self.segments == other.segments
 
-    def __gt__(self, other):
+    def __gt__(self, other: 'PropertyKey') -> bool:
         return self.segments.__gt__(other.segments)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.get_name()
 
     def get_value_string(self, value: Any) -> str:
@@ -105,7 +105,7 @@ class PropertyKey:
             s = f"{value}"
         return f"{self.get_name()}={s}" if s else self.get_name()
 
-    def get_value_json(self, value: Any, json_data: Dict) -> Dict:
+    def get_value_json(self, value: Any, json_data: Dict[str, Any]) -> Dict[str, Any]:
         """Get value as JSON"""
         if isinstance(value, PropertyVerdictValue):
             json_data["verdict"] = value.verdict.value
@@ -119,7 +119,7 @@ class PropertyKey:
             json_data["value"] = f"{value}"
         return json_data
 
-    def decode_value_json(self, data: Dict) -> Any:
+    def decode_value_json(self, data: Dict[str, Any]) -> Any:
         """Decode value from JSON"""
         exp = data.get("exp", "")
         if "verdict" in data:
@@ -132,13 +132,14 @@ class PropertyKey:
     # Verdict value
     #
 
-    def verdict(self, verdict=Verdict.INCON, explanation="") -> Tuple['PropertyKey', 'PropertyVerdictValue']:
+    def verdict(self, verdict: Verdict=Verdict.INCON, explanation: str="") \
+                -> Tuple['PropertyKey', 'PropertyVerdictValue']:
         """New key and verdict value """
         assert isinstance(verdict, Verdict)
         return self, PropertyVerdictValue(verdict, explanation)
 
-    def put_verdict(self, properties: 'PropertyDict', verdict=Verdict.INCON,
-                    explanation="") -> Tuple['PropertyKey', 'PropertyVerdictValue']:
+    def put_verdict(self, properties: 'PropertyDict', verdict: Verdict=Verdict.INCON,
+                    explanation: str="") -> Tuple['PropertyKey', 'PropertyVerdictValue']:
         """Set verdict value"""
         kv = PropertyVerdictValue(verdict, explanation)
         properties[self] = kv
@@ -151,7 +152,7 @@ class PropertyKey:
             return v.get_overall_verdict(properties)
         return v.get_verdict() if isinstance(v, Verdictable) else None
 
-    def update_verdict(self, properties: 'PropertyDict', value: 'PropertyVerdictValue'):
+    def update_verdict(self, properties: 'PropertyDict', value: 'PropertyVerdictValue') -> None:
         """Update property verdict"""
         assert isinstance(value, PropertyVerdictValue) and isinstance(value.verdict, Verdict), \
             f"Invalid property verdict value: {value}"
@@ -173,7 +174,7 @@ class PropertyKey:
     # Set value
     #
 
-    def value_set(self, sub_keys: Set['PropertyKey'], explanation="") -> Tuple['PropertyKey', 'PropertySetValue']:
+    def value_set(self, sub_keys: Set['PropertyKey'], explanation: str="") -> Tuple['PropertyKey', 'PropertySetValue']:
         """New property set value"""
         return self, PropertySetValue(sub_keys, explanation)
 
@@ -182,7 +183,7 @@ class PropertyKey:
         v = properties.get(self)
         return v if isinstance(v, PropertySetValue) else None
 
-    def update_set(self, properties: 'PropertyDict', value: 'PropertySetValue'):
+    def update_set(self, properties: 'PropertyDict', value: 'PropertySetValue') -> None:
         """Update existing property dictionary with set values"""
         assert isinstance(value, PropertySetValue)
         old = self.get(properties)
@@ -210,7 +211,7 @@ class PropertyVerdictValue(Verdictable):
     def get_verdict(self) -> Verdict:
         return self.verdict
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         s = f" {self.explanation}" if self.explanation else ""
         return f"[{self.verdict.value}]{s}"
 

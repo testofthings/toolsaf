@@ -15,7 +15,7 @@ from tdsaf.common.traffic import ServiceScan, HostScan, Event, EvidenceSource, F
 
 class Registry(EventInterface):
     """Record, store, and recall events as required"""
-    def __init__(self, inspector: Inspector, db: EntityDatabase = None):
+    def __init__(self, inspector: Inspector, db: Optional[EntityDatabase] = None) -> None:
         self.logger = logging.getLogger("registry")
         self.logging = EventLogger(inspector)
         self.system = inspector.system
@@ -35,7 +35,7 @@ class Registry(EventInterface):
             self.logging.consume(e)
         return self
 
-    def get_id(self, entity) -> int:
+    def get_id(self, entity: Any) -> int:
         """Get ID for an entity or whatever, int"""
         return self.database.get_id(entity)
 
@@ -43,7 +43,7 @@ class Registry(EventInterface):
         """Get entity by id, if any"""
         return self.database.get_entity(id_value)
 
-    def _new_event(self, event: Event):
+    def _new_event(self, event: Event) -> None:
         """Handle new event"""
         self.database.put_event(event)
         # all sources are enabled by default
@@ -51,7 +51,7 @@ class Registry(EventInterface):
         # Note: evidence filter not updated, it only applies to stored events
         self.all_evidence.add(event.evidence.source)
 
-    def reset(self, evidence_filter: Dict[EvidenceSource, bool] = None, enable_all=False) -> Self:
+    def reset(self, evidence_filter: Optional[Dict[EvidenceSource, bool]]=None, enable_all: bool=False) -> Self:
         """Reset the model by applying the evidence again, potentially filtered"""
         if enable_all:
             s_filter = {e.label: True for e in sorted(self.all_evidence, key=lambda x: x.name)}
@@ -108,5 +108,5 @@ class Registry(EventInterface):
         self._new_event(scan)
         return self.logging.host_scan(scan)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.logging.__repr__()
