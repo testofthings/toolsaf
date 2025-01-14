@@ -4,7 +4,6 @@
 
 # pylint: disable=pointless-statement
 
-from ruuvi_claims import make_claims
 from tdsaf.main import Builder, ARP, ICMP, EAPOL, HTTP, BLEAdvertisement, TLS, SSH, DHCP, NTP, DNS
 
 system = Builder.new("Ruuvi Gateway & Tags")
@@ -83,8 +82,6 @@ cookies.set({
     "_tt_enable_cookie": (".ruuvi.com", "/", "FIXME"),
     "_ttp": (".ruuvi.com", "/", "FIXME"),
 })
-
-make_claims(system, gateway, tags, user, mobile, backend_1, backend_2, web_1, web_2, web_3, ble_ad)
 
 # Concrete addresses
 system.network().mask("192.168.0.0/16")
