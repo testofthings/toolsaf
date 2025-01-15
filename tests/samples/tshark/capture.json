@@ -1,0 +1,48 @@
+[
+    {
+        "_source": {
+            "layers": {
+
+            }
+        }
+    },
+    {
+        "_source": {
+            "layers": {
+                "bthci_evt": {
+                    "bthci_evt.bd_addr": "aa:aa:aa:aa:aa:aa",
+                    "bthci_evt.le_advts_event_type": "0x00000001"
+                },
+                "frame": {
+                    "frame.time_epoch": "1675944139.865893000"
+                }
+            }
+        }
+    },
+    {
+        "_source": {
+            "layers": {
+                "bthci_evt": {
+                    "bthci_evt.bd_addr": "aa:aa:aa:aa:aa:aa",
+                    "bthci_evt.le_advts_event_type": "0x00000002"
+                },
+                "frame": {
+                    "frame.time_epoch": "1775944139.865893000"
+                }
+            }
+        }
+    },
+    {
+        "_source": {
+            "layers": {
+                "bthci_evt": {
+                    "bthci_evt.bd_addr": "bb:bb:bb:bb:bb:bb",
+                    "bthci_evt.le_advts_event_type": "0x00000001"
+                },
+                "frame": {
+                    "frame.time_epoch": "1875944139.865893000"
+                }
+            }
+        }
+    }
+]
