@@ -1,9 +1,9 @@
 """ZED attack proxy result reader"""
 
-from io import BytesIO
+from io import BufferedReader
 import json
 from datetime import datetime
-from typing import List, Set
+from typing import List, Set, Any
 
 from tdsaf.common.address import EndpointAddress, Protocol, DNSName
 from tdsaf.core.event_interface import EventInterface, PropertyAddressEvent
@@ -16,12 +16,13 @@ from tdsaf.common.verdict import Verdict
 
 class ZEDReader(SystemWideTool):
     """Read ZED attack proxy scanning results for a software"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("zed", system)
         self.tool.name = "ZED Attack Proxy"
         self.data_file_suffix = ".json"
 
-    def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource) -> bool:
+    def process_file(self, data: BufferedReader, file_name: str,
+                     interface: EventInterface, source: EvidenceSource) -> bool:
         raw_file = json.load(data)
 
         evidence = Evidence(source)
@@ -45,7 +46,7 @@ class ZEDReader(SystemWideTool):
 
         return True
 
-    def _read_alerts(self, interface: EventInterface, evidence: Evidence, endpoint: EndpointAddress, raw: List) \
+    def _read_alerts(self, interface: EventInterface, evidence: Evidence, endpoint: EndpointAddress, raw: List[Any]) \
             -> Set[PropertyKey]:
         ps = set()
         for raw_a in raw:

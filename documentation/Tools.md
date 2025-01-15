@@ -189,6 +189,24 @@ Data files are PCAP (not pcap-ng) files with suffix `.pcap`. Example metafile `0
 
 Files can be captured by _Wireshark_ or `tcpdump`, see their documentation for instructions.
 
+### Shodan
+Data files are JSON format Shodan scan results with suffix `.json`. Example metafile `00meta.json`:
+```json
+{
+    "file_type": "shodan"
+}
+```
+If there are no Wireshark captures that are processed before the Shodan results, add the `addresses` section to the metafile, so that results are connected correctly.
+
+Shodan scan results can be obtained by using either of the following commands:
+```bash
+export SHODAN_API_KEY=your-api-key
+
+python3 tdsaf/adapters/shodan_scan.py iplookup 8.8.8.8 # Results for one IP
+# OR
+python3 tdsaf/adapters/shodan_scan.py dnslookup ruuvi.com # Results for multiple IPs under given domain
+```
+
 ### SPDX
 
 Data is Software Package Data Exchange (SPDX) json-files with suffix `.json`.

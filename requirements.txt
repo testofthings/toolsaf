@@ -6,3 +6,4 @@ sqlalchemy
 watchdog
 colored
 diagrams
+shodan

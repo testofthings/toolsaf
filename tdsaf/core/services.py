@@ -1,8 +1,8 @@
 """Services with dedicated logic"""
 
-from typing import Any, Callable, Dict, List, Set, Optional
+from typing import Any, Callable, Dict, List, Set, Optional, Union
 
-from tdsaf.common.address import DNSName, EndpointAddress, EntityTag, Protocol, IPAddress
+from tdsaf.common.address import AnyAddress, DNSName, EndpointAddress, EntityTag, Protocol, IPAddress
 from tdsaf.common.basics import ConnectionType, HostType
 from tdsaf.core.model import Service, NetworkNode, Connection, Host, Addressable
 from tdsaf.common.traffic import IPFlow, Flow, Event, Evidence
@@ -10,7 +10,7 @@ from tdsaf.common.traffic import IPFlow, Flow, Event, Evidence
 
 class DHCPService(Service):
     """DHCP server service"""
-    def __init__(self, parent: Addressable, name="DHCP"):
+    def __init__(self, parent: Addressable, name: str="DHCP") -> None:
         super().__init__(name, parent)
         # match any traffic with UDP port 67
         self.addresses.add(EndpointAddress.any(Protocol.UDP, 67))
@@ -21,7 +21,7 @@ class DHCPService(Service):
         # reply does not come from the broadcast address
         self.reply_from_other_address = True
 
-    def new_connection(self, connection: Connection, flow: Flow, target: bool):
+    def new_connection(self, connection: Connection, flow: Flow, target: bool) -> None:
         assert isinstance(flow, IPFlow), "Bad DHCP flow"
         if target:
             return
@@ -33,7 +33,7 @@ class DHCPService(Service):
 
 class DNSService(Service):
     """DNS service"""
-    def __init__(self, parent: Addressable, name="DNS"):
+    def __init__(self, parent: Addressable, name: str="DNS") -> None:
         super().__init__(name, parent)
         self.host_type = HostType.ADMINISTRATIVE
         self.con_type = ConnectionType.ADMINISTRATIVE
@@ -44,10 +44,10 @@ class DNSService(Service):
 class NameEvent(Event):
     """Name or tag and address event"""
     def __init__(self, evidence: Evidence, service: Optional[DNSService], name: Optional[DNSName] = None,
-                 tag: Optional[EntityTag] = None, address: Optional[IPAddress] = None,
-                 peers: List[NetworkNode] = None):
+                 tag: Optional[EntityTag] = None, address: Optional[AnyAddress] = None,
+                 peers: Optional[List[NetworkNode]] = None):
         super().__init__(evidence)
-        assert bool(name) != bool(tag), "Name or tag must be set"
+        assert name or tag, "Name or tag must be set"
         self.service = service
         self.name = name
         self.tag = tag
@@ -57,8 +57,8 @@ class NameEvent(Event):
     def get_value_string(self) -> str:
         return f"{self.name or self.tag}={self.address}" if self.address else str(self.name or self.tag)
 
-    def get_data_json(self, id_resolver: Callable[[Any], Any]) -> Dict:
-        r = {}
+    def get_data_json(self, id_resolver: Callable[[Any], Any]) -> Dict[str, Any]:
+        r: Dict[str, Union[str, List[Any]]] = {}
         if self.name:
             r["name"] = self.name.name
         if self.tag:
@@ -72,24 +72,25 @@ class NameEvent(Event):
         return r
 
     @classmethod
-    def decode_data_json(cls, evidence: Evidence, data: Dict, entity_resolver: Callable[[Any], Any]):
+    def decode_data_json(cls, evidence: Evidence, data: Dict[str, Any],
+                         entity_resolver: Callable[[Any], Any]) -> 'NameEvent':
         """Decode event from JSON"""
-        name = DNSName(data.get("name")) if "name" in data else None
-        tag = EntityTag(data.get("tag")) if "tag" in data else None
-        service = entity_resolver(data.get("service")) if "service" in data else None
+        name = DNSName(data["name"]) if "name" in data else None
+        tag = EntityTag(data["tag"]) if "tag" in data else None
+        service = entity_resolver(data["service"]) if "service" in data else None
         assert service is None or isinstance(service, DNSService), f"Bad service {service.__class__.__name__}"
-        address = IPAddress.new(data.get("address")) if "address" in data else None
+        address = IPAddress.new(data["address"]) if "address" in data else None
         peers = [entity_resolver(p) for p in data.get("peers", [])]
         assert all(p for p in peers)
         return NameEvent(evidence, service, name, tag, address, peers)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object ) -> bool:
         if not isinstance(other, NameEvent):
             return False
         return self.service == other.service and self.name == other.name and self.address == other.address
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.name) ^ hash(self.tag) ^ hash(self.address)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.get_value_string()

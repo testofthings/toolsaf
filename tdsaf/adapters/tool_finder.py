@@ -12,6 +12,7 @@ from tdsaf.adapters.ping_command import PingCommand
 from tdsaf.adapters.releases import ReleaseReader
 from tdsaf.adapters.setup_reader import SetupCSVReader
 from tdsaf.adapters.shell_commands import ShellCommandPs, ShellCommandSs
+from tdsaf.adapters.shodan_scan import ShodanScan
 from tdsaf.adapters.spdx_reader import SPDXReader
 from tdsaf.adapters.ssh_audit_scan import SSHAuditScan
 from tdsaf.adapters.testsslsh_scan import TestSSLScan
@@ -27,7 +28,7 @@ class ToolDepiction:
     """Tool depiction"""
     def __init__(self, file_type: Union[str|List[str]],
                  tool_class: Union[Type[ToolAdapter], Dict[str, Type[ToolAdapter]]],
-                 extension=""):
+                 extension: str=""):
         file_types = file_type if isinstance(file_type, list) else [file_type]
         self.file_type = file_types[0]  # primary
         self.tools: Dict[str, Type[ToolAdapter]] = {}
@@ -45,7 +46,7 @@ class ToolDepiction:
         """Does the tool filter files itself?"""
         return len(self.tools) == 1 and "" in self.tools
 
-    def create_tool(self, system: IoTSystem, file_extension="") -> Optional[ToolAdapter]:
+    def create_tool(self, system: IoTSystem, file_extension: str="") -> Optional[ToolAdapter]:
         """Create tool, optionally by data file extension"""
         if file_extension:
             file_extension = file_extension.lower()
@@ -55,7 +56,10 @@ class ToolDepiction:
             tc = next(iter(self.tools.values()), None)
         if tc is None:
             return None
-        return tc(system)
+        # NOTE: All constructors are assumed to only consume system, and provide name for ToolAdapter
+        tool = tc(system)  # type: ignore [call-arg, arg-type]
+        assert tool.system == system  # ...try to assert that this happens
+        return tool
 
     def __repr__(self) -> str:
         return self.file_type
@@ -65,7 +69,7 @@ class ToolDepiction:
 
 class ToolFinderImplementation:
     """Tool finder implementation"""
-    def __init__(self):
+    def __init__(self) -> None:
         assert not ToolDepiction.ToolsByType, "Only one instance of ToolFinder should be created"
 
         # NOTE: Tools without given file extension and given all files from directory.
@@ -86,6 +90,7 @@ class ToolFinderImplementation:
         self.setup = ToolDepiction("setup", SetupCSVReader, extension="csv")
         self.shell_ps = ToolDepiction("shell-ps", ShellCommandPs)
         self.shell_ss = ToolDepiction("shell-ss", ShellCommandSs)
+        self.shodan = ToolDepiction("shodan", ShodanScan, extension="json")
         self.sdpx = ToolDepiction("spdx", SPDXReader)
         self.ssh_audit = ToolDepiction("ssh-audit", SSHAuditScan)
         self.testssl = ToolDepiction("testssl", TestSSLScan)

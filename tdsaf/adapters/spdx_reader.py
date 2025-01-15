@@ -1,6 +1,6 @@
 """SPDX SBOM reading tool"""
 
-from io import BytesIO
+from io import BufferedReader
 import json
 from typing import cast
 
@@ -16,7 +16,7 @@ from tdsaf.common.verdict import Verdict
 
 class SPDXJson:
     """JSON format SPDX SBOM reader"""
-    def __init__(self, file: BytesIO):
+    def __init__(self, file: BufferedReader) -> None:
         self.file = json.load(file)
 
     def read(self) -> list[SoftwareComponent]:
@@ -38,15 +38,15 @@ class SPDXJson:
 
 class SPDXReader(NodeComponentTool):
     """Read SPDX component description for a software"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("spdx", ".json", system)
         self.tool.name = "SPDX SBOM"
 
     def filter_component(self, component: NodeComponent) -> bool:
         return isinstance(component, Software)
 
-    def process_component(self, component: NodeComponent, data_file: BytesIO, interface: EventInterface,
-                       source: EvidenceSource):
+    def process_component(self, component: NodeComponent, data_file: BufferedReader, interface: EventInterface,
+                       source: EvidenceSource) -> None:
         software = cast(Software, component)
         evidence = Evidence(source)
         properties = set()
@@ -78,5 +78,3 @@ class SPDXReader(NodeComponentTool):
         if self.send_events:
             ev = PropertyEvent(evidence, software, Properties.COMPONENTS.value_set(properties))
             interface.property_update(ev)
-
-        return True

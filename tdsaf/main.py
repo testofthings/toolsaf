@@ -374,6 +374,13 @@ class IP(ProtocolConfigurer):
         self.administration = administration
 
 
+class MQTT(ProtocolConfigurer):
+    """MQTT Configurer"""
+    def __init__(self, port: int=1883) -> None:
+        ProtocolConfigurer.__init__(self, "MQTT")
+        self.port = port
+
+
 class TLS(ProtocolConfigurer):
     """TLS configurer"""
     def __init__(self, port=443, auth: Optional[bool] = None):

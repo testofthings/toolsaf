@@ -1,7 +1,7 @@
 """Model inspector"""
 
 import logging
-from typing import Dict, Optional, Set
+from typing import Dict, Optional, Set, List
 
 from tdsaf.common.address import AnyAddress
 from tdsaf.common.basics import ExternalActivity, Status
@@ -17,7 +17,7 @@ from tdsaf.common.verdict import Verdict
 
 class Inspector(EventInterface):
     """Inspector"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         self.matcher = SystemMatcher(system)
         self.system = system
         self.logger = logging.getLogger("inspector")
@@ -26,14 +26,14 @@ class Inspector(EventInterface):
         self.known_entities: Set[Entity] = set()            # known entities
         self._list_hosts()
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset the system clearing all evidence"""
         self.matcher.reset()
         self.connection_count.clear()
         self.direction.clear()
         self._list_hosts()
 
-    def _list_hosts(self):
+    def _list_hosts(self) -> None:
         """List all hosts"""
         self.known_entities.clear()
         self.known_entities.update(self.system.iterate_all())
@@ -78,8 +78,8 @@ class Inspector(EventInterface):
 
         updated = set()   # entity which status updated
 
-        def update_seen_status(entity: Addressable):
-            changed = []
+        def update_seen_status(entity: Addressable) -> None:
+            changed: List[Entity] = []
             entity.set_seen_now(changed)
             updated.update(changed)
 
@@ -117,7 +117,7 @@ class Inspector(EventInterface):
                 update_seen_status(target)
 
         # these entities to send events, in this order
-        entities = [conn, source, source.get_parent_host(), target, target.get_parent_host()]
+        entities: List[Entity] = [conn, source, source.get_parent_host(), target, target.get_parent_host()]
         for ent in entities:
             is_new = self._check_entity(ent)
             if is_new:
@@ -134,18 +134,22 @@ class Inspector(EventInterface):
         for ent in entities:
             if ent not in updated:
                 continue
-            ev = Properties.EXPECTED.verdict(ent.get_expected_verdict())
+            exp_ver = ent.get_expected_verdict()
+            assert exp_ver, f"Entity in update list, but verdict unkonwn {ent.long_name()}"
+            ev = Properties.EXPECTED.verdict(exp_ver)
             self.system.call_listeners(lambda ln: ln.property_change(ent, ev))  # pylint: disable=cell-var-from-loop
             updated.discard(ent)
         return conn
 
     def name(self, event: NameEvent) -> Optional[Host]:
         address = event.address
-        if event.service and event.service.captive_portal and event.address in event.service.parent.addresses:
+        if event.service and event.service.captive_portal \
+                and event.address in event.service.get_parent_host().addresses:
             address = None  # it is just redirecting to itself
         name = event.tag or event.name
+        assert name, "Name event without tag or name"
         h, changes = self.system.learn_named_address(name, address)
-        if h not in self.known_entities:
+        if h is not None and h not in self.known_entities:
             # new host
             if h.status == Status.UNEXPECTED:
                 # unexpected host, check if it can be external
@@ -164,10 +168,11 @@ class Inspector(EventInterface):
         elif not changes:
             # old host and nothing learned -> stop this maddness to save resources
             return None
-        self.system.call_listeners(lambda ln: ln.address_change(h))
+        if h:
+            self.system.call_listeners(lambda ln: ln.address_change(h))
         return h
 
-    def property_update(self, update: PropertyEvent) -> Entity:
+    def property_update(self, update: PropertyEvent) -> Optional[Entity]:
         s = update.entity
         if s.status in {Status.PLACEHOLDER, Status.UNEXPECTED}:
             # no properties for placeholders or unexpected entities
@@ -239,5 +244,5 @@ class Inspector(EventInterface):
             self.system.call_listeners(lambda ln: ln.property_change(ent, value))
         return ent
 
-    def __repr__(self):
+    def __repr__(self)-> str:
         return self.system.__repr__()

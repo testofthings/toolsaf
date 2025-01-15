@@ -1,12 +1,11 @@
 """Batch tool-data import"""
 
-from ast import Set
 from datetime import datetime
 import json
 import logging
 import pathlib
-import io
-from typing import Dict, List, Optional
+from io import BufferedReader
+from typing import Dict, List, Optional, Set
 
 from tdsaf.common.address import Addresses, AnyAddress
 from tdsaf.common.basics import ExternalActivity
@@ -19,7 +18,8 @@ from tdsaf.common.traffic import Evidence, EvidenceSource
 
 class BatchImporter:
     """Batch importer for importing a batch of files from a directory."""
-    def __init__(self, interface: EventInterface, label_filter: 'LabelFilter' = None, load_baseline=False) -> None:
+    def __init__(self, interface: EventInterface, label_filter: Optional['LabelFilter'] = None,
+                 load_baseline: bool=False) -> None:
         self.interface = interface
         self.system = interface.get_system()
         self.label_filter = label_filter or LabelFilter()
@@ -32,7 +32,7 @@ class BatchImporter:
         # store batch hierarchy
         self.batch_data: List[BatchData] = []
 
-    def import_batch(self, file: pathlib.Path):
+    def import_batch(self, file: pathlib.Path) -> None:
         """Import a batch of files from a directory or zip file recursively."""
         if file.is_dir:
             bd = BatchData(FileMetaInfo())
@@ -115,8 +115,8 @@ class BatchImporter:
                 else:
                     self._import_batch(a_file, b_data)
 
-    def _do_process(self, stream: io.BytesIO, file_path: pathlib.Path, data: 'BatchData', tool: ToolDepiction,
-                    skip_processing: bool):
+    def _do_process(self, stream: BufferedReader, file_path: pathlib.Path, data: 'BatchData', tool: ToolDepiction,
+                    skip_processing: bool) -> None:
         """Process a file """
         info = data.meta_info
         if not skip_processing:
@@ -146,10 +146,12 @@ class BatchImporter:
         self.logger.info("skipping unsupported '%s' type %s", file_name, info.file_type)
 
     def _do_process_files(self, files: List[pathlib.Path], data: 'BatchData', tool: ToolDepiction,
-                          skip_processing: bool):
+                          skip_processing: bool) -> None:
         """Process files"""
         info = data.meta_info
         reader = tool.create_tool(self.system)
+        if not reader:
+            return
         reader.load_baseline = info.load_baseline or self.load_baseline
 
         if skip_processing:
@@ -179,9 +181,9 @@ class BatchImporter:
 
 class FileMetaInfo:
     """Batch file information."""
-    def __init__(self, label="", file_type="", parent: Optional['FileMetaInfo'] = None) -> None:
-        self.name = label
+    def __init__(self, label: str="", file_type: str="", parent: Optional['FileMetaInfo'] = None) -> None:
         self.label = label
+        self.name = label
         self.file_load_order: List[str] = []
         self.file_type = file_type
         self.from_pipe = False
@@ -222,7 +224,7 @@ class BatchData:
         return str(self.meta_info)
 
     @classmethod
-    def parse_from_stream(cls, stream: io.BytesIO, directory_name: str, system: IoTSystem,
+    def parse_from_stream(cls, stream: BufferedReader, directory_name: str, system: IoTSystem,
                           parent_meta: Optional['FileMetaInfo'] = None) -> 'BatchData':
         """Parse from stream"""
         return cls.parse_from_json(json.load(stream), directory_name, system, parent_meta)
@@ -267,7 +269,7 @@ class BatchData:
 
 class LabelFilter:
     """Filter labels"""
-    def __init__(self, label_specification="") -> None:
+    def __init__(self, label_specification: str="") -> None:
         """Initialize the filter"""
         self.explicit_include = True
         self.included: Set[str] = set()

@@ -1,6 +1,6 @@
 """Mitmproxy log reader"""
 
-from io import BytesIO, TextIOWrapper
+from io import BufferedReader, TextIOWrapper
 import re
 
 from tdsaf.common.address import DNSName, HWAddresses
@@ -15,12 +15,13 @@ from tdsaf.common.verdict import Verdict
 
 class MITMLogReader(SystemWideTool):
     """Read MITM log created the tls_check MITMproxy add-on"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("mitm", system)
         self.tool.name = "MITM tool"
         self.data_file_suffix = ".log"
 
-    def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource) -> bool:
+    def process_file(self, data: BufferedReader, file_name: str, interface: EventInterface,
+                     source: EvidenceSource) -> bool:
         """Read a log file"""
         evidence = Evidence(source)
         names = set()

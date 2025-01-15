@@ -1,7 +1,7 @@
 """Censys scan result tool"""
 
 import argparse
-from io import BytesIO
+from io import BufferedReader
 import json
 import logging
 import pathlib
@@ -19,15 +19,15 @@ from tdsaf.common.verdict import Verdict
 
 class CensysScan(EndpointTool):
     """Censys scan tool"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("censys", ".json", system)
         self.tool.name = "Censys"
 
     def filter_node(self, node: NetworkNode) -> bool:
         return isinstance(node, Host)
 
-    def process_endpoint(self, endpoint: AnyAddress, stream: BytesIO, interface: EventInterface,
-                         source: EvidenceSource):
+    def process_endpoint(self, endpoint: AnyAddress, stream: BufferedReader, interface: EventInterface,
+                         source: EvidenceSource) -> None:
         raw = json.load(stream)
 
         evidence = Evidence(source)
@@ -36,7 +36,7 @@ class CensysScan(EndpointTool):
         for s in raw.get('services', []):
             service_name = s.get('service_name', '')
             protocol = Protocol.get_protocol(service_name.upper())
-            transport = Protocol.get_protocol(s.get('transport_protocol'), Protocol.ANY)
+            transport = Protocol.protocol(s.get('transport_protocol'), Protocol.ANY)
             port = int(s['port'])
 
             self.logger.info("%s %s %d: %s", endpoint, transport, port, service_name)

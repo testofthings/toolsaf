@@ -25,7 +25,7 @@ class Verdict(enum.Enum):
         raise NotImplementedError(f"Cannot update {verdicts}")
 
     @classmethod
-    def aggregate(cls, *verdicts: 'Verdict') -> 'Verdict':
+    def aggregate(cls, *verdicts: Optional['Verdict']) -> 'Verdict':
         """Resolve aggregate verdict for entity from child verdicts, never return ignore."""
         if not verdicts:
             return Verdict.INCON

@@ -8,7 +8,7 @@ from tdsaf.common.property import PropertyKey
 
 class ReleaseInfo:
     """Release information for software, firmware, etc. (NOTE: Not really used now)"""
-    def __init__(self, sw_name: str):
+    def __init__(self, sw_name: str) -> None:
         self.sw_name = sw_name
         self.latest_release: Optional[datetime.datetime] = None
         self.latest_release_name = "?"
@@ -25,7 +25,7 @@ class ReleaseInfo:
         """Print date object as string"""
         return date.strftime('%Y-%m-%d') if date else ""
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         r = f"Latest release {self.latest_release_name}"
         if self.latest_release:
             r += f" {self.print_time(self.latest_release)}"

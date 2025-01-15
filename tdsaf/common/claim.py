@@ -2,7 +2,7 @@
 
 class AbstractClaim:
     """The base class for claims the system, entity, node, connection, etc."""
-    def __init__(self, description=""):
+    def __init__(self, description: str="") -> None:
         self.description = description
 
     def text(self) -> str:
@@ -13,5 +13,5 @@ class AbstractClaim:
         """Get the base claim, different from self when claim copied for multiple checks"""
         return self
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.description}"

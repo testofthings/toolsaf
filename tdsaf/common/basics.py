@@ -3,7 +3,7 @@
 import enum
 
 
-class HostType(enum.Enum):
+class HostType(enum.StrEnum):
     """Host types"""
     GENERIC = ""               # default, unspecified kind of host
     DEVICE = "Device"          # local device
@@ -13,7 +13,7 @@ class HostType(enum.Enum):
     ADMINISTRATIVE = "Admin"   # administration, match ConnectionType
 
 
-class ConnectionType(enum.Enum):
+class ConnectionType(enum.StrEnum):
     """Connection types"""
     UNKNOWN = ""               # default, assumed plaintext data
     ENCRYPTED = "Encrypted"    # strong encryption
@@ -29,7 +29,7 @@ class ExternalActivity(enum.IntEnum):
     UNLIMITED = 3              # unlimited activity, including client connections
 
 
-class Status(enum.Enum):
+class Status(enum.StrEnum):
     """Entity status"""
     PLACEHOLDER = "Placeholder"    # Placeholder for unexpected or external entity
     EXPECTED = "Expected"          # Expected entity

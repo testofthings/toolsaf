@@ -2,7 +2,8 @@
 
 import json
 from zipfile import ZipFile
-from io import BytesIO
+from io import BufferedReader
+from typing import Set, Tuple, Dict, Any, cast
 
 from tdsaf.common.address import HWAddresses
 from tdsaf.core.event_interface import EventInterface
@@ -15,29 +16,32 @@ from tdsaf.common.verdict import Verdict
 
 class CertMITMReader(SystemWideTool):
     """Read MITM logs created by certmitm"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__("certmitm", system)
         self.tool.name = "certmitm tool"
         self.data_file_suffix = ".zip"
 
-    def process_file(self, data: BytesIO, file_name: str, interface: EventInterface, source: EvidenceSource) -> bool:
+    def process_file(self, data: BufferedReader, file_name: str, interface: EventInterface,
+                     source: EvidenceSource) -> bool:
         """Read log file"""
         evidence = Evidence(source)
-        connections = set()
+        connections: Set[Tuple[str, str, str]] = set()
 
         # certmitm stores found issues in JSON format to errors.txt
         with ZipFile(data) as zip_file:
             for file in zip_file.filelist:
                 if "errors.txt" in file.filename:
                     with zip_file.open(file.filename) as error_file:
-                        for conn in error_file.read().decode("utf-8").rstrip().split("\n"):
-                            conn = json.loads(conn)
-                            connections.add((conn['client'], conn['destination']['ip'], conn['destination']['port']))
+                        for conn_str in error_file.read().decode("utf-8").rstrip().split("\n"):
+                            conn_json = cast(Dict[str, Any], json.loads(conn_str))
+                            connections.add(
+                                (conn_json['client'], conn_json['destination']['ip'], conn_json['destination']['port'])
+                            )
 
-        for conn in connections:
-            source, target, port = conn
+        for connection in connections:
+            connection_source, target, port = connection
             flow = IPFlow.tcp_flow(
-                HWAddresses.NULL.data, source, 0,
+                HWAddresses.NULL.data, connection_source, 0,
                 HWAddresses.NULL.data, target, int(port))
             flow.evidence = evidence
             Properties.MITM.put_verdict(flow.properties, Verdict.FAIL)

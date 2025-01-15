@@ -95,7 +95,7 @@ def test_process_component():
         {"name": "c2", "versionInfo": "1.0"}
     ])
 
-    assert reader.process_component(sw, data, setup.get_inspector(), MagicMock())
+    reader.process_component(sw, data, setup.get_inspector(), MagicMock())
     assert sw.properties[PropertyKey("component", "c1")].verdict == Verdict.PASS
     assert sw.properties[PropertyKey("component", "c2")].verdict == Verdict.PASS
 
@@ -109,7 +109,7 @@ def test_process_component_in_statement_not_in_data():
 
     data = _get_json_data(packages=[])
 
-    assert reader.process_component(sw, data, setup.get_inspector(), MagicMock())
+    reader.process_component(sw, data, setup.get_inspector(), MagicMock())
     assert sw.properties[PropertyKey("component", "c1")].verdict == Verdict.FAIL
 
 
@@ -123,5 +123,5 @@ def test_process_component_not_in_statement_in_data():
         {"name": "c1", "versionInfo": "1.0"}
     ])
 
-    assert reader.process_component(sw, data, setup.get_inspector(), MagicMock())
+    reader.process_component(sw, data, setup.get_inspector(), MagicMock())
     assert sw.properties[PropertyKey("component", "c1")].verdict == Verdict.FAIL
