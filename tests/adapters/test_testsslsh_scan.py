@@ -1,6 +1,8 @@
 import pytest
+import warnings
 from pathlib import Path
 from unittest.mock import MagicMock
+warnings.filterwarnings("ignore", category=pytest.PytestCollectionWarning)
 
 from tdsaf.adapters.testsslsh_scan import TestSSLScan
 from tdsaf.common.address import EndpointAddress

@@ -1,4 +1,6 @@
 import pytest
+import warnings
+warnings.filterwarnings("ignore", category=pytest.PytestCollectionWarning)
 
 from tdsaf.adapters.tool_finder import ToolFinder
 from tdsaf.adapters.android_manifest_scan import AndroidManifestScan
