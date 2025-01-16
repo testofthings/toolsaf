@@ -197,6 +197,7 @@ class ShellCommandSs(EndpointTool):
                     t, s = conn
                 s_ip, t_ip = s.host, t.host
                 assert isinstance(s_ip, IPAddress) and isinstance(t_ip, IPAddress)
+                assert s.protocol
                 flow = IPFlow(evidence,
                               source=(HWAddresses.NULL, s_ip, s.port), target=(HWAddresses.NULL, t_ip, t.port),
                               protocol=s.protocol)
