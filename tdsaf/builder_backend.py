@@ -794,7 +794,7 @@ class EAPOLBackend(ProtocolBackend):
 class FTPBackend(ProtocolBackend):
     """FTP protocol backend"""
 
-    def __init__(self, configurer: FTP):
+    def __init__(self, configurer: FTP) -> None:
         super().__init__(Protocol.TCP, port=configurer.port, protocol=Protocol.FTP, name=configurer.name)
 
 class HTTPBackend(ProtocolBackend):
@@ -847,7 +847,7 @@ class IPBackend(ProtocolBackend):
 class MQTTBackend(ProtocolBackend):
     """MQTT protocol backend"""
 
-    def __init__(self, configurer: MQTT):
+    def __init__(self, configurer: MQTT) -> None:
         super().__init__(Protocol.TCP, port=configurer.port, protocol=Protocol.MQTT, name=configurer.name)
 
 
