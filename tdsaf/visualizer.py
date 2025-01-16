@@ -2,10 +2,8 @@
 
 from typing import List, Dict, Tuple
 
-from tdsaf.client_api import ClientAPI, RequestContext
 from tdsaf.main import ConfigurationException
-from tdsaf.core.model import NetworkNode, Connection, Host
-from tdsaf.core.registry import Registry
+from tdsaf.core.model import NetworkNode
 
 
 class Visualizer:
@@ -53,32 +51,3 @@ class Visualizer:
                     self.coordinates[ent] = x + 1, y + 2
                     max_x, max_y = max(max_x, x + 1), max(max_y, y + 3)
         self.dimensions = max_x + 1, max_y + 1
-
-
-class VisualizerAPI(ClientAPI):
-    """Extend ClientAPI with coordinates and images"""
-    def __init__(self, registry: Registry, visualizer: Visualizer):
-        super().__init__(registry)
-        self.visualizer = visualizer
-
-    def get_entity(self, parent: NetworkNode, context: RequestContext) -> Tuple[NetworkNode, Dict]:
-        e, r = super().get_entity(parent, context)
-        # Note: external hosts are listed, but without coordinates
-        if not context.request.get_visual or not isinstance(e, Host) or not e.is_relevant() or not e.visual:
-            return e, r
-        r["xy"] = self.visualizer.place(e)
-        if e in self.visualizer.images:
-            r["image"] = self.visualizer.images[e]
-        return e, r
-
-    def get_connection(self, connection: Connection, context: RequestContext) -> Dict:
-        r = super().get_connection(connection, context)
-        # Note: external connections are listed, but without coordinates
-        if not context.request.get_visual or not connection.is_relevant():
-            return r
-        if not (connection.source.get_parent_host().visual and connection.target.get_parent_host().visual):
-            return r  # end hidden, cannot draw
-        s = self.visualizer.place(connection.source.get_parent_host())
-        t = self.visualizer.place(connection.target.get_parent_host())
-        r["xy_line"] = [s, t] if s and t else []
-        return r
