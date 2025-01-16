@@ -3,7 +3,7 @@
 from io import BufferedReader
 import json
 import logging
-from typing import Optional, Dict
+from typing import Any, Optional, Dict, Set
 
 from tdsaf.common.address import DNSName, IPAddress, AnyAddress
 from tdsaf.core.event_interface import EventInterface
@@ -22,7 +22,6 @@ class ToolAdapter:
         self.logger = logging.getLogger(tool_label)
         self.send_events = True  # True to send events to interface
         self.load_baseline = False  # True to load baseline, false to check it
-        self.file_name_map: Dict[str, AnyAddress] = {}  # For tools consuming all files from directory
 
     def process_file(self, data: BufferedReader, file_name: str,
                      interface: EventInterface, source: EvidenceSource) -> bool:
@@ -46,6 +45,9 @@ class ToolAdapter:
             n = f"{host}.{pp[0].value.lower()}.{pp[1]}{self.data_file_suffix}"
         return n
 
+    def get_processed_files(self) -> Set[str]:
+        """Get processed files to check if there are other files"""
+        return set()
 
 class SystemWideTool(ToolAdapter):
     """Apply tool output to system as output indicates"""
@@ -61,6 +63,7 @@ class EndpointTool(ToolAdapter):
         super().__init__(tool_label, system)
         # map from file names into addressable entities
         self.data_file_suffix = data_file_suffix
+        self.file_name_map: Dict[str, AnyAddress] = {}
         self.create_file_name_map()
 
     def filter_node(self, _node: NetworkNode) -> bool:
@@ -109,6 +112,9 @@ class EndpointTool(ToolAdapter):
             if a_file_name not in self.file_name_map and isinstance(a_file_name, str):
                 self.file_name_map[a_file_name] = a
 
+    def get_processed_files(self) -> Set[str]:
+        return set(self.file_name_map.keys())
+
 
 class NetworkNodeTool(ToolAdapter):
     """Tool applies to network nodes"""
@@ -147,6 +153,9 @@ class NetworkNodeTool(ToolAdapter):
                 self.file_name_map[tool.get_file_by_name(c.name)] = c
                 check_component(c)
         check_component(self.system)
+
+    def get_processed_files(self) -> Set[str]:
+        return set(self.file_name_map.keys())
 
 
 class NodeComponentTool(ToolAdapter):
@@ -188,6 +197,9 @@ class NodeComponentTool(ToolAdapter):
             for n in node.children:
                 check_component(n)
         check_component(self.system)
+
+    def get_processed_files(self) -> Set[str]:
+        return set(self.file_name_map.keys())
 
 
 class SimpleFlowTool(SystemWideTool):
