@@ -20,7 +20,7 @@ from tdsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP, I
                         CookieBuilder, HostBuilder, NetworkBuilder, NodeBuilder, NodeVisualBuilder,
                         ConfigurationException, OSBuilder, ProtocolConfigurer, ProtocolType,
                         SensitiveDataBuilder, ServiceBuilder, ServiceGroupBuilder, ServiceOrGroup,
-                        SoftwareBuilder, SystemBuilder, VisualizerBuilder)
+                        SoftwareBuilder, SystemBuilder)
 from tdsaf.core.main_tools import EvidenceLoader, NodeManipulator
 from tdsaf.core.model import Addressable, Connection, Host, IoTSystem, SensitiveData, Service
 from tdsaf.common.property import Properties, PropertyKey
@@ -34,7 +34,6 @@ from tdsaf.core.online_resources import OnlineResource
 from tdsaf.common.verdict import Verdict
 from tdsaf.common.android import MobilePermissions
 from tdsaf.adapters.spdx_reader import SPDXJson
-from tdsaf.visualizer import Visualizer
 from tdsaf.diagram_visualizer import DiagramVisualizer
 
 
@@ -46,7 +45,6 @@ class SystemBackend(SystemBuilder):
         self.hosts_by_name: Dict[str, 'HostBackend'] = {}
         self.entity_by_address: Dict[AddressAtNetwork, 'NodeBackend'] = {}
         self.attachments: List[pathlib.Path] = []
-        self.visualizer = Visualizer()
         self.diagram = DiagramVisualizer(self)
         self.loaders: List[EvidenceLoader] = []
         self.protocols: Dict[Any, 'ProtocolBackend'] = {}
@@ -140,9 +138,6 @@ class SystemBackend(SystemBuilder):
         assert p.exists(), f"File not found: {p}"
         self.attachments.append(p.absolute())
         return self
-
-    def visualize(self) -> 'VisualizerBackend':
-        return VisualizerBackend(self.visualizer)
 
     def diagram_visualizer(self) -> 'DiagramVisualizer':
         return self.diagram
@@ -624,29 +619,6 @@ class NodeVisualBackend(NodeVisualBuilder):
     def image(self, url: str, scale: int=100) -> Self:
         self.image_url = url
         self.image_scale = scale
-        return self
-
-
-class VisualizerBackend(VisualizerBuilder):
-    """Visual builder backend"""
-
-    def __init__(self, visualizer: Visualizer) -> None:
-        self.visualizer = visualizer
-
-    def place(self, *places: str) -> Self:
-        self.visualizer.placement = places
-        return self
-
-    def where(self, handles: Dict[str, Union[NodeBuilder, NodeVisualBuilder]]) -> Self:
-        for h, b in handles.items():
-            if isinstance(b, NodeVisualBackend):
-                ent = b.entity.entity.get_parent_host()
-                if b.image_url:
-                    self.visualizer.images[ent] = b.image_url, b.image_scale
-            else:
-                assert isinstance(b, NodeBackend)
-                ent = b.entity.get_parent_host()
-            self.visualizer.handles[h] = ent
         return self
 
 
