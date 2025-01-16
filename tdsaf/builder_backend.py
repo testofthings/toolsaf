@@ -6,7 +6,7 @@ import logging
 import pathlib
 import sys
 import inspect
-from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union, cast
 
 from tdsaf.common.address import (AddressAtNetwork, Addresses, AnyAddress, DNSName, EndpointAddress, EntityTag,
                                   HWAddress, HWAddresses, IPAddress, IPAddresses, Network, Protocol)
@@ -41,7 +41,7 @@ from tdsaf.diagram_visualizer import DiagramVisualizer
 class SystemBackend(SystemBuilder):
     """System model builder"""
 
-    def __init__(self, name="Unnamed system"):
+    def __init__(self, name: str="Unnamed system") -> None:
         self.system = IoTSystem(name)
         self.hosts_by_name: Dict[str, 'HostBackend'] = {}
         self.entity_by_address: Dict[AddressAtNetwork, 'NodeBackend'] = {}
@@ -51,7 +51,7 @@ class SystemBackend(SystemBuilder):
         self.loaders: List[EvidenceLoader] = []
         self.protocols: Dict[Any, 'ProtocolBackend'] = {}
 
-    def network(self, subnet="", ip_mask: Optional[str] = None) -> 'NetworkBuilder':
+    def network(self, subnet: str="", ip_mask: Optional[str] = None) -> 'NetworkBuilder':
         if subnet:
             nb = NetworkBackend(self, subnet)
         else:
@@ -60,7 +60,7 @@ class SystemBackend(SystemBuilder):
             nb.mask(ip_mask)
         return nb
 
-    def device(self, name="") -> 'HostBackend':
+    def device(self, name: str="") -> 'HostBackend':
         name = name or self._free_host_name("Device")
         b = self.get_host_(name, "Internet Of Things device")
         b.entity.host_type = HostType.DEVICE
@@ -68,14 +68,14 @@ class SystemBackend(SystemBuilder):
         b.entity.external_activity = ExternalActivity.PASSIVE
         return b
 
-    def backend(self, name="") -> 'HostBackend':
+    def backend(self, name: str="") -> 'HostBackend':
         name = name or self._free_host_name("Backend")
         b = self.get_host_(name, "Backend service over Internet")
         b.entity.host_type = HostType.REMOTE
         b.entity.external_activity = ExternalActivity.OPEN
         return b
 
-    def mobile(self, name="") -> 'HostBackend':
+    def mobile(self, name: str="") -> 'HostBackend':
         name = name or self._free_host_name("Mobile")
         b = self.get_host_(name, "Mobile application")
         b.entity.host_type = HostType.MOBILE
@@ -83,13 +83,13 @@ class SystemBackend(SystemBuilder):
         b.entity.external_activity = ExternalActivity.UNLIMITED
         return b
 
-    def browser(self, name="") -> 'HostBackend':
+    def browser(self, name: str="") -> 'HostBackend':
         name = name or self._free_host_name("Browser")
         b = self.get_host_(name, "Browser")
         b.entity.host_type = HostType.BROWSER
         return b
 
-    def any(self, name="", node_type: HostType = None) -> 'HostBackend':
+    def any(self, name: str="", node_type: Optional[HostType] = None) -> 'HostBackend':
         name = name or self._free_host_name("Host")
         b = self.get_host_(name, "Any host")
         b.entity.any_host = True
@@ -98,7 +98,7 @@ class SystemBackend(SystemBuilder):
         b.entity.external_activity = ExternalActivity.UNLIMITED
         return b
 
-    def infra(self, name="") -> 'HostBackend':
+    def infra(self, name: str="") -> 'HostBackend':
         name = name or self._free_host_name("Infra")
         b = self.get_host_(name, "Part of the testing infrastructure")
         b.entity.host_type = HostType.ADMINISTRATIVE
@@ -116,7 +116,7 @@ class SystemBackend(SystemBuilder):
             else f"{HWAddresses.BROADCAST}"
         return self.multicast(add, protocol)
 
-    def data(self, names: List[str], personal=False, password=False) -> 'SensitiveDataBackend':
+    def data(self, names: List[str], personal: bool=False, password: bool=False) -> 'SensitiveDataBackend':
         d = [SensitiveData(n, personal=personal, password=password)
              for n in names]
         return SensitiveDataBackend(self, d)
@@ -172,7 +172,8 @@ class SystemBackend(SystemBuilder):
             if isinstance(protocol, ProtocolConfigurer):
                 p = protocol
             else:
-                p = protocol()
+                # NOTE: All constructors are assumed to with parameterless
+                p = protocol()  # type: ignore [call-arg]
             assert isinstance(
                 p, ProtocolConfigurer), f"Not protocol type: {p.__class__.__name__}"
             be = self.protocols[p] = ProtocolBackend.new(p)
@@ -186,7 +187,7 @@ class SystemBackend(SystemBuilder):
                 h.entity.name: h for h in self.hosts_by_name.values()}
         return n
 
-    def finish_(self):
+    def finish_(self) -> None:
         """Finish the model"""
         # each real host must have software
         for h in self.system.get_hosts():
@@ -212,9 +213,9 @@ class SystemBackend(SystemBuilder):
 class NodeBackend(NodeBuilder, NodeManipulator):
     """Node building backend"""
 
-    def __init__(self, entity: Addressable, system: SystemBackend):
+    def __init__(self, entity: Addressable, system: SystemBackend) -> None:
         super().__init__(system)
-        self.system = system
+        self.system: SystemBackend = system
         self.entity = entity
         self.parent: Optional[NodeBackend] = None
         self.sw: Dict[str, SoftwareBackend] = {}
@@ -269,15 +270,16 @@ class NodeBackend(NodeBuilder, NodeManipulator):
 
     def __rshift__(self, target: ServiceOrGroup) -> 'ConnectionBackend':
         if isinstance(target, ServiceGroupBackend):
-            c = None
+            c: ConnectionBackend
             for t in target.services:
                 c = t.connection_(self)
             return c
+        assert isinstance(target, ServiceBackend)
         return target.connection_(self)
 
     # Backend methods
 
-    def get_node(self) -> NodeBuilder:
+    def get_node(self) -> Addressable:
         return self.entity
 
     def new_address_(self, address: AnyAddress) -> AnyAddress:
@@ -295,7 +297,7 @@ class NodeBackend(NodeBuilder, NodeManipulator):
             self.system.entity_by_address[key] = self
         return address
 
-    def new_service_(self, name: str, port=-1):
+    def new_service_(self, name: str, port: int=-1) -> Service:
         """Create new service here"""
         return Service(Service.make_name(name, port), self.entity)
 
@@ -303,21 +305,20 @@ class NodeBackend(NodeBuilder, NodeManipulator):
         """Get the software entity"""
         return self.software().sw
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.entity.__repr__()
 
 
 class ServiceBackend(NodeBackend, ServiceBuilder):
     """Service builder backend"""
 
-    def __init__(self, host: 'HostBackend', service: Service):
+    def __init__(self, host: 'HostBackend', service: Service) -> None:
         NodeBackend.__init__(self, service, host.system)
         ServiceBuilder.__init__(self, host.system)
-        self.entity = service
-        self.configurer: Optional[ProtocolConfigurer] = None
+        self.entity: Service = service
         self.entity.match_priority = 10
         self.entity.external_activity = host.entity.external_activity
-        self.parent = host
+        self.parent: HostBackend = host
         self.source_fixer: Optional[Callable[[
             'HostBackend'], 'ServiceBackend']] = None
 
@@ -358,7 +359,7 @@ class ServiceBackend(NodeBackend, ServiceBuilder):
 class ServiceGroupBackend(ServiceGroupBuilder):
     """Service group builder backend"""
 
-    def __init__(self, services: List[ServiceBackend]):
+    def __init__(self, services: List[ServiceBackend]) -> None:
         assert len(services) > 0, "Empty list of services"
         self.services = services
 
@@ -369,24 +370,25 @@ class ServiceGroupBackend(ServiceGroupBuilder):
         elif isinstance(other, ServiceBackend):
             g.append(other)
         else:
+            pro_type = cast(ProtocolType, other)
             system = self.services[0].system
-            conf = system.get_protocol_backend(other)
+            conf = system.get_protocol_backend(pro_type)
             g.append(conf.get_service_(self.services[0].parent))
         return ServiceGroupBackend(g)
 
     # Backend methods
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return " / ".join([f"{s.entity.name}" for s in self.services])
 
 
 class HostBackend(NodeBackend, HostBuilder):
     """Host builder backend"""
 
-    def __init__(self, entity: Host, system: SystemBackend):
+    def __init__(self, entity: Host, system: SystemBackend) -> None:
         NodeBackend.__init__(self, entity, system)
         HostBuilder.__init__(self, system)
-        self.entity = entity
+        self.entity: Host = entity
         system.system.children.append(entity)
         entity.status = Status.EXPECTED
         system.hosts_by_name[entity.name] = self
@@ -394,11 +396,11 @@ class HostBackend(NodeBackend, HostBuilder):
             self.name(entity.name)
         self.service_builders: Dict[Tuple[Protocol, int], ServiceBackend] = {}
 
-    def hw(self, address: str) -> 'HostBackend':
+    def hw(self, address: str) -> Self:
         self.new_address_(HWAddress.new(address))
         return self
 
-    def ip(self, address: str) -> 'HostBackend':
+    def ip(self, address: str) -> Self:
         self.new_address_(IPAddress.new(address))
         return self
 
@@ -410,7 +412,8 @@ class HostBackend(NodeBackend, HostBuilder):
     def os(self) -> OSBuilder:
         return OSBackend(self)
 
-    def __lshift__(self, multicast: ServiceBackend) -> 'ConnectionBackend':
+    def __lshift__(self, multicast: ServiceBuilder) -> 'ConnectionBackend':
+        assert isinstance(multicast, ServiceBackend)
         mc = multicast.entity
         assert mc.is_multicast(), "Can only receive multicast"
         # no service created, just connection from this to the multicast node
@@ -421,7 +424,7 @@ class HostBackend(NodeBackend, HostBuilder):
     def cookies(self) -> 'CookieBackend':
         return CookieBackend(self)
 
-    def use_data(self, *data: 'SensitiveDataBackend') -> Self:
+    def use_data(self, *data: SensitiveDataBuilder) -> Self:
         for db in data:
             db.used_by(hosts=[self])
         return self
@@ -434,7 +437,7 @@ class HostBackend(NodeBackend, HostBuilder):
         self.entity.ignore_name_requests.update([DNSName(n) for n in name])
         return self
 
-    def set_property(self, *key: str):
+    def set_property(self, *key: str) -> Self:
         p = PropertyKey.create(key).persistent()
         self.entity.set_property(p.verdict())  # inconclusive
         return self
@@ -452,9 +455,9 @@ class HostBackend(NodeBackend, HostBuilder):
 class SensitiveDataBackend(SensitiveDataBuilder):
     """Sensitive data builder backend"""
 
-    def __init__(self, parent: SystemBackend, data: List[SensitiveData]):
+    def __init__(self, parent: SystemBackend, data: List[SensitiveData]) -> None:
         super().__init__(parent)
-        self.parent = parent
+        self.parent: SystemBackend = parent
         self.data = data
         # all sensitive data lives at least in system
         usage = StoredData.get_data(parent.system)
@@ -468,6 +471,7 @@ class SensitiveDataBackend(SensitiveDataBuilder):
             self.default_location = False
             StoredData.get_data(self.parent.system).sub_components = []
         for h in hosts:
+            assert isinstance(h, HostBackend)
             storage = StoredData.get_data(h.entity)
             for d in self.data:
                 storage.sub_components.append(DataReference(h.entity, d))
@@ -477,7 +481,7 @@ class SensitiveDataBackend(SensitiveDataBuilder):
 class ConnectionBackend(ConnectionBuilder):
     """Connection builder backendq"""
 
-    def __init__(self, connection: Connection, ends: Tuple[NodeBackend, ServiceBackend]):
+    def __init__(self, connection: Connection, ends: Tuple[NodeBackend, ServiceBackend]) -> None:
         self.connection = connection
         self.ends = ends
         self.ends[0].system.system.originals.add(connection)
@@ -486,13 +490,13 @@ class ConnectionBackend(ConnectionBuilder):
         self.connection.con_type = ConnectionType.LOGICAL
         return self
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.connection.__repr__()
 
 
 class NetworkBackend(NetworkBuilder):
     """Network or subnet backend"""
-    def __init__(self, parent: SystemBackend, name=""):
+    def __init__(self, parent: SystemBackend, name: str="") -> None:
         super().__init__(Network(name) if name else parent.system.get_default_network())
         self.parent = parent
         self.name = name
@@ -508,14 +512,16 @@ class NetworkBackend(NetworkBuilder):
 class SoftwareBackend(SoftwareBuilder):
     """Software builder backend"""
 
-    def __init__(self, parent: NodeBackend, software_name: str):
-        self.sw: Software = Software.get_software(parent.entity, software_name)
-        if self.sw is None:
-            self.sw = Software(parent.entity, software_name)
-            parent.entity.add_component(self.sw)
+    def __init__(self, parent: NodeBackend, software_name: str) -> None:
+        sw = Software.get_software(parent.entity, software_name)
+        if sw is None:
+            # all hosts have software
+            sw = Software(parent.entity, software_name)
+            parent.entity.add_component(sw)
+        self.sw: Software = sw
         self.parent = parent
 
-    def updates_from(self, source: Union[ConnectionBackend, ServiceBackend, HostBackend]) -> Self:
+    def updates_from(self, source: Union[ConnectionBuilder, ServiceBuilder, HostBuilder]) -> Self:
         host = self.parent.entity
 
         cs = []
@@ -545,12 +551,29 @@ class SoftwareBackend(SoftwareBuilder):
         # EndOfSupport(ReleaseInfo.parse_time(date)) - not implemented
         return self
 
-    def update_frequency(self, days: float) -> Self:
+    def update_frequency(self, days: int) -> Self:
         """Target update frequency, days"""
         self.sw.info.interval_days = days
         return self
 
-    def sbom(self, components: List[str]=None, file_path: str="") -> Self:
+    def __sbom_from_list(self, components: List[str]) -> None:
+        for c in components:
+            self.sw.components[c] = SoftwareComponent(c, version="")
+            key = PropertyKey("component", c)
+            self.sw.properties[key] = PropertyVerdictValue(Verdict.INCON)
+
+    def __sbom_from_file(self, statement_file_path: pathlib.Path, file_path: str) -> None:
+        try:
+            with (statement_file_path / file_path).resolve().open("rb") as f:
+                for c in SPDXJson(f).read():
+                    self.sw.components[c.name] = c
+                    key = PropertyKey("component", c.name)
+                    self.sw.properties[key] =\
+                        PropertyVerdictValue(Verdict.INCON, explanation=f"version {c.version}")
+        except FileNotFoundError as e:
+            raise ConfigurationException(f"Could not find SBOM file {e.filename}") from e
+
+    def sbom(self, components: Optional[List[str]]=None, file_path: str="") -> Self:
         """Add an SBOM from given list or SPDX JSON file.
            file_path is relative to statement"""
         if not components and not file_path:
@@ -559,21 +582,10 @@ class SoftwareBackend(SoftwareBuilder):
             raise ConfigurationException("Given SBOM file must be SPDX JSON")
 
         if components:
-            for c in components:
-                self.sw.components[c] = SoftwareComponent(c, version="")
-                key = PropertyKey("component", c)
-                self.sw.properties[key] = PropertyVerdictValue(Verdict.INCON)
+            self.__sbom_from_list(components)
         else:
             statement_file_path = pathlib.Path(inspect.stack()[1].filename).parent
-            try:
-                with open((statement_file_path / file_path).resolve(), 'r', encoding="utf-8") as f:
-                    for c in SPDXJson(f).read():
-                        self.sw.components[c.name] = c
-                        key = PropertyKey("component", c.name)
-                        self.sw.properties[key] =\
-                            PropertyVerdictValue(Verdict.INCON, explanation=f"version {c.version}")
-            except FileNotFoundError as e:
-                raise ConfigurationException(f"Could not find SBOM file {e.filename}") from e
+            self.__sbom_from_file(statement_file_path, file_path)
 
         return self
 
@@ -587,19 +599,20 @@ class SoftwareBackend(SoftwareBuilder):
 class CookieBackend(CookieBuilder):
     """Cookie builder backend"""
 
-    def __init__(self, builder: HostBackend):
+    def __init__(self, builder: HostBackend) -> None:
         self.builder = builder
         self.component = Cookies.cookies_for(builder.entity)
 
-    def set(self, cookies: Dict[str, Tuple[str, str, str]]):
+    def set(self, cookies: Dict[str, Tuple[str, str, str]]) -> Self:
         for name, p in cookies.items():
             self.component.cookies[name] = CookieData(p[0], p[1], p[2])
+        return self
 
 
 class NodeVisualBackend(NodeVisualBuilder):
     """Node visual builder backend"""
 
-    def __init__(self, entity: NodeBackend):
+    def __init__(self, entity: NodeBackend) -> None:
         self.entity = entity
         self.image_url: Optional[str] = None
         self.image_scale: int = 100
@@ -608,7 +621,7 @@ class NodeVisualBackend(NodeVisualBuilder):
         self.entity.entity.visual = False
         return self
 
-    def image(self, url: str, scale=100) -> Self:
+    def image(self, url: str, scale: int=100) -> Self:
         self.image_url = url
         self.image_scale = scale
         return self
@@ -617,20 +630,21 @@ class NodeVisualBackend(NodeVisualBuilder):
 class VisualizerBackend(VisualizerBuilder):
     """Visual builder backend"""
 
-    def __init__(self, visualizer: Visualizer):
+    def __init__(self, visualizer: Visualizer) -> None:
         self.visualizer = visualizer
 
     def place(self, *places: str) -> Self:
         self.visualizer.placement = places
         return self
 
-    def where(self, handles: Dict[str, Union[NodeBackend, NodeVisualBackend]]) -> Self:
+    def where(self, handles: Dict[str, Union[NodeBuilder, NodeVisualBuilder]]) -> Self:
         for h, b in handles.items():
             if isinstance(b, NodeVisualBackend):
                 ent = b.entity.entity.get_parent_host()
                 if b.image_url:
                     self.visualizer.images[ent] = b.image_url, b.image_scale
             else:
+                assert isinstance(b, NodeBackend)
                 ent = b.entity.get_parent_host()
             self.visualizer.handles[h] = ent
         return self
@@ -648,9 +662,10 @@ class ProtocolBackend:
         be = pt_cre(configurer)
         be.networks = [n.network for n in configurer.networks]
         be.specific_address = configurer.address or Addresses.ANY
+        assert isinstance(be, ProtocolBackend)
         return be
 
-    def __init__(self, transport: Optional[Protocol] = None, protocol: Protocol = Protocol.ANY, name="", port=-1):
+    def __init__(self, transport: Protocol, protocol: Protocol = Protocol.ANY, name: str="", port: int=-1) -> None:
         self.transport = transport
         self.protocol = protocol
         self.service_name = name
@@ -661,18 +676,18 @@ class ProtocolBackend:
         self.authentication = False
         self.networks: List[Network] = []
         self.specific_address: AnyAddress = Addresses.ANY
-        self.external_activity: Optional[ExternalActivity.BANNED] = None
+        self.external_activity: Optional[ExternalActivity] = None
         self.critical_parameter: List[SensitiveData] = []
 
-    def as_multicast_(self, address: str, system: SystemBackend) -> ServiceBackend:
+    def as_multicast_(self, address: str, system: SystemBackend) -> 'ServiceBackend':
         """The protocol as multicast"""
         raise ConfigurationException(
             f"{self.service_name} cannot be broad/multicast")
 
     def get_service_(self, parent: HostBackend) -> ServiceBackend:
         """Create or get service builder"""
-        old = parent.service_builders.get(
-            (self.transport, self.service_port if self.port_to_name else -1))
+        key = self.transport, (self.service_port if self.port_to_name else -1)
+        old = parent.service_builders.get(key)
         if old:
             return old
         b = self._create_service(parent)
@@ -682,6 +697,7 @@ class ProtocolBackend:
         parent.entity.children.append(b.entity)
         if not b.entity.addresses:
             # E.g. DHCP service fills this oneself
+            assert self.transport, "transport was None"
             ep_add = EndpointAddress(self.specific_address, self.transport, self.service_port)
             b.entity.addresses.add(ep_add)
         if self.critical_parameter:
@@ -693,7 +709,6 @@ class ProtocolBackend:
     def _create_service(self, parent: HostBackend) -> ServiceBackend:
         s = ServiceBackend(parent,
                            parent.new_service_(self.service_name, self.service_port if self.port_to_name else -1))
-        s.configurer = self
         s.entity.authentication = self.authentication
         s.entity.host_type = self.host_type
         s.entity.con_type = self.con_type
@@ -703,14 +718,14 @@ class ProtocolBackend:
         s.entity.networks = self.networks
         return s
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.service_name}"
 
 
 class ARPBackend(ProtocolBackend):
     """ARP protocol backend"""
 
-    def __init__(self, _configurer: ARP, protocol=Protocol.ARP, broadcast_endpoint=False):
+    def __init__(self, _configurer: ARP, protocol: Protocol=Protocol.ARP, broadcast_endpoint: bool=False) -> None:
         super().__init__(Protocol.ARP, name="ARP")
         self.host_type = HostType.ADMINISTRATIVE
         self.con_type = ConnectionType.ADMINISTRATIVE
@@ -743,6 +758,7 @@ class ARPBackend(ProtocolBackend):
             bc_s.entity.host_type = HostType.ADMINISTRATIVE
             bc_s.entity.con_type = ConnectionType.ADMINISTRATIVE
             bc_s.entity.external_activity = bc_node.entity.external_activity
+            assert self.external_activity, "external activity was None"
             host_s.entity.external_activity = self.external_activity
         c_ok = any(c.source == host_s.entity for c in host_s.entity.get_parent_host().connections)
         if not c_ok:
@@ -753,19 +769,19 @@ class ARPBackend(ProtocolBackend):
 class DHCPBackend(ProtocolBackend):
     """DHCP protocol backend"""
 
-    def __init__(self, configurer: DHCP):
+    def __init__(self, configurer: DHCP) -> None:
         super().__init__(Protocol.UDP, port=configurer.port, protocol=Protocol.DHCP, name="DHCP")
         # DHCP requests go to broadcast, thus the reply looks like request
         self.external_activity = ExternalActivity.UNLIMITED
 
     def _create_service(self, parent: HostBackend) -> ServiceBackend:
         host_s = ServiceBackend(parent, DHCPService(parent.entity))
+        assert self.external_activity, "external activity was None"
         host_s.entity.external_activity = self.external_activity
 
-        def create_source(host: HostBackend):
+        def create_source(host: HostBackend) -> ServiceBackend:
             # DHCP client uses specific port 68 for requests
             src = UDP(port=68, name="DHCP")
-            src.port_to_name = False
             cs = host / src
             cs.entity.host_type = HostType.ADMINISTRATIVE
             cs.entity.con_type = ConnectionType.ADMINISTRATIVE
@@ -778,7 +794,7 @@ class DHCPBackend(ProtocolBackend):
 class DNSBackend(ProtocolBackend):
     """DNS protocol backend"""
 
-    def __init__(self, configurer: DNS):
+    def __init__(self, configurer: DNS) -> None:
         super().__init__(Protocol.UDP, port=configurer.port, protocol=Protocol.DNS, name="DNS")
         self.external_activity = ExternalActivity.OPEN
         self.captive_portal = configurer.captive
@@ -787,6 +803,7 @@ class DNSBackend(ProtocolBackend):
         dns_s = DNSService(parent.entity)
         dns_s.captive_portal = self.captive_portal
         s = ServiceBackend(parent, dns_s)
+        assert self.external_activity, "external activity was None"
         s.entity.external_activity = self.external_activity
         return s
 
@@ -794,7 +811,7 @@ class DNSBackend(ProtocolBackend):
 class EAPOLBackend(ProtocolBackend):
     """EAPOL protocol backend"""
 
-    def __init__(self, configurer: EAPOL):
+    def __init__(self, configurer: EAPOL) -> None:
         super().__init__(Protocol.ETHERNET, port=0x888e, protocol=Protocol.EAPOL, name=configurer.name)
         self.host_type = HostType.ADMINISTRATIVE
         self.con_type = ConnectionType.ADMINISTRATIVE
@@ -805,9 +822,9 @@ class EAPOLBackend(ProtocolBackend):
 class HTTPBackend(ProtocolBackend):
     """HTTP protocol backend"""
 
-    def __init__(self, configurer: HTTP):
+    def __init__(self, configurer: HTTP) -> None:
         super().__init__(Protocol.TCP, port=configurer.port, protocol=Protocol.HTTP, name=configurer.name)
-        self.authentication = configurer.auth
+        self.authentication = bool(configurer.auth)
         self.redirect_only = False
 
     def get_service_(self, parent: HostBackend) -> ServiceBackend:
@@ -822,7 +839,7 @@ class HTTPBackend(ProtocolBackend):
 class ICMPBackend(ProtocolBackend):
     """ICMP protocol backend"""
 
-    def __init__(self, configurer: ICMP):
+    def __init__(self, configurer: ICMP) -> None:
         super().__init__(Protocol.IP, port=1, protocol=Protocol.ICMP, name=configurer.name)
         self.external_activity = ExternalActivity.OPEN
         self.port_to_name = False
@@ -833,6 +850,7 @@ class ICMPBackend(ProtocolBackend):
         s.entity.host_type = HostType.ADMINISTRATIVE
         s.entity.con_type = ConnectionType.ADMINISTRATIVE
         # ICMP can be a service for other hosts
+        assert self.external_activity, "external activity was None"
         s.entity.external_activity = max(
             self.external_activity, parent.entity.external_activity)
         return s
@@ -841,7 +859,7 @@ class ICMPBackend(ProtocolBackend):
 class IPBackend(ProtocolBackend):
     """IP protocol backend"""
 
-    def __init__(self, configurer: IP):
+    def __init__(self, configurer: IP) -> None:
         super().__init__(Protocol.IP, name=configurer.name)
         if configurer.administration:
             self.host_type = HostType.ADMINISTRATIVE
@@ -859,9 +877,9 @@ class MQTTBackend(ProtocolBackend):
 class TLSBackend(ProtocolBackend):
     """TLS protocol backend"""
 
-    def __init__(self, configurer: TLS):
+    def __init__(self, configurer: TLS) -> None:
         super().__init__(Protocol.TCP, port=configurer.port, protocol=Protocol.TLS, name=configurer.name)
-        self.authentication = configurer.auth
+        self.authentication = bool(configurer.auth)
         self.con_type = ConnectionType.ENCRYPTED
         # self.critical_parameter.append(PieceOfData("TLS-creds"))
 
@@ -869,7 +887,7 @@ class TLSBackend(ProtocolBackend):
 class NTPBackend(ProtocolBackend):
     """NTP protocol backend"""
 
-    def __init__(self, configurer: NTP):
+    def __init__(self, configurer: NTP) -> None:
         super().__init__(Protocol.UDP, port=configurer.port, protocol=Protocol.NTP, name=configurer.name)
         self.host_type = HostType.ADMINISTRATIVE
         self.con_type = ConnectionType.ADMINISTRATIVE
@@ -879,7 +897,7 @@ class NTPBackend(ProtocolBackend):
 class SSHBackend(ProtocolBackend):
     """SSH protocol backend"""
 
-    def __init__(self, configurer: SSH):
+    def __init__(self, configurer: SSH) -> None:
         super().__init__(Protocol.TCP, port=configurer.port, protocol=Protocol.SSH, name=configurer.name)
         self.authentication = True
         self.con_type = ConnectionType.ENCRYPTED
@@ -889,7 +907,7 @@ class SSHBackend(ProtocolBackend):
 class TCPBackend(ProtocolBackend):
     """TCP protocol backend"""
 
-    def __init__(self, configurer: TCP):
+    def __init__(self, configurer: TCP) -> None:
         super().__init__(Protocol.TCP, port=configurer.port, name=configurer.name)
         if configurer.administrative:
             self.host_type = HostType.ADMINISTRATIVE
@@ -899,7 +917,7 @@ class TCPBackend(ProtocolBackend):
 class UDPBackend(ProtocolBackend):
     """UDP protocol backend"""
 
-    def __init__(self, configurer: UDP):
+    def __init__(self, configurer: UDP) -> None:
         super().__init__(Protocol.UDP, port=configurer.port, name=configurer.name)
         if configurer.administrative:
             self.host_type = HostType.ADMINISTRATIVE
@@ -918,7 +936,7 @@ class UDPBackend(ProtocolBackend):
 class BLEAdvertisementBackend(ProtocolBackend):
     """BLE advertisement backend"""
 
-    def __init__(self, configurer: BLEAdvertisement):
+    def __init__(self, configurer: BLEAdvertisement) -> None:
         super().__init__(Protocol.BLE, port=configurer.event_type,
                          name=configurer.name, protocol=Protocol.BLE)
 
@@ -952,11 +970,13 @@ class ProtocolConfigurers:
 
 class OSBackend(OSBuilder):
     """OS builder backend"""
-    def __init__(self, parent: HostBackend):
+    def __init__(self, parent: HostBackend) -> None:
         self.component = OperatingSystem.get_os(parent.entity)
 
-    def processes(self, owner_process: Dict[str, List[str]]) -> 'OSBuilder':
+    def processes(self, owner_process: Dict[str, List[str]]) -> Self:
+        assert self.component, "component was None"
         self.component.process_map.update(owner_process)
+        return self
 
 
 class SystemBackendRunner(SystemBackend):
@@ -999,7 +1019,7 @@ class SystemBackendRunner(SystemBackend):
             logging, args.log_level or 'INFO'))
         return args
 
-    def run(self, custom_arguments: Optional[List[str]] = None):
+    def run(self, custom_arguments: Optional[List[str]] = None) -> None:
         """Model is ready, run the checks"""
         args = self._parse_arguments(custom_arguments)
         if args.dhcp:

@@ -153,6 +153,7 @@ class PCAPReader(SystemWideTool):
         conn = self.interface.connection(flow)
         proto = self.system.message_listeners.get(conn.target) if conn else None
         if proto:
+            assert conn, "connection was None"
             proc = {
                 Protocol.DNS: lambda: self._dns_message([conn.source, conn.target], frame, conn)
             }[proto]

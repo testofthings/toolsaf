@@ -1,6 +1,6 @@
 """Model visualization"""
 
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Any
 
 from tdsaf.main import ConfigurationException
 from tdsaf.core.model import NetworkNode
@@ -8,14 +8,14 @@ from tdsaf.core.model import NetworkNode
 
 class Visualizer:
     """Visualize system"""
-    def __init__(self):
-        self.placement: List[str] = []
+    def __init__(self) -> None:
+        self.placement: Tuple[str, ...] = ()
         self.handles: Dict[str, NetworkNode] = {}
         self.images: Dict[NetworkNode, Tuple[str, int]] = {}
         self.coordinates: Dict[NetworkNode, Tuple[float, float]] = {}
         self.dimensions = 0, 0
-        self.top_line = []
-        self.bot_line = []
+        self.top_line: List[Any] = []
+        self.bot_line: list[Any] = []
 
     def place(self, entity: NetworkNode) -> Tuple[int, int]:
         """Place an entity"""
@@ -38,7 +38,7 @@ class Visualizer:
             self.coordinates[entity] = xy
         return round(xy[0] / self.dimensions[0] * 1000), round(xy[1] / self.dimensions[1] * 1000)
 
-    def _resolve_coordinates(self):
+    def _resolve_coordinates(self) -> None:
         """Resolve planned coordinates"""
         # leave space in top and bottom for new ones
         max_x, max_y = 1, 2
