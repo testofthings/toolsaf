@@ -454,7 +454,7 @@ class EndpointAddress(AnyAddress):
     def get_protocol_port(self) -> Optional[Tuple[Protocol, int]]:
         return (self.protocol, self.port) if self.protocol else None
 
-    def change_host(self, host: Optional['AnyAddress']) -> Self:
+    def change_host(self, host: Optional['AnyAddress']) -> 'EndpointAddress':
         return EndpointAddress(host or self.host, self.protocol, self.port)
 
     def is_null(self) -> bool:
@@ -557,7 +557,7 @@ class AddressEnvelope(AnyAddress):
     def get_protocol_port(self) -> Optional[Tuple[Protocol, int]]:
         return self.address.get_protocol_port()
 
-    def change_host(self, host: Optional['AnyAddress']) -> Self:
+    def change_host(self, host: Optional['AnyAddress']) -> 'AddressEnvelope':
         return AddressEnvelope(self.address.change_host(host), self.content)
 
     def is_null(self) -> bool:

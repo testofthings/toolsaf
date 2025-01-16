@@ -93,7 +93,7 @@ class HARScan(NetworkNodeTool):
                     interface.property_update(ev)
             response = raw["response"]
             red_url = response.get("redirectURL", "")
-            if red_url.startswith("https:") and req_url.startswith("http:"):
+            if red_url.startswith("https:") or req_url.startswith("http:"):
                 # redirection to HTTPS, someone may be interested
                 ru = urllib.parse.urlparse(req_url)
                 ep = EndpointAddress(DNSName.name_or_ip(str(ru.hostname)), Protocol.TCP, ru.port or 80)

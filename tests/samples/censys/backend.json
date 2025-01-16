@@ -1,0 +1,35 @@
+{
+    "services": [
+        {
+            "service_name": "SSH",
+            "transport_protocol": "TCP",
+            "port": 22
+        },
+        {
+            "service_name": "HTTP",
+            "transport_protocol": "TCP",
+            "port": 80,
+            "http": {
+                "response": {"status_code": 301}
+            }
+        },
+        {
+            "service_name": "HTTP",
+            "transport_protocol": "TCP",
+            "port": 81,
+            "http": {
+                "response": {"status_code": 200}
+            }
+        },
+        {
+            "service_name": "NTP",
+            "transport_protocol": "UDP",
+            "port": 22
+        },
+        {
+            "service_name": "UNKNOWN",
+            "transport_protocol": "TCP",
+            "port": 1
+        }
+    ]
+}

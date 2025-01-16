@@ -1,6 +1,6 @@
 """Requirement selectors"""
 
-from typing import Dict, List, Optional, TypeVar, Generic, Iterator, Any
+from typing import Dict, List, Optional, Iterator, Any
 
 from tdsaf.common.address import Addresses, Protocol
 from tdsaf.common.basics import HostType
@@ -11,12 +11,10 @@ from tdsaf.common.property import Properties, PropertyKey
 from tdsaf.core.entity_selector import EntitySelector, SelectorContext
 from tdsaf.common.basics import Status
 
-S = TypeVar("S", bound='EntitySelector')
-
 
 class AbstractSelector(EntitySelector):
     """Abstract selector"""
-    def __truediv__(self, other: S) -> S:
+    def __truediv__(self, other: 'AbstractSelector') -> 'SequenceSelector':
         """Add more specific location"""
         assert isinstance(other, AbstractSelector), f"Expected location selector, got: {other}"
         return SequenceSelector([self], other)
@@ -248,7 +246,7 @@ class DataSelector(AbstractSelector):
             return
         for c in entity.components:
             if isinstance(c, StoredData):
-                yield from c.sub_components
+                yield from c.get_all_data()
         for ch in entity.children:
             yield from self.select(ch, _context)
 
@@ -278,17 +276,14 @@ class DataSelector(AbstractSelector):
         return self.personal(not value)
 
 
-SS = TypeVar("SS", bound='EntitySelector')
-
-
-class SequenceSelector(Generic[SS], AbstractSelector):
+class SequenceSelector(AbstractSelector):
     """Sequence of selectors"""
-    def __init__(self, pre: List[AbstractSelector], sub: SS) -> None:
+    def __init__(self, pre: List[AbstractSelector], sub: AbstractSelector) -> None:
         super().__init__()
         self.pre = pre
         self.sub = sub
 
-    def select(self, entity: Entity, context: SelectorContext) -> Iterator[SS]:
+    def select(self, entity: Entity, context: SelectorContext) -> Iterator[Entity]:
         e_set = [entity]
         for s in self.pre:
             n_set: List[Entity] = []
@@ -300,7 +295,7 @@ class SequenceSelector(Generic[SS], AbstractSelector):
         for e in e_set:
             yield from self.sub.select(e, context)
 
-    def __truediv__(self, other: S) -> S:
+    def __truediv__(self, other: AbstractSelector) -> 'SequenceSelector':
         pre = self.pre.copy()
         pre.append(self.sub)
         return SequenceSelector(pre, other)
@@ -397,7 +392,7 @@ class Finder:
             if not isinstance(entity, NetworkNode):
                 raise ValueError(f"Cannot find data without entity: {comp_s}")
             store = StoredData.find_data(entity)
-            entity = next(r for r in store.sub_components if r.data.name == data_s) if store else None
+            entity = next(r for r in store.get_all_data() if r.data.name == data_s) if store else None
             if not entity:
                 raise ValueError(f"Cannot find data: {comp_s}")
             return entity
