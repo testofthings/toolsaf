@@ -42,7 +42,6 @@ class ReleaseReader(NodeComponentTool):
             d.append((releases[idx - 1][0] - releases[idx][0]).days)
 
         info = ReleaseInfo(software.name)
-        info.first_release = info.latest_release
         info.interval_days = 0
         if releases:
             info.latest_release = releases[0][0]
