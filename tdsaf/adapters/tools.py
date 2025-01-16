@@ -3,7 +3,7 @@
 from io import BufferedReader
 import json
 import logging
-from typing import Any, Optional, Dict, Set
+from typing import Optional, Dict, Set
 
 from tdsaf.common.address import DNSName, IPAddress, AnyAddress
 from tdsaf.core.event_interface import EventInterface
