@@ -1,11 +1,9 @@
 # pylint: disable=missing-class-docstring
 """Serializing IoT system and related class"""
 
-from typing import Optional, Type
+from typing import Type
 
 from tdsaf.common.address import Addresses, EntityTag
-
-from tdsaf.visualizer import Visualizer
 
 from tdsaf.core.components import Software
 from tdsaf.serializer.serializer import Serializer, SerializerStream
@@ -36,8 +34,7 @@ class NetworkNodeSerializer(Serializer):
 
 
 class IoTSystemSerializer(NetworkNodeSerializer):
-    def __init__(self, system: IoTSystem, visualizer: Optional[Visualizer] = None, miniature=False, unexpected=True,
-                 verdicts=False):
+    def __init__(self, system: IoTSystem,  miniature=False, unexpected=True, verdicts=False):
         super().__init__(IoTSystem, self)
         self.miniature = miniature
         self.unexpected = unexpected
@@ -50,7 +47,6 @@ class IoTSystemSerializer(NetworkNodeSerializer):
         self.config.map_new_class("component", NodeComponentSerializer(self))
         self.config.map_new_class("sw", SoftwareSerializer(self))
         self.system = system
-        self.visualizer = visualizer
 
     def write(self, obj: IoTSystem, stream: SerializerStream):
         super().write(obj, stream)
@@ -84,16 +80,6 @@ class HostSerializer(AddressableSerializer):
 
     def new(self, stream: SerializerStream) -> Host:
         return Host(stream.resolve("at"), stream["name"])
-
-    def write(self, obj: Host, stream: SerializerStream):
-        super().write(obj, stream)
-        vis = self.root.visualizer
-        if vis and obj.visual:
-            stream.write_field("xy", vis.place(obj))
-            image_and_z = vis.images.get(obj)
-            if image_and_z:
-                stream.write_field("image", image_and_z)
-
 
 
 class ServiceSerializer(AddressableSerializer):

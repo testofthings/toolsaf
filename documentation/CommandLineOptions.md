@@ -111,21 +111,13 @@ For example, to read batch files and put the resulting events into DB:
      $ python statement --db sqlite:///test.db -r <batch-directory>
 
 Existing events are automatically fetched from the database on startup.
-For example, the following starts API server with content of the database.
-
-
-     $ python statement --db sqlite:///test.db --http-server 8180
+For example, you can run a statement with a DB's content:
+```bash
+ python statement --db sqlite:///test.db
+```
 
 ## FIXME:
 ```
 --dhcp                Add default DHCP server handling
 --dns                 Add default DNS server handling
---http-server HTTP_SERVER
-                    Listen HTTP requests at port
---test-delay TEST_DELAY
-                    HTTP request artificial test delay, ms
---no-auth-ok          Skip check for auth token in TDSAF_SERVER_API_KEY
---test-get TEST_GET   Test API GET, repeat for many
---test-post TEST_POST TEST_POST
-                    Test API POST
 ```

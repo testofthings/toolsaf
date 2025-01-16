@@ -55,30 +55,8 @@ Information on security statement creation is provided [here](documentation/Crea
 ### Verifying Security Statements
 Information on security statement verification is provided [here](documentation/VerifyingSecurityStatements.md).
 
-## Providing tool data (FIXME: Cleanup)
-The `--read` and `--http-server` arguments can be combined to inspecft the verification results using the UI.
-
-Batch files can be provided through API in a zip-file to endpoint `api1/batch`.
-The content type must be set to `application/zip` and authorization-cookie must be set.
-This can be done e.g by `curl`-command, like this:
-```
-$ curl -v -X POST --data-binary @<batch-file>.zip  \
-   -H "Content-Type: application/zip" -b "authorization=xxx" \
-   http://localhost:8180/api1/batch
-```
-
 ## Command Line Options
 The framework's command-line options are listed [here](documentation/CommandLineOptions.md).
-
-## API server
-The framework can run as [API server](APIServer.md).
-The server can only run a single security statement or it can dynamically load them by API calls.
-
-The servers are inteded to be run Docker containers.
-The containers can bundled into a deployment, see [tcsfw UI](https://github.com/ouspg/tcsfw-ui) documentation.
-
-## Client tool
-The API can be used by _client tool_ [tdsaf](ClientTool.md).
 
 ## Sample security statements
 A security statement for _Ruuvi gateway and tags_ (https://ruuvi.com/) was developed during the PhD research. The statement is in directory `samples/ruuvi/`. The data for verifying the security statement is available for academic research, please request it from Rauli. Remember to tell the goals of the research and the organization performing it. Right to refuse requests is reserved.

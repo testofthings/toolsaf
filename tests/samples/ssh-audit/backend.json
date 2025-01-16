@@ -1,0 +1,28 @@
+{
+    "recommendations": {
+        "critical": {
+            "del": {
+                "kex": [
+                    {
+                        "name": "name1",
+                        "notes": ""
+                    }
+                ],
+                "key": [
+                    {
+                        "name": "name2",
+                        "notes": ""
+                    }
+                ]
+            },
+            "chg": {
+                "key": [
+                    {
+                        "name": "name3",
+                        "notes": ""
+                    }
+                ]
+            }
+        }
+    }
+}

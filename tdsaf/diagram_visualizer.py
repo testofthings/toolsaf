@@ -3,7 +3,7 @@
 # pylint: disable=expression-not-assigned
 # pylint: disable=cyclic-import
 
-from typing import Self, Union, Dict, List
+from typing import Self, Union, Dict, List, Tuple, Any
 from urllib.request import urlretrieve
 from diagrams import Diagram, Edge, Node
 from diagrams.custom import Custom
@@ -12,11 +12,13 @@ from diagrams.ibm.user import Browser
 from diagrams.generic import device, storage
 
 from tdsaf.common.verdict import Verdict
-from tdsaf.core.model import Host, HostType
+from tdsaf.common.basics import HostType
+from tdsaf.core.model import Host
 import tdsaf.builder_backend as BB
+from tdsaf.main import DiagramVisualizer as DV
 
 
-class DiagramVisualizer:
+class DiagramVisualizer(DV):
     """Security statement visualizer"""
 
     __font_size_node = "18"
@@ -25,38 +27,38 @@ class DiagramVisualizer:
 
     def __init__(self, system: 'BB.SystemBackend'):
         self.system = system
-        self.show: bool=False
-        self.delete: bool=False
-        self.outformat: str="png"
+        self.show: bool = False
+        self.delete: bool = False
+        self.outformat: str = "png"
         self.filename = system.system.long_name()
-        self.should_create_diagram: bool=False
-        self.nodes: Dict={}
-        self.connections: set[str]=set()
-        self.images: Dict[str, str]={}
+        self.should_create_diagram: bool = False
+        self.nodes: Dict[str, Node] = {}
+        self.connections: set[Tuple[str, Any, str, str, str]] = set()
+        self.images: Dict[str, str] = {}
 
-    def set_outformat(self, cd: Union[str, None], sd: Union[str, None]) -> None:
-        """Set outformat for created diagram"""
-        if cd is not None and sd is not None:
-            self.outformat = next((f for f in [cd, sd] if f != "png"), "png")
+    def set_outformat(self, create_diagram: Union[str, None], show_diagram: Union[str, None]) -> None:
+        """Set outputformat for created diagram"""
+        if create_diagram is not None and show_diagram is not None:
+            self.outformat = next((format for format in [create_diagram, show_diagram] if format != "png"), "png")
         else:
-            self.outformat = sd if sd is not None else cd
+            self.outformat = str(show_diagram or create_diagram)
 
-    def set_file_name(self, file_name: str="") -> None:
+    def set_file_name(self, file_name: str = "") -> None:
         """Set filename for created diagram. Default is the system's name"""
         if file_name:
             self.filename = file_name
 
-    def add_images(self, d: Dict['BB.HostBackend', str]) -> Self:
+    def add_images(self, host_image_dict: Dict['BB.HostBackend', str]) -> Self:
         """Use locally stored images for specified nodes in visualization.
             Must be .png images"""
-        for host, file in d.items():
-            self.images[host.entity.name] = file
+        for host_backend, file_path in host_image_dict.items():
+            self.images[host_backend.entity.name] = file_path
         return self
 
-    def add_remote_images(self, d: Dict['BB.HostBackend', str]) -> Self:
+    def add_remote_images(self, host_image_url_dict: Dict['BB.HostBackend', str]) -> Self:
         """Use images from the internet for specified nodes"""
-        for host, url in d.items():
-            name = host.entity.name
+        for host_backend, url in host_image_url_dict.items():
+            name = host_backend.entity.name
             urlretrieve(url, f"{name}.png")
             self.images[name] = f"{name}.png"
         return self
@@ -90,32 +92,34 @@ class DiagramVisualizer:
                 return Browser
             case HostType.REMOTE:
                 return storage.Storage
+            case _:
+                return None
 
-    def _get_verdict_text(self, v: Verdict) -> str:
-        if v in [Verdict.PASS, Verdict.FAIL]:
-            return f"[{v.value}] "
+    def _get_verdict_text(self, verdict: Verdict) -> str:
+        if verdict in [Verdict.PASS, Verdict.FAIL]:
+            return f"[{verdict.value}] "
         return " "
 
-    def _get_label_color(self, v: Verdict) -> str:
-        if v == Verdict.PASS:
+    def _get_label_color(self, verdict: Verdict) -> str:
+        if verdict == Verdict.PASS:
             return "darkgreen"
-        if v == Verdict.FAIL:
+        if verdict == Verdict.FAIL:
             return "darkred"
         return "black"
 
-    def _get_node_label(self, host: Host, v: Verdict) -> str:
-        if (text:=self._get_verdict_text(v)) != " ":
-            return f"<<font color='{self._get_label_color(v)}'><b>" + \
-                   f"\n\n<br/>{text}<br/>"                          + \
+    def _get_node_label(self, host: Host, verdict: Verdict) -> str:
+        if (verdict_text := self._get_verdict_text(verdict)) != " ":
+            return f"<<font color='{self._get_label_color(verdict)}'><b>" + \
+                   f"\n\n<br/>{verdict_text}<br/>"                          + \
                    f"{self._sanitize_label(host.name)}</b></font>>"
 
-        return f"<<font color='{self._get_label_color(v)}'><b>" + \
+        return f"<<font color='{self._get_label_color(verdict)}'><b>" + \
                f"\n{self._sanitize_label(host.name)}</b></font>>"
 
     def _get_node(self, host: Host) -> Union[Node, None]:
         """Returns a suitable visual representation for a given Host"""
-        v = host.get_verdict({})
-        label = self._get_node_label(host, v)
+        verdict = host.get_verdict({})
+        label = self._get_node_label(host, verdict)
         if (node := self._get_node_type(host)) is Custom:
             return node(label=label, icon_path=self.images[host.name], fontsize=self.__font_size_node)
         if node is not None:
@@ -125,22 +129,24 @@ class DiagramVisualizer:
     def _add_connections(self, host: Host) -> None:
         """Adds connections between nodes"""
         for connection in host.connections:
-            v = connection.get_verdict({})
+            if connection.target.parent is None:
+                continue
+            verdict = connection.get_verdict({})
             self.connections.add((
                 connection.source.name, connection.target.parent.name,
-                f"{self._get_verdict_text(v)}{connection.target.name}", "black", self._get_label_color(v)
+                f"{self._get_verdict_text(verdict)}{connection.target.name}", "black", self._get_label_color(verdict)
             ))
 
     def _add_ble_connection(self, host: Host) -> None:
         """Adds Bluetooth connections between devices"""
         if len(host.connections) < 2:
             return
-        s = host.connections[0].source.name
+        source_name = host.connections[0].source.name
         for connection in host.connections[1:]:
-            v = connection.get_verdict({})
+            verdict = connection.get_verdict({})
             self.connections.add((
-                s, connection.source.name, f"{self._get_verdict_text(v)}BLE",
-                "blue", self._get_label_color(v)
+                source_name, connection.source.name, f"{self._get_verdict_text(verdict)}BLE",
+                "blue", self._get_label_color(verdict)
             ))
 
     def create_diagram(self) -> None:
@@ -164,12 +170,14 @@ class DiagramVisualizer:
                 else:
                     self._add_connections(host)
 
-                if (node:=self._get_node(host)) is not None:
+                if (node := self._get_node(host)) is not None:
                     self.nodes[host.name] = node
 
             for connection in self.connections:
-                s, t, n, e_c, l_c = connection
-                if s in self.nodes and t in self.nodes:
-                    edge = Edge(label=f"<<font color='{l_c}'><b>{n}</b></font>>", minlen="4", style="dashed",
-                                penwidth="3", fontsize=self.__font_size_edge, color=e_c)
-                    self.nodes[s] >> edge >> self.nodes[t]
+                source, target, connection_name, edge_color, label_color = connection
+                if source in self.nodes and target in self.nodes:
+                    edge = Edge(
+                        label=f"<<font color='{label_color}'><b>{connection_name}</b></font>>",
+                        minlen="4", style="dashed", penwidth="3", fontsize=self.__font_size_edge, color=edge_color
+                    )
+                    self.nodes[source] >> edge >> self.nodes[target]

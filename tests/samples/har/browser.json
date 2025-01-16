@@ -1,0 +1,29 @@
+{
+    "log": {
+        "entries": [
+            {
+                "startedDateTime": "2023-03-27T06:34:38.781Z",
+                "request": {
+                    "url": "https://abc.test.com/",
+                    "cookies": [
+                        {
+                            "name": "c1",
+                            "domain": ".test.com",
+                            "path": "/"
+                        },
+                        {
+                            "name": "c2_*",
+                            "domain": ".test.com",
+                            "path": "/"
+                        }
+                    ]
+                },
+                "response": {
+                    "redirectURL": "https://def.test.com",
+                    "status": 302,
+                    "statusText": "Found"
+                }
+            }
+        ]
+    }
+}

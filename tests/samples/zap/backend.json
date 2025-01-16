@@ -1,0 +1,21 @@
+{
+    "@generated": "Wed, 1 Jan 2025 01:01:01",
+    "site": [
+        {
+            "@host": "example.com",
+            "@port": "443",
+            "alerts": [
+                {
+                    "name": "test1",
+                    "riskcode": "1",
+                    "alertRef": "123"
+                },
+                {
+                    "name": "test2",
+                    "riskcode": "2",
+                    "alertRef": "1234"
+                }
+            ]
+        }
+    ]
+}
