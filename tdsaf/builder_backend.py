@@ -15,7 +15,7 @@ from tdsaf.adapters.batch_import import BatchImporter, LabelFilter
 from tdsaf.core.components import CookieData, Cookies, DataReference, StoredData, OperatingSystem, Software
 from tdsaf.common.release_info import ReleaseInfo
 from tdsaf.common.property import PropertyVerdictValue
-from tdsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP, IP, TLS, MQTT,
+from tdsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP, IP, TLS, MQTT, FTP,
                         BLEAdvertisement, ConnectionBuilder,
                         CookieBuilder, HostBuilder, NetworkBuilder, NodeBuilder, NodeVisualBuilder,
                         ConfigurationException, OSBuilder, ProtocolConfigurer, ProtocolType,
@@ -791,6 +791,12 @@ class EAPOLBackend(ProtocolBackend):
         self.port_to_name = False
 
 
+class FTPBackend(ProtocolBackend):
+    """FTP protocol backend"""
+
+    def __init__(self, configurer: FTP) -> None:
+        super().__init__(Protocol.TCP, port=configurer.port, protocol=Protocol.FTP, name=configurer.name)
+
 class HTTPBackend(ProtocolBackend):
     """HTTP protocol backend"""
 
@@ -841,7 +847,7 @@ class IPBackend(ProtocolBackend):
 class MQTTBackend(ProtocolBackend):
     """MQTT protocol backend"""
 
-    def __init__(self, configurer: MQTT):
+    def __init__(self, configurer: MQTT) -> None:
         super().__init__(Protocol.TCP, port=configurer.port, protocol=Protocol.MQTT, name=configurer.name)
 
 
@@ -927,6 +933,7 @@ class ProtocolConfigurers:
         DHCP: DHCPBackend,
         DNS: DNSBackend,
         EAPOL: EAPOLBackend,
+        FTP: FTPBackend,
         HTTP: HTTPBackend,
         ICMP: ICMPBackend,
         IP: IPBackend,

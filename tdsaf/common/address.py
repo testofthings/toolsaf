@@ -16,6 +16,7 @@ class Protocol(enum.Enum):
     DHCP = "dhcp"
     EAPOL = "eapol"
     ETHERNET = "eth"
+    FTP = "ftp"
     HTTP = "http"
     ICMP = "icmp"
     TCP = "tcp"
