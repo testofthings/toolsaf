@@ -112,6 +112,15 @@ Example metafile `00meta.json`:
 }
 ```
 
+Suitable data files can obtained from the Github API with the following command:
+```bash
+curl -L \
+  -H "Accept: application/vnd.github+json" \
+  -H "Authorization: Bearer <YOUR-TOKEN>" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  https://api.github.com/repos/OWNER/REPO/releases > NODE SW.json
+```
+
 ### HAR
 
 Data files are HAR json-files saved by browser and named as `<host>.json` where `<host>` is the name of the browsing host.
