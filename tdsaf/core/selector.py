@@ -246,7 +246,7 @@ class DataSelector(AbstractSelector):
             return
         for c in entity.components:
             if isinstance(c, StoredData):
-                yield from c.sub_components
+                yield from c.get_all_data()
         for ch in entity.children:
             yield from self.select(ch, _context)
 
@@ -392,7 +392,7 @@ class Finder:
             if not isinstance(entity, NetworkNode):
                 raise ValueError(f"Cannot find data without entity: {comp_s}")
             store = StoredData.find_data(entity)
-            entity = next(r for r in store.sub_components if r.data.name == data_s) if store else None
+            entity = next(r for r in store.get_all_data() if r.data.name == data_s) if store else None
             if not entity:
                 raise ValueError(f"Cannot find data: {comp_s}")
             return entity

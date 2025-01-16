@@ -1,7 +1,7 @@
 """Components for network nodes, hosts, services, etc."""
 
 from dataclasses import dataclass
-from typing import List, Optional, Dict, Set
+from typing import Iterable, List, Optional, Dict, Set
 
 from tdsaf.common.release_info import ReleaseInfo
 from tdsaf.core.model import IoTSystem, NodeComponent, Connection, NetworkNode, Host, SensitiveData, Addressable
@@ -129,7 +129,12 @@ class StoredData(NodeComponent):
     def __init__(self, entity: NetworkNode) -> None:
         super().__init__(entity, "Stored critical data")
         self.concept_name = "stored-data"
-        self.sub_components: List[DataReference] = []
+
+    def get_all_data(self) -> Iterable['DataReference']:
+        """Get all data references"""
+        for c in self.sub_components:
+            assert isinstance(c, DataReference)
+            yield c
 
     @classmethod
     def get_data(cls, entity: NetworkNode) -> 'StoredData':
