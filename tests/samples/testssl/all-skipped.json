@@ -1,0 +1,41 @@
+[
+    {
+        "id": "overall_grade",
+        "ip": "abc.test.com/1.2.3.4",
+        "port": "443",
+        "severity": "INFO",
+        "finding": 3
+    },
+    {
+        "id": "cipher_test1",
+        "ip": "abc.test.com/1.2.3.4",
+        "port": "443",
+        "severity": "INFO",
+        "cwe": "CWE-test",
+        "finding": "offered"
+    },
+    {
+        "id": "cipher_test2",
+        "ip": "abc.test.com/1.2.3.4",
+        "port": "443",
+        "severity": "OK",
+        "cwe": "CWE-test",
+        "finding": "offered"
+    },
+    {
+        "id": "cipher_test3",
+        "ip": "abc.test.com/1.2.3.4",
+        "port": "443",
+        "severity": "LOW",
+        "cwe": "CWE-test",
+        "finding": "offered"
+    },
+    {
+        "id": "cipher_test4",
+        "ip": "abc.test.com/1.2.3.4",
+        "port": "443",
+        "severity": "HIGH",
+        "cwe": "CWE-test",
+        "finding": "--"
+    }
+]

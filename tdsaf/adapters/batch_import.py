@@ -147,7 +147,7 @@ class BatchImporter:
             self.evidence.setdefault(info.label, []).append(ev)
             return
 
-        unmapped = set(reader.file_name_map.keys())
+        unmapped = reader.get_processed_files()
         for fn in files:
             if not fn.is_file():
                 continue  # directories called later

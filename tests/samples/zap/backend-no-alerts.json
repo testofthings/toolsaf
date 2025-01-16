@@ -1,0 +1,10 @@
+{
+    "@generated": "Wed, 1 Jan 2025 01:01:01",
+    "site": [
+        {
+            "@host": "example.com",
+            "@port": "443",
+            "alerts": []
+        }
+    ]
+}
