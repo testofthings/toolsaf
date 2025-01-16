@@ -19,7 +19,7 @@ from framing.raw_data import Raw, RawData
 
 from tdsaf.common.address import DNSName, HWAddress, Protocol, IPAddress
 from tdsaf.core.event_interface import EventInterface
-from tdsaf.core.model import Connection, IoTSystem
+from tdsaf.core.model import Addressable, Connection, IoTSystem
 from tdsaf.core.services import NameEvent, DNSService
 from tdsaf.adapters.tools import SystemWideTool
 from tdsaf.common.traffic import IPFlow, EvidenceSource, Evidence, EthernetFlow
@@ -165,7 +165,7 @@ class PCAPReader(SystemWideTool):
         # ts = int(delta.total_seconds() * 1000)
         # self.interface.flow_data_update(flow, [ts, le])
 
-    def _dns_message(self, peers: List[IPAddress], udp: UDP, connection: Connection) -> None:
+    def _dns_message(self, peers: List[Addressable], udp: UDP, connection: Connection) -> None:
         """Parse DNS message"""
         assert self.source, "Source is not set"
         assert self.interface, "Interface is not set"
