@@ -8,7 +8,7 @@ from tdsaf.adapters.censys_scan import CensysScan
 from tdsaf.adapters.har_scan import HARScan
 from tdsaf.adapters.certmitm_reader import CertMITMReader
 from tdsaf.adapters.nmap_scan import NMAPScan
-from tdsaf.adapters.releases import ReleaseReader
+from tdsaf.adapters.github_releases import GithubReleaseReader
 from tdsaf.adapters.ping_command import PingCommand
 from tdsaf.adapters.pcap_reader import PCAPReader
 from tdsaf.adapters.tshark_reader import TSharkReader
@@ -34,7 +34,7 @@ from tests.test_model import Setup
         ("http", WebChecker),
         ("certmitm", CertMITMReader),
         ("nmap", NMAPScan),
-        ("github-releases", ReleaseReader),
+        ("github-releases", GithubReleaseReader),
         ("ping", PingCommand),
         ("capture", PCAPReader),
         ("capture-json", TSharkReader),

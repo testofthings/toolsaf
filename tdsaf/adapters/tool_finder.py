@@ -8,7 +8,7 @@ from tdsaf.adapters.certmitm_reader import CertMITMReader
 from tdsaf.adapters.nmap_scan import NMAPScan
 from tdsaf.adapters.pcap_reader import PCAPReader
 from tdsaf.adapters.ping_command import PingCommand
-from tdsaf.adapters.releases import ReleaseReader
+from tdsaf.adapters.github_releases import GithubReleaseReader
 from tdsaf.adapters.setup_reader import SetupCSVReader
 from tdsaf.adapters.shell_commands import ShellCommandPs, ShellCommandSs
 from tdsaf.adapters.shodan_scan import ShodanScan
@@ -80,7 +80,7 @@ class ToolFinderImplementation:
         self.http = ToolDepiction("http", WebChecker, extension="http")
         self.certmitm = ToolDepiction("certmitm", CertMITMReader, extension="zip")
         self.nmap = ToolDepiction("nmap", NMAPScan, extension="xml")
-        self.releases = ToolDepiction("github-releases", ReleaseReader)
+        self.github_releases = ToolDepiction("github-releases", GithubReleaseReader)
         self.ping = ToolDepiction("ping", PingCommand, extension="log")
         self.pcap = ToolDepiction(["capture", ""], PCAPReader, extension="pcap")  # Default tool - file_type ""
         self.pcap = ToolDepiction("capture-json", TSharkReader, extension="json")
