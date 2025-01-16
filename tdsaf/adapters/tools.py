@@ -6,7 +6,6 @@ import logging
 from typing import Optional, Dict
 
 from tdsaf.common.address import DNSName, IPAddress, AnyAddress
-from tdsaf.common.entity import ClaimAuthority
 from tdsaf.core.event_interface import EventInterface
 from tdsaf.core.model import NetworkNode, Addressable, IoTSystem, NodeComponent
 from tdsaf.common.traffic import Evidence, EvidenceSource, Tool, IPFlow
@@ -20,7 +19,6 @@ class ToolAdapter:
         self.tool = Tool(tool_label)  # human readable
         self.data_file_suffix = ""
         self.system = system
-        self.authority = ClaimAuthority.TOOL
         self.logger = logging.getLogger(tool_label)
         self.send_events = True  # True to send events to interface
         self.load_baseline = False  # True to load baseline, false to check it

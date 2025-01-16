@@ -13,28 +13,24 @@ from tdsaf.common.address import (AddressAtNetwork, Addresses, AnyAddress, DNSNa
 from tdsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status
 from tdsaf.adapters.batch_import import BatchImporter, LabelFilter
 from tdsaf.core.components import CookieData, Cookies, DataReference, StoredData, OperatingSystem, Software
-from tdsaf.common.entity import ClaimAuthority, Entity
-from tdsaf.core.event_interface import PropertyEvent
 from tdsaf.common.release_info import ReleaseInfo
 from tdsaf.common.property import PropertyVerdictValue
 from tdsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP, IP, TLS, MQTT,
-                        BLEAdvertisement, ClaimBuilder, ClaimSetBuilder, ConnectionBuilder,
+                        BLEAdvertisement, ConnectionBuilder,
                         CookieBuilder, HostBuilder, NetworkBuilder, NodeBuilder, NodeVisualBuilder,
                         ConfigurationException, OSBuilder, ProtocolConfigurer, ProtocolType,
                         SensitiveDataBuilder, ServiceBuilder, ServiceGroupBuilder, ServiceOrGroup,
                         SoftwareBuilder, SystemBuilder, VisualizerBuilder)
-from tdsaf.core.main_tools import EvidenceLoader, NodeManipulator, SubLoader, ToolPlanLoader
+from tdsaf.core.main_tools import EvidenceLoader, NodeManipulator
 from tdsaf.core.model import Addressable, Connection, Host, IoTSystem, SensitiveData, Service
 from tdsaf.common.property import Properties, PropertyKey
 from tdsaf.core.registry import Registry
 from tdsaf.core.inspector import Inspector
 from tdsaf.core.result import Report
 from tdsaf.core.components import SoftwareComponent
-from tdsaf.core.selector import AbstractSelector
 from tdsaf.core.services import DHCPService, DNSService
 from tdsaf.core.sql_database import SQLDatabase
 from tdsaf.core.online_resources import OnlineResource
-from tdsaf.common.traffic import Evidence, EvidenceSource
 from tdsaf.common.verdict import Verdict
 from tdsaf.common.android import MobilePermissions
 from tdsaf.adapters.spdx_reader import SPDXJson
@@ -49,7 +45,6 @@ class SystemBackend(SystemBuilder):
         self.system = IoTSystem(name)
         self.hosts_by_name: Dict[str, 'HostBackend'] = {}
         self.entity_by_address: Dict[AddressAtNetwork, 'NodeBackend'] = {}
-        self.claim_set = ClaimSetBackend(self)
         self.attachments: List[pathlib.Path] = []
         self.visualizer = Visualizer()
         self.diagram = DiagramVisualizer(self)
@@ -156,10 +151,6 @@ class SystemBackend(SystemBuilder):
         el = EvidenceLoader(self)
         self.loaders.append(el)
         return el
-
-    def claims(self, base_label="explain") -> 'ClaimSetBackend':
-        self.claim_set.base_label = base_label
-        return self.claim_set
 
     # Backend methods
 
@@ -968,142 +959,6 @@ class OSBackend(OSBuilder):
         self.component.process_map.update(owner_process)
 
 
-class ClaimBackend(ClaimBuilder):
-    """Claim builder"""
-
-    def __init__(self, builder: 'ClaimSetBackend', explanation: str, verdict: Verdict, label: str,
-                 authority=ClaimAuthority.MODEL):
-        self.builder = builder
-        self.authority = authority
-        self.source = builder.sources.get(label)
-        if self.source is None:
-            self.source = EvidenceSource(f"Claims '{label}'", label=label)
-            self.source.model_override = True  # sent by model, override from DB
-            builder.sources[label] = self.source
-        self.explanation = explanation
-        self.property_keys: List[PropertyKey] = []
-        self.locations: List[Entity] = []
-        self.verdict = verdict
-        builder.claim_builders.append(self)
-
-    def key(self, *segments: str) -> Self:
-        key = PropertyKey.create(segments)
-        if key.is_protected():
-            key = key.prefix_key(Properties.PREFIX_MANUAL)
-        self.property_keys.append(key)
-        return self
-
-    def keys(self, *key: Tuple[str, ...]) -> Self:
-        for seg in key:
-            assert isinstance(seg, tuple), f"Bad key {seg}"
-            k = PropertyKey.create(seg)
-            if k.is_protected():
-                k = k.prefix_key(Properties.PREFIX_MANUAL)
-            self.property_keys.append(k)
-        return self
-
-    def verdict_ignore(self) -> Self:
-        self.verdict = Verdict.IGNORE
-        return self
-
-    def verdict_pass(self) -> Self:
-        self.verdict = Verdict.PASS
-        return self
-
-    def at(self, *locations: Union[SystemBackend, NodeBackend, ConnectionBackend]) -> 'Self':
-        for lo in locations:
-            if isinstance(lo, SystemBackend):
-                loc = lo.system
-            elif isinstance(lo, NodeBackend):
-                loc = lo.entity
-            else:
-                loc = lo.connection
-            self.locations.append(loc)
-        return self
-
-    def software(self, *locations: NodeBackend) -> 'Self':
-        for lo in locations:
-            for sw in Software.list_software(lo.entity):
-                self.locations.append(sw)
-        return self
-
-    def vulnerabilities(self, *entry: Tuple[str, str]) -> Self:
-        for com, cve in entry:
-            self.property_keys.append(PropertyKey("vulnz", com, cve.lower()))
-        return self
-
-    # Backend methods
-
-    def finish_loaders(self) -> SubLoader:
-        """Finish by returning the loader to use"""
-        this = self
-        locations = self.locations
-        keys = self.property_keys
-
-        class ClaimLoader(SubLoader):
-            """Loader for the claims here"""
-
-            def __init__(self):
-                super().__init__("Manual checks")
-                self.source_label = this.source.label
-
-            def load(self, registry: Registry, label_filter: LabelFilter):
-                if not label_filter.filter(self.source_label):
-                    return
-                evidence = Evidence(this.source)
-                for loc in locations:
-                    for key in keys:
-                        kv = PropertyKey.create(key.segments).verdict(
-                            this.verdict, explanation=this.explanation)
-                        ev = PropertyEvent(evidence, loc, kv)
-                        registry.property_update(ev)
-        return ClaimLoader()
-
-
-class ClaimSetBackend(ClaimSetBuilder):
-    """Builder for set of claims"""
-
-    def __init__(self, builder: SystemBackend):
-        self.builder = builder
-        self.claim_builders: List[ClaimBackend] = []
-        self.tool_plans: List[ToolPlanLoader] = []
-        self.base_label = "explain"
-        self.sources: Dict[str, EvidenceSource] = {}
-
-    def set_base_label(self, base_label: str) -> Self:
-        self.base_label = base_label
-        return self
-
-    def claim(self, explanation: str, verdict=Verdict.PASS) -> ClaimBackend:
-        return ClaimBackend(self, explanation, verdict, self.base_label)
-
-    def reviewed(self, explanation="", verdict=Verdict.PASS) -> ClaimBackend:
-        return ClaimBackend(self, explanation, verdict, self.base_label, ClaimAuthority.MANUAL)
-
-    def ignore(self, explanation="") -> ClaimBackend:
-        return ClaimBackend(self, explanation, Verdict.IGNORE, self.base_label)
-
-    def plan_tool(self, tool_name: str, group: Tuple[str, str], location: AbstractSelector,
-                  *key: Tuple[str, ...]) -> ToolPlanLoader:
-        sl = ToolPlanLoader(group)
-        sl.location = location
-        for k in key:
-            pk = PropertyKey.create(k)
-            pv = pk.verdict(Verdict.PASS, explanation=f"{tool_name} sets {pk}")
-            sl.properties[pk] = pv[1]
-        self.tool_plans.append(sl)
-        return sl
-
-    # Backend methods
-
-    def finish_loaders(self) -> List[SubLoader]:
-        """Finish"""
-        ls = []
-        ls.extend([cb.finish_loaders() for cb in self.claim_builders])
-        ls.extend(self.tool_plans)
-        return ls
-
-
 class SystemBackendRunner(SystemBackend):
     """Backend for system builder"""
 
@@ -1183,9 +1038,7 @@ class SystemBackendRunner(SystemBackend):
                 print(f"{label:<20} {sl_s}")
             return
 
-        # load product claims, then explicit loaders (if any)
-        for sub in self.claim_set.finish_loaders():
-            sub.load(registry, label_filter=label_filter)
+        # load explicit loaders (if any)
         for ln in self.loaders:
             for sub in ln.subs:
                 sub.load(registry, label_filter=label_filter)
