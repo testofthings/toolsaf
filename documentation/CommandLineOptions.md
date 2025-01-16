@@ -1,10 +1,10 @@
 # Command Line Options
-This document covers TDSAF's command-line options.
+This document covers Toolsaf's command-line options.
 
 ## Command-Line help
 Command-line help is available with the usual `-h` and `--help`. You can use it without loading any model with the following command:
 ```bash
-python tdsaf/main.py --help
+python toolsaf/main.py --help
 ```
 
 ## Reading Tool Output

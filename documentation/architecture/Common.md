@@ -1,8 +1,8 @@
 # Common
-This document provides information the contents of the [common](../../tdsaf/common/) directory.
+This document provides information the contents of the [common](../../toolsaf/common/) directory.
 
 ## Addresses and Protocols
-File: [address.py](../../tdsaf/common/address.py)
+File: [address.py](../../toolsaf/common/address.py)
 
 ### Protocol
 Protocol enum
@@ -10,12 +10,12 @@ Protocol enum
 ### FIXME
 
 ## Android
-File: [android.py](../../tdsaf/common/android.py)
+File: [android.py](../../toolsaf/common/android.py)
 
 Includes defintions for the Android mobile application permission categories. These can be used in security statements.
 
 ## Basics
-File: [basics.py](../../tdsaf/common/basics.py)
+File: [basics.py](../../toolsaf/common/basics.py)
 
 Includes enumerator classes for the types of:
 - Hosts
@@ -24,17 +24,17 @@ Includes enumerator classes for the types of:
 - Entity statuses
 
 ## Claim
-File: [claim.py](../../tdsaf/common/basics.py)
+File: [claim.py](../../toolsaf/common/basics.py)
 
 **FIXME**
 
 ## Entity
-File: [entity.py](../../tdsaf/common/basics.py)
+File: [entity.py](../../toolsaf/common/basics.py)
 
 **FIXME**
 
 ## Properties
-File: [property.py](../../tdsaf/common/property.py)
+File: [property.py](../../toolsaf/common/property.py)
 
 Various property related classes.
 
@@ -62,17 +62,17 @@ interface.property_update(ev)
 ```
 
 ## Release Info
-File: [release_info.py](../../tdsaf/common/release_info.py)
+File: [release_info.py](../../toolsaf/common/release_info.py)
 
 **FIXME**
 
 ## Traffic
-File: [traffic.py](../../tdsaf/common/traffic.py)
+File: [traffic.py](../../toolsaf/common/traffic.py)
 
 **FIXME**
 
 ## Verdicts and Related Classes
-File: [verdict.py](../../tdsaf/common/verdict.py)
+File: [verdict.py](../../toolsaf/common/verdict.py)
 
 ### Verdict
 This class represents the verdicts for various entities, connections, properties, etc. set by [tool adapters](Adapters.md) based on tool output analysis results.

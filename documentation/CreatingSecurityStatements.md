@@ -12,17 +12,17 @@ repository-name
     ├── __init__.py
     └── statement.py
 ```
-_repository-name_ refers to a repository cloned from GitHub. Inside this repository is a folder or folders named after products, which contain the actual statement file _(statement.py)_. The .venv folder is the Python virtual environment for the project, into which TDSAF is installed.
+_repository-name_ refers to a repository cloned from GitHub. Inside this repository is a folder or folders named after products, which contain the actual statement file _(statement.py)_. The .venv folder is the Python virtual environment for the project, into which Toolsaf is installed.
 
-Note that security statements should not be placed inside the TDSAF directory.
+Note that security statements should not be placed inside the Toolsaf directory.
 
 ## Statement Contents
 A security statement is structured as follows:
 ```python
 """Security statement"""
 
-from tdsaf.main import Builder, TLS. NTP, ...
-from tdsaf.common.android import STORAGE, RECORDING
+from toolsaf.main import Builder, TLS. NTP, ...
+from toolsaf.common.android import STORAGE, RECORDING
 
 system = Builder.new("<Product name>")
 
@@ -86,14 +86,14 @@ if __name__ == '__main__':
     system.run()
 
 ```
-The above example utilized the `tdsaf.main` Python module's interface code for our DSL. However, definitions from `tdsaf.common.basics` can also be used when creating security statements.
+The above example utilized the `toolsaf.main` Python module's interface code for our DSL. However, definitions from `toolsaf.common.basics` can also be used when creating security statements.
 
 ### Real World Example
 Now that we know the structure of a security statement, let's look at a real world example. Here is the security statement we created for the _Deltaco Smart Outdoor Plug_:
 ```python
 """ Security statement """
-from tdsaf.main import Builder, TLS, DNS, UDP, ARP, EAPOL, ICMP, TCP
-from tdsaf.common.android import LOCATION, BLUETOOTH, ADMINISTRATIVE, NETWORK, RECORDING, STORAGE, UNCATEGORIZED
+from toolsaf.main import Builder, TLS, DNS, UDP, ARP, EAPOL, ICMP, TCP
+from toolsaf.common.android import LOCATION, BLUETOOTH, ADMINISTRATIVE, NETWORK, RECORDING, STORAGE, UNCATEGORIZED
 
 # Start modeling the IoT system
 system = Builder.new("Deltaco Smart Outdoor Plug")
@@ -214,15 +214,15 @@ mobile >> backend_conn
 ### Mobile Application Permissions (Android Only)
 Typically mobile applications ask their users to grant them certain permissions. These permissions should be included in the security statement. You can define them with:
 ```python
-from tdsaf.common.android import STORAGE, LOCATION, ...
+from toolsaf.common.android import STORAGE, LOCATION, ...
 
 mobile.set_permissions(STORAGE, LOCATION, ...)
 ```
-However, since there are [hundreds of different permissions](https://developer.android.com/reference/android/Manifest.permission), **use the permission categories we have created** in your security statements. TDSAF handles the rest.
+However, since there are [hundreds of different permissions](https://developer.android.com/reference/android/Manifest.permission), **use the permission categories we have created** in your security statements. Toolsaf handles the rest.
 
 Our permission categories are: `CALLS`, `SMS`, `CONTACTS`, `CALENDAR`, `LOCATION`, `RECORDING`, `STORAGE`, `NETWORK`, `HEALTH`, `ACCOUNT`, `BILLING`, `BLUETOOTH`, `ADMINISTRATIVE`, `UNCATEGORIZED`
 
-An up-to-date list of categories can always be found [here](../tdsaf/common/android.py). You can check into which category a permission belongs to from [this json file](../tdsaf/adapters/data/android_permissions.json). Currently, if a permission is not in the _.json_ file, its category will be `UNCATEGORIZED`.
+An up-to-date list of categories can always be found [here](../toolsaf/common/android.py). You can check into which category a permission belongs to from [this json file](../toolsaf/adapters/data/android_permissions.json). Currently, if a permission is not in the _.json_ file, its category will be `UNCATEGORIZED`.
 
 ### Software Bill of Materials
 A Software Bill of Materials (SBOM) is a comprehensive inventory of the software components, libraries, dependencies, and other elements that make up the software of an (IoT) system. Our DSL provides a method, `sbom(components, file_path)`, to specify an SBOM for the system's software components. Here's how it can be used:
@@ -245,7 +245,7 @@ The SBOM's contents can be provided either manually using the `components` param
     ]
 }
 ```
-TDSAF also reads the `versionInfo` field of individual packages if it is included in the file. SBOM file paths are provided relative to the statement's location. The file can be generated, for example, using an open-source SBOM generator.
+Toolsaf also reads the `versionInfo` field of individual packages if it is included in the file. SBOM file paths are provided relative to the statement's location. The file can be generated, for example, using an open-source SBOM generator.
 
 ### Online Resources
 Our DSL provides the `online_resources(name, url, keywords)` method to document web-based information relevant to the system, such as privacy, security, and cookie policies. However, it can also be any web page.
@@ -276,4 +276,4 @@ python3 statement.py --create-diagram --show-diagram
 ```
 More info on the command-line arguments can be found [here](CommandLineOptions.md#create-diagram-visualization).
 
-TDSAF creates visualizations using [Diagrams](https://github.com/mingrammer/diagrams). You also need to install [Graphviz](https://graphviz.org/download/).
+Toolsaf creates visualizations using [Diagrams](https://github.com/mingrammer/diagrams). You also need to install [Graphviz](https://graphviz.org/download/).
