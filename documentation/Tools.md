@@ -125,45 +125,6 @@ Example metafile `00meta.json`:
 Chrome can save HAR-files compatible with the reader.
 The way to save HAR-file depends on the browser.
 
-### MITM proxy
-
-Data files are custom log-files captured with MITM proxy having suffix  `.log`. Example metafile `00meta.json`:
-```json
-{
-    "file_type": "mitmproxy"
-}
-```
-
-The custom data is saved using the following very simple MTIM proxy addon hook (yes, very unsatisfactory, sorry):
-
-```python
-import logging
-from datetime import datetime
-
-class TLSCheck:
-    """Log connection attempts with possible error message"""
-    def tls_established_client(self, data):
-        conn = data.conn
-        ser = data.context.server
-        logging.info("tls_established,%s,%d,%s,%d,%s,%s",
-            conn.peername[0], conn.peername[1],
-            ser.peername[0], ser.peername[1],
-            conn.sni or "", conn.error or "")
-
-    def tls_failed_client(self, data):
-        conn = data.conn
-        ser = data.context.server
-        logging.info("tls_failed,%s,%d,%s,%d,%s,%s",
-            conn.peername[0], conn.peername[1],
-            ser.peername[0], ser.peername[1],
-            conn.sni or "", conn.error or "")
-
-
-addons = [TLSCheck()]
-```
-
-Refer MITM proxy documentation how to use addon hooks.
-
 ### Nmap
 
 Data files are Nmap XML-formatted output files with suffix `.xml`. Example metafile `00meta.json`:
@@ -290,7 +251,7 @@ Definitions in parent directories apply in sub-directory metafiles.
 The following shows how addresses can be customized per batch directory.
 ```json
 {
-    "file_type": "mitmproxy",
+    "file_type": "capture",
     "addresses": {
         "192.168.4.8": "Ruuvi_app",
         "30:c6:f7:52:db:5d|wd": "Ruuvi_Gateway",

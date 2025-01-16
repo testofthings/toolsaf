@@ -2,9 +2,7 @@
 
 from typing import Any, Dict, List, Optional, Self, Tuple, Type, Union
 from tdsaf.common.address import AnyAddress, HWAddress, HWAddresses, IPAddress, IPAddresses, Network
-from tdsaf.core.selector import AbstractSelector
 from tdsaf.common.basics import ConnectionType, HostType, ExternalActivity
-from tdsaf.common.verdict import Verdict
 from tdsaf.common.android import MobilePermissions
 
 
@@ -80,10 +78,6 @@ class SystemBuilder:
 
     def load(self) -> 'EvidenceBuilder':
         """Load built-in evidence"""
-        raise NotImplementedError()
-
-    def claims(self, base_label: str="explain") -> 'ClaimSetBuilder':
-        """Make claims"""
         raise NotImplementedError()
 
 
@@ -432,61 +426,6 @@ class OSBuilder:
     """Operating System builder"""
     def processes(self, owner_process: Dict[str, List[str]]) -> 'OSBuilder':
         """Define processes: mapping from owner to list of processes"""
-        raise NotImplementedError()
-
-
-class ClaimBuilder:
-    """Claim builder"""
-    def key(self, *segments: str) -> Self:
-        """Add property key"""
-        raise NotImplementedError()
-
-    def keys(self, *key: Tuple[str, ...]) -> Self:
-        """Add property keys"""
-        raise NotImplementedError()
-
-    def verdict_ignore(self) -> Self:
-        """Override verdict to ignore"""
-        raise NotImplementedError()
-
-    def verdict_pass(self) -> Self:
-        """Override verdict to pass"""
-        raise NotImplementedError()
-
-    def at(self, *locations: Union[SystemBuilder, NodeBuilder, ConnectionBuilder]) -> Self:
-        """Set claimed location(s)"""
-        raise NotImplementedError()
-
-    def software(self, *locations: NodeBuilder) -> Self:
-        """Claims for software in the locations"""
-        raise NotImplementedError()
-
-    def vulnerabilities(self, *entry: Tuple[str, str]) -> Self:
-        """Explain CVE-entries"""
-        raise NotImplementedError()
-
-
-class ClaimSetBuilder:
-    """Builder for set of claims"""
-    def set_base_label(self, base_label: str) -> Self:
-        """Set label for the claims"""
-        raise NotImplementedError()
-
-    def claim(self, explanation: str, verdict: Verdict=Verdict.PASS) -> ClaimBuilder:
-        """Self-made claims"""
-        raise NotImplementedError()
-
-    def reviewed(self, explanation: str="", verdict: Verdict=Verdict.PASS) -> ClaimBuilder:
-        """Make reviewed claims"""
-        raise NotImplementedError()
-
-    def ignore(self, explanation: str="") -> ClaimBuilder:
-        """Ignore claims or requirements"""
-        raise NotImplementedError()
-
-    def plan_tool(self, tool_name: str, group: Tuple[str, str],
-                  location: AbstractSelector, *key: Tuple[str, ...]) -> Any:
-        """Plan use of a tool using the property keys it is supposed to set"""
         raise NotImplementedError()
 
 
