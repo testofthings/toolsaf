@@ -1,4 +1,4 @@
-from tdsaf.main import Builder, TLS
+from toolsaf.main import Builder, TLS
 
 system = Builder.new("Basic A")
 device = system.device()

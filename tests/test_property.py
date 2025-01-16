@@ -1,4 +1,4 @@
-from tdsaf.common.property import Properties, PropertyKey
+from toolsaf.common.property import Properties, PropertyKey
 
 
 def test_property_equality():

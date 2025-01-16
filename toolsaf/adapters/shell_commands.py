@@ -4,17 +4,17 @@ from io import BufferedReader, TextIOWrapper
 import re
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from tdsaf.main import ConfigurationException
-from tdsaf.common.address import AddressEnvelope, Addresses, AnyAddress, EndpointAddress, HWAddresses, IPAddress
-from tdsaf.core.components import OperatingSystem
-from tdsaf.core.event_interface import EventInterface, PropertyEvent
-from tdsaf.core.model import IoTSystem
-from tdsaf.common.property import PropertyKey
-from tdsaf.core.services import NameEvent
-from tdsaf.adapters.tools import EndpointTool
-from tdsaf.common.address import Protocol
-from tdsaf.common.traffic import Evidence, EvidenceSource, IPFlow, ServiceScan
-from tdsaf.common.verdict import Verdict
+from toolsaf.main import ConfigurationException
+from toolsaf.common.address import AddressEnvelope, Addresses, AnyAddress, EndpointAddress, HWAddresses, IPAddress
+from toolsaf.core.components import OperatingSystem
+from toolsaf.core.event_interface import EventInterface, PropertyEvent
+from toolsaf.core.model import IoTSystem
+from toolsaf.common.property import PropertyKey
+from toolsaf.core.services import NameEvent
+from toolsaf.adapters.tools import EndpointTool
+from toolsaf.common.address import Protocol
+from toolsaf.common.traffic import Evidence, EvidenceSource, IPFlow, ServiceScan
+from toolsaf.common.verdict import Verdict
 
 
 class ShellCommandPs(EndpointTool):

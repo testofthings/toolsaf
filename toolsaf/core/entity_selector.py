@@ -2,8 +2,8 @@
 
 from typing import Iterator
 
-from tdsaf.common.entity import Entity
-from tdsaf.core.model import Host, Connection, Service
+from toolsaf.common.entity import Entity
+from toolsaf.core.model import Host, Connection, Service
 
 
 class EntitySelector:

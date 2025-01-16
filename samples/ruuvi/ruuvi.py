@@ -4,7 +4,7 @@
 
 # pylint: disable=pointless-statement
 
-from tdsaf.main import Builder, ARP, ICMP, EAPOL, HTTP, BLEAdvertisement, TLS, SSH, DHCP, NTP, DNS
+from toolsaf.main import Builder, ARP, ICMP, EAPOL, HTTP, BLEAdvertisement, TLS, SSH, DHCP, NTP, DNS
 
 system = Builder.new("Ruuvi Gateway & Tags")
 

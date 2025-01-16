@@ -2,14 +2,14 @@
 
 from typing import Dict, List, Optional, Iterator, Any
 
-from tdsaf.common.address import Addresses, Protocol
-from tdsaf.common.basics import HostType
-from tdsaf.core.components import StoredData, Software, DataReference
-from tdsaf.common.entity import Entity
-from tdsaf.core.model import Addressable, Host, IoTSystem, NetworkNode, NodeComponent, Service, Connection
-from tdsaf.common.property import Properties, PropertyKey
-from tdsaf.core.entity_selector import EntitySelector, SelectorContext
-from tdsaf.common.basics import Status
+from toolsaf.common.address import Addresses, Protocol
+from toolsaf.common.basics import HostType
+from toolsaf.core.components import StoredData, Software, DataReference
+from toolsaf.common.entity import Entity
+from toolsaf.core.model import Addressable, Host, IoTSystem, NetworkNode, NodeComponent, Service, Connection
+from toolsaf.common.property import Properties, PropertyKey
+from toolsaf.core.entity_selector import EntitySelector, SelectorContext
+from toolsaf.common.basics import Status
 
 
 class AbstractSelector(EntitySelector):

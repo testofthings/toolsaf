@@ -7,12 +7,12 @@ import json
 import pathlib
 from typing import Dict, Optional, Any
 
-from tdsaf.common.address import HWAddress
-from tdsaf.core.event_interface import EventInterface
-from tdsaf.core.inspector import Inspector
-from tdsaf.core.model import IoTSystem
-from tdsaf.adapters.tools import SystemWideTool
-from tdsaf.common.traffic import EvidenceSource, BLEAdvertisementFlow, Evidence
+from toolsaf.common.address import HWAddress
+from toolsaf.core.event_interface import EventInterface
+from toolsaf.core.inspector import Inspector
+from toolsaf.core.model import IoTSystem
+from toolsaf.adapters.tools import SystemWideTool
+from toolsaf.common.traffic import EvidenceSource, BLEAdvertisementFlow, Evidence
 
 
 class TSharkReader(SystemWideTool):

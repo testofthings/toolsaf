@@ -4,13 +4,13 @@ from io import BufferedReader
 import json
 from typing import Dict, Any, List
 
-from tdsaf.common.address import AnyAddress
-from tdsaf.core.event_interface import EventInterface, PropertyAddressEvent
-from tdsaf.core.model import Service, IoTSystem, NetworkNode
-from tdsaf.common.property import PropertyKey, Properties
-from tdsaf.adapters.tools import EndpointTool
-from tdsaf.common.traffic import Evidence, EvidenceSource
-from tdsaf.common.verdict import Verdict
+from toolsaf.common.address import AnyAddress
+from toolsaf.core.event_interface import EventInterface, PropertyAddressEvent
+from toolsaf.core.model import Service, IoTSystem, NetworkNode
+from toolsaf.common.property import PropertyKey, Properties
+from toolsaf.adapters.tools import EndpointTool
+from toolsaf.common.traffic import Evidence, EvidenceSource
+from toolsaf.common.verdict import Verdict
 
 
 class TestSSLScan(EndpointTool):

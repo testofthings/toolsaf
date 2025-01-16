@@ -3,10 +3,10 @@
 import re
 from typing import Dict, Optional, Self, List, Any, Tuple, Iterable, Iterator
 
-from tdsaf.common.basics import Status
-from tdsaf.common.verdict import Verdict
-from tdsaf.common.property import Properties, PropertyKey
-from tdsaf.common.verdict import Verdictable
+from toolsaf.common.basics import Status
+from toolsaf.common.verdict import Verdict
+from toolsaf.common.property import Properties, PropertyKey
+from toolsaf.common.verdict import Verdictable
 
 
 class Entity:

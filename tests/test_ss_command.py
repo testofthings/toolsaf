@@ -2,11 +2,11 @@
 
 import pathlib
 
-from tdsaf.common.address import EntityTag, IPAddress
-from tdsaf.common.basics import ExternalActivity, Status
-from tdsaf.adapters.batch_import import BatchImporter
-from tdsaf.main import DHCP, SSH, UDP, TCP
-from tdsaf.common.verdict import Verdict
+from toolsaf.common.address import EntityTag, IPAddress
+from toolsaf.common.basics import ExternalActivity, Status
+from toolsaf.adapters.batch_import import BatchImporter
+from toolsaf.main import DHCP, SSH, UDP, TCP
+from toolsaf.common.verdict import Verdict
 from tests.test_model import Setup
 
 

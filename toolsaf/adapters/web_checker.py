@@ -5,13 +5,13 @@ from typing import Union
 from urllib import parse
 from io import BufferedReader, TextIOWrapper
 
-from tdsaf.core.event_interface import PropertyEvent, EventInterface
-from tdsaf.core.model import IoTSystem
-from tdsaf.common.property import Properties
-from tdsaf.adapters.tools import SystemWideTool
-from tdsaf.common.traffic import EvidenceSource, Evidence
-from tdsaf.common.verdict import Verdict
-from tdsaf.core.online_resources import OnlineResource
+from toolsaf.core.event_interface import PropertyEvent, EventInterface
+from toolsaf.core.model import IoTSystem
+from toolsaf.common.property import Properties
+from toolsaf.adapters.tools import SystemWideTool
+from toolsaf.common.traffic import EvidenceSource, Evidence
+from toolsaf.common.verdict import Verdict
+from toolsaf.core.online_resources import OnlineResource
 
 class WebChecker(SystemWideTool):
     """Check web pages tool"""

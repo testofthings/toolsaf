@@ -4,14 +4,14 @@ from io import BufferedReader
 import json
 from typing import cast
 
-from tdsaf.main import ConfigurationException
-from tdsaf.core.components import Software, SoftwareComponent
-from tdsaf.core.event_interface import PropertyEvent, EventInterface
-from tdsaf.core.model import IoTSystem, NodeComponent
-from tdsaf.common.property import Properties, PropertyKey
-from tdsaf.adapters.tools import NodeComponentTool
-from tdsaf.common.traffic import EvidenceSource, Evidence
-from tdsaf.common.verdict import Verdict
+from toolsaf.main import ConfigurationException
+from toolsaf.core.components import Software, SoftwareComponent
+from toolsaf.core.event_interface import PropertyEvent, EventInterface
+from toolsaf.core.model import IoTSystem, NodeComponent
+from toolsaf.common.property import Properties, PropertyKey
+from toolsaf.adapters.tools import NodeComponentTool
+from toolsaf.common.traffic import EvidenceSource, Evidence
+from toolsaf.common.verdict import Verdict
 
 
 class SPDXJson:

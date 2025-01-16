@@ -1,9 +1,9 @@
 """Model builder"""
 
 from typing import Any, Dict, List, Optional, Self, Tuple, Type, Union
-from tdsaf.common.address import AnyAddress, HWAddress, HWAddresses, IPAddress, IPAddresses, Network
-from tdsaf.common.basics import ConnectionType, HostType, ExternalActivity
-from tdsaf.common.android import MobilePermissions
+from toolsaf.common.address import AnyAddress, HWAddress, HWAddresses, IPAddress, IPAddresses, Network
+from toolsaf.common.basics import ConnectionType, HostType, ExternalActivity
+from toolsaf.common.android import MobilePermissions
 
 
 ProtocolType = Union['ProtocolConfigurer', Type['ProtocolConfigurer']]
@@ -470,7 +470,7 @@ class Builder:
     def new(cls, name: str="Unnamed system") -> SystemBuilder:
         """Create a new system builder"""
         # avoid circular import
-        from tdsaf.builder_backend import SystemBackendRunner  # pylint: disable=import-outside-toplevel
+        from toolsaf.builder_backend import SystemBackendRunner  # pylint: disable=import-outside-toplevel
         return SystemBackendRunner(name)
 
     @classmethod

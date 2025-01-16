@@ -2,15 +2,15 @@
 
 from typing import Dict, Optional, Type, Callable, Any, Tuple
 
-from tdsaf.common.address import Addresses, AnyAddress
-from tdsaf.common.verdict import Verdict
-from tdsaf.common.entity import Entity
-from tdsaf.core.model import Connection, Host, IoTSystem, Service
-from tdsaf.common.property import PropertyKey
-from tdsaf.core.services import NameEvent
-from tdsaf.common.traffic import ServiceScan, HostScan, Event, Flow, IPFlow, EthernetFlow, BLEAdvertisementFlow, \
+from toolsaf.common.address import Addresses, AnyAddress
+from toolsaf.common.verdict import Verdict
+from toolsaf.common.entity import Entity
+from toolsaf.core.model import Connection, Host, IoTSystem, Service
+from toolsaf.common.property import PropertyKey
+from toolsaf.core.services import NameEvent
+from toolsaf.common.traffic import ServiceScan, HostScan, Event, Flow, IPFlow, EthernetFlow, BLEAdvertisementFlow, \
     Evidence
-from tdsaf.common.verdict import Verdictable
+from toolsaf.common.verdict import Verdictable
 
 
 class EventInterface:

@@ -3,12 +3,12 @@ import csv
 from typing import Dict
 
 from io import BufferedReader, TextIOWrapper
-from tdsaf.common.address import DNSName, EntityTag
-from tdsaf.core.event_interface import EventInterface
-from tdsaf.core.model import IoTSystem
-from tdsaf.core.services import NameEvent
-from tdsaf.adapters.tools import ToolAdapter
-from tdsaf.common.traffic import Evidence, EvidenceSource
+from toolsaf.common.address import DNSName, EntityTag
+from toolsaf.core.event_interface import EventInterface
+from toolsaf.core.model import IoTSystem
+from toolsaf.core.services import NameEvent
+from toolsaf.adapters.tools import ToolAdapter
+from toolsaf.common.traffic import Evidence, EvidenceSource
 
 
 class SetupCSVReader(ToolAdapter):

@@ -3,8 +3,8 @@
 from dataclasses import dataclass
 from typing import Iterable, List, Optional, Dict, Set
 
-from tdsaf.common.release_info import ReleaseInfo
-from tdsaf.core.model import IoTSystem, NodeComponent, Connection, NetworkNode, Host, SensitiveData, Addressable
+from toolsaf.common.release_info import ReleaseInfo
+from toolsaf.core.model import IoTSystem, NodeComponent, Connection, NetworkNode, Host, SensitiveData, Addressable
 
 
 class Software(NodeComponent):

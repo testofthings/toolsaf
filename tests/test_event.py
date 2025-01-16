@@ -1,11 +1,11 @@
-from tdsaf.common.address import Addresses, DNSName, EndpointAddress, Protocol
-from tdsaf.common.verdict import Verdict
-from tdsaf.builder_backend import SystemBackend
-from tdsaf.core.event_interface import PropertyAddressEvent, PropertyEvent
-from tdsaf.main import DNS
-from tdsaf.common.property import Properties, PropertyKey
-from tdsaf.core.services import NameEvent
-from tdsaf.common.traffic import Evidence, EvidenceSource, IPFlow
+from toolsaf.common.address import Addresses, DNSName, EndpointAddress, Protocol
+from toolsaf.common.verdict import Verdict
+from toolsaf.builder_backend import SystemBackend
+from toolsaf.core.event_interface import PropertyAddressEvent, PropertyEvent
+from toolsaf.main import DNS
+from toolsaf.common.property import Properties, PropertyKey
+from toolsaf.core.services import NameEvent
+from toolsaf.common.traffic import Evidence, EvidenceSource, IPFlow
 
 
 def test_property_event():
@@ -21,8 +21,8 @@ def test_property_event():
     p = PropertyEvent(evi, dev0.entity, PropertyKey("prop-a").verdict(Verdict.PASS))
     js = p.get_data_json(entities.get)
     assert js == {
-        'entity': 1, 
-        'key': 'prop-a', 
+        'entity': 1,
+        'key': 'prop-a',
         'verdict': 'Pass'
     }
 

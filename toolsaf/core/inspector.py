@@ -3,16 +3,16 @@
 import logging
 from typing import Dict, Optional, Set, List
 
-from tdsaf.common.address import AnyAddress
-from tdsaf.common.basics import ExternalActivity, Status
-from tdsaf.common.entity import Entity
-from tdsaf.core.event_interface import EventInterface, PropertyAddressEvent, PropertyEvent
-from tdsaf.core.matcher import SystemMatcher
-from tdsaf.core.model import IoTSystem, Connection, Service, Host, Addressable
-from tdsaf.common.property import Properties
-from tdsaf.core.services import NameEvent
-from tdsaf.common.traffic import EvidenceSource, ServiceScan, HostScan, Flow
-from tdsaf.common.verdict import Verdict
+from toolsaf.common.address import AnyAddress
+from toolsaf.common.basics import ExternalActivity, Status
+from toolsaf.common.entity import Entity
+from toolsaf.core.event_interface import EventInterface, PropertyAddressEvent, PropertyEvent
+from toolsaf.core.matcher import SystemMatcher
+from toolsaf.core.model import IoTSystem, Connection, Service, Host, Addressable
+from toolsaf.common.property import Properties
+from toolsaf.core.services import NameEvent
+from toolsaf.common.traffic import EvidenceSource, ServiceScan, HostScan, Flow
+from toolsaf.common.verdict import Verdict
 
 
 class Inspector(EventInterface):

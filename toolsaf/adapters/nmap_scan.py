@@ -6,12 +6,12 @@ from typing import Set, Tuple, Optional
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
 
-from tdsaf.main import ConfigurationException
-from tdsaf.common.address import IPAddress, HWAddress, EndpointAddress, Protocol, AnyAddress
-from tdsaf.core.event_interface import EventInterface
-from tdsaf.core.model import IoTSystem
-from tdsaf.adapters.tools import SystemWideTool
-from tdsaf.common.traffic import EvidenceSource, Evidence, ServiceScan, HostScan
+from toolsaf.main import ConfigurationException
+from toolsaf.common.address import IPAddress, HWAddress, EndpointAddress, Protocol, AnyAddress
+from toolsaf.core.event_interface import EventInterface
+from toolsaf.core.model import IoTSystem
+from toolsaf.adapters.tools import SystemWideTool
+from toolsaf.common.traffic import EvidenceSource, Evidence, ServiceScan, HostScan
 
 
 class NMAPScan(SystemWideTool):
@@ -69,7 +69,7 @@ class NMAPScan(SystemWideTool):
         """Get protocol, port, and optional service name from port element"""
         protocol = Protocol.get_protocol(self.get_from_element(port_info, "protocol"))
         if protocol is None:
-            raise ConfigurationException("Protocol not defined in TDSAF")
+            raise ConfigurationException("Protocol not defined in Toolsaf")
         port = int(self.get_from_element(port_info, "portid"))
         service_name = None
         try:

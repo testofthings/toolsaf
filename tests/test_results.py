@@ -3,12 +3,12 @@ from unittest.mock import MagicMock
 from typing import List, Tuple, Dict
 from colored import Fore
 
-from tdsaf.common.verdict import Verdict
-from tdsaf.common.property import Properties, PropertyVerdictValue
-from tdsaf.main import HTTP, TLS
-from tdsaf.core.registry import Registry
-from tdsaf.common.basics import ConnectionType
-from tdsaf.core.result import *
+from toolsaf.common.verdict import Verdict
+from toolsaf.common.property import Properties, PropertyVerdictValue
+from toolsaf.main import HTTP, TLS
+from toolsaf.core.registry import Registry
+from toolsaf.common.basics import ConnectionType
+from toolsaf.core.result import *
 from tests.test_model import Setup
 
 

@@ -2,8 +2,8 @@
 
 import logging
 from typing import Any, Iterable, Optional, Dict, List
-from tdsaf.core.event_interface import EventInterface
-from tdsaf.common.traffic import Event, EvidenceSource
+from toolsaf.core.event_interface import EventInterface
+from toolsaf.common.traffic import Event, EvidenceSource
 
 
 class EntityDatabase:

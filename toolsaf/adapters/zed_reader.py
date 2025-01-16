@@ -5,13 +5,13 @@ import json
 from datetime import datetime
 from typing import List, Set, Any
 
-from tdsaf.common.address import EndpointAddress, Protocol, DNSName
-from tdsaf.core.event_interface import EventInterface, PropertyAddressEvent
-from tdsaf.core.model import IoTSystem
-from tdsaf.common.property import Properties, PropertyKey
-from tdsaf.adapters.tools import SystemWideTool
-from tdsaf.common.traffic import EvidenceSource, Evidence
-from tdsaf.common.verdict import Verdict
+from toolsaf.common.address import EndpointAddress, Protocol, DNSName
+from toolsaf.core.event_interface import EventInterface, PropertyAddressEvent
+from toolsaf.core.model import IoTSystem
+from toolsaf.common.property import Properties, PropertyKey
+from toolsaf.adapters.tools import SystemWideTool
+from toolsaf.common.traffic import EvidenceSource, Evidence
+from toolsaf.common.verdict import Verdict
 
 
 class ZEDReader(SystemWideTool):

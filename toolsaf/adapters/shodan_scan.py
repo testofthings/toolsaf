@@ -9,15 +9,15 @@ from typing import List, Dict, Tuple, Optional, Any, Set, cast
 from shodan.client import Shodan
 from shodan.exception import APIError
 
-from tdsaf.main import ConfigurationException
-from tdsaf.adapters.tools import SystemWideTool
-from tdsaf.core.model import IoTSystem, Service
-from tdsaf.core.components import Software, SoftwareComponent
-from tdsaf.core.event_interface import EventInterface, PropertyEvent
-from tdsaf.common.traffic import EvidenceSource, Evidence, ServiceScan
-from tdsaf.common.address import IPAddress, Protocol, EndpointAddress
-from tdsaf.common.property import Properties, PropertyKey
-from tdsaf.common.verdict import Verdict
+from toolsaf.main import ConfigurationException
+from toolsaf.adapters.tools import SystemWideTool
+from toolsaf.core.model import IoTSystem, Service
+from toolsaf.core.components import Software, SoftwareComponent
+from toolsaf.core.event_interface import EventInterface, PropertyEvent
+from toolsaf.common.traffic import EvidenceSource, Evidence, ServiceScan
+from toolsaf.common.address import IPAddress, Protocol, EndpointAddress
+from toolsaf.common.property import Properties, PropertyKey
+from toolsaf.common.verdict import Verdict
 
 
 class ShodanScan(SystemWideTool):

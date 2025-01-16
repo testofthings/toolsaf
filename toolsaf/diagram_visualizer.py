@@ -11,11 +11,11 @@ from diagrams.aws.iot import IotSensor
 from diagrams.ibm.user import Browser
 from diagrams.generic import device, storage
 
-from tdsaf.common.verdict import Verdict
-from tdsaf.common.basics import HostType
-from tdsaf.core.model import Host
-import tdsaf.builder_backend as BB
-from tdsaf.main import DiagramVisualizer as DV
+from toolsaf.common.verdict import Verdict
+from toolsaf.common.basics import HostType
+from toolsaf.core.model import Host
+import toolsaf.builder_backend as BB
+from toolsaf.main import DiagramVisualizer as DV
 
 
 class DiagramVisualizer(DV):

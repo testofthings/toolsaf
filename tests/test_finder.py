@@ -1,6 +1,6 @@
 import pytest
-from tdsaf.main import ARP, DHCP, TCP
-from tdsaf.core.selector import Finder
+from toolsaf.main import ARP, DHCP, TCP
+from toolsaf.core.selector import Finder
 from tests.test_model import Setup
 
 

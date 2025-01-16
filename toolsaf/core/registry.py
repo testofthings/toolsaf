@@ -3,14 +3,14 @@
 import logging
 from typing import Optional, Dict, Self, Any, Set
 
-from tdsaf.common.entity import Entity
-from tdsaf.core.entity_database import EntityDatabase, InMemoryDatabase
-from tdsaf.core.event_interface import EventInterface, PropertyAddressEvent, PropertyEvent
-from tdsaf.core.event_logger import EventLogger
-from tdsaf.core.inspector import Inspector
-from tdsaf.core.model import IoTSystem, Connection, Host, Service
-from tdsaf.core.services import NameEvent
-from tdsaf.common.traffic import ServiceScan, HostScan, Event, EvidenceSource, Flow
+from toolsaf.common.entity import Entity
+from toolsaf.core.entity_database import EntityDatabase, InMemoryDatabase
+from toolsaf.core.event_interface import EventInterface, PropertyAddressEvent, PropertyEvent
+from toolsaf.core.event_logger import EventLogger
+from toolsaf.core.inspector import Inspector
+from toolsaf.core.model import IoTSystem, Connection, Host, Service
+from toolsaf.core.services import NameEvent
+from toolsaf.common.traffic import ServiceScan, HostScan, Event, EvidenceSource, Flow
 
 
 class Registry(EventInterface):

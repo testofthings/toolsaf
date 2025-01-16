@@ -2,13 +2,13 @@ import io
 import xml.etree.ElementTree as ET
 import pytest
 
-from tdsaf.adapters.android_manifest_scan import AndroidManifestScan
-from tdsaf.common.traffic import EvidenceSource
-from tdsaf.common.address import EntityTag
-from tdsaf.common.property import PropertyKey
-from tdsaf.common.verdict import Verdict
-from tdsaf.main import ConfigurationException
-from tdsaf.common.android import *
+from toolsaf.adapters.android_manifest_scan import AndroidManifestScan
+from toolsaf.common.traffic import EvidenceSource
+from toolsaf.common.address import EntityTag
+from toolsaf.common.property import PropertyKey
+from toolsaf.common.verdict import Verdict
+from toolsaf.main import ConfigurationException
+from toolsaf.common.android import *
 from tests.test_model import Setup
 
 

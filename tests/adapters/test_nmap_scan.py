@@ -4,12 +4,12 @@ from xml.etree import ElementTree
 from io import BytesIO
 from datetime import datetime
 
-from tdsaf.adapters.nmap_scan import NMAPScan
-from tdsaf.main import ConfigurationException, HTTP
-from tdsaf.common.address import Protocol, IPAddress, HWAddress
-from tdsaf.common.verdict import Verdict
-from tdsaf.common.property import Properties
-from tdsaf.common.traffic import EvidenceSource
+from toolsaf.adapters.nmap_scan import NMAPScan
+from toolsaf.main import ConfigurationException, HTTP
+from toolsaf.common.address import Protocol, IPAddress, HWAddress
+from toolsaf.common.verdict import Verdict
+from toolsaf.common.property import Properties
+from toolsaf.common.traffic import EvidenceSource
 from tests.test_model import Setup
 
 

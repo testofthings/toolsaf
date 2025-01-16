@@ -2,8 +2,8 @@
 
 import pathlib
 
-from tdsaf.common.address import DNSName, EntityTag, IPAddress
-from tdsaf.adapters.batch_import import BatchImporter
+from toolsaf.common.address import DNSName, EntityTag, IPAddress
+from toolsaf.adapters.batch_import import BatchImporter
 from tests.test_model import Setup
 
 

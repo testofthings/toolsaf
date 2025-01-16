@@ -5,13 +5,13 @@ from zipfile import ZipFile
 from io import BufferedReader
 from typing import Set, Tuple, Dict, Any, cast
 
-from tdsaf.common.address import HWAddresses
-from tdsaf.core.event_interface import EventInterface
-from tdsaf.adapters.tools import SystemWideTool
-from tdsaf.core.model import IoTSystem
-from tdsaf.common.traffic import EvidenceSource, Evidence, IPFlow
-from tdsaf.common.property import Properties
-from tdsaf.common.verdict import Verdict
+from toolsaf.common.address import HWAddresses
+from toolsaf.core.event_interface import EventInterface
+from toolsaf.adapters.tools import SystemWideTool
+from toolsaf.core.model import IoTSystem
+from toolsaf.common.traffic import EvidenceSource, Evidence, IPFlow
+from toolsaf.common.property import Properties
+from toolsaf.common.verdict import Verdict
 
 
 class CertMITMReader(SystemWideTool):

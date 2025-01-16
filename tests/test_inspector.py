@@ -1,12 +1,12 @@
-from tdsaf.common.basics import ExternalActivity, Status
-from tdsaf.builder_backend import SystemBackend
-from tdsaf.core.services import NameEvent
+from toolsaf.common.basics import ExternalActivity, Status
+from toolsaf.builder_backend import SystemBackend
+from toolsaf.core.services import NameEvent
 import test_model
-from tdsaf.common.address import DNSName, EndpointAddress, Protocol, IPAddress
-from tdsaf.core.inspector import Inspector
-from tdsaf.main import DHCP, DNS, UDP, TCP
-from tdsaf.common.traffic import NO_EVIDENCE, IPFlow, Evidence, EvidenceSource, ServiceScan, HostScan
-from tdsaf.common.verdict import Verdict
+from toolsaf.common.address import DNSName, EndpointAddress, Protocol, IPAddress
+from toolsaf.core.inspector import Inspector
+from toolsaf.main import DHCP, DNS, UDP, TCP
+from toolsaf.common.traffic import NO_EVIDENCE, IPFlow, Evidence, EvidenceSource, ServiceScan, HostScan
+from toolsaf.common.verdict import Verdict
 
 
 def simple_setup_3(tcp=False) -> SystemBackend:
@@ -87,7 +87,7 @@ def test_irrelevant_traffic():
     cs = i.connection(IPFlow.UDP("1:0:0:0:0:3", "192.168.0.3", 1100) >> ("1:0:0:0:0:2", "192.168.0.2", 1234))
     dev3 = cs.source
     assert cs.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
-    assert dev1.entity.status_verdict() == (Status.EXPECTED, Verdict.PASS)  
+    assert dev1.entity.status_verdict() == (Status.EXPECTED, Verdict.PASS)
     assert dev3.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
 
     # connection to unexpected service

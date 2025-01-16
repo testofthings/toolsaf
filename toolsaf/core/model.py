@@ -6,14 +6,14 @@ import re
 from typing import List, Set, Optional, Tuple, TypeVar, Callable, Dict, Any, Self, Iterable, Iterator, Union
 from urllib.parse import urlparse
 
-from tdsaf.common.address import AnyAddress, Addresses, EndpointAddress, EntityTag, Network, Protocol, IPAddress, \
+from toolsaf.common.address import AnyAddress, Addresses, EndpointAddress, EntityTag, Network, Protocol, IPAddress, \
     DNSName
-from tdsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status
-from tdsaf.common.entity import Entity
-from tdsaf.common.property import PropertyKey
-from tdsaf.common.traffic import Flow, EvidenceSource
-from tdsaf.common.verdict import Verdict
-from tdsaf.core.online_resources import OnlineResource
+from toolsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status
+from toolsaf.common.entity import Entity
+from toolsaf.common.property import PropertyKey
+from toolsaf.common.traffic import Flow, EvidenceSource
+from toolsaf.common.verdict import Verdict
+from toolsaf.core.online_resources import OnlineResource
 
 
 class Connection(Entity):

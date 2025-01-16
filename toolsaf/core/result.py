@@ -8,12 +8,12 @@ from functools import cached_property
 from typing import TextIO, List, Dict, Tuple, Union, Any
 from colored import Fore, Style
 
-from tdsaf.common.basics import ConnectionType
-from tdsaf.common.entity import Entity
-from tdsaf.common.verdict import Verdict
-from tdsaf.core.model import Host, Connection, Addressable, NodeComponent, IoTSystem
-from tdsaf.common.property import Properties, PropertyKey, PropertyVerdictValue
-from tdsaf.core.registry import Registry
+from toolsaf.common.basics import ConnectionType
+from toolsaf.common.entity import Entity
+from toolsaf.common.verdict import Verdict
+from toolsaf.core.model import Host, Connection, Addressable, NodeComponent, IoTSystem
+from toolsaf.common.property import Properties, PropertyKey, PropertyVerdictValue
+from toolsaf.core.registry import Registry
 
 
 class Report:

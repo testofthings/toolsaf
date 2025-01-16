@@ -7,12 +7,12 @@ import pathlib
 from io import BufferedReader
 from typing import Dict, List, Optional, Any, Set
 
-from tdsaf.common.address import Addresses
-from tdsaf.common.basics import ExternalActivity
-from tdsaf.core.event_interface import EventInterface
-from tdsaf.core.model import EvidenceNetworkSource, IoTSystem
-from tdsaf.adapters.tool_finder import ToolDepiction, ToolFinder
-from tdsaf.common.traffic import EvidenceSource
+from toolsaf.common.address import Addresses
+from toolsaf.common.basics import ExternalActivity
+from toolsaf.core.event_interface import EventInterface
+from toolsaf.core.model import EvidenceNetworkSource, IoTSystem
+from toolsaf.adapters.tool_finder import ToolDepiction, ToolFinder
+from toolsaf.common.traffic import EvidenceSource
 
 
 class BatchImporter:

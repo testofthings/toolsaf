@@ -2,26 +2,26 @@ import pytest
 import warnings
 warnings.filterwarnings("ignore", category=pytest.PytestCollectionWarning)
 
-from tdsaf.adapters.tool_finder import ToolFinder
-from tdsaf.adapters.android_manifest_scan import AndroidManifestScan
-from tdsaf.adapters.censys_scan import CensysScan
-from tdsaf.adapters.har_scan import HARScan
-from tdsaf.adapters.certmitm_reader import CertMITMReader
-from tdsaf.adapters.nmap_scan import NMAPScan
-from tdsaf.adapters.github_releases import GithubReleaseReader
-from tdsaf.adapters.ping_command import PingCommand
-from tdsaf.adapters.pcap_reader import PCAPReader
-from tdsaf.adapters.tshark_reader import TSharkReader
-from tdsaf.adapters.tools import SimpleFlowTool
-from tdsaf.adapters.setup_reader import SetupCSVReader
-from tdsaf.adapters.shell_commands import ShellCommandPs, ShellCommandSs
-from tdsaf.adapters.shodan_scan import ShodanScan
-from tdsaf.adapters.spdx_reader import SPDXReader
-from tdsaf.adapters.ssh_audit_scan import SSHAuditScan
-from tdsaf.adapters.testsslsh_scan import TestSSLScan
-from tdsaf.adapters.vulnerability_reader import VulnerabilityReader
-from tdsaf.adapters.web_checker import WebChecker
-from tdsaf.adapters.zed_reader import ZEDReader
+from toolsaf.adapters.tool_finder import ToolFinder
+from toolsaf.adapters.android_manifest_scan import AndroidManifestScan
+from toolsaf.adapters.censys_scan import CensysScan
+from toolsaf.adapters.har_scan import HARScan
+from toolsaf.adapters.certmitm_reader import CertMITMReader
+from toolsaf.adapters.nmap_scan import NMAPScan
+from toolsaf.adapters.github_releases import GithubReleaseReader
+from toolsaf.adapters.ping_command import PingCommand
+from toolsaf.adapters.pcap_reader import PCAPReader
+from toolsaf.adapters.tshark_reader import TSharkReader
+from toolsaf.adapters.tools import SimpleFlowTool
+from toolsaf.adapters.setup_reader import SetupCSVReader
+from toolsaf.adapters.shell_commands import ShellCommandPs, ShellCommandSs
+from toolsaf.adapters.shodan_scan import ShodanScan
+from toolsaf.adapters.spdx_reader import SPDXReader
+from toolsaf.adapters.ssh_audit_scan import SSHAuditScan
+from toolsaf.adapters.testsslsh_scan import TestSSLScan
+from toolsaf.adapters.vulnerability_reader import VulnerabilityReader
+from toolsaf.adapters.web_checker import WebChecker
+from toolsaf.adapters.zed_reader import ZEDReader
 from tests.test_model import Setup
 
 

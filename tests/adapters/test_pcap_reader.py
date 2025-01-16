@@ -1,11 +1,11 @@
 import pathlib
-from tdsaf.core.inspector import Inspector
+from toolsaf.core.inspector import Inspector
 
-from tdsaf.core.model import IoTSystem
-from tdsaf.adapters.pcap_reader import PCAPReader
-from tdsaf.core.registry import Registry
-from tdsaf.common.traffic import IPFlow, EvidenceSource
-from tdsaf.common.address import IPAddress
+from toolsaf.core.model import IoTSystem
+from toolsaf.adapters.pcap_reader import PCAPReader
+from toolsaf.core.registry import Registry
+from toolsaf.common.traffic import IPFlow, EvidenceSource
+from toolsaf.common.address import IPAddress
 from tests.test_model import Setup
 
 

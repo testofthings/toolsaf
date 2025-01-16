@@ -6,17 +6,17 @@ from pathlib import Path
 from xml.etree import ElementTree
 from typing import Dict, List, cast
 
-from tdsaf.main import ConfigurationException
-from tdsaf.common.basics import HostType
-from tdsaf.common.address import AnyAddress
-from tdsaf.core.components import Software
-from tdsaf.core.event_interface import PropertyEvent, EventInterface
-from tdsaf.core.model import IoTSystem
-from tdsaf.common.property import Properties, PropertyKey
-from tdsaf.adapters.tools import EndpointTool
-from tdsaf.common.traffic import EvidenceSource, Evidence
-from tdsaf.common.verdict import Verdict
-from tdsaf.common.android import MobilePermissions
+from toolsaf.main import ConfigurationException
+from toolsaf.common.basics import HostType
+from toolsaf.common.address import AnyAddress
+from toolsaf.core.components import Software
+from toolsaf.core.event_interface import PropertyEvent, EventInterface
+from toolsaf.core.model import IoTSystem
+from toolsaf.common.property import Properties, PropertyKey
+from toolsaf.adapters.tools import EndpointTool
+from toolsaf.common.traffic import EvidenceSource, Evidence
+from toolsaf.common.verdict import Verdict
+from toolsaf.common.android import MobilePermissions
 
 
 class AndroidManifestScan(EndpointTool):

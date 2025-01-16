@@ -2,13 +2,13 @@ import pytest
 from io import BytesIO, BufferedReader, TextIOWrapper
 from typing import Union, List
 
-from tdsaf.adapters.web_checker import WebChecker
-from tdsaf.core.online_resources import OnlineResource
-from tdsaf.builder_backend import SystemBackend
-from tdsaf.common.property import Properties
-from tdsaf.common.traffic import EvidenceSource
-from tdsaf.common.verdict import Verdict
-from tdsaf.main import ConfigurationException
+from toolsaf.adapters.web_checker import WebChecker
+from toolsaf.core.online_resources import OnlineResource
+from toolsaf.builder_backend import SystemBackend
+from toolsaf.common.property import Properties
+from toolsaf.common.traffic import EvidenceSource
+from toolsaf.common.verdict import Verdict
+from toolsaf.main import ConfigurationException
 from tests.test_model import Setup
 
 

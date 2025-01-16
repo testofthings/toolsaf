@@ -2,12 +2,12 @@ import pytest
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from tdsaf.adapters.ssh_audit_scan import SSHAuditScan
-from tdsaf.common.address import Protocol, EndpointAddress
-from tdsaf.main import SSH
-from tdsaf.core.model import Service
-from tdsaf.common.property import PropertyKey
-from tdsaf.common.verdict import Verdict
+from toolsaf.adapters.ssh_audit_scan import SSHAuditScan
+from toolsaf.common.address import Protocol, EndpointAddress
+from toolsaf.main import SSH
+from toolsaf.core.model import Service
+from toolsaf.common.property import PropertyKey
+from toolsaf.common.verdict import Verdict
 from tests.test_model import Setup
 
 
