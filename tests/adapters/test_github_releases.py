@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from tdsaf.adapters.releases import ReleaseReader
+from tdsaf.adapters.github_releases import GithubReleaseReader
 from tdsaf.common.release_info import ReleaseInfo
 from tdsaf.core.components import Software
 from tests.test_model import Setup
@@ -14,14 +14,14 @@ from tests.test_model import Setup
     [(Software, True), (Setup, False)]
 )
 def test_filter_node(spec, exp):
-    scan = ReleaseReader(Setup().get_system())
+    scan = GithubReleaseReader(Setup().get_system())
     mock = MagicMock(spec=spec)
     assert scan.filter_component(mock) == exp
 
 
 def test_process_component():
     setup = Setup()
-    reader = ReleaseReader(setup.get_system())
+    reader = GithubReleaseReader(setup.get_system())
 
     device = setup.system.device("Device")
     software = device.software().sw

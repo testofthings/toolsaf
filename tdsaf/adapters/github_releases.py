@@ -14,7 +14,7 @@ from tdsaf.common.traffic import EvidenceSource, Evidence
 from tdsaf.common.release_info import ReleaseInfo
 
 
-class ReleaseReader(NodeComponentTool):
+class GithubReleaseReader(NodeComponentTool):
     """Read release data aquired from GitHub API"""
     def __init__(self, system: IoTSystem) -> None:
         super().__init__("github-releases", ".json", system)
