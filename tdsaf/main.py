@@ -68,10 +68,6 @@ class SystemBuilder:
         """Attach a file to the model"""
         raise NotImplementedError()
 
-    def visualize(self) -> 'VisualizerBuilder':
-        """Model visualization"""
-        raise NotImplementedError()
-
     def diagram_visualizer(self) -> 'DiagramVisualizer':
         """Security statement visualization"""
         raise NotImplementedError()
@@ -254,17 +250,6 @@ class NodeVisualBuilder:
 
     def image(self, url: str, scale: int=100) -> Self:
         """Set URL to node image"""
-        raise NotImplementedError()
-
-
-class VisualizerBuilder:
-    """Visual builder"""
-    def place(self, *places: str) -> Self:
-        """Place handles into image"""
-        raise NotImplementedError()
-
-    def where(self, handles: Dict[str, Union[NodeBuilder, NodeVisualBuilder]]) -> Self:
-        """Name handles in the image"""
         raise NotImplementedError()
 
 
