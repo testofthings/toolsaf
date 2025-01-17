@@ -1,4 +1,4 @@
-from tdsaf.adapters.ping_command import PingCommand
+from toolsaf.adapters.ping_command import PingCommand
 
 
 def test_ping():

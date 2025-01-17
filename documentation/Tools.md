@@ -1,5 +1,5 @@
 # Tools
-TDSAF can read output from various tools to verify security statements. Tool output is organized in a directory structure, with the root directory specified to the framework using the `--read <directory>` command-line argument.
+Toolsaf can read output from various tools to verify security statements. Tool output is organized in a directory structure, with the root directory specified to the framework using the `--read <directory>` command-line argument.
 
 ## Batch files and directories
 The batch directory structure can be arbitarily deep. Each directory containing data files must have a special metafile `00meta.json`. Metafiles must always contain at least the `file_type` of related data files. For example, consider the following `00meta.json` for NMAP output data files.
@@ -10,7 +10,7 @@ The batch directory structure can be arbitarily deep. Each directory containing 
 ```
 The data files have to usually be named according to the template dictated by file type. The templates are discussed below with file types.
 
-Each batch directory also has a _label_, which allows TDSAF to filter the processed data. By default, the _label_ is the name of the directory, but it can be changed in the metafile, e.g. the following NMAP data is filtered by label `nmap-01`.
+Each batch directory also has a _label_, which allows Toolsaf to filter the processed data. By default, the _label_ is the name of the directory, but it can be changed in the metafile, e.g. the following NMAP data is filtered by label `nmap-01`.
 ```json
 {
     "file_type": "nmap",
@@ -36,7 +36,7 @@ See [end of this page](#advanced-metafile-definitions) for advanced options requ
 
 ## List of supported tools
 
-In the following list you can find the tools and formats TDSAF supports. Short descriptions and commands for output capturing in proper formats are provided in their own sections.
+In the following list you can find the tools and formats Toolsaf supports. Short descriptions and commands for output capturing in proper formats are provided in their own sections.
 
 | Tool | File Format |
 |------|-------------|
@@ -57,7 +57,7 @@ In the following list you can find the tools and formats TDSAF supports. Short d
 | [ZED Attack Proxy (ZAP)](Tools.md#zed-attack-proxy-zap) | .json |
 
 ### Android Manifest
-TDSAF checks the permissions listed in `.xml` format Android Manifest files. These can be extracted from mobile application's `.apk` files. Example metafile `00meta.json`:
+Toolsaf checks the permissions listed in `.xml` format Android Manifest files. These can be extracted from mobile application's `.apk` files. Example metafile `00meta.json`:
 
 ```json
 {
@@ -73,7 +73,7 @@ As the package file is a zip, the following works as well.
 ```
 $ unzip <package>.apk AndroidManifest.xml
 ```
-We divide Android permissions into [different categories](../tdsaf/adapters/data/android_permissions.json) that are then used in the DSL.
+We divide Android permissions into [different categories](../toolsaf/adapters/data/android_permissions.json) that are then used in the DSL.
 
 ### Black Duck vulnerabilities
 
@@ -99,11 +99,11 @@ Example metafile `00meta.json`:
 
 Use of Censys API requires an account with suitable permissions. Once account has been set up property, the framework utility can be used to fetch the JSON through API:
 ```
-$ python tdsaf/censys_scan <address>
+$ python toolsaf/censys_scan <address>
 ```
 
 ### Certmitm
-[Certmitm](https://github.com/aapooksman/certmitm) produces files and folders as its output. To provide this data to TDSAF, create a compressed `.zip` file containing the output.
+[Certmitm](https://github.com/aapooksman/certmitm) produces files and folders as its output. To provide this data to Toolsaf, create a compressed `.zip` file containing the output.
 Example metafile `00meta.json`:
 ```json
 {
@@ -187,9 +187,9 @@ Shodan scan results can be obtained by using either of the following commands:
 ```bash
 export SHODAN_API_KEY=your-api-key
 
-python3 tdsaf/adapters/shodan_scan.py iplookup 8.8.8.8 # Results for one IP
+python3 toolsaf/adapters/shodan_scan.py iplookup 8.8.8.8 # Results for one IP
 # OR
-python3 tdsaf/adapters/shodan_scan.py dnslookup ruuvi.com # Results for multiple IPs under given domain
+python3 toolsaf/adapters/shodan_scan.py dnslookup ruuvi.com # Results for multiple IPs under given domain
 ```
 
 ### SPDX

@@ -3,9 +3,9 @@ from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from tdsaf.adapters.github_releases import GithubReleaseReader
-from tdsaf.common.release_info import ReleaseInfo
-from tdsaf.core.components import Software
+from toolsaf.adapters.github_releases import GithubReleaseReader
+from toolsaf.common.release_info import ReleaseInfo
+from toolsaf.core.components import Software
 from tests.test_model import Setup
 
 

@@ -1,11 +1,11 @@
 import io
 import zipfile
 
-from tdsaf.adapters.certmitm_reader import CertMITMReader
-from tdsaf.common.traffic import EvidenceSource
-from tdsaf.main import TLS
-from tdsaf.common.property import Properties
-from tdsaf.common.verdict import Verdict
+from toolsaf.adapters.certmitm_reader import CertMITMReader
+from toolsaf.common.traffic import EvidenceSource
+from toolsaf.main import TLS
+from toolsaf.common.property import Properties
+from toolsaf.common.verdict import Verdict
 from tests.test_model import Setup
 
 

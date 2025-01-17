@@ -2,10 +2,10 @@
 
 import pathlib
 
-from tdsaf.adapters.batch_import import BatchImporter
-from tdsaf.core.components import OperatingSystem
-from tdsaf.common.property import PropertyKey
-from tdsaf.common.verdict import Verdict
+from toolsaf.adapters.batch_import import BatchImporter
+from toolsaf.core.components import OperatingSystem
+from toolsaf.common.property import PropertyKey
+from toolsaf.common.verdict import Verdict
 from tests.test_model import Setup
 
 

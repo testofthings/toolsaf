@@ -1,8 +1,8 @@
-from tdsaf.common.address import IPAddress
-from tdsaf.common.verdict import Verdict
-from tdsaf.builder_backend import SystemBackend
-from tdsaf.main import UDP, HTTP
-from tdsaf.common.basics import Status
+from toolsaf.common.address import IPAddress
+from toolsaf.common.verdict import Verdict
+from toolsaf.builder_backend import SystemBackend
+from toolsaf.main import UDP, HTTP
+from toolsaf.common.basics import Status
 
 
 def test_just_host():

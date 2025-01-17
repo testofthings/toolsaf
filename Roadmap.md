@@ -1,6 +1,6 @@
-# Tdsaf roadmap
+# Toolsaf roadmap
 
-The following provides a rough overview of how we see the Tool-Driven Security Assessment Framework developing towards useful security assessment toolkit.
+The following provides a rough overview of how we see Toolsaf developing towards a useful security assessment toolkit.
 
 ## Core features
 

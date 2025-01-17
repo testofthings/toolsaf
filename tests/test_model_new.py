@@ -1,9 +1,9 @@
-from tdsaf.common.address import DNSName, EntityTag, HWAddress, IPAddress
-from tdsaf.common.basics import ExternalActivity, Status
-from tdsaf.main import SSH
-from tdsaf.core.services import NameEvent
-from tdsaf.common.traffic import NO_EVIDENCE, IPFlow
-from tdsaf.common.verdict import Verdict
+from toolsaf.common.address import DNSName, EntityTag, HWAddress, IPAddress
+from toolsaf.common.basics import ExternalActivity, Status
+from toolsaf.main import SSH
+from toolsaf.core.services import NameEvent
+from toolsaf.common.traffic import NO_EVIDENCE, IPFlow
+from toolsaf.common.verdict import Verdict
 from tests.test_model import Setup
 
 

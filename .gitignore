@@ -17,6 +17,6 @@ app-dbs/
 .env
 .venv
 .vscode
-.tdsaf*
+.toolsaf*
 
 shodan/

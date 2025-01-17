@@ -3,12 +3,12 @@ from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from tdsaf.adapters.har_scan import HARScan
-from tdsaf.main import HTTP
-from tdsaf.core.model import Host
-from tdsaf.common.property import PropertyKey
-from tdsaf.common.verdict import Verdict
-from tdsaf.common.traffic import EvidenceSource
+from toolsaf.adapters.har_scan import HARScan
+from toolsaf.main import HTTP
+from toolsaf.core.model import Host
+from toolsaf.common.property import PropertyKey
+from toolsaf.common.verdict import Verdict
+from toolsaf.common.traffic import EvidenceSource
 from tests.test_model import Setup
 
 

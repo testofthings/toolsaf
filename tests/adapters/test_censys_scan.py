@@ -2,12 +2,12 @@ from pathlib import Path
 import pytest
 from unittest.mock import MagicMock
 
-from tdsaf.adapters.censys_scan import CensysScan
-from tdsaf.core.model import Host
-from tdsaf.common.property import Properties
-from tdsaf.common.address import IPAddress
-from tdsaf.common.verdict import Verdict
-from tdsaf.main import SSH, HTTP
+from toolsaf.adapters.censys_scan import CensysScan
+from toolsaf.core.model import Host
+from toolsaf.common.property import Properties
+from toolsaf.common.address import IPAddress
+from toolsaf.common.verdict import Verdict
+from toolsaf.main import SSH, HTTP
 from tests.test_model import Setup
 
 

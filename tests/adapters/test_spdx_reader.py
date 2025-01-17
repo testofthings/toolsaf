@@ -4,11 +4,11 @@ import pytest
 import tempfile
 from unittest.mock import MagicMock
 
-from tdsaf.adapters.spdx_reader import SPDXJson, SPDXReader
-from tdsaf.core.components import Software, SoftwareComponent
-from tdsaf.common.property import PropertyKey
-from tdsaf.main import ConfigurationException
-from tdsaf.common.verdict import Verdict
+from toolsaf.adapters.spdx_reader import SPDXJson, SPDXReader
+from toolsaf.core.components import Software, SoftwareComponent
+from toolsaf.common.property import PropertyKey
+from toolsaf.main import ConfigurationException
+from toolsaf.common.verdict import Verdict
 from tests.test_model import Setup
 
 

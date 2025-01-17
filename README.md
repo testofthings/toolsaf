@@ -1,5 +1,5 @@
-# Tool-Driven Security Assessment Framework
-This is an **early version** of the _Tool-driven security assessment_ (TDSA) framework.
+# Toolsaf
+This is an **early version** of Toolsaf, a tool driven security assesment framework.
 The framework is intended to support automated security assessment of _Internet of Things_ (IoT) and other systems by running common security tools.
 
 This is an open-source project driven by [Test of Things](https://testofthings.com).
@@ -14,14 +14,14 @@ The framework has two main functions:
 Security statements are currently created with a Python-based _Domain-Specific Language_ (DSL).
 The verification is done by running [supported tools](documentation/Tools.md), and using their output to pass verdicts on security statement properties.
 
-## Getting Started with TDSAF
-At the moment there is no _PyPi_ package for TDSAF, so it must be installed manually. Here's how to do that:
+## Getting Started with Toolsaf
+At the moment there is no _PyPi_ package for Toolsaf, so it must be installed manually. Here's how to do that:
 
 First, clone this repository.
 ```shell
-git clone https://github.com/testofthings/tdsaf.git # HTTPS
+git clone https://github.com/testofthings/toolsaf.git # HTTPS
 # OR
-git clone git@github.com:testofthings/tdsaf.git     # SSH
+git clone git@github.com:testofthings/toolsaf.git     # SSH
 ```
 
 Next, create a directory and a virtual environment for your security statement.
@@ -34,13 +34,13 @@ touch __init__.py statement.py
 ```
 The above commands produce the [expected project structure](documentation/CreatingSecurityStatements.md#project-structure) for your statement.
 
-Finally, TDSAF can be taken into use in the statement's directory with the following command.
+Finally, Toolsaf can be taken into use in the statement's directory with the following command.
 (The option `--config-settings editable_mode=strict` is required by some tools to properly work with locally cloned module.)
 ```shell
-pip install -e ../tdsaf/ --config-settings editable_mode=strict
+pip install -e ../toolsaf/ --config-settings editable_mode=strict
 ```
 
-Keep in mind that TDSAF and security statements should be stored in their own separate directories.
+Keep in mind that Toolsaf and security statements should be stored in their own separate directories.
 
 If you want to visualize your security statmenets you also need to install [Graphviz](https://graphviz.org/download/).
 
@@ -61,7 +61,7 @@ The framework's command-line options are listed [here](documentation/CommandLine
 ## Sample security statements
 A security statement for _Ruuvi gateway and tags_ (https://ruuvi.com/) was developed during the PhD research. The statement is in directory `samples/ruuvi/`. The data for verifying the security statement is available for academic research, please request it from Rauli. Remember to tell the goals of the research and the organization performing it. Right to refuse requests is reserved.
 
-The security statement for Ruuvi is executed like this, assuming working directory is the Tdsaf root:
+The security statement for Ruuvi is executed like this, assuming working directory is the _toolsaf_ root directory:
 ```
 $ python samples/ruuvi/ruuvi.py
 ```
@@ -72,19 +72,19 @@ To run the unit tests, install _pytest_
 ```shell
 pip install pytest
 ```
-then, in the tdsaf directory:
+then:
 ```shell
 pytest tests/
 ```
 
 ## Linting
-To lint tdsaf code, install _pylint_
+To lint toolsaf code, install _pylint_
 ```shell
 pip install pylint
 ```
 then:
 ```shell
-pylint tdsaf/
+pylint toolsaf/
 ```
 Samples and tests are not lint-compatible.
 

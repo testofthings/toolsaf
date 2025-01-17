@@ -5,14 +5,14 @@ from pathlib import Path
 from typing import Tuple, Optional
 from unittest.mock import MagicMock, patch, mock_open
 
-from tdsaf.adapters.shodan_scan import ShodanScan, ShodanScanner
-from tdsaf.builder_backend import HostBackend
-from tdsaf.main import ConfigurationException, HTTP
-from tdsaf.common.address import IPAddress, Protocol, EndpointAddress
-from tdsaf.common.verdict import Verdict
-from tdsaf.common.property import PropertyKey
-from tdsaf.common.traffic import ServiceScan
-from tdsaf.core.model import Service
+from toolsaf.adapters.shodan_scan import ShodanScan, ShodanScanner
+from toolsaf.builder_backend import HostBackend
+from toolsaf.main import ConfigurationException, HTTP
+from toolsaf.common.address import IPAddress, Protocol, EndpointAddress
+from toolsaf.common.verdict import Verdict
+from toolsaf.common.property import PropertyKey
+from toolsaf.common.traffic import ServiceScan
+from toolsaf.core.model import Service
 from tests.test_model import Setup
 
 

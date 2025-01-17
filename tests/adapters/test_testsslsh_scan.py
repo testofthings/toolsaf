@@ -4,12 +4,12 @@ from pathlib import Path
 from unittest.mock import MagicMock
 warnings.filterwarnings("ignore", category=pytest.PytestCollectionWarning)
 
-from tdsaf.adapters.testsslsh_scan import TestSSLScan
-from tdsaf.common.address import EndpointAddress
-from tdsaf.main import TLS
-from tdsaf.core.model import Service
-from tdsaf.common.property import PropertyKey
-from tdsaf.common.verdict import Verdict
+from toolsaf.adapters.testsslsh_scan import TestSSLScan
+from toolsaf.common.address import EndpointAddress
+from toolsaf.main import TLS
+from toolsaf.core.model import Service
+from toolsaf.common.property import PropertyKey
+from toolsaf.common.verdict import Verdict
 from tests.test_model import Setup
 
 

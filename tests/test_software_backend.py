@@ -3,10 +3,10 @@ import tempfile
 import pytest
 from unittest.mock import MagicMock
 
-from tdsaf.builder_backend import SoftwareBackend
-from tdsaf.main import ConfigurationException
-from tdsaf.common.property import PropertyKey
-from tdsaf.common.verdict import Verdict
+from toolsaf.builder_backend import SoftwareBackend
+from toolsaf.main import ConfigurationException
+from toolsaf.common.property import PropertyKey
+from toolsaf.common.verdict import Verdict
 
 
 def test_sbom_no_input():
