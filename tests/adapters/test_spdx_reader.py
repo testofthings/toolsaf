@@ -86,7 +86,7 @@ def test_process_component():
     setup = Setup()
     reader = SPDXReader(setup.get_system())
 
-    sw = Software(MagicMock())
+    sw = Software(setup.system.device().entity)
     sw.components["c1"] = SoftwareComponent("c1", "1.0")
     sw.components["c2"] = SoftwareComponent("c2", "1.0")
 
@@ -104,7 +104,7 @@ def test_process_component_in_statement_not_in_data():
     setup = Setup()
     reader = SPDXReader(setup.get_system())
 
-    sw = Software(MagicMock())
+    sw = Software(setup.system.device().entity)
     sw.components["c1"] = SoftwareComponent("c1", "1.0")
 
     data = _get_json_data(packages=[])
@@ -117,7 +117,7 @@ def test_process_component_not_in_statement_in_data():
     setup = Setup()
     reader = SPDXReader(setup.get_system())
 
-    sw = Software(MagicMock())
+    sw = Software(setup.system.device().entity)
 
     data = _get_json_data(packages=[
         {"name": "c1", "versionInfo": "1.0"}
