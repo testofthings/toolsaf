@@ -6,10 +6,11 @@ import logging
 import pathlib
 import sys
 import inspect
-from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union, cast
+from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union, Set, cast
 
 from toolsaf.common.address import (AddressAtNetwork, Addresses, AnyAddress, DNSName, EndpointAddress, EntityTag,
-                                  HWAddress, HWAddresses, IPAddress, IPAddresses, Network, Protocol)
+                                  HWAddress, HWAddresses, IPAddress, IPAddresses, Network, Protocol,
+                                  GlobalAddress)
 from toolsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status
 from toolsaf.adapters.batch_import import BatchImporter, LabelFilter
 from toolsaf.core.components import CookieData, Cookies, DataReference, StoredData, OperatingSystem, Software
@@ -184,10 +185,23 @@ class SystemBackend(SystemBuilder):
 
     def finish_(self) -> None:
         """Finish the model"""
+        hosts = self.system.get_hosts()
         # each real host must have software
-        for h in self.system.get_hosts():
-            if not h.any_host and h.host_type != HostType.BROWSER:
-                Software.ensure_default_software(h)
+        for host in hosts:
+            if not host.any_host and host.host_type != HostType.BROWSER:
+                Software.ensure_default_software(host)
+
+        # Check that there were no duplicate unique addresses in the
+        global_addresses: Set[GlobalAddress] = set()
+        entities = hosts + \
+            [child for host in hosts for child in host.children] + \
+            [component for host in hosts for component in host.components] \
+            + self.system.get_connections()
+
+        for entity in entities:
+            if entity.global_address in global_addresses:
+                raise ConfigurationException(f"Global address {entity.global_address} for {entity} already in use")
+            global_addresses.add(entity.global_address)
 
         # We want to have a authenticator related to each authenticated service
         # NOTE: Not ready to go into this level now...
