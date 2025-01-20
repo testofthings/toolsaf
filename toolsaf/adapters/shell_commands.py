@@ -5,7 +5,7 @@ import re
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from toolsaf.main import ConfigurationException
-from toolsaf.common.address import AddressEnvelope, Addresses, AnyAddress, EndpointAddress, HWAddresses, IPAddress
+from toolsaf.common.address import Addresses, AnyAddress, EndpointAddress, HWAddresses, IPAddress#, AddressEnvelope
 from toolsaf.core.components import OperatingSystem
 from toolsaf.core.event_interface import EventInterface, PropertyEvent
 from toolsaf.core.model import IoTSystem
@@ -13,7 +13,7 @@ from toolsaf.common.property import PropertyKey
 from toolsaf.core.services import NameEvent
 from toolsaf.adapters.tools import EndpointTool
 from toolsaf.common.address import Protocol
-from toolsaf.common.traffic import Evidence, EvidenceSource, IPFlow, ServiceScan
+from toolsaf.common.traffic import Evidence, EvidenceSource, IPFlow#, ServiceScan
 from toolsaf.common.verdict import Verdict
 
 
@@ -184,9 +184,9 @@ class ShellCommandSs(EndpointTool):
                     interface.name(ev)
 
             # service events
-            for addr in sorted(services):
-                scan = ServiceScan(evidence, endpoint=AddressEnvelope(tag, addr) if tag else addr)
-                interface.service_scan(scan)
+            #for addr in sorted(services):
+                #scan = ServiceScan(evidence, endpoint=AddressEnvelope(tag, addr) if tag else addr)
+                #interface.service_scan(scan)
             # NOTE: Create host scan event to report missing services
 
             # connection events

@@ -1,4 +1,4 @@
-from toolsaf.common.address import AddressEnvelope, EndpointAddress, EntityTag, Protocol, DNSName, IPAddress, HWAddress
+from toolsaf.common.address import EndpointAddress, EntityTag, Protocol, DNSName, IPAddress, HWAddress
 from toolsaf.core.inspector import Inspector
 from toolsaf.core.model import Host, IoTSystem
 from toolsaf.common.verdict import Verdict
@@ -465,31 +465,12 @@ def test_reply_misinterpretation():
     assert c0 != c1
 
 
-def test_pick_service_from_subnet():
-    su = Setup()
-    net1 = su.system.network("VPN", "169.254.0.0/16")
-    dev1 = su.system.device().in_networks(net1, su.system.network()).ip("192.168.4.5")
-
-    ins = su.get_inspector()
-    addr = AddressEnvelope(
-        address=IPAddress.new("192.168.4.5"),
-        content=EndpointAddress.ip("169.254.6.7", Protocol.UDP, 1234))
-
-
 def test_unknown_service_in_subnet():
     su = Setup()
     net1 = su.system.network("VPN", "169.254.0.0/16")
     dev1 = su.system.device().in_networks(net1, su.system.network()).ip("192.168.4.5")
     ser1_1 = dev1 / TCP(8686).in_network(net1)
     system = su.get_system()
-
-    # the known service with envelope address
-    addr = AddressEnvelope(
-        address=IPAddress.new("192.168.4.5"),
-        content=EndpointAddress.ip("169.254.6.7", Protocol.TCP, 8686))
-    s0 = system.get_endpoint(addr)
-    assert s0 == ser1_1.entity
-    assert s0.get_parent_host() == dev1.entity
 
     # right host, but service in different subnet
     addr = EndpointAddress.ip("192.168.4.5", Protocol.TCP, 8686)

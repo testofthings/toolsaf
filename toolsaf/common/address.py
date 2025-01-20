@@ -218,9 +218,6 @@ class Addresses:
     @classmethod
     def parse_address(cls, address: str) -> AnyAddress:
         """Parse any address type from string, type given as 'address|type'"""
-        ad, _, con = address.partition("(")
-        if con and con.endswith(")"):
-            return AddressEnvelope(cls.parse_address(ad), cls.parse_address(con[:-1]))
         v, _, t = address.rpartition("|")
         if v == "" and t:
             # no type given
@@ -240,9 +237,6 @@ class Addresses:
     @classmethod
     def parse_endpoint(cls, value: str) -> AnyAddress:
         """Parse address or endpoint"""
-        ad, _, con = value.partition("(")
-        if con and con.endswith(")"):
-            return AddressEnvelope(cls.parse_address(ad), cls.parse_endpoint(con[:-1]))
         a, _, p = value.partition("/")
         addr = cls.parse_address(a)
         if p == "":
@@ -535,66 +529,6 @@ class Network:
 
     def __repr__(self) -> str:
         return self.name
-
-
-class AddressEnvelope(AnyAddress):
-    """Address envelope carrying content address"""
-    def __init__(self, address: AnyAddress, content: AnyAddress) -> None:
-        self.address = address
-        self.content = content
-
-    def open_envelope(self) -> 'AnyAddress':
-        return self.content
-
-    def get_ip_address(self) -> Optional[IPAddress]:
-        return self.address.get_ip_address()
-
-    def get_hw_address(self) -> Optional[HWAddress]:
-        return self.address.get_hw_address()
-
-    def get_host(self) -> AnyAddress:
-        return self.address
-
-    def get_protocol_port(self) -> Optional[Tuple[Protocol, int]]:
-        return self.address.get_protocol_port()
-
-    def change_host(self, host: Optional['AnyAddress']) -> 'AddressEnvelope':
-        return AddressEnvelope(self.address.change_host(host), self.content)
-
-    def is_null(self) -> bool:
-        return self.address.is_null()
-
-    def is_multicast(self) -> bool:
-        return self.address.is_multicast()
-
-    def is_global(self) -> bool:
-        return self.address.is_global()
-
-    def is_tag(self) -> bool:
-        return self.address.is_tag()
-
-    def is_loopback(self) -> bool:
-        return self.address.is_loopback()
-
-    def is_wildcard(self) -> bool:
-        return self.address.is_wildcard()
-
-    def priority(self) -> int:
-        return self.address.priority() + 1
-
-    def get_parseable_value(self) -> str:
-        return f"{self.address.get_parseable_value()}({self.content.get_parseable_value()})"
-
-    def __eq__(self, other: object ) -> bool:
-        if not isinstance(other, AddressEnvelope):
-            return False
-        return self.address == other.address and self.content == other.content
-
-    def __hash__(self) -> int:
-        return self.address.__hash__() ^ self.content.__hash__()
-
-    def __repr__(self) -> str:
-        return f"{self.address}({self.content})"
 
 
 @dataclass(frozen=True)
