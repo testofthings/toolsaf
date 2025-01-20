@@ -7,7 +7,7 @@ from typing import List, Set, Optional, Tuple, TypeVar, Callable, Dict, Any, Sel
 from urllib.parse import urlparse
 
 from toolsaf.common.address import AnyAddress, Addresses, EndpointAddress, EntityTag, Network, Protocol, IPAddress, \
-    DNSName
+    DNSName, GlobalAddress
 from toolsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status
 from toolsaf.common.entity import Entity
 from toolsaf.common.property import PropertyKey
@@ -23,6 +23,10 @@ class Connection(Entity):
         self.concept_name = "connection"
         self.source = source
         self.target = target
+        self.global_address = GlobalAddress.new(
+            f"source={source.global_address.get_parseable_value()}",
+            f"target={target.global_address.get_parseable_value()}"
+        )
         self.con_type = ConnectionType.UNKNOWN
 
     def get_tag(self) -> Optional[Tuple[AnyAddress, AnyAddress]]:
@@ -396,6 +400,7 @@ class Host(Addressable):
         super().__init__(name, parent=parent)
         if tag:
             self.addresses.add(tag)
+        self.global_address = GlobalAddress.new(tag.get_parseable_value() if tag else name)
         self.concept_name = "node"
         self.parent = parent
         self.networks = [] # follow parent
@@ -448,6 +453,7 @@ class Service(Addressable):
         super().__init__(name, parent=parent)
         self.concept_name = "service"
         self.parent: Addressable = parent
+        self.global_address = GlobalAddress.new(parent.global_address, *name.split(":"))
         self.networks = [] # follow parent
         self.protocol: Optional[Protocol] = None  # known protocol
         self.host_type = parent.host_type
@@ -697,6 +703,29 @@ class IoTSystem(NetworkNode):
         else:
             e = None
         return e
+
+    def find_entity(self, address: AnyAddress, at_network: Optional[Network]=None) -> Optional[Entity]:
+        """Find entity by AnyAddress"""
+        if isinstance(address, GlobalAddress):
+            return self.find_entity_by_global_address(address)
+        return self.find_endpoint(address, at_network)
+
+    def find_entity_by_global_address(self, address: GlobalAddress) -> Optional[Entity]:
+        """Find entity by GlobalAddress"""
+        value = address.get_parseable_value()
+        if "source=" in value:
+            return next((conn for conn in self.get_connections() if conn.global_address == address), None)
+
+        for host in self.get_hosts():
+            if host.global_address == address:
+                return host
+            entity = next(
+                (entity for entity in host.components + host.children if entity.global_address == address), None
+            )
+            if entity:
+                return entity
+        return None
+
 
     def new_connection(self, source: Tuple[Addressable, AnyAddress],
                        target: Tuple[Addressable, AnyAddress]) -> Connection:

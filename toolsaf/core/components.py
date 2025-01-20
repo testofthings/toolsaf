@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from typing import Iterable, List, Optional, Dict, Set
 
+from toolsaf.common.address import GlobalAddress
 from toolsaf.common.release_info import ReleaseInfo
 from toolsaf.core.model import IoTSystem, NodeComponent, Connection, NetworkNode, Host, SensitiveData, Addressable
 
@@ -13,6 +14,10 @@ class Software(NodeComponent):
         super().__init__(entity, name if name else self.default_name(entity))
         self.concept_name = "software"
         self.info = ReleaseInfo(self.name)
+        self.global_address = GlobalAddress.new(
+            entity.global_address,
+            f"{self.concept_name}={self.name}"
+        )
         self.components: Dict[str, SoftwareComponent] = {}
         self.permissions: Set[str] = set()
         self.update_connections: List[Connection] = []
@@ -84,6 +89,10 @@ class Cookies(NodeComponent):
     def __init__(self, entity: NetworkNode, name: str="Cookies") -> None:
         super().__init__(entity, name)
         self.concept_name = "cookies"
+        self.global_address = GlobalAddress.new(
+            entity.global_address,
+            f"{self.concept_name}={self.name}"
+        )
         self.cookies: Dict[str, CookieData] = {}
 
     @classmethod
@@ -109,6 +118,10 @@ class OperatingSystem(NodeComponent):
     def __init__(self, entity: NetworkNode) -> None:
         super().__init__(entity, "OS")
         self.concept_name = "os"
+        self.global_address = GlobalAddress.new(
+            entity.global_address,
+            f"{self.concept_name}={self.name}"
+        )
         self.process_map: Dict[str, List[str]] = {}  # owner: process names
 
     @classmethod
