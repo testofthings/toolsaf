@@ -7,6 +7,7 @@ from toolsaf.common.basics import Status
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.property import Properties, PropertyKey
 from toolsaf.common.verdict import Verdictable
+from toolsaf.common.address import GlobalAddress
 
 
 class Entity:
@@ -14,6 +15,7 @@ class Entity:
     def __init__(self) -> None:
         self.concept_name = "other"
         self.status = Status.UNEXPECTED
+        self.global_address: GlobalAddress
         self.properties: Dict[PropertyKey, Any] = {}
 
     def long_name(self) -> str:
