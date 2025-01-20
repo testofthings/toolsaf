@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import enum
 import ipaddress
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network
-from typing import Union, Optional, Tuple, Iterable, Self
+from typing import Union, Optional, Tuple, Iterable, Self, List
 
 
 class Protocol(enum.Enum):
@@ -605,3 +605,53 @@ class AddressAtNetwork:
 
     def __repr__(self) -> str:
         return f"{self.address}@{self.network}"
+
+
+class GlobalAddress(AnyAddress):
+    """Global unique address for entity and connection"""
+    @classmethod
+    def new(cls, *segments: Union['GlobalAddress', str]) -> 'GlobalAddress':
+        """Create new GlobalAddress"""
+        return GlobalAddress(
+            segments=cls._parse_segments(*segments)
+        )
+
+    @staticmethod
+    def _parse_segment(segment: str) -> str:
+        return segment.replace(" ", "_").replace(":", "/").lower()
+
+    @classmethod
+    def _parse_segments(cls, *segments: Union['GlobalAddress', str]) -> List[str]:
+        parsed_segments: List[str] = []
+        for segment in segments:
+            if isinstance(segment, GlobalAddress):
+                parsed_segments.append(segment.get_parseable_value())
+            elif isinstance(segment, str):
+                parsed_segments.append(cls._parse_segment(segment))
+            else:
+                raise ValueError("segment must be str or GlobalAddress")
+        return parsed_segments
+
+    def __init__(self, segments: List[str]) -> None:
+        assert segments
+        self._value = self._create_address_value(segments)
+
+    def _create_address_value(self, segments: List[str]) -> str:
+        """Turn given segments into global address value"""
+        return "/".join(segments)
+
+    def get_parseable_value(self) -> str:
+        return self._value
+
+    def __hash__(self) -> int:
+        return self._value.__hash__()
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, GlobalAddress):
+            return self._value == other._value
+        if isinstance(other, str):
+            return self._value == other
+        return False
+
+    def __repr__(self) -> str:
+        return self._value
