@@ -88,8 +88,8 @@ class SystemBackend(SystemBuilder):
         return b
 
     def any(self, name: str="", node_type: Optional[HostType] = None) -> 'HostBackend':
-        name = name or self._free_host_name("Host")
-        b = self.get_host_(name, "Any host")
+        name = name or self._free_host_name("Environment")
+        b = self.get_host_(name, "Environment")
         b.entity.any_host = True
         b.entity.host_type = HostType.ADMINISTRATIVE if node_type is None else node_type
         # might serve other network nodes
