@@ -2,7 +2,7 @@
 This document provides guidance on structuring your security statement project and details how you can fill in the statement using our Python DSL. Additionally, it outlines the various types of statements that can be created with the DSL.
 
 ## Project Structure
-Security statements for each product should be placed in their own directory in a Python project. Each project is recommended to be version controlled as a Git repository.
+Security statements for each product should be placed in their own directory in a Python project. Each project is recommended to be version controlled as a _Git_-repository.
 One respository can contain one or several products, each in own directory.
 Below is the expected structure for a security statement project:
 ```
@@ -12,175 +12,150 @@ repository-name
     ├── __init__.py
     └── statement.py
 ```
-_repository-name_ refers to a repository cloned from GitHub. Inside this repository is a folder or folders named after products, which contain the actual statement file _(statement.py)_. The .venv folder is the Python virtual environment for the project, into which Toolsaf is installed.
+Above, `repository-name` refers to a repository in GitHub. Inside this repository is a folder or folders named after products, which contain the actual statement file (`statement.py`). The `.venv` folder is the Python virtual environment for the project, into which Toolsaf is installed with _pip_-tool.
 
 Note that security statements should not be placed inside the Toolsaf directory.
 
-## Statement Contents
-A security statement is structured as follows:
+We use _venv_ virtual environment, but any Python tooling should work fine.
+The precense or absence of `.venv` directory depends on your Python tooling,
+Toolsaf does not expect it.
+
+## Minimal security statement sample
+
+A minimal security statement by Python DSL can be structured as follows:
+
 ```python
-"""Security statement"""
+"""Device-backend sample security statement"""
+from toolsaf.main import Builder, TLS
 
-from toolsaf.main import Builder, TLS. NTP, ...
-from toolsaf.common.android import STORAGE, RECORDING
+# System root and its name
+system = Builder.new(__doc__)
 
-system = Builder.new("<Product name>")
+# Define IoT device(s)
+device = system.device()
 
-# Define external services
-any_host = system.any("Services")
+# Define backend servers(s)
+backend = system.backend()
 
-# Define devices
-device = system.device("<Device name>")
+# Define connection(s)
+device >> backend / TLS
 
-# Define open ports on the devices
-open_port_1 = device / SSH
 
-# Define any mobile apps
-mobile = system.mobile("<Mobile app name>")
-
-# Define mobile app permissions
-mobile.set_permissions(STORAGE, RECORDING)
-
-# Define web browser
-browser = system.browser()
-
-# Define relevant backend services
-backend_1 = system.backend("<Service name>").serve(TLS).dns("<Service's DNS name>")
-backend_2 = system.backend("<Service name>").serve(NTP).dns("<Service's DNS name>")
-backend_3 = system.backend("<Service name>").serve(TLS(port=1443)).dns("<Service's DNS name>")
-#...
-backend_n = system.backend("<Service name>").serve(NTP).dns("<Service's DNS name>")
-
-# Define firmware updates
-device.software().updates_from(backend_1)
-
-# Define connections from the environment
-any_host >> device / ARP
-
-# Define connections and protocols from the device
-device >> backend_1 / TLS
-device >> backend_2 / NTP
-
-# Define connections and protocols from mobile apps
-mobile >> backend_1 / TLS
-
-# Define connections and protocols from browser
-browser >> backend_1 /TLS
-
-# Define online resources and keywords
-system.online_resource("privacy-policy", url="https://example.com/privacy-policy/",
-                        keywords=["privacy policy", "personal data"]
-)
-
-# Define cookies
-cookies = browser.cookies()
-cookies.set({
-#                 Domain     Path  Explanation
-    "_ga": ("*.example.com", "/", "Google Analytics"),
-})
-
-# Define collected sensitive data
-system.data(["User e-mail", "Sensor measurements", "Billing Info"])
-
+# Run the system builder
 if __name__ == '__main__':
     system.run()
+```
+This statement is available in Toolsaf sample file as `samples/device-backend/statement.py`.
+You can use the above statement as starting point of your own security statement. 
+For recap how to start writing your own security statements, check out
+[Getting Started with Toolsaf](../README.md#getting-started-with-toolsaf).
+
+Once you have the security statement copied or pasted into your own directory, you can 
+run it using Toolsaf. Assuming that you copied the contents into file `device/statement.py`,
+the following command line runs the security statement Python code.
+
+```shell
+cd <your-statement-directory>
+python device-backend/statement.py
+```
+
+The output should be similar to this:
 
 ```
-The above example utilized the `toolsaf.main` Python module's interface code for our DSL. However, definitions from `toolsaf.common.basics` can also be used when creating security statements.
+====================================================================================================
+Verdict:         System:
+----------------------------------------------------------------------------------------------------
+[Incon]          Device-backend sample security statement
+====================================================================================================
+Verdict:         Hosts and Services:
+----------------------------------------------------------------------------------------------------
+[Expected]       Device
+[Expected]       └──Device SW [Component]
+[Expected]       Backend
+[Expected]       ├──TLS:443
+[Expected]       └──Backend SW [Component]
+====================================================================================================
+Connections
+Verdict:         Source:                          Target:
+----------------------------------------------------------------------------------------------------
+[Expected]       Device                           Backend TLS:443
+```
+Below you can see a visual illustration of the sample security statement.
+It is generated with the following command line `python device-backend/statement.py -S`.
 
-### Real World Example
-Now that we know the structure of a security statement, let's look at a real world example. Here is the security statement we created for the _Deltaco Smart Outdoor Plug_:
+<img src="img/statement-device-backend.png" width="500"
+     alt="Security statement diagram for device-backend sample">
+
+As you can see, the security statement describes a very simple system made up of
+a device and backend. The device connects to the backend using TLS protocol.
+Real systems are more complex than this. Below we go through more practical example.
+
+## Expanded security statement sample
+
+The following gives more realistic, but still imaginary, security statement.
+
 ```python
-""" Security statement """
-from toolsaf.main import Builder, TLS, DNS, UDP, ARP, EAPOL, ICMP, TCP
-from toolsaf.common.android import LOCATION, BLUETOOTH, ADMINISTRATIVE, NETWORK, RECORDING, STORAGE, UNCATEGORIZED
+"""Device-backend-mobile sample security statement"""
+from toolsaf.main import Builder, TLS, DHCP, DNS, Proprietary
 
-# Start modeling the IoT system
-system = Builder.new("Deltaco Smart Outdoor Plug")
+# System root and its name
+system = Builder.new(__doc__)
 
-# Defining services by the environment (WiFi-hotspot)
-any_host = system.any("Services")
+# Define IoT device(s) and gateway
+device = system.device()
+gateway = system.device("Gateway")
 
-# Defining the device
-smart_plug = system.device("Smart Plug")
+# Define backend servers(s)
+backend_1 = system.backend().dns("be1.example.com")
+backend_2 = system.backend().dns("be2.example.com")
 
-# Define open ports on the device
-smart_plub_tcp_port = smart_plug / TCP(port=6668)
-smart_plug_udp_port = smart_plug / UDP(port=63144)
+# Define mobile app
+app = system.mobile("App")
 
-# Defining the mobile app
-mobile_app = system.mobile("Smart Home App")
+# Define connection(s)
+device >> gateway / Proprietary("connection-protocol")  # protocol not supported by framework, yet
+gateway >> backend_1 / TLS
+gateway >> backend_2 / TLS
+app >> backend_2 / TLS
+app >> gateway / TLS(port=8886)
 
-# Defining mobile app permissions
-mobile_app.set_permissions(
-    LOCATION, BLUETOOTH, ADMINISTRATIVE, NETWORK, RECORDING, STORAGE, UNCATEGORIZED
-)
+# Some services by environment
+env = system.any()
+gateway >> env / DHCP / DNS
 
-# Defining broadcasts
-udp_broadcast_1 = system.broadcast(UDP(port=6667))
-udp_broadcast_2 = system.broadcast(UDP(port=7000))
-udp_broadcast_3 = system.broadcast(UDP(port=30011))
-udp_broadcast_4 = system.broadcast(UDP(port=30012))
 
-# Defining relevant backend services
-tuya_1 = system.backend("Tuya Smart 1").serve(TLS).dns("a1.tuyaeu.com")
-tuya_2 = system.backend("Tuya Smart 2").serve(TLS(port=8883)).dns("m1.tuyaeu.com")
-tuya_3 = system.backend("Tuya Smart 3").serve(TLS).dns("a3.tuyaeu.com")
-tuya_4 = system.backend("Tuya Smart 4").serve(TLS(port=8886)).dns("m2.tuyaeu.com")
-tuya_images = system.backend("Tuya Images").serve().dns("images.tuyaeu.com")
-aws = system.backend("AWS").serve(TLS).dns("euimagesd2h2yqnfpu4gl5.cdn5th.com")
-aws_iot_dns = system.backend("AWS IoT DNS").serve(TLS).dns("h3.iot-dns.com")
-tencent = system.backend("Tencent Cloud Computing").serve(TCP(port=443)).dns("tencent.com")
-
-# Defining connections by the environment
-any_host >> smart_plug / ARP / EAPOL / ICMP
-any_host >> mobile_app / ARP
-
-# Defining connections from the device
-smart_plug >> any_host / DNS / ICMP
-smart_plug >> udp_broadcast_1
-smart_plug >> mobile_app / ARP
-smart_plug >> tencent / TCP(port=443)
-smart_plug >> tuya_3 / TLS
-smart_plug >> tuya_4 / TLS(port=8886)
-smart_plug >> aws_iot_dns / TLS
-
-# Defining connections from the mobile application
-mobile_app >> udp_broadcast_2
-mobile_app >> udp_broadcast_3
-mobile_app >> udp_broadcast_4
-mobile_app >> any_host / DNS / ARP
-mobile_app >> smart_plub_tcp_port
-mobile_app >> tuya_1 / TLS
-mobile_app >> tuya_2 / TLS(port=8883)
-mobile_app >> tuya_images / TLS
-mobile_app >> aws / TLS
-
+# Run the system builder
 if __name__ == '__main__':
     system.run()
-
 ```
-As we do not know the inner working of the device, this statement was made based on the network traffic data.
 
-## Understanding the DSL
+The security statement is availabe in samples as `samples/device-backend-mobile/statement.py`. 
+Below you can see the generated visualization.
+
+<img src="img/statement-device-backend-mobile.png" width="800"
+     alt="Security statement diagram for device-backend sample">
+
+
+## Understanding basic DSL concepts
+
 Since our DSL is built with Python, creating security statements is similar to writing Python scripts.
 
-As shown in the example at the beginning of the _**Statement Contents**_ section, building a security statement starts with a call to `Builder.new`. This call takes the system's name as an argument and returns a _system_ object, which represents the entire IoT system—from the _devices_, and _backend_ services to the _mobile apps_ and _networks_.
+As shown in the above examples, a security statement starts with a call to method `Builder.new()`. This call takes the system's name as an argument and returns a _system_ object, which represents the entire IoT system from the devices, and backend services to the mobile applications and networks.
 
-Once the _system_ object is created, you can begin defining the various components, or nodes, of the system using this object. These components may include any of the following:
-| Component/Node | Description |
-|----------------|-------------|
+Once the system object is created, you can begin defining the various network _hosts_ (sometimes called components or nodes). These hosts may include any of the following:
+
+| Factory method       | Description |
+|----------------------|-------------|
 | `system.device()`    | IoT devices |
-| `system.mobile()`    | Mobie applications |
+| `system.mobile()`    | Mobile applications |
 | `system.browser()`   | Web browser |
 | `system.backend()`   | Backend services |
 | `system.network()`   | System networks |
-| `system.infra()`     | Testing infrastructure |
-| `system.any()`       | Conseptual node for services provided by the environment, e.g. network router |
-| `system.broadcast()` | Network broadcasts |
+| `system.any()`       | Services provided by anybody from the environment, e.g. network router |
+| `system.broadcast()` | Network broadcast addresses |
 
 
-Each node can be assigned a name. It's best to name them according to what they represent. For instance, if the system includes a smart plug, it should be added to the system like this:
+Each host can be assigned a name. It's best to name them according to what they represent. For instance, if the system includes a smart plug, it should be added to the system like this:
 ```python
 smart_plug = system.device("Smart Plug")
 ```
