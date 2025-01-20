@@ -1,4 +1,4 @@
-from toolsaf.common.address import AddressEnvelope, EndpointAddress, EntityTag, Protocol, DNSName, IPAddress, HWAddress
+from toolsaf.common.address import AddressEnvelope, EndpointAddress, EntityTag, Protocol, DNSName, IPAddress, HWAddress, GlobalAddress
 from toolsaf.core.inspector import Inspector
 from toolsaf.core.model import Host, IoTSystem
 from toolsaf.common.verdict import Verdict
@@ -501,3 +501,20 @@ def test_unknown_service_in_subnet():
     addr = EndpointAddress.ip("169.254.6.7", Protocol.TCP, 8686)
     s0 = system.get_endpoint(addr)
     assert s0.get_parent_host() != dev1.entity
+
+
+def test_find_entity_global_address():
+    sb = SystemBackend()
+    device = sb.device("Test Device")
+    software = device.software("Firmware").get_software()
+    cookies = sb.browser().cookies().set({"cookie": ("","","")})
+    backend = sb.backend("Test Backend")
+    service = backend / TCP(port=443)
+    connection = device >> service
+
+    assert sb.system.find_entity(GlobalAddress.new("Test Device")) == device.entity
+    assert sb.system.find_entity(GlobalAddress.new("Test Backend", "TCP:443")) == service.entity
+    assert sb.system.find_entity(GlobalAddress.new("Test Device", "software=Firmware")) == software
+    assert sb.system.find_entity(GlobalAddress.new("Browser", "cookies=Cookies")) == cookies.component
+    assert sb.system.find_entity(GlobalAddress.new("source=Test Device", "target=Test Backend", "TCP", "443")) == connection.connection
+    assert sb.system.find_entity(GlobalAddress.new("Not Found")) is None
