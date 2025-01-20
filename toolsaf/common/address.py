@@ -29,6 +29,8 @@ class Protocol(enum.Enum):
 
     BLE = "ble"
 
+    OTHER = "other"  # other protocol, not supported
+
     @classmethod
     def get_protocol(cls, value: str, default: Optional['Protocol'] = None) -> Optional['Protocol']:
         """Get protocol by name or default if given"""

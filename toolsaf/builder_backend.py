@@ -18,7 +18,7 @@ from toolsaf.common.property import PropertyVerdictValue
 from toolsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP, IP, TLS, MQTT, FTP,
                         BLEAdvertisement, ConnectionBuilder,
                         CookieBuilder, HostBuilder, NetworkBuilder, NodeBuilder, NodeVisualBuilder,
-                        ConfigurationException, OSBuilder, ProtocolConfigurer, ProtocolType,
+                        ConfigurationException, OSBuilder, Proprietary, ProtocolConfigurer, ProtocolType,
                         SensitiveDataBuilder, ServiceBuilder, ServiceGroupBuilder, ServiceOrGroup,
                         SoftwareBuilder, SystemBuilder)
 from toolsaf.core.main_tools import EvidenceLoader, NodeManipulator
@@ -926,6 +926,13 @@ class BLEAdvertisementBackend(ProtocolBackend):
         return self.get_service_(b)
 
 
+class ProprietaryProtocolBackend(ProtocolBackend):
+    """Proprietary protocol backend"""
+
+    def __init__(self, configurer: Proprietary) -> None:
+        super().__init__(Protocol.OTHER, port=configurer.port, name=configurer.name)
+
+
 class ProtocolConfigurers:
     """Protocol configurers and backends"""
     Constructors = {
@@ -944,6 +951,7 @@ class ProtocolConfigurers:
         TCP: TCPBackend,
         UDP: UDPBackend,
         BLEAdvertisement: BLEAdvertisementBackend,
+        Proprietary: ProprietaryProtocolBackend,
     }
 
 

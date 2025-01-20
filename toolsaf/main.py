@@ -414,6 +414,13 @@ class BLEAdvertisement(ProtocolConfigurer):
         self.event_type = event_type
 
 
+class Proprietary(ProtocolConfigurer):
+    """Configure proprietary protocol"""
+    def __init__(self, protocol_name: str = "protocol", port: int = -1):
+        ProtocolConfigurer.__init__(self, protocol_name)
+        self.port = port
+
+
 class OSBuilder:
     """Operating System builder"""
     def processes(self, owner_process: Dict[str, List[str]]) -> 'OSBuilder':
