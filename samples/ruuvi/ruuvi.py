@@ -39,7 +39,6 @@ mobile >> backend_2 / TLS
 
 any_host = system.any("Service")
 gateway >> any_host / DHCP / DNS / NTP / ICMP
-gateway / ICMP
 
 tags.set_property("default", "sensors")  # ETSI TS 103 701 requires this info
 
@@ -92,6 +91,7 @@ mobile.hw("c2:77:15:ab:b5:b0")
 
 # Infrastructure Raspberry can do whatever
 infra = system.infra().hw("dc:a6:32:28:34:e3")
+
 
 if __name__ == "__main__":
     system.run()
