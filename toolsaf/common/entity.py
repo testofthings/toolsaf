@@ -115,7 +115,7 @@ class Entity:
 
     def get_system_address(self) -> AddressSequence:
         """Get system address for this entity"""
-        raise NotImplementedError()
+        return AddressSequence.new()
 
     def __repr__(self) -> str:
         s = f"{self.status_string()} {self.long_name()}"

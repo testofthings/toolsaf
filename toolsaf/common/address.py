@@ -568,6 +568,7 @@ class AddressAtNetwork:
 
 
 class AddressSegment(AnyAddress):
+    """Address segments in an AddressSequence"""
     def __init__(self, address: AnyAddress, segment_type: Optional[str]=None) -> None:
         self.segment_type = segment_type
         self.address = address

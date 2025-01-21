@@ -76,7 +76,7 @@ class Connection(Entity):
         """A long name for human consumption"""
         return f"{self.source.long_name()} => {self.target.long_name()}"
 
-    def get_system_address(self):
+    def get_system_address(self) -> AddressSequence:
         return AddressSequence.connection(
             self.source.get_system_address(),
             self.target.get_system_address()
