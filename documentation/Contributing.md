@@ -1,5 +1,7 @@
 # Contributing to Toolsaf
 
+[Table of contents](README.md)
+
 This document will eventually describe how to contribute to Toolsaf.
 On the mean time, please engagne the existing project contributors if you want to contribute!
 

@@ -1,4 +1,7 @@
 # Creating Security Statements
+
+[Table of contents](README.md)
+
 This document provides guidance on structuring your security statement project and details how you can fill in the statement using our Python DSL. Additionally, it outlines the various types of statements that can be created with the DSL.
 
 ## Project Structure
@@ -20,7 +23,7 @@ We use _venv_ virtual environment, but any Python tooling should work fine.
 The precense or absence of `.venv` directory depends on your Python tooling,
 Toolsaf does not expect it.
 
-## Minimal security statement sample
+## Minimal Security Statement Sample
 
 A minimal security statement by Python DSL can be structured as follows:
 
@@ -90,7 +93,7 @@ As you can see, the security statement describes a very simple system made up of
 a device and backend. The device connects to the backend using TLS protocol.
 Real systems are more complex than this. Below we go through more practical example.
 
-## Expanded security statement sample
+## Expanded Sample Security Statement
 
 The following gives more realistic, but still imaginary, security statement.
 
@@ -136,9 +139,10 @@ Below you can see the generated visualization.
      alt="Security statement diagram for device-backend sample">
 
 
-## Understanding basic DSL concepts
-
 Since our DSL is built with Python, creating security statements is similar to writing Python scripts.
+Let's go through the basic DSL concepts in next sections.
+
+## System Hosts, Services, and Connections
 
 As shown in the above examples, a security statement starts with a call to method `Builder.new()`. This call takes the system's name as an argument and returns a _system_ object, which represents the entire IoT system from the devices, and backend services to the mobile applications and networks.
 
@@ -160,22 +164,18 @@ Each host can be assigned a name. It's best to name them according to what they 
 smart_plug = system.device("Smart Plug")
 ```
 
-Nodes representing _backend_ services have an additional requirement. When defining them, you must specify the top-level protocols they serve and provide their DNS name. Here's an example:"
+Nodes representing _backend_ services have often specify the protocols they serve and DNS name for connecting to them. Here's an example:
 ```python
 code_repository = system.backend("Code Repository").serve(HTTP, TLS).dns("github.com")
 ```
-The code above creates a system backend called 'Code Repository' that supports HTTP and TLS, with a DNS name of _github.com_. Note that adding a protocol like `TCP` to the `serve` call is only necessary if no higher-level protocol is used.
 
-Connections between system components are defined using the right and left shift operators `>>` `<<`. The right shift operator indicates a connection from A to B. For example, the statement `mobile >> backend_1` means that the mobile application initiates a connection with backend service 1. Conversely, the left shift operator indicates a connection from B to A, so `mobile << backend_1` means that the backend service initiates communication with the mobile application.
+The code above creates a system backend names "Code Repository" that has services providing HTTP and TLS protocol services, and has DNS name _github.com_. 
+Services and not limited to backend hosts, but any host can have services.
 
-Statements using the shift operators are typically followed by `/` and the top-level protocols used in the connection. For instance, if the mobile application connects to the backend using `TLS`, the statement becomes:
-```python
-mobile >> backend_1 / TLS
-```
-Additional protocols can be added to the statement by appending the statement with `/ <protocol>`.
-```python
-mobile >> backend_1 / TLS / SSH
-```
+Connections between system components are defined using the right shift operators `>>` followed by host and service. For example, the statement `mobile >> backend / TLS` means that the mobile application initiates a connection with backend TLS service. 
+
+Additional protocols can be added to the statement by appending the statement with several `/`:s,
+for example `mobile >> backend_1 / TLS / SSH`.
 
 Connection definitions can also be shortened as follows:
 ```python
@@ -185,22 +185,20 @@ device >> backend_conn
 mobile >> backend_conn
 ```
 
-## Additional DSL Definitions
-### Mobile Application Permissions (Android Only)
-Typically mobile applications ask their users to grant them certain permissions. These permissions should be included in the security statement. You can define them with:
-```python
-from toolsaf.common.android import STORAGE, LOCATION, ...
+A service which is not created explicitly by method `serve()` is created implicitly when needed for connection, e.g. above services `TLS` and `SSH` are created even
+if backend has not explicitly defined them.
 
-mobile.set_permissions(STORAGE, LOCATION, ...)
-```
-However, since there are [hundreds of different permissions](https://developer.android.com/reference/android/Manifest.permission), **use the permission categories we have created** in your security statements. Toolsaf handles the rest.
+Check out [services](Services.md) documentation for more details and the list of available protocols.
 
-Our permission categories are: `CALLS`, `SMS`, `CONTACTS`, `CALENDAR`, `LOCATION`, `RECORDING`, `STORAGE`, `NETWORK`, `HEALTH`, `ACCOUNT`, `BILLING`, `BLUETOOTH`, `ADMINISTRATIVE`, `UNCATEGORIZED`
+## Software Bill of Materials (SBOM)
 
-An up-to-date list of categories can always be found [here](../toolsaf/common/android.py). You can check into which category a permission belongs to from [this json file](../toolsaf/adapters/data/android_permissions.json). Currently, if a permission is not in the _.json_ file, its category will be `UNCATEGORIZED`.
+A Software Bill of Materials (SBOM) is an inventory of the software components, libraries, dependencies, and other elements that make up the software of an (IoT) system.
+Having SBOM for IoT products is gaining attention, as it allows to identify potential
+vulnerabilities from the product.
 
-### Software Bill of Materials
-A Software Bill of Materials (SBOM) is a comprehensive inventory of the software components, libraries, dependencies, and other elements that make up the software of an (IoT) system. Our DSL provides a method, `sbom(components, file_path)`, to specify an SBOM for the system's software components. Here's how it can be used:
+In Toolsaf, SBOM defines the lower level components of a top level _software component_ of an IoT host. One host can have one or many top level software components. Every host is implisitly defined to have one top level software component.
+
+Our DSL provides a method, `sbom(components, file_path)`, to specify the SBOM for a top level software component. Here's how it can be used:
 ```python
 device.software().sbom(
     components=["component1", "component2", ...]
@@ -210,7 +208,7 @@ device.software().sbom(
     file_path="../sbom.json"
 )
 ```
-The SBOM's contents can be provided either manually using the `components` parameter or in a JSON-format SPDX file via the `file_path` parameter. The `components` parameter accepts a list of software component names. The minimal contents of SPDX files, referenced by `file_path`, are as follows:
+The SBOM's contents can be provided either manually using the `components` parameter or in a JSON-format standard SPDX file via the `file_path` parameter. The `components` parameter accepts a list of software component names. The minimal contents of SPDX files, referenced by `file_path`, are as follows:
 ```json
 {
     "packages": [
@@ -220,35 +218,26 @@ The SBOM's contents can be provided either manually using the `components` param
     ]
 }
 ```
-Toolsaf also reads the `versionInfo` field of individual packages if it is included in the file. SBOM file paths are provided relative to the statement's location. The file can be generated, for example, using an open-source SBOM generator.
+Toolsaf also reads from SPDX file the `versionInfo` field of individual packages if it is included in the file. SBOM file paths are provided relative to the statement's location. The file can be generated, for example, using an open-source SBOM generator.
 
-### Online Resources
-Our DSL provides the `online_resources(name, url, keywords)` method to document web-based information relevant to the system, such as privacy, security, and cookie policies. However, it can also be any web page.
+## More DSL Features.
 
-Online resources can be added to the security statement using the following syntax:
-```python
-system.online_resource(
-    name="privacy-policy",
-    url="https://example.com/privacy/",
-    keywords=["privacy policy", "personal data", ...]
-)
-```
-It is recommended to name online resources descriptively, based on their purpose. For example, a link to a vulnerability policy should be named `vulnerability-policy`.
+There are [more features](MoreStatementFeatures.md) in security statement DSL. Check them out.
+  - Defining on-line resources to verify them
+  - Specifying permissions for Android applications
 
-In addition to the `name` and the resource's `url`, `online_resource` also requires the user to provide a list of keywords. You can decide what keywords to add. However, they should all be found on the page. These keywords are used during verification to ensure that the page and its contents was actually accessible during the verification process.
+## Checking the Security Statement
 
-## When the Statement is Defined
 To ensure that your statement is filled in properly, run the statement file with Python. This way you can be sure that its free of runtime errors.
 ```shell
-python3 statement.py
+python <directory>/statement.py
+```
+
+You can create a diagram of the security statement with the following command
+(requires installed [Graphviz](https://graphviz.org/download/)):
+```shell
+python <directory>/statement.py --show-diagram
 ```
 Once the security statement is complete, it is ready for [verification](VerifyingSecurityStatements.md).
 
-## Security Statement Visualization
-You can visualize your security statement with the following command:
-```shell
-python3 statement.py --create-diagram --show-diagram
-```
 More info on the command-line arguments can be found [here](CommandLineOptions.md#create-diagram-visualization).
-
-Toolsaf creates visualizations using [Diagrams](https://github.com/mingrammer/diagrams). You also need to install [Graphviz](https://graphviz.org/download/).

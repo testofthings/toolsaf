@@ -1,5 +1,7 @@
 # Toolsaf
 
+[Table of contents](documentation/README.md)
+
 Welcome to early version of **Toolsaf**, a tool-driven security assesment framework.
 Toolsaf is intended for security assessment of _Internet of Things_ (IoT) and other systems by help of common security tools.
 The process of using Toolsaf for security assessment has tool main phases:
@@ -39,7 +41,11 @@ For this, you need to perform two tasks
   1. Install Toolsaf Python module
   1. Initialize new or copy existing security statement
 
-At the moment there is no _PyPi_ package for Toolsaf, so it must be installed manually.
+You need a recent [Python](https://www.python.org/) interpreter, such as 3.10 or newer.
+Most linux distributions should already come with a suitable one, the command
+name might be `python3` to separate from older Python interpreters.
+
+The installation of Toolsaf is made currently from _Github_ repository, as there is no _PyPi_ package for Toolsaf, yet.
 First, clone this repository.
 ```shell
 git clone https://github.com/testofthings/toolsaf.git # HTTPS
@@ -112,4 +118,4 @@ The command dumps some basic information about the security statement.
 
 The project is published with [MIT license](LICENSE).
 
-We are happy to accept contributions to Toolsaf, please see [instructions](documentation/Contributing.md).
+We are happy to accept contributions to Toolsaf, please see the [instructions](documentation/Contributing.md).
