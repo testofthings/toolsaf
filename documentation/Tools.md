@@ -1,4 +1,7 @@
 # Tools
+
+[Table of contents](README.md)
+
 Toolsaf can read output from various tools to verify security statements. Tool output is organized in a directory structure, with the root directory specified to the framework using the `--read <directory>` command-line argument.
 
 ## Batch files and directories
