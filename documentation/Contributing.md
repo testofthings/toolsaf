@@ -3,28 +3,40 @@
 [Table of contents](README.md)
 
 This document will eventually describe how to contribute to Toolsaf.
-On the mean time, please engagne the existing project contributors if you want to contribute!
+In the meantime, please engage the existing project contributors if you want to contribute!
 
 ## Unit Test
-To run the unit tests, install _pytest_
+To run the unit tests, install _pytest_:
 ```shell
 pip install pytest
 ```
-then:
+Then:
 ```shell
 pytest tests/
 ```
 
 ## Linting
-To lint toolsaf code, install _pylint_
+To lint the Toolsaf code, install _pylint_:
 ```shell
 pip install pylint
 ```
-then:
+Then:
 ```shell
 pylint toolsaf/
 ```
-Samples and tests are not lint-compatible.
 
-## Future plans
-In the long run the framework is intended to support JSON-based security statement descripitons and to cover even more tools. Check the [roadmap](Roadmap.md) for upcoming features.
+## Static Typing Check
+To perform a typing check, install _mypy_:
+```shell
+pip install mypy
+```
+Then:
+```shell
+mypy toolsaf/
+```
+
+Samples and tests are not lint/mypy-compatible.
+
+## Future Plans
+
+In the long run, the framework is intended to support JSON-based security statement descriptions and to cover even more tools. Check the [roadmap](Roadmap.md) for upcoming features.
