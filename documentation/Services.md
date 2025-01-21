@@ -43,17 +43,18 @@ The left shift operator indicates a connection from B to A, so `mobile << backen
 | Supported Protocols |
 |---------------------|
 | ARP                 |
-| DNS                 |
+| BLE                 |
 | DHCP                |
+| DNS                 |
 | EAPOL               |
 | ETHERNET            |
 | FTP                 |
 | HTTP                |
 | ICMP                |
-| TCP                 |
 | IP                  |
+| MQTT                |
+| NTP                 |
 | SSH                 |
+| TCP                 |
 | TLS                 |
 | UDP                 |
-| NTP                 |
-| MQTT                |
