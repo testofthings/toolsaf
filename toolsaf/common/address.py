@@ -567,8 +567,28 @@ class AddressAtNetwork:
         return f"{self.address}@{self.network}"
 
 
+class AddressSegment(AnyAddress):
+    def __init__(self, address: AnyAddress, segment_type: Optional[str]=None) -> None:
+        self.segment_type = segment_type
+        self.address = address
+
+    def get_parseable_value(self) -> str:
+        if self.segment_type:
+            return f"{self.segment_type}={self.address.get_parseable_value()}"
+        return self.address.get_parseable_value()
+
+
 class AddressSequence(AnyAddress):
     """AnyAddress sequences representing system addresses"""
+    @classmethod
+    def connection(cls, source: AnyAddress, target: AnyAddress) -> 'AddressSequence':
+        """Create connection sequence"""
+        seq = AddressSequence(segments=[
+            AddressSegment(source, segment_type="source"),
+            AddressSegment(target, segment_type="target")
+        ])
+        return seq
+
     @classmethod
     def new(cls, *segments: AnyAddress) -> 'AddressSequence':
         """Create new AddressSequence"""
