@@ -1,10 +1,11 @@
 """Addresses and protocols"""
 
+import re
 from dataclasses import dataclass
 import enum
 import ipaddress
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network
-from typing import Union, Optional, Tuple, Iterable, Self
+from typing import Union, Optional, Tuple, Iterable, Self, List
 
 
 class Protocol(enum.Enum):
@@ -245,6 +246,31 @@ class Addresses:
         if port == "":
             return EndpointAddress(addr, Protocol.get_protocol(prot), -1)
         return EndpointAddress(addr, Protocol.get_protocol(prot), int(port))
+
+    @classmethod
+    def parse_system_address(cls, value: str) -> AnyAddress:
+        """Parse system addresses"""
+        if value.count("/") <= 1 and "=" not in value:
+            return cls.parse_endpoint(value)
+
+        sequence = AddressSequence.new()
+        endpoint_regex = re.compile(r"\w+\/\w+:[0-9]+")
+
+        while value:
+            endpoint_addr = re.search(endpoint_regex, value)
+            idx = value.index("/") if "/" in value else 0
+            if endpoint_addr and endpoint_addr.start() in [0, 7]:
+                if value.startswith(("source=", "target=")):
+                    sequence.append(cls.parse_endpoint(value[7:endpoint_addr.end()]))
+                else:
+                    sequence.append(cls.parse_endpoint(value[ :endpoint_addr.end()]))
+                value = value[endpoint_addr.end()+1:]
+            else:
+                segment = (value[:idx] if idx else value).split("=")[-1]
+                sequence.append(EntityTag.new(segment))
+                value = value[idx+1:] if idx else ""
+        return sequence
+
 
 
 class HWAddress(AnyAddress):
@@ -539,3 +565,37 @@ class AddressAtNetwork:
 
     def __repr__(self) -> str:
         return f"{self.address}@{self.network}"
+
+
+class AddressSequence(AnyAddress):
+    """AnyAddress sequences representing system addresses"""
+    @classmethod
+    def new(cls, *segments: AnyAddress) -> 'AddressSequence':
+        """Create new AddressSequence"""
+        return AddressSequence(
+            segments=list(segments)
+        )
+
+    def __init__(self, segments: List[AnyAddress]) -> None:
+        self.segments = segments
+        self.value = self.get_parseable_value()
+
+    def _parse_segment(self, segment: str) -> str:
+        """Parse given segment"""
+        return segment.replace(" ", "_").replace("*/", "")
+
+    def append(self, segment: AnyAddress) -> None:
+        """Add new segment to AddressSequence"""
+        self.segments += [segment]
+        self.value = self.get_parseable_value()
+
+    def get_parseable_value(self) -> str:
+        return "/".join([self._parse_segment(segment.get_parseable_value()) for segment in self.segments])
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, AddressSequence):
+            return False
+        return self.segments == other.segments
+
+    def __repr__(self) -> str:
+        return self.value

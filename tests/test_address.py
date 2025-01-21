@@ -1,5 +1,6 @@
 from ipaddress import IPv4Network
-from toolsaf.common.address import Addresses, DNSName, EndpointAddress, EntityTag, HWAddress, HWAddresses, IPAddress, IPAddresses, Network, Protocol
+from toolsaf.common.address import Addresses, DNSName, EndpointAddress, EntityTag, HWAddress, HWAddresses, IPAddress, IPAddresses, Network, Protocol, AddressSequence
+from toolsaf.common.traffic import Protocol
 
 
 def test_hw_address():
@@ -103,3 +104,94 @@ def test_ip_network_matching():
     assert nw.is_local(IPAddress.new("22.2.3.4"))
     assert nw.is_local(IPAddress.new("22.33.3.4"))
     assert nw.is_local(IPAddress.new("22.33.33.4"))
+
+
+def test_address_sequence():
+    addr1 = EntityTag.new("Test1")
+    addr2 = EndpointAddress(EntityTag("Test2"), Protocol.TCP, 80)
+    seq = AddressSequence.new(
+        addr1,
+        addr2
+    )
+    assert seq.segments == [addr1, addr2]
+
+
+def test_address_sequence_append():
+    addr1 = EntityTag.new("Test1")
+    addr2 = EndpointAddress(EntityTag("Test2"), Protocol.TCP, 80)
+    seq = AddressSequence.new(addr1)
+    assert seq.segments == [addr1]
+    seq.append(addr2)
+    assert seq.segments == [addr1, addr2]
+
+
+def test_address_sequence_parse_segment():
+    seq = AddressSequence.new()
+    assert seq._parse_segment("Test") == "Test"
+    assert seq._parse_segment("Test 1") == "Test_1"
+    assert seq._parse_segment("*/tcp:80") == "tcp:80"
+
+
+def test_address_sequence_get_parseable_value():
+    addr1 = EntityTag.new("Test1")
+    addr2 = EndpointAddress(EntityTag("Test2"), Protocol.TCP, 80)
+    addr3 = EntityTag("software=Test_SW")
+
+    assert AddressSequence.new(addr1).get_parseable_value() == "Test1"
+    assert AddressSequence.new(addr2).get_parseable_value() == "Test2/tcp:80"
+    assert AddressSequence.new(addr1, addr2, addr3).get_parseable_value() == "Test1/Test2/tcp:80/software=Test_SW"
+
+
+def test_parse_system_address():
+    assert Addresses.parse_system_address(
+        "1.2.3.4"
+    ) == IPAddress.new("1.2.3.4")
+
+    assert Addresses.parse_system_address(
+        "1:2:3:4:5:6|hw"
+    ) == HWAddress.new("1:2:3:4:5:6")
+
+    assert Addresses.parse_system_address(
+        "Test_Device"
+    ) == EntityTag("Test_Device")
+
+    assert Addresses.parse_system_address(
+        "1.2.3.4/udp:1234"
+    ) == EndpointAddress(IPAddress.new("1.2.3.4"), Protocol.UDP, 1234)
+
+    assert Addresses.parse_system_address(
+        "Test_Device/tcp:80"
+    ) == EndpointAddress(EntityTag("Test_Device"), Protocol.TCP, 80)
+
+    assert Addresses.parse_system_address(
+        "ff_ff_ff_ff_ff_ff/arp"
+    ) == EndpointAddress(EntityTag("ff_ff_ff_ff_ff_ff"), Protocol.ARP)
+
+    assert Addresses.parse_system_address(
+        "Test_Device/software=Test_SW"
+    ) == AddressSequence.new(EntityTag("Test_Device"), EntityTag("Test_SW"))
+
+    assert Addresses.parse_system_address(
+        "source=Test_Device/target=Test_Device/tcp:80"
+    ) == AddressSequence.new(EntityTag("Test_Device"), EndpointAddress(EntityTag("Test_Device"), Protocol.TCP, 80))
+
+    assert Addresses.parse_system_address(
+        "source=Test_Device/udp:123/target=Test_Device"
+    ) == AddressSequence.new(EndpointAddress(EntityTag("Test_Device"), Protocol.UDP, 123), EntityTag("Test_Device"))
+
+    assert Addresses.parse_system_address(
+        "source=Test_Device/tcp:80/target=Test_Device/udp:123"
+    ) == AddressSequence.new(EndpointAddress(EntityTag("Test_Device"), Protocol.TCP, 80), EndpointAddress(EntityTag("Test_Device"), Protocol.UDP, 123))
+
+    assert Addresses.parse_system_address(
+        "Test_Device/tcp:80/software=Test_SW"
+    ) == AddressSequence.new(EndpointAddress(EntityTag("Test_Device"), Protocol.TCP, 80), EntityTag("Test_SW"))
+
+    assert Addresses.parse_system_address(
+        "Test/tcp:80/software=VM/VirtualEnv/udp:123"
+    ) == AddressSequence.new(
+        EndpointAddress(EntityTag("Test"), Protocol.TCP, 80),
+        EntityTag("VM"),
+        EndpointAddress(EntityTag("VirtualEnv"), Protocol.UDP, 123)
+    )
+    # FIXME TEST CONNECTION WITH IPADDRESS, etc
