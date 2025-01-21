@@ -5,8 +5,8 @@
 The security statement of an IoT system or product should be verified.
 The verification can take advantage of various tools and it can be automated.
 Verifiability comes from machine-readability and mapping of tool output into security statement features.
-Verifiability sets aside security statement from informal descriptions, which are bound to be
-imcomplete and out-of-date.
+Verifiability sets aside security statements from informal descriptions, which are bound to be
+incomplete and out-of-date.
 
 ## Verification Process
 
@@ -14,21 +14,21 @@ During the verification process, the correctness and coverage of the security st
 
 Security statement verification is a two-step tool-driven process:
 
-  - First step is data collection using [tools](Tools.md#list-of-supported-tools) and storing
+  - The first step is data collection using [tools](Tools.md#list-of-supported-tools) and storing
 the tool output.
-  - Second step is running the statement's Python file with the `-r` or `--read` [command-line option](CommandLineOptions.md) to read the data and verify the statement.
+  - The second step is running the statement's Python file with the `-r` or `--read` [command-line option](CommandLineOptions.md) to read the data and verify the statement.
 
 Data collection requires the System Under Test (SUT) to be available to run the tools.
-For best access, the tested IoT devices should be connected to a router or switch which allows the capture of data. This can be e.g. a WiFi-hotspot. The router / switch must be able to intercept the connections between devices and the system's backend services. Mobile devices running related applications should also be connected to the same network as the DUT.
+For best access, the tested IoT devices should be connected to a router or switch which allows the capture of data. This can be e.g. a WiFi-hotspot. The router/switch must be able to intercept the connections between devices and the system's backend services. Mobile devices running related applications should also be connected to the same network as the DUT.
 
 As an example of the data collection setup, here is an image of the system architecture from our Deltaco Smart Outdoor Plug security statement creation process.
 ![Data collection system architecture image](img/deltaco-smart-plug.png)
 In this setup, tools were operated by sending commands from the computer to the WiFi-hotspot over SSH. The tools we used were **_tcpdump_** and **_nmap_**.
 
-Toolsaf expects the tool data to be stored in specific format, so that it can detect the used tools and read other _metadata_.
+Toolsaf expects the tool data to be stored in a specific format, so that it can detect the used tools and read other _metadata_.
 The metadata includes at least the IP or HW addresses of the system hosts, so that tool data
 can be assigned to the correct hosts and services.
-To this end, the collected data must be stored to a [batch directory](Tools.md#batch-files-and-directories) structure.
+To this end, the collected data must be stored in a [batch directory](Tools.md#batch-files-and-directories) structure.
 
 
 ### Notes on Collecting Network Traffic
@@ -37,13 +37,13 @@ When it comes to capturing network traffic with, e.g. tcpdump, start capturing p
 
 ## Using Tool Data with Toolsaf
 
-Toolsaf verifies security statements by comparing them to data collected from the system with the [supported tools](Tools.md#list-of-supported-tools) and stored to [batch directory](Tools.md#batch-files-and-directories). When running a security statement file, tool output is provided to Toolsaf with command-line flags `-r` and `--read`. Here's an example:
+Toolsaf verifies security statements by comparing them to data collected from the system with the [supported tools](Tools.md#list-of-supported-tools) and stored in a [batch directory](Tools.md#batch-files-and-directories). When running a security statement file, tool output is provided to Toolsaf with command-line flags `-r` and `--read`. Here's an example:
 ```shell
 python3 product/statement.py -r ../sample-data/product/
 ```
 In this example, we have a directory called `sample-data` ([batch directory](Tools.md#batch-files-and-directories)) which holds the data collected from the system.
 
-Once a security statement file is run with the tool data, Toolsaf outputs the statement's verification result. Here's an edited example to give you an idea what the results look like:
+Once a security statement file is run with the tool data, Toolsaf outputs the statement's verification result. Here's an edited example to give you an idea of what the results look like:
 ```shell
 $ python3 product/statement.py -r ../sample-data/product/ -s properties
 =======================================================================
@@ -85,33 +85,33 @@ The output is divided into three main sections: _System_, _Hosts and Services_, 
 ### Hosts and Services
 For each host, Toolsaf displays its name and a corresponding verdict. The verdict consists of two components: a status message and the actual verdict. The status is always `Expected` since the hosts are derived directly from the security statement. The actual verdict, either `Pass` or `Fail`, is determined by aggregating the host verification result with service verdicts.
 
-List of addresses are below each host name. The addresses include DNS names, HW addresses, IP addresses, etc. For each host, special _tag_ address is given, derived from comonent name. In the example above, these are `DUT`, `Mobile_App`, and `Backend_1` are tag addresses. Tag addresses are useful in batch metafiles to identify host or address. Several IP addresses are listed as defined in the metafiles. Backend 1's address includes also DNS name specified in the security statement.
+A list of addresses is below each host name. The addresses include DNS names, HW addresses, IP addresses, etc. For each host, a special _tag_ address is given, derived from the component name. In the example above, these are `DUT`, `Mobile_App`, and `Backend_1` are tag addresses. Tag addresses are useful in batch metafiles to identify the host or address. Several IP addresses are listed as defined in the metafiles. Backend 1's address includes also DNS name specified in the security statement.
 
 Listed next are the services, comprising protocols and ports, used in communications to and from the host. For these, the verdict can be:
-| Verdit | Description |
-|--------|-------------|
+| Verdict | Description |
+|---------|-------------|
 | `External`      | Related host/service is part of testing infrastructure or otherwise not part of the system itself |
-| `Expected`      | Listed in security statement, but not observed in collected data |
-| `Expected/Fail` | Listed in security statement, but verification by data failed |
-| `Expected/Pass` | Listed in security statement and verified by data |
+| `Expected`      | Listed in the security statement, but not observed in collected data |
+| `Expected/Fail` | Listed in the security statement, but verification by data failed |
+| `Expected/Pass` | Listed in the security statement and verified by data |
 
-Set of _properties_ can be listed for hosts and services.
+A set of _properties_ can be listed for hosts and services.
 These properties can include, e.g. software dependencies from a SBOM, mobile application permissions,
 and issues raised by tools, among other things.
-The properties can be given `Pass` or `Fail` verdicts, which propagate then to the service and host verdicts.
+The properties can be given `Pass` or `Fail` verdicts, which then propagate to the service and host verdicts.
 
 ### Connections
 
 Toolsaf details individual connections by displaying their verdict, source, and target. The target section also includes the top-level protocol and target port used in the connection.
 
 Connection verdicts can have any of the following:
-| Verdit | Description |
-|--------|-------------|
+| Verdict | Description |
+|---------|-------------|
 | `External`        | Connection to/from host other than the DUT not listed in the security statement |
-| `Expected`        | Listed in security statement but not present in data |
-| `Expected/Fail`   | Listed in security statement, present in data, has at least one verdict `Fail` property |
-| `Expected/Pass`   | Listed in security statement, present in data |
-| `Unexpected/Fail` | Connection to/from the DUT not listed in security statement |
-| `Logical`         | Connection does not represent physical connection and thus cannot be verified |
+| `Expected`        | Listed in the security statement but not present in data |
+| `Expected/Fail`   | Listed in the security statement, present in data, has at least one verdict `Fail` property |
+| `Expected/Pass`   | Listed in the security statement, present in data |
+| `Unexpected/Fail` | Connection to/from the DUT not listed in the security statement |
+| `Logical`         | Connection does not represent a physical connection and thus cannot be verified |
 
 Connection properties and their verdicts are listed below their respective connections. Connection properties can include, e.g. [certmitm](Tools.md#certmitm) results.
