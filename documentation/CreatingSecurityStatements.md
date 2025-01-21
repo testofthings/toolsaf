@@ -6,7 +6,7 @@ This document provides guidance on structuring your security statement project a
 
 ## Project Structure
 Security statements for each product should be placed in their own directory in a Python project. Each project is recommended to be version controlled as a _Git_-repository.
-One respository can contain one or several products, each in own directory.
+One repository can contain one or several products, each in its own directory.
 Below is the expected structure for a security statement project:
 ```
 repository-name
@@ -15,12 +15,12 @@ repository-name
     ├── __init__.py
     └── statement.py
 ```
-Above, `repository-name` refers to a repository in GitHub. Inside this repository is a folder or folders named after products, which contain the actual statement file (`statement.py`). The `.venv` folder is the Python virtual environment for the project, into which Toolsaf is installed with _pip_-tool.
+Above, `repository-name` refers to a repository in GitHub. Inside this repository is a folder or folders named after products, which contain the actual statement file (`statement.py`). The `.venv` folder is the Python virtual environment for the project, into which Toolsaf is installed with the _pip_-tool.
 
 Note that security statements should not be placed inside the Toolsaf directory.
 
-We use _venv_ virtual environment, but any Python tooling should work fine.
-The precense or absence of `.venv` directory depends on your Python tooling,
+We use the _venv_ virtual environment, but any Python tooling should work fine.
+The presence or absence of the `.venv` directory depends on your Python tooling,
 Toolsaf does not expect it.
 
 ## Minimal Security Statement Sample
@@ -48,13 +48,13 @@ device >> backend / TLS
 if __name__ == '__main__':
     system.run()
 ```
-This statement is available in Toolsaf sample file as `samples/device-backend/statement.py`.
-You can use the above statement as starting point of your own security statement. 
-For recap how to start writing your own security statements, check out
+This statement is available in the Toolsaf sample file as `samples/device-backend/statement.py`.
+You can use the above statement as a starting point for your own security statement.
+For a recap on how to start writing your own security statements, check out
 [Getting Started with Toolsaf](../README.md#getting-started-with-toolsaf).
 
-Once you have the security statement copied or pasted into your own directory, you can 
-run it using Toolsaf. Assuming that you copied the contents into file `device/statement.py`,
+Once you have the security statement copied or pasted into your own directory, you can
+run it using Toolsaf. Assuming that you copied the contents into the file `device/statement.py`,
 the following command line runs the security statement Python code.
 
 ```shell
@@ -90,12 +90,12 @@ It is generated with the following command line `python device-backend/statement
      alt="Security statement diagram for device-backend sample">
 
 As you can see, the security statement describes a very simple system made up of
-a device and backend. The device connects to the backend using TLS protocol.
-Real systems are more complex than this. Below we go through more practical example.
+a device and backend. The device connects to the backend using the TLS protocol.
+Real systems are more complex than this. Below we go through a more practical example.
 
 ## Expanded Sample Security Statement
 
-The following gives more realistic, but still imaginary, security statement.
+The following gives a more realistic, but still imaginary, security statement.
 
 ```python
 """Device-backend-mobile sample security statement"""
@@ -132,7 +132,7 @@ if __name__ == '__main__':
     system.run()
 ```
 
-The security statement is availabe in samples as `samples/device-backend-mobile/statement.py`. 
+The security statement is available in the samples directory as `samples/device-backend-mobile/statement.py`.
 Below you can see the generated visualization.
 
 <img src="img/statement-device-backend-mobile.png" width="800"
@@ -140,11 +140,11 @@ Below you can see the generated visualization.
 
 
 Since our DSL is built with Python, creating security statements is similar to writing Python scripts.
-Let's go through the basic DSL concepts in next sections.
+Let's go through the basic DSL concepts in the next sections.
 
 ## System Hosts, Services, and Connections
 
-As shown in the above examples, a security statement starts with a call to method `Builder.new()`. This call takes the system's name as an argument and returns a _system_ object, which represents the entire IoT system from the devices, and backend services to the mobile applications and networks.
+As shown in the above examples, a security statement starts with a call to the method `Builder.new()`. This call takes the system's name as an argument and returns a _system_ object, which represents the entire IoT system from the devices, and backend services to the mobile applications and networks.
 
 Once the system object is created, you can begin defining the various network _hosts_ (sometimes called components or nodes). These hosts may include any of the following:
 
@@ -164,15 +164,15 @@ Each host can be assigned a name. It's best to name them according to what they 
 smart_plug = system.device("Smart Plug")
 ```
 
-Nodes representing _backend_ services have often specify the protocols they serve and DNS name for connecting to them. Here's an example:
+Nodes representing _backend_ services often specify the protocols they serve and DNS name for connecting to them. Here's an example:
 ```python
 code_repository = system.backend("Code Repository").serve(HTTP, TLS).dns("github.com")
 ```
 
-The code above creates a system backend names "Code Repository" that has services providing HTTP and TLS protocol services, and has DNS name _github.com_. 
-Services and not limited to backend hosts, but any host can have services.
+The code above creates a system backend named "Code Repository" that provides HTTP and TLS protocol services, and has the DNS name _github.com_.
+Services are not limited to backend hosts, instead any host can have services.
 
-Connections between system components are defined using the right shift operators `>>` followed by host and service. For example, the statement `mobile >> backend / TLS` means that the mobile application initiates a connection with backend TLS service. 
+Connections between system components are defined using the right shift operators `>>` followed by host and service. For example, the statement `mobile >> backend / TLS` means that a mobile application initiates a connection with a backend TLS service.
 
 Additional protocols can be added to the statement by appending the statement with several `/`:s,
 for example `mobile >> backend_1 / TLS / SSH`.
@@ -185,20 +185,20 @@ device >> backend_conn
 mobile >> backend_conn
 ```
 
-A service which is not created explicitly by method `serve()` is created implicitly when needed for connection, e.g. above services `TLS` and `SSH` are created even
-if backend has not explicitly defined them.
+A service which is not created explicitly by the method `serve()` is created implicitly when needed for connection, e.g. above services `TLS` and `SSH` are created even
+if the backend has not explicitly defined them.
 
-Check out [services](Services.md) documentation for more details and the list of available protocols.
+Check out the [services](Services.md) documentation for more details and the list of available protocols.
 
 ## Software Bill of Materials (SBOM)
 
 A Software Bill of Materials (SBOM) is an inventory of the software components, libraries, dependencies, and other elements that make up the software of an (IoT) system.
-Having SBOM for IoT products is gaining attention, as it allows to identify potential
+Having a SBOM for IoT products is gaining attention, as it allows identifying potential
 vulnerabilities from the product.
 
-In Toolsaf, SBOM defines the lower level components of a top level _software component_ of an IoT host. One host can have one or many top level software components. Every host is implisitly defined to have one top level software component.
+In Toolsaf, SBOM defines the lower-level components of a top-level _software component_ of an IoT host. One host can have one or many top-level software components. Every host is implicitly defined to have one top-level software component.
 
-Our DSL provides a method, `sbom(components, file_path)`, to specify the SBOM for a top level software component. Here's how it can be used:
+Our DSL provides a method, `sbom(components, file_path)`, to specify the SBOM for a top-level software component. Here's how it can be used:
 ```python
 device.software().sbom(
     components=["component1", "component2", ...]
@@ -218,26 +218,28 @@ The SBOM's contents can be provided either manually using the `components` param
     ]
 }
 ```
-Toolsaf also reads from SPDX file the `versionInfo` field of individual packages if it is included in the file. SBOM file paths are provided relative to the statement's location. The file can be generated, for example, using an open-source SBOM generator.
+Toolsaf also reads the `versionInfo` fields of individual packages from the SPDX file if they are included in the file. SBOM file paths are provided relative to the statement's location. The file can be generated, for example, using an open-source SBOM generator.
 
 ## More DSL Features.
 
-There are [more features](MoreStatementFeatures.md) in security statement DSL. Check them out.
-  - Defining on-line resources to verify them
+There are [more features](MoreStatementFeatures.md) in the security statement DSL. Check them out.
+  - Defining online resources to verify them
   - Specifying permissions for Android applications
 
 ## Checking the Security Statement
 
-To ensure that your statement is filled in properly, run the statement file with Python. This way you can be sure that its free of runtime errors.
+To ensure that your statement is filled in properly, run the statement file with Python. This way you can be sure that it is free of runtime errors.
 ```shell
 python <directory>/statement.py
 ```
 
-You can create a diagram of the security statement with the following command
-(requires installed [Graphviz](https://graphviz.org/download/)):
+## Visualizing Security Statements
+You can create a diagram based on a security statement with the following command
+(requires [Graphviz](https://graphviz.org/download/) installation):
 ```shell
 python <directory>/statement.py --show-diagram
 ```
+
 Once the security statement is complete, it is ready for [verification](VerifyingSecurityStatements.md).
 
 More info on the command-line arguments can be found [here](CommandLineOptions.md#create-diagram-visualization).
