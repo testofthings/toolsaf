@@ -5,6 +5,7 @@ from typing import Iterable, List, Optional, Dict, Set
 
 from toolsaf.common.release_info import ReleaseInfo
 from toolsaf.core.model import IoTSystem, NodeComponent, Connection, NetworkNode, Host, SensitiveData, Addressable
+from toolsaf.common.address import AddressSequence, EntityTag
 
 
 class Software(NodeComponent):
@@ -69,6 +70,12 @@ class Software(NodeComponent):
             if not name or s.name == name:
                 return s
         return None
+
+    def get_system_address(self) -> AddressSequence:
+        return AddressSequence.new(
+            self.entity.get_system_address(),
+            EntityTag(f"{self.concept_name}={self.name}")
+        )
 
 
 @dataclass(frozen=True)

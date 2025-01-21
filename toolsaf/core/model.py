@@ -7,7 +7,7 @@ from typing import List, Set, Optional, Tuple, TypeVar, Callable, Dict, Any, Sel
 from urllib.parse import urlparse
 
 from toolsaf.common.address import AnyAddress, Addresses, EndpointAddress, EntityTag, Network, Protocol, IPAddress, \
-    DNSName
+    DNSName, AddressSequence
 from toolsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status
 from toolsaf.common.entity import Entity
 from toolsaf.common.property import PropertyKey
@@ -76,6 +76,11 @@ class Connection(Entity):
         """A long name for human consumption"""
         return f"{self.source.long_name()} => {self.target.long_name()}"
 
+    def get_system_address(self):
+        return AddressSequence.connection(
+            self.source.get_system_address(),
+            self.target.get_system_address()
+        )
 
 T = TypeVar("T")
 
@@ -441,6 +446,12 @@ class Host(Addressable):
     def get_tag(self) -> Optional[EntityTag]:
         return Addresses.get_tag(self.addresses)
 
+    def get_system_address(self) -> AddressSequence:
+        for address in self.addresses: # get_prioritized skips EntityTags
+            if isinstance(address, EntityTag):
+                return AddressSequence.new(address)
+        return AddressSequence.new(Addresses.get_prioritized(self.addresses))
+
 
 class Service(Addressable):
     """A service"""
@@ -509,6 +520,12 @@ class Service(Addressable):
 
     def get_parent_host(self) -> 'Host':
         return self.parent.get_parent_host()
+
+    def get_system_address(self) -> AddressSequence:
+        addresses = [self.parent.get_system_address(), list(self.addresses)[0]]
+        return AddressSequence.new(
+            *addresses
+        )
 
     def __repr__(self) -> str:
         return f"{self.status_string()} {self.parent.long_name()} {self.name}"
