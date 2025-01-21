@@ -5,13 +5,13 @@
 Toolsaf can read output from various tools to verify security statements. Tool output is organized in a directory structure, with the root directory specified to the framework using the `--read <directory>` command-line argument.
 
 ## Batch files and directories
-The batch directory structure can be arbitarily deep. Each directory containing data files must have a special metafile `00meta.json`. Metafiles must always contain at least the `file_type` of related data files. For example, consider the following `00meta.json` for NMAP output data files.
+The batch directory structure can be arbitrarily deep. Each directory containing data files must have a special metafile `00meta.json`. Metafiles must always contain at least the `file_type` of related data files. For example, consider the following `00meta.json` for NMAP output data files.
 ```json
 {
     "file_type": "nmap"
 }
 ```
-The data files have to usually be named according to the template dictated by file type. The templates are discussed below with file types.
+The data files usually have to be named according to the template dictated by the file type. The templates are discussed below with file types.
 
 Each batch directory also has a _label_, which allows Toolsaf to filter the processed data. By default, the _label_ is the name of the directory, but it can be changed in the metafile, e.g. the following NMAP data is filtered by label `nmap-01`.
 ```json
@@ -21,7 +21,7 @@ Each batch directory also has a _label_, which allows Toolsaf to filter the proc
 }
 ```
 
-Here is an exaple batch directory structure:
+Here is an example batch directory structure:
 ```
 sample-data
 ├── nmap-0
@@ -47,10 +47,10 @@ In the following list you can find the tools and formats Toolsaf supports. Short
 | [Black Duck Vulns](Tools.md#black-duck-vulnerabilities) | .csv |
 | [Censys](Tools.md#censys) | .json |
 | [certmitm](Tools.md#certmitm) | .zip |
-| [GitHub Releases](Tools.md#github-releses) | .json |
+| [GitHub Releases](Tools.md#github-releases) | .json |
 | [HAR](Tools.md#har) | .json |
 | [nmap](Tools.md#nmap) | .xml |
-| [Wireshark / tcpdumo](Tools.md#pcap) | .pcap |
+| [Wireshark / tcpdump](Tools.md#pcap) | .pcap |
 | [Shodan](Tools.md#shodan) | .json |
 | [SPDX SBOM](Tools.md#spdx) | .json |
 | [ssh-audit](Tools.md#ssh-audit) | .json |
@@ -80,7 +80,7 @@ We divide Android permissions into [different categories](../toolsaf/adapters/da
 
 ### Black Duck vulnerabilities
 
-Data files are csv-files downloaded from Black Duck binary analyser and named as `<component>.csv` where `<component>` is the name of the SW component.
+Data files are csv-files downloaded from Black Duck binary analyzer and named as `<component>.csv` where `<component>` is the name of the SW component.
 Example metafile `00meta.json`:
 
 ```json
@@ -91,7 +91,7 @@ Example metafile `00meta.json`:
 
 ### Censys
 
-Data files are json-files fetched by Censys search API and named as `<address>.json` where `<address>` is address of the scanned remote host.
+Data files are json-files fetched by Censys search API and named as `<address>.json` where `<address>` is the address of the scanned remote host.
 Example metafile `00meta.json`:
 
 ```json
@@ -100,7 +100,7 @@ Example metafile `00meta.json`:
 }
 ```
 
-Use of Censys API requires an account with suitable permissions. Once account has been set up property, the framework utility can be used to fetch the JSON through API:
+Use of Censys API requires an account with suitable permissions. Once the account has been set up properly, the framework utility can be used to fetch the JSON through API:
 ```
 $ python toolsaf/censys_scan <address>
 ```
@@ -117,9 +117,9 @@ Example metafile `00meta.json`:
     }
 }
 ```
-To properly process certmitm results, IP addresses for the hosts, present in the output need to be provided in the metafile.
+To properly process certmitm results, IP addresses for the hosts present in the output need to be provided in the metafile.
 
-### Github releses
+### Github releases
 
 Data files are release json-files fetched from GitHub and named as `<component>.json` where `<component>` is the name of the SW component.
 Example metafile `00meta.json`:
@@ -130,7 +130,7 @@ Example metafile `00meta.json`:
 }
 ```
 
-Suitable data files can obtained from the Github API with the following command:
+Suitable data files can be obtained from the Github API with the following command:
 ```bash
 curl -L \
   -H "Accept: application/vnd.github+json" \
@@ -141,7 +141,7 @@ curl -L \
 
 ### HAR
 
-Data files are HAR json-files saved by browser and named as `<host>.json` where `<host>` is the name of the browsing host.
+Data files are HAR json-files saved by the browser and named as `<host>.json` where `<host>` is the name of the browsing host.
 Example metafile `00meta.json`:
 
 ```json
@@ -160,7 +160,7 @@ Data files are Nmap XML-formatted output files with suffix `.xml`. Example metaf
     "file_type": "nmap"
 }
 ```
-The nmap-command is ran in the following manner to capture the data:
+The nmap-command is run in the following manner to capture the data:
 
 ```
 $ nmap -oX <file>.xml <target>
@@ -201,7 +201,7 @@ Data is Software Package Data Exchange (SPDX) json-files with suffix `.json`.
 Example metafile `00meta.json`:
 ```json
 {
-    "file_type": "sdpx"
+    "file_type": "spdx"
 }
 ```
 
@@ -209,7 +209,7 @@ SPDX file import is tested with files downloaded from Black Duck service. You ca
 
 ### Ssh-audit
 
-Data is output from `Ssh-audit` tool named as `<address>.<port>.json` where `<address>` is the host address and `<port>` is TCP port number.
+Data is output from `Ssh-audit` tool named as `<address>.<port>.json` where `<address>` is the host address and `<port>` is the TCP port number.
 Example metafile `00meta.json`:
 ```json
 {
@@ -221,7 +221,7 @@ See the tool manual for how to save scanning data.
 
 ### Testssl.sh
 
-Data is output from `Testssl.sh` tool named as `<address>.<port>.json` where `<address>` is the host address and `<port>` is TCP port number.
+Data is output from `Testssl.sh` tool named as `<address>.<port>.json` where `<address>` is the host address and `<port>` is the TCP port number.
 Example metafile `00meta.json`:
 ```json
 {
@@ -241,7 +241,7 @@ Example metafile `00meta.json`:
 }
 ```
 
-Note, only BLE data is read from JSON-formatted capture. The  command-line tool `tshark` can capture data in this format and convert pcap-files to it. See `tshark` documentation for instructions.
+Note, only BLE data is read from JSON-formatted capture. The command-line tool `tshark` can capture data in this format and convert pcap-files to it. See `tshark` documentation for instructions.
 
 ### HTTP responses
 
@@ -253,11 +253,11 @@ Example metafile `00meta.json`:
 }
 ```
 
-Files can be saved e.g. by `curl` with following syntax where `<url>` is the service URL.
+Files can be saved e.g. by `curl` with the following syntax where `<url>` is the service URL.
 ```
 $ (echo "<url>"; curl -Li <url>) > <file-name>.http
 ```
-NOTE: The first line of the `.http` file must contain the pages URL starting with `https://` or `http://`. The second line must contain the requests status code.
+NOTE: The first line of the `.http` file must contain the page's URL starting with `https://` or `http://`. The second line must contain the request's status code.
 
 ### ZED attack proxy (ZAP)
 
@@ -286,8 +286,8 @@ The following shows how addresses can be customized per batch directory.
 }
 ```
 
-External activity policy detemines the type of unexpected external connections allowed for a host or services.
-The following shows how to allow UNLIMITED external connections if host is a router etc. in a data batch.
+External activity policy determines the type of unexpected external connections allowed for a host or services.
+The following shows how to allow UNLIMITED external connections if the host is a router etc. in a data batch.
 ```json
 {
     "file_type": "capture",
