@@ -1,88 +1,87 @@
 # Common
+
+[Architecture root](README.md)
+
 This document provides information the contents of the [common](../../toolsaf/common/) directory.
 
-## Addresses and Protocols
-File: [address.py](../../toolsaf/common/address.py)
+## File [basics.py](../../toolsaf/common/basics.py)
 
-### Protocol
-Protocol enum
+This file holds basic enumerations.
+ - `HostType` such as _device_ or _backend_.
+ - `ConnectionType` such as _encrypted_ or _administrative_.
+ - `ExternalActivity` levels which determine how much unexpected traffic is allowd before fail verdict.
+ - Entity `Status`es, the most important ones are:
+   - `EXPECTED` when the entity is defined in security statment.
+   - `UNEXPECTED` when the entity was not in the security statement and created on-the-fly and usually lead to fail verdict.
+   - `EXTERNAL` for entity not in security statement, but consider out-of-scope and thus ignored.
 
-### FIXME
+## File [address.py](../../toolsaf/common/address.py)
 
-## Android
-File: [android.py](../../toolsaf/common/android.py)
+File defines enumeration of supported `Protocol`s and different types of addresses.
 
-Includes defintions for the Android mobile application permission categories. These can be used in security statements.
+Addresses include _IP addresss_, _HW addresses_, _DNS names_ and other types.
+Addresses are used for finding rigth hosts and services, e.g. for verification
+from traffic capture.
+Special address type is _tag_, which is generated for each expected part of the system
+and thus is always available to refer them.
+Tags shoud be used in _batch files_ to assign proper other addresses for hosts.
 
-## Basics
-File: [basics.py](../../toolsaf/common/basics.py)
+## File [entity.py](../../toolsaf/common/basics.py)
 
-Includes enumerator classes for the types of:
-- Hosts
-- Connections
-- External activity levels
-- Entity statuses
+Entity is the base class for all parts of IoT system, including hosts, services, and components.
 
-## Claim
-File: [claim.py](../../toolsaf/common/basics.py)
+## File [property.py](../../toolsaf/common/property.py)
 
-**FIXME**
+Each `Entity` has a map of properties. Propeties are added to a map as result of tool output by adapters, but they are also used as open attribute store for entities.
+Class `PropertyKey` is the property map key type.
+Utility class `Properties` holds the built-in property keys.
 
-## Entity
-File: [entity.py](../../toolsaf/common/basics.py)
+There are two special property value types:
 
-**FIXME**
+  * `PropertyVerdictValue` is made up of `Verdict` and optional explanation
 
-## Properties
-File: [property.py](../../toolsaf/common/property.py)
+  * `PropertySetValue` comprises set of property keys and optional explanation. 
+     A verdict for such property is evaluated by inspecting the verdict of 
+     all properties in the set.
 
-Various property related classes.
 
-### PropertyKey
+## File [release_info.py](../../toolsaf/common/release_info.py)
 
-Acts as a dict key for entities' property dicts. Example of PropertyKey creation:
-```python
-key = PropertyKey("component", name)
-```
-Typically used along with _PropertyEvents_ and the _Event interface's_ `property_update()` to set properties for various entities.
+Somewhat experimental storage for release information of a product.
 
-### PropertyVerdictValue
+## File [traffic.py](../../toolsaf/common/traffic.py)
 
-Where PropertyKey is the key in a property dictionary, PropertyVerdictValue is the key's value pair. Includes a [_Verdict_](#verdict) and an optional explanation `str`.
+Classes for traffic flows and events in general.
+`Event` is the base class for events carried from _tool adapters_ into the model.
+Events update the model and assign verdicts, not the tool adapters directly.
+Event types are the following:
 
-### PropertySetValue
+  * `Flow`
+    * `EthernetFlow` for ethernet frame
+    * `IPFlow` for IP packet
+    * `BLEAdvertisementFlow` for BLE advertisement frame
+  * `ServiceScan` for network scan result for a _service_
+  * `HostScan` for network scan result for a _host_
 
-**FIXME**
+Some event types are defined elsewhere, but show here for convenience.
 
-### Properties
-A class containing built-in property keys. Used by [tool adapters](Adapters.md) when creating _PropertyEvents_. Example:
-```python
-ev = PropertyEvent(evidence, software, Properties.COMPONENTS.value_set(properties))
-interface.property_update(ev)
-```
+  * `NameEvent` for DNS name event.
+  * `PropertyEvent` for direct _property_ update for given entitiy.
+  * `PropertyAddress` for directly _property_ update for given address.
 
-## Release Info
-File: [release_info.py](../../toolsaf/common/release_info.py)
+## File [verdict.py](../../toolsaf/common/verdict.py)
 
-**FIXME**
-
-## Traffic
-File: [traffic.py](../../toolsaf/common/traffic.py)
-
-**FIXME**
-
-## Verdicts and Related Classes
-File: [verdict.py](../../toolsaf/common/verdict.py)
-
-### Verdict
-This class represents the verdicts for various entities, connections, properties, etc. set by [tool adapters](Adapters.md) based on tool output analysis results.
+Class `Verdict` represents the verdicts for entities, connections, properties, etc.
+usually set by [tool adapters](Adapters.md) based on tool output analysis results.
 
 A verdict can be either:
-- `INCON` (Inconclusive)
-- `FAIL`
-- `PASS`
-- `IGNORE`
+- `INCON` for inconclusive, verdict cannot be resolved
+- `FAIL` verdict
+- `PASS` verdict
+- `IGNORE` when the verdict would not be relevant and should be ignored.
 
-### Verdictable
-Base class for object that have verdicts.
+Class `verdictable` is base class for object that have verdicts.
 
+## File [android.py](../../toolsaf/common/android.py)
+
+Includes defintions for the Android mobile application permission categories. These can be used in security statements.
