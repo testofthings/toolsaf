@@ -529,9 +529,9 @@ class Service(Addressable):
         return self.parent.get_parent_host()
 
     def get_system_address(self) -> AddressSequence:
-        addresses = [self.parent.get_system_address(), list(self.addresses)[0]]
-        return AddressSequence.new(
-            *addresses
+        return AddressSequence.service(
+            parent=self.parent.get_system_address(),
+            service=list(self.addresses)[0]
         )
 
     def __repr__(self) -> str:
@@ -799,6 +799,9 @@ class IoTSystem(NetworkNode):
         if path.endswith("/"):
             path = path[0:-1]
         return se, path
+
+    def get_system_address(self) -> AddressSequence:
+        return AddressSequence.iot_system(self.name, segment_type=self.concept_name)
 
     def __repr__(self) -> str:
         s = [self.long_name()]
