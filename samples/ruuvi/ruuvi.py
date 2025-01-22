@@ -56,12 +56,12 @@ system.online_resource("security-policy", url="https://ruuvi.com/terms/vulnerabi
 # Mobile application
 # https://play.google.com/store/apps/details?id=com.ruuvi.station
 
-# More DNS names (why?)
+# Additional DNS names
 backend_2.dns("api.github.com").dns("objects.githubusercontent.com")
 # Gateway NTP servers
 gateway.ignore_name_requests("time.google.com", "time.nist.gov", "pool.ntp.org", "ntp1.glb.nist.gov")
 
-# Cookies
+# Cookies (experimental feature, perhaps not a way forward)
 cookies = user.cookies()
 cookies.set({
     "crisp-client/*": (".ruuvi.com", "/", "Crisp chat session cookie"),
