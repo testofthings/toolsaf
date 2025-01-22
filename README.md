@@ -58,9 +58,9 @@ The commands below produce the [expected project structure](documentation/Creati
 ```shell
 mkdir statement-device && cd statement-device
 python3 -m venv .venv
-source .venv/bin/activate # Activate the virtual environment
-mkdir device
-touch device/statement.py
+source .venv/bin/activate   # Activate the virtual environment
+mkdir product
+touch product/statement.py  # This is the 'security statement'!
 ```
 
 Toolsaf must be taken into use in the statement's directory with the following command.

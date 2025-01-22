@@ -9,13 +9,13 @@ Security statements for each product should be placed in their own directory in 
 One repository can contain one or several products, each in its own directory.
 Below is the expected structure for a security statement project:
 ```
-repository-name
+repository
 ├── .venv
-└── product-name
+└── product
     ├── __init__.py
     └── statement.py
 ```
-Above, `repository-name` refers to a repository in GitHub. Inside this repository is a folder or folders named after products, which contain the actual statement file (`statement.py`). The `.venv` folder is the Python virtual environment for the project, into which Toolsaf is installed with the _pip_-tool.
+Above, `repository` refers to a repository in GitHub. Inside this repository is a folder or folders named after products (here just `product`), which contain the actual statement file (`statement.py`). The `.venv` folder is the Python virtual environment for the project, into which Toolsaf is installed with the _pip_-tool.
 
 Note that security statements should not be placed inside the Toolsaf directory.
 
@@ -54,12 +54,12 @@ For a recap on how to start working with Toolsaf, check out
 [Getting Started with Toolsaf](../README.md#getting-started-with-toolsaf).
 
 Once you have the security statement copied or pasted into your own directory, you can
-run it using Toolsaf. Assuming that you copied the contents into the file `device/statement.py`,
+run it using Toolsaf. Assuming that you copied the contents into the file `product/statement.py`,
 the following command line runs the security statement Python code.
 
 ```shell
 cd <your-statement-directory>
-python device-backend/statement.py
+python product/statement.py
 ```
 
 The output should be similar to this:
@@ -89,7 +89,7 @@ The printout would contain security statement verification output if you provide
 [this is explained later](VerifyingSecurityStatements.md).
 
 Below you can see a visual illustration of the sample security statement.
-It is generated with the following command line `python device-backend/statement.py -S`.
+It is generated with the following command line `python product/statement.py -S`.
 
 <img src="img/statement-device-backend.png" width="500"
      alt="Security statement diagram for device-backend sample">
@@ -235,7 +235,7 @@ There are [more features](MoreStatementFeatures.md) in the security statement DS
 You can create a diagram based on a security statement with the following command
 (requires [Graphviz](https://graphviz.org/download/) installation):
 ```shell
-python <directory>/statement.py --show-diagram
+python product/statement.py --show-diagram
 ```
 
 Once the security statement is complete, it is ready for [verification](VerifyingSecurityStatements.md).
