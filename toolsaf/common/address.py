@@ -250,6 +250,7 @@ class Addresses:
     @classmethod
     def parse_system_address(cls, value: str) -> AnyAddress:
         """Parse system addresses"""
+        # FIXME ADDRESSSEGMENTS
         if value.count("/") <= 1 and "=" not in value:
             return cls.parse_endpoint(value)
 
@@ -578,23 +579,33 @@ class AddressSegment(AnyAddress):
             return f"{self.segment_type}={self.address.get_parseable_value()}"
         return self.address.get_parseable_value()
 
+    def __repr__(self) -> str:
+        return (f"{self.segment_type}=" if self.segment_type else "") + str(self.address)
+
 
 class AddressSequence(AnyAddress):
     """AnyAddress sequences representing system addresses"""
     @classmethod
     def connection(cls, source: AnyAddress, target: AnyAddress) -> 'AddressSequence':
         """Create connection sequence"""
-        seq = AddressSequence(segments=[
+        return AddressSequence(segments=[
             AddressSegment(source, segment_type="source"),
             AddressSegment(target, segment_type="target")
         ])
-        return seq
+
+    @classmethod
+    def component(cls, parent: AnyAddress, component_name: str, segment_type: str) -> 'AddressSequence':
+        """Create component sequence"""
+        return AddressSequence(segments=[
+            AddressSegment(parent),
+            AddressSegment(EntityTag(component_name), segment_type=segment_type)
+        ])
 
     @classmethod
     def new(cls, *segments: AnyAddress) -> 'AddressSequence':
         """Create new AddressSequence"""
         return AddressSequence(
-            segments=list(segments)
+            segments=[AddressSegment(segment) for segment in segments]
         )
 
     def __init__(self, segments: List[AnyAddress]) -> None:

@@ -71,12 +71,6 @@ class Software(NodeComponent):
                 return s
         return None
 
-    def get_system_address(self) -> AddressSequence:
-        return AddressSequence.new(
-            self.entity.get_system_address(),
-            EntityTag(f"{self.concept_name}={self.name}")
-        )
-
 
 @dataclass(frozen=True)
 class CookieData:

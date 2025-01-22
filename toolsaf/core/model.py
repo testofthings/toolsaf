@@ -127,6 +127,13 @@ class NodeComponent(Entity):
         for s in self.sub_components:
             s.reset()
 
+    def get_system_address(self) -> AddressSequence:
+        return AddressSequence.component(
+            parent=self.entity.get_system_address(),
+            component_name=self.name,
+            segment_type=self.concept_name
+        )
+
     def __repr__(self) -> str:
         return self.long_name()
 
