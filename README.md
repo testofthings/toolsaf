@@ -1,95 +1,115 @@
 # Toolsaf
-This is an **early version** of Toolsaf, a tool driven security assesment framework.
-The framework is intended to support automated security assessment of _Internet of Things_ (IoT) and other systems by running common security tools.
 
-This is an open-source project driven by [Test of Things](https://testofthings.com).
-It has been developed based on the PhD thesis of Rauli Kaksonen.
-Orginally, the project was created to demonstrate the TDSA approach for research purposes, but the goal is to make it a real-world usable security assessment framework.
+[Table of contents](documentation/README.md)
 
-The framework has two main functions:
+Welcome to the early version of **Toolsaf**, a tool-driven security assessment framework.
+Toolsaf is for security assessment of _Internet of Things_ (IoT) and other systems using different security tools.
+Security assessment process using Toolsaf has two main phases:
 
-  1. _Security statement_ creation for an IoT/IT product or system
-  1. Statement verification using output from supported tools
+  1. Creation of a _security statement_ which describes security-related features of an IoT product or system.
+  2. Verification of the security statement with security tools, thus confirming the security posture of the product or system.
 
-Security statements are currently created with a Python-based _Domain-Specific Language_ (DSL).
-The verification is done by running [supported tools](documentation/Tools.md), and using their output to pass verdicts on security statement properties.
+Some of the applications of this approach could be:
+
+  1. Security testing and regression testing of IoT systems.
+  2. Communicating system security properites in a machine-readable and verifiable format.
+  3. Documenting results of a system's reverse-engineering.
+
+Toolsaf is an open-source project driven by [Test of Things](https://testofthings.com).
+It was originally created as part of Rauli Kaksonen's doctoral thesis "[Transparent and tool-driven security assessment for sustainable IoT cybersecurity](https://urn.fi/URN:NBN:fi:oulu-202406264941)" under the name of 'tcsfw'.
+The thesis introduces _Tool-driven security assessment_ (TDSA) to enhance the cybersecurity of
+IoT products and systems.
+
+## How Toolsaf and TDSA work?
+
+The basic idea of TDSA is to first describe the IoT system or product with
+the security statement, then use tools to verify that the security statement is accurate, and finally use
+the statement for different purposes.
+A security statement provides a machine-readable description of the system's security,
+which allows automated verification.
+
+At the moment, security statements are created by Toolsaf using a dedicated Python-based _Domain-Specific Language_ (DSL).
+(JSON-based format is under development).
+Security statement verification is done by running any of the [supported tools](documentation/Tools.md) and saving their output. Toolsaf uses the tools' output to verify that the security statement is accurate.
+Some tools perform their own security checks, which can be incorporated into the security statement verdict.
 
 ## Getting Started with Toolsaf
-At the moment there is no _PyPi_ package for Toolsaf, so it must be installed manually. Here's how to do that:
 
+The following shows how to start using Toolsaf.
+For this, you need to perform two tasks:
+
+  1.  Install the Toolsaf Python module.
+  2.  Initialize a new or copy an existing security statement.
+
+You need a recent [Python](https://www.python.org/) interpreter, such as 3.10 or newer.
+Most Linux distributions should already come with a suitable one, the command
+name might be `python3` to separate from older Python interpreters.
+
+The installation of Toolsaf is currently done from the _GitHub_ repository, as there is no _PyPi_ package for Toolsaf, yet.
 First, clone this repository.
 ```shell
 git clone https://github.com/testofthings/toolsaf.git # HTTPS
 # OR
 git clone git@github.com:testofthings/toolsaf.git     # SSH
 ```
+Now that Toolsaf is installed, you have to create a directory and a Python virtual environment for your first security statement.
+The commands below produce the [expected project structure](documentation/CreatingSecurityStatements.md#project-structure) for your statement.
 
-Next, create a directory and a virtual environment for your security statement.
 ```shell
 mkdir statement-device && cd statement-device
 python3 -m venv .venv
-source .venv/bin/activate # Activate the virtual environment
-mkdir device && cd device
-touch __init__.py statement.py
+source .venv/bin/activate   # Activate the virtual environment
+mkdir product
+touch product/statement.py  # This is the 'security statement'!
 ```
-The above commands produce the [expected project structure](documentation/CreatingSecurityStatements.md#project-structure) for your statement.
 
-Finally, Toolsaf can be taken into use in the statement's directory with the following command.
+Toolsaf must be taken into use in the statement's directory with the following command.
 (The option `--config-settings editable_mode=strict` is required by some tools to properly work with locally cloned module.)
 ```shell
 pip install -e ../toolsaf/ --config-settings editable_mode=strict
 ```
 
-Keep in mind that Toolsaf and security statements should be stored in their own separate directories.
+Alternatively, you may copy an existing security statement.
+In that case you must also create and activate the virtual environment and install the Toolsaf module.
 
-If you want to visualize your security statmenets you also need to install [Graphviz](https://graphviz.org/download/).
+If you want to visualize your security statements you also need to install [Graphviz](https://graphviz.org/download/).
+
+In the above, we used _venv_ virtual environments, but as security statements are essentially
+Python-code, any other environment should work fine.
 
 ## Working with Security Statements
-The following two subsections explain how to create security statements for your devices and then verify them. The explanations also provide examples based on how we created a security statement for the _Deltaco Smart Outdoor Plug_.
 
-If you’re a device manufacturer, begin with the creation section. If you’re less familiar with the inner workings of the device you want to test, start with the verification section, which covers data collection. A security statement can be created based on collected data (as we did with the Smart Outdoor Plug).
+To recap, a security statement is Python DSL code in its own directory, which uses the Toolsaf Python module.
+There are two basic approaches to create a security statement:
 
-### Creating Security Statements
-Information on security statement creation is provided [here](documentation/CreatingSecurityStatements.md).
+  1. Write the security statement code first, then run tools and verify it.
+  2. Run tools to collect information first, then write security statement to match the findings.
 
-### Verifying Security Statements
-Information on security statement verification is provided [here](documentation/VerifyingSecurityStatements.md).
+If you’re the device manufacturer you will likely use the former approach, as you (hopefully)
+know your product's attack surface and other properties.
+If you are a security researcher who is reverse-engineering or pen-testing a product,
+you have to use the latter approach.
+
+The following documents describe security statements creation and verification:
+
+  - [Creating Security Statements](documentation/CreatingSecurityStatements.md)
+  - [Verifying Security Statements](documentation/VerifyingSecurityStatements.md)
 
 ## Command Line Options
-The framework's command-line options are listed [here](documentation/CommandLineOptions.md).
 
-## Sample security statements
-A security statement for _Ruuvi gateway and tags_ (https://ruuvi.com/) was developed during the PhD research. The statement is in directory `samples/ruuvi/`. The data for verifying the security statement is available for academic research, please request it from Rauli. Remember to tell the goals of the research and the organization performing it. Right to refuse requests is reserved.
+Toolsaf is a command-line tool, and its command-line options are listed [here](documentation/CommandLineOptions.md).
+
+## Sample Security Statements
+A security statement for _Ruuvi gateway and tags_ (https://ruuvi.com/) was developed during the PhD research. The statement is in the directory `samples/ruuvi/`. The data for verifying the security statement is available for academic research, please request it from Rauli. Please specify the goals of the research and the organization performing it. Right to refuse requests is reserved.
 
 The security statement for Ruuvi is executed like this, assuming working directory is the _toolsaf_ root directory:
-```
-$ python samples/ruuvi/ruuvi.py
-```
-The command dumps some basic information about the security statement.
-
-## Unit Test
-To run the unit tests, install _pytest_
 ```shell
-pip install pytest
+python samples/ruuvi/ruuvi.py
 ```
-then:
-```shell
-pytest tests/
-```
+The command outputs basic information about the security statement.
 
-## Linting
-To lint toolsaf code, install _pylint_
-```shell
-pip install pylint
-```
-then:
-```shell
-pylint toolsaf/
-```
-Samples and tests are not lint-compatible.
+## License and Contributions
 
-## Future plans
-In the long run the framework is intended to support JSON-based security statement descripitons and to cover even more tools. Check the [roadmap](Roadmap.md) for upcoming features.
-
-## License
 The project is published with [MIT license](LICENSE).
+
+We are happy to accept contributions to Toolsaf, please see the [instructions](documentation/Contributing.md).

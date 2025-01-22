@@ -1,230 +1,162 @@
 # Tool Adapters
-This document provides information the contents of the [adapters](../../toolsaf/adapters/) directory.
+
+[Architecture root](README.md)
+
+This document provides information on the contents of the [adapters](../../toolsaf/adapters/) directory.
 
 ## Adapter Base Classes
 
-### ToolAdapter
-File: [tools.py](../../toolsaf/adapters/tools.py).
+### File [tools.py](../../toolsaf/adapters/tools.py).
 
-Parent of all the other tool base classes.
+Parent of all the other tool adapter base classes.
 
-Notable variabels:
+Notable variables:
 | Variable   | Description  |
 |:----------:|:-------------|
 | `data_file_suffix` | File type accepted by the tool |
 | `system`           | IoTSystem |
-| `send_events`      | Should events be logged to database. Default `True` |
+| `send_events`      | Should events be logged to the database. Default `True` |
 | `load_baseline`    | **FIXME**. Default `False`. Read from `00meta.json` |
 
 ---
-### SystemWideTool
-File: [tools.py](../../toolsaf/adapters/tools.py).
+### `SystemWideTool`
 
-The tool data processed by SystemWideTools include all the addresses/info necessary for output analysis, e.g. IP addresses, DNS names and ports. The output of a SystemWideTool is applied to the `system` as indicated by the provided tool output.
+The tool data processed by SystemWideTools includes all the addresses/info necessary for output analysis, e.g. IP addresses, DNS names, and ports. The output of a SystemWideTool is applied to the `system` as indicated by the provided tool output.
 
-File can have any name.
+**Input file name:** Any name.
 
 ---
-### EndpointTool
-File: [tools.py](../../toolsaf/adapters/tools.py).
+### `EndpointTool`
 
 EndpointTool applies tool output to specific endpoints. Endpoints are specified in tool outputs' file names. For example, a file called Mobile_App.xml would apply produced results to the system's endpoint named Mobile_App.
 
-As such, tool output must be named _AnyAddress_ + `data_file_suffix`. _AnyAddress_ can an address tag from `00meta.json`, and IP address or DNS name.
+**Input file name:** File must be named _address_ + `data_file_suffix`, where _address_ can be an address tag from `00meta.json`, an IP address, or a DNS name.
 
----
-### NetworkNodeTool
-File: [tools.py](../../toolsaf/adapters/tools.py).
+### `NetworkNodeTool`
 
 Tool output applied to network nodes.
 
-Files are named after hosts/nodes in the system. For example, Browser + `data_file_suffix`.
+**Input file name:** Files must be named after hosts' tag addresses. For example, `Browser` + `data_file_suffix`.
 
 ---
-### NodeComponentTool
-File: [tools.py](../../toolsaf/adapters/tools.py).
+### `NodeComponentTool`
 
-NodeComponentTool applies tool output to node components. Sample data files need to be named after components. For example, if we want to apply tool output to Mobile_App's SW component, the file name must be Mobile_App_SW + `data_file_suffix`
+NodeComponentTool applies tool output to node components.
+
+**Input file name:** Sample data files need to be named after components. For example, if we want to apply tool output to Mobile_App's SW component, the file name must be Mobile_App_SW + `data_file_suffix`
 
 ---
+## Writing new tool adapters
+
+A _tool adapter_ reads tool result files and sends [`Event`s](Common.md#file-trafficpy) to update the model and give verdicts.
+A tool adapter must never directly set a property,
+but properties are carried from tool adapters into entities by the Events.
+This ensures that the evidence for each property change is logged properly.
+
+A new tool adapter must be derived from the appropriate base class, listed above.
+The selection of the base class depends on how much information is contained in the
+tool output, e.g. `SystemWideTool` can direct the output to the proper entity without any help.
+
+FIXME: Not very comprehensive, yet. Use the source!
+
 ## Tool Adapters
 
 ### AndroidManifestScan
-| Property | Details |
-|----------|---------|
-| File          | [android_manifest_scan.py](../../toolsaf/adapters/android_manifest_scan.py) |
-| Base class    | [EndpointTool](#endpointtool) |
-| Tool output   | `.xml` format AndroidManifest containing mobile application permissions |
-| Verdict `Pass`| If permisison categories set for the mobile application in security statement match tool output |
-| Other         | Connects permissions to categories based on this [JSON file](../../toolsaf/adapters/data/android_permissions.json). Result assigned with 'permission' property |
+File: [android_manifest_scan.py](../../toolsaf/adapters/android_manifest_scan.py)
 
----
+Adapter for processing AndroidManifest files in `.xml` format, containing mobile application permissions. Connects permissions to categories based on a JSON file. Verdict `Fail` if permission only present in either Manifest file or statement SBOM.
+
 ### CensysScan
-| Property   | Details  |
-|:----------:|:---------|
-| File          | [censys_scan.py](../../toolsaf/adapters/censys_scan.py) |
-| Base class    | [EndpointTool](#endpointtool) |
-| Tool output   | `.json` format Censys scan results |
-| Verdict `Pass`| **FIXME** |
+File: [censys_scan.py](../../toolsaf/adapters/censys_scan.py)
 
----
+Adapter for processing Censys scan results in `.json` format.
+
 ### CertMITMReader
-| Property   | Details  |
-|:----------:|:---------|
-| File          | [certmitm_reader.py](../../toolsaf/adapters/certmitm_reader.py) |
-| Base class    | [SystemWideTool](#systemwidetool) |
-| Tool output   | `zip` compressed certmitm output folders |
-| Verdict `Pass`| Never |
-| Other         | Creates flows with verdict `Fail` between sources and targets in tool output. Result assigned with `mitm` property |
+File: [certmitm_reader.py](../../toolsaf/adapters/certmitm_reader.py)
 
----
+Adapter for processing `zip` compressed certmitm output folders. Creates flows with verdict `Fail` between sources and targets in tool output.
+
 ### HARScan
-| Property   | Details  |
-|:----------:|:---------|
-| File          | [har_scan.py](../../toolsaf/adapters/har_scan.py) |
-| Base class    | [NetworkNodeTool](#networknodetool) |
-| Tool output   | `.json` format HAR files extractred from Browser |
-| Verdict `Pass`| **FIXME** |
+File: [har_scan.py](../../toolsaf/adapters/har_scan.py)
 
----
-### MITMLogReader
-| Property | Details |
-|----------|---------|
-| File          | [mitm_log_reader.py](../../toolsaf/adapters/mitm_log_reader.py) |
-| Base class    | [SystemWideTool](#systemwidetool) |
-| Tool output   | **FIXME** |
-| Verdict `Pass`| **FIXME** |
+Adapter for processing HAR files in `.json` format extracted from Browser.
 
----
 ### NMAPScan
-| Property   | Details  |
-|:----------:|:---------|
-| File          | [nmap_scan.py](../../toolsaf/adapters/nmap_scan.py) |
-| Base class    | [SystemWideTool](#systemwidetool) |
-| Tool output   | `.xml` format nmap results |
-| Verdict `Pass`| **FIXME** |
+File: [nmap_scan.py](../../toolsaf/adapters/nmap_scan.py)
 
----
+Adapter for processing nmap results in `.xml` format.
+
 ### PCAPReader
-| Property   | Details  |
-|:----------:|:---------|
-| File          | [pcap_reader](../../toolsaf/adapters/pcap_reader.py) |
-| Base class    | [SystemWideTool](#systemwidetool) |
-| Tool output   | `.pcap` format tcpdump of Wireshark packet caputes |
-| Verdict `Pass`| **FIXME** |
+File: [pcap_reader](../../toolsaf/adapters/pcap_reader.py)
 
----
+Adapter for processing tcpdump or Wireshark packet captures in `.pcap` format.
+
 ### PingCommand
-| Property   | Details  |
-|:----------:|:---------|
-| File          | [ping_command.py](../../toolsaf/adapters/ping_command.py) |
-| Base class    | [SystemWideTool](#systemwidetool) |
-| Tool output   | **FIXME** |
-| Verdict `Pass`| **FIXME** |
+File: [ping_command.py](../../toolsaf/adapters/ping_command.py)
 
----
-### ReleasesReader
-| Property   | Details  |
-|:----------:|:---------|
-| File          | [releases.py](../../toolsaf/adapters/releases.py) |
-| Base class    | [NodeComponentTool](#nodecomponenttool) |
-| Tool output   | **FIXME** |
-| Verdict `Pass`| **FIXME** |
+Adapter for processing ping command results.
 
----
+### GithubReleaseReader
+File: [github_releases.py](../../toolsaf/adapters/github_releases.py)
+
+Adapter for processing release information. **Experimental.**
+
+### ShodanScan
+File: [shodan_scan.py](../../toolsaf/adapters/shodan_scan.py)
+
+Adapter for processing Shodan scan results in `.json` format.
+
 ### ShellCommandPs
-| Property   | Details  |
-|:----------:|:---------|
-| File          | [shell_commands.py](../../toolsaf/adapters/shell_commands.py) |
-| Base class    | [EndpointTool](#endpointtool) |
-| Tool output   | **FIXME** |
-| Verdict `Pass`| **FIXME** |
+File: [shell_commands.py](../../toolsaf/adapters/shell_commands.py)
 
----
+**Experimental.**
+
 ### ShellCommandSs
-| Property   | Details  |
-|:----------:|:---------|
-| File          | [shell_commands.py](../../toolsaf/adapters/shell_commands.py) |
-| Base class    | [EndpointTool](#endpointtool) |
-| Tool output   | **FIXME** |
-| Verdict `Pass`| **FIXME** |
+File: [shell_commands.py](../../toolsaf/adapters/shell_commands.py)
 
----
+**Experimental.**
+
 ### SimpleFlowTool
-| Property   | Details  |
-|:----------:|:---------|
-| File          | [tools.py](../../toolsaf/adapters/tools.py) |
-| Base class    | [SystemWideTool](#systemwidetool) |
-| Tool output   | **FIXME** |
-| Verdict `Pass`| **FIXME** |
+File: [tools.py](../../toolsaf/adapters/tools.py)
 
----
+Adapter for reading JSON flows.
+
 ### SPDXReader
-| Property   | Details  |
-|:----------:|:---------|
-| File          | [spdx_reader.py](../../toolsaf/adapters/spdx_reader.py) |
-| Base class    | [NodeComponentTool](#nodecomponenttool) |
-| Tool output   | `.json` format SPDX files created with a sbom generator or BlackDuck |
-| Verdict `Pass`| If SW node component present in both security statement and batch directory SBOM |
-| Other         | To `component` property |
+File: [spdx_reader.py](../../toolsaf/adapters/spdx_reader.py)
 
----
+Adapter for processing SPDX format SBOM `.json` files created with a sbom generator.
+
 ### SSHAuditScan
-| Property   | Details  |
-|:----------:|:---------|
-| File          | [ssh_audit_scan.py](../../toolsaf/adapters/ssh_audit_scan.py) |
-| Base class    | [EndpointTool](#endpointtool) |
-| Tool output   | `.json` format ssh-audit results |
-| Verdict `Pass`| **FIXME** |
+File: [ssh_audit_scan.py](../../toolsaf/adapters/ssh_audit_scan.py)
 
----
+Adapter for processing ssh-audit results in `.json` format.
+
 ### TestSSLScan
-| Property   | Details  |
-|:----------:|:---------|
-| File          | [testsslsh_scan.py](../../toolsaf/adapters/testsslsh_scan.py) |
-| Base class    | [EndpointTool](#endpointtool) |
-| Tool output   | `.json` format testssl results |
-| Verdict `Pass`| **FIXME** |
+File: [testsslsh_scan.py](../../toolsaf/adapters/testsslsh_scan.py)
 
----
+Adapter for processing testssl results in `.json` format.
+
 ### TSharkReader
-| Property   | Details  |
-|:----------:|:---------|
-| File          | [tsrahk_reader.py](../../toolsaf/adapters/tshark_reader.py) |
-| Base class    | [SystemWideTool](#systemwidetool) |
-| Tool output   | `.json` format TShark BLE capture results |
-| Verdict `Pass`| **FIXME** |
+File: [tshark_reader.py](../../toolsaf/adapters/tshark_reader.py)
 
----
+Adapter for processing TShark BLE capture results in `.json` format.
+
 ### VulnerabilityReader
-| Property   | Details  |
-|:----------:|:---------|
-| File          | [vulnerability_reader.py](../../toolsaf/adapters/vulnerability_reader.py) |
-| Base class    | [NodeComponentTool](#nodecomponenttool) |
-| Tool output   | `.csv` format BlackDuck binary analysis results |
-| Verdict `Pass`| **FIXME** |
+File: [vulnerability_reader.py](../../toolsaf/adapters/vulnerability_reader.py)
 
----
+Adapter for processing BlackDuck binary analysis results in `.csv` format.
+
 ### WebChecker
-| Property   | Details  |
-|:----------:|:---------|
-| File          | [web_checker.py](../../toolsaf/adapters/web_checker.py) |
-| Base class    | [SystemWideTool](#systemwidetool) |
-| Tool output   | `.http` files created with `curl` |
-| Verdict `Pass`| If status code in tool output is 200 and all user provided keywords included in the file |
-| Other | Assigns result to system's `OnlineResources`. |
+File: [web_checker.py](../../toolsaf/adapters/web_checker.py)
 
----
+Adapter for processing `.http` files created with `curl`. Assigns result to system's `OnlineResources`.
+
 ### ZEDReader
-| Property   | Details  |
-|:----------:|:---------|
-| File          | [zed_reader.py](../../toolsaf/adapters/zed_reader.py) |
-| Base class    | [SystemWideTool](#systemwidetool) |
-| Tool output   | `.json` format ZED Attack Proxy results |
-| Verdict `Pass`| **FIXME** |
+File: [zed_reader.py](../../toolsaf/adapters/zed_reader.py)
 
+Adapter for processing ZED Attack Proxy results in `.json` format.
 
-## TODO
+## FIXME
 - SetupCSVReader
 - ToolDepiction
 - ToolFinderImplementation
