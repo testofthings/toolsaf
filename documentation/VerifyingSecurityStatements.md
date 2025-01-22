@@ -2,8 +2,9 @@
 
 [Table of contents](README.md)
 
-The security statement of an IoT system or product should be verified.
-The verification can take advantage of various tools and it can be automated.
+The security statement of an IoT system or product should be verified by Toolsaf.
+A verified security statement can be trusted to represent the IoT security posture.
+The verification takes advantage of various tools and it can be automated.
 Verifiability comes from machine-readability and mapping of tool output into security statement features.
 Verifiability sets aside security statements from informal descriptions, which are bound to be
 incomplete and out-of-date.
@@ -12,11 +13,10 @@ incomplete and out-of-date.
 
 During the verification process, the correctness and coverage of the security statement are assessed by comparing it to data collected from the IoT system itself.
 
-Security statement verification is a two-step tool-driven process:
+Security statement verification has two-steps:
 
-  - The first step is data collection using [tools](Tools.md#list-of-supported-tools) and storing
-the tool output.
-  - The second step is running the statement's Python file with the `-r` or `--read` [command-line option](CommandLineOptions.md) to read the data and verify the statement.
+  - Execute selected [tools](Tools.md#list-of-supported-tools) to probe the IoT product and save the tool output.
+  - Run the security statement Python file with the `--read` [command-line option](CommandLineOptions.md) to read the tool output and match it against the statement.
 
 Data collection requires the System Under Test (SUT) to be available to run the tools.
 For best access, the tested IoT devices should be connected to a router or switch which allows the capture of data. This can be e.g. a WiFi-hotspot. The router/switch must be able to intercept the connections between devices and the system's backend services. Mobile devices running related applications should also be connected to the same network as the DUT.

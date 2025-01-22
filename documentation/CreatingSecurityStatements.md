@@ -2,7 +2,7 @@
 
 [Table of contents](README.md)
 
-This document provides guidance on structuring your security statement project and details how you can fill in the statement using our Python DSL. Additionally, it outlines the various types of statements that can be created with the DSL.
+This document provides guidance on structuring your security statement project and details how you write the statement using our Python DSL.
 
 ## Project Structure
 Security statements for each product should be placed in their own directory in a Python project. Each project is recommended to be version controlled as a _Git_-repository.
@@ -50,7 +50,7 @@ if __name__ == '__main__':
 ```
 This statement is available in the Toolsaf sample file as `samples/device-backend/statement.py`.
 You can use the above statement as a starting point for your own security statement.
-For a recap on how to start writing your own security statements, check out
+For a recap on how to start working with Toolsaf, check out
 [Getting Started with Toolsaf](../README.md#getting-started-with-toolsaf).
 
 Once you have the security statement copied or pasted into your own directory, you can
@@ -83,13 +83,18 @@ Verdict:         Source:                          Target:
 ----------------------------------------------------------------------------------------------------
 [Expected]       Device                           Backend TLS:443
 ```
+As you see, Toolsaf prints the structure of the security statement into terminal, we go through
+the output in detail later.
+The printout would contain security statement verification output if you provide tool data,
+[this is explained later](VerifyingSecurityStatements.md).
+
 Below you can see a visual illustration of the sample security statement.
 It is generated with the following command line `python device-backend/statement.py -S`.
 
 <img src="img/statement-device-backend.png" width="500"
      alt="Security statement diagram for device-backend sample">
 
-As you can see, the security statement describes a very simple system made up of
+This sample security statement describes a very simple system made up of
 a device and backend. The device connects to the backend using the TLS protocol.
 Real systems are more complex than this. Below we go through a more practical example.
 
@@ -144,18 +149,18 @@ Let's go through the basic DSL concepts in the next sections.
 
 ## System Hosts, Services, and Connections
 
-As shown in the above examples, a security statement starts with a call to the method `Builder.new()`. This call takes the system's name as an argument and returns a _system_ object, which represents the entire IoT system from the devices, and backend services to the mobile applications and networks.
+As shown in the above examples, a security statement starts with a call to the method `Builder.new()`. This call takes the system's name as an argument and returns a _system_ object, which represents the entire IoT system including devices, backend services, mobile applications, and networks.
 
 Once the system object is created, you can begin defining the various network _hosts_ (sometimes called components or nodes). These hosts may include any of the following:
 
 | Factory method       | Description |
 |----------------------|-------------|
-| `system.device()`    | IoT devices |
+| `system.device()`    | IoT devices, gateways, and others _things_ |
 | `system.mobile()`    | Mobile applications |
-| `system.browser()`   | Web browser |
+| `system.browser()`   | Users's web browser |
 | `system.backend()`   | Backend services |
 | `system.network()`   | System networks |
-| `system.any()`       | Services provided by anybody from the environment, e.g. network router |
+| `system.any()`       | Services provided by anyone from environment, e.g. network router |
 | `system.broadcast()` | Network broadcast addresses |
 
 
@@ -170,7 +175,7 @@ code_repository = system.backend("Code Repository").serve(HTTP, TLS).dns("github
 ```
 
 The code above creates a system backend named "Code Repository" that provides HTTP and TLS protocol services, and has the DNS name _github.com_.
-Services are not limited to backend hosts, instead any host can have services.
+Services are not limited to backend hosts, all host types can have services.
 
 Connections between system components are defined using the right shift operators `>>` followed by host and service. For example, the statement `mobile >> backend / TLS` means that a mobile application initiates a connection with a backend TLS service.
 
@@ -193,8 +198,8 @@ Check out the [services](Services.md) documentation for more details and the lis
 ## Software Bill of Materials (SBOM)
 
 A Software Bill of Materials (SBOM) is an inventory of the software components, libraries, dependencies, and other elements that make up the software of an (IoT) system.
-Having a SBOM for IoT products is gaining attention, as it allows identifying potential
-vulnerabilities from the product.
+Disclosing SBOMs for IoT products is gaining attention, as it allows identifying potential
+vulnerabilities from products.
 
 In Toolsaf, SBOM defines the lower-level components of a top-level _software component_ of an IoT host. One host can have one or many top-level software components. Every host is implicitly defined to have one top-level software component.
 
@@ -225,13 +230,6 @@ Toolsaf also reads the `versionInfo` fields of individual packages from the SPDX
 There are [more features](MoreStatementFeatures.md) in the security statement DSL. Check them out.
   - Defining online resources to verify them
   - Specifying permissions for Android applications
-
-## Checking the Security Statement
-
-To ensure that your statement is filled in properly, run the statement file with Python. This way you can be sure that it is free of runtime errors.
-```shell
-python <directory>/statement.py
-```
 
 ## Visualizing Security Statements
 You can create a diagram based on a security statement with the following command

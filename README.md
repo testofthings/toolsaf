@@ -3,11 +3,11 @@
 [Table of contents](documentation/README.md)
 
 Welcome to the early version of **Toolsaf**, a tool-driven security assessment framework.
-Toolsaf is intended for security assessment of _Internet of Things_ (IoT) and other systems with the help of common security tools.
-The process of using Toolsaf for security assessment has two main phases:
+Toolsaf is for security assessment of _Internet of Things_ (IoT) and other systems using different security tools.
+Security assessment process using Toolsaf has two main phases:
 
   1. Creation of a _security statement_ which describes security-related features of an IoT product or system.
-  2. Verification of the security statement with security tools.
+  2. Verification of the security statement with security tools, thus confirming the security posture of the product or system.
 
 Some of the applications of this approach could be:
 
@@ -16,7 +16,7 @@ Some of the applications of this approach could be:
   3. Documenting results of a system's reverse-engineering.
 
 Toolsaf is an open-source project driven by [Test of Things](https://testofthings.com).
-It was originally created as part of Rauli Kaksonen's doctoral thesis [Transparent and tool-driven security assessment for sustainable IoT cybersecurity](https://urn.fi/URN:NBN:fi:oulu-202406264941) under the name of 'tdsaf'.
+It was originally created as part of Rauli Kaksonen's doctoral thesis "[Transparent and tool-driven security assessment for sustainable IoT cybersecurity](https://urn.fi/URN:NBN:fi:oulu-202406264941)" under the name of 'tcsfw'.
 The thesis introduces _Tool-driven security assessment_ (TDSA) to enhance the cybersecurity of
 IoT products and systems.
 
@@ -80,22 +80,17 @@ Python-code, any other environment should work fine.
 ## Working with Security Statements
 
 To recap, a security statement is Python DSL code in its own directory, which uses the Toolsaf Python module.
-This section explains how to create security statements and then verify them.
-As an example, we have created a security statement for the _Deltaco Smart Outdoor Plug_.
-
-There are two basic approaches to build a security statement:
+There are two basic approaches to create a security statement:
 
   1. Write the security statement code first, then run tools and verify it.
-  2. Run tools to collect information first, then write security statement to match that.
+  2. Run tools to collect information first, then write security statement to match the findings.
 
 If you’re the device manufacturer you will likely use the former approach, as you (hopefully)
 know your product's attack surface and other properties.
 If you are a security researcher who is reverse-engineering or pen-testing a product,
 you have to use the latter approach.
 
-We created the example security statement using the latter approach, as we learned the device properties on the go
-
-The following documents describe security statements in detail:
+The following documents describe security statements creation and verification:
 
   - [Creating Security Statements](documentation/CreatingSecurityStatements.md)
   - [Verifying Security Statements](documentation/VerifyingSecurityStatements.md)
