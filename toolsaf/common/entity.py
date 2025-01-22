@@ -116,11 +116,11 @@ class Entity:
         """Get system address for this entity"""
         return AddressSequence.new()
 
-    def find_entity(self, address: AddressSequence) -> Optional['Entity']:
+    def find_entity(self, address: AddressSequence, depth: int=0) -> Optional['Entity']:
         """Find an entity by address"""
-        if len(address.segments) == 0:
+        if depth == len(address.segments):
             return self
-        return None
+        raise NotImplementedError()
 
     def __repr__(self) -> str:
         s = f"{self.status_string()} {self.long_name()}"

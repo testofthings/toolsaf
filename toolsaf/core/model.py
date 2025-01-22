@@ -401,6 +401,19 @@ class Addressable(NetworkNode):
         """Get the parent host"""
         raise NotImplementedError()
 
+    def find_entity(self, address: AddressSequence, depth: int=0) -> Optional[Entity]:
+        if depth == len(address.segments):
+            return self
+        segment = address.segments[depth]
+        match segment.segment_type:
+            case "software":
+                for component in self.components:
+                    if component.name.replace("_", " ") == str(segment.address).replace("_", " "):
+                        return component.find_entity(address, depth + 1)
+            case _:
+                raise NotImplementedError()
+        return None
+
 
 class Host(Addressable):
     """A host"""
@@ -458,20 +471,6 @@ class Host(Addressable):
             if isinstance(address, EntityTag):
                 return AddressSequence.new(address)
         return AddressSequence.new(Addresses.get_prioritized(self.addresses))
-
-    def find_entity(self, address: AddressSequence) -> Optional[Entity]:
-        if len(address.segments) == 0:
-            return self
-        segment = address.segments.pop(0)
-        match segment.segment_type:
-            case "software":
-                for component in self.components:
-                    assert isinstance(segment.address, EntityTag)
-                    if segment.address.tag == component.name.replace(" ", "_"):
-                        return component
-            case _:
-                raise NotImplementedError()
-        return None
 
 
 class Service(Addressable):
@@ -547,11 +546,6 @@ class Service(Addressable):
             parent=self.parent.get_system_address(),
             service=list(self.addresses)[0]
         )
-
-    def find_entity(self, address: AddressSequence) -> Optional[Entity]:
-        if len(address.segments) == 0:
-            return self
-        return None
 
     def __repr__(self) -> str:
         return f"{self.status_string()} {self.parent.long_name()} {self.name}"
@@ -741,28 +735,31 @@ class IoTSystem(NetworkNode):
             e = None
         return e
 
-    def find_entity(self, address: AddressSequence) -> Optional[Entity]:
+    def find_entity(self, address: AddressSequence, depth: int=0) -> Optional[Entity]:
         if not address.segments:
             raise ValueError("Empty address sequence")
 
-        if address.segments[0].segment_type == "source":
-            source = address.segments[0]
-            target = address.segments[1]
+        if address.segments[depth].segment_type == "source":
+            source = address.segments[depth]
+            target = address.segments[depth + 1]
             for connection in self.get_connections(relevant_only=False):
                 source_addresses = connection.source.get_addresses()
                 target_addresses = connection.target.get_addresses()
                 if source.address in source_addresses and target.address in target_addresses:
                     return connection
         else:
-            segment = address.segments.pop(0)
+            segment = address.segments[depth]
             if isinstance(segment.address, EndpointAddress):
                 endpoint = self.find_endpoint(segment.address)
-                assert endpoint
-                return endpoint.find_entity(address)
+                if not endpoint:
+                    return None
+                return endpoint.find_entity(address, depth + 1)
             for host in self.get_hosts():
                 if segment.address.get_host() in host.addresses:
-                    return host.find_entity(address)
+                    return host.find_entity(address, depth + 1)
+
         return None
+
 
     def new_connection(self, source: Tuple[Addressable, AnyAddress],
                        target: Tuple[Addressable, AnyAddress]) -> Connection:
