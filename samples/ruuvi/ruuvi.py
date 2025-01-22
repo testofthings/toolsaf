@@ -53,11 +53,6 @@ system.online_resource("security-policy", url="https://ruuvi.com/terms/vulnerabi
                        keywords=["security@ruuvi.com"]
 )
 
-# sensitive data
-user_email = system.data(["User e-mail"])
-measurements = system.data(["Measurements"])
-billing_info = system.data(["Billing info"])
-
 # Mobile application
 # https://play.google.com/store/apps/details?id=com.ruuvi.station
 
