@@ -41,8 +41,6 @@ any_host = system.any("Service")
 gateway >> any_host / DHCP / DNS / NTP / ICMP
 gateway / ICMP
 
-tags.set_property("default", "sensors")  # ETSI TS 103 701 requires this info
-
 fw_esp32 = gateway.software("ESP32 Firmware").updates_from(backend_2)
 fw_nRF52811 = gateway.software("nRF52811 Firmware").updates_from(backend_2)
 
