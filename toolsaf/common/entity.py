@@ -1,6 +1,5 @@
 """Base entity class and related classes"""
 
-import re
 from typing import Dict, Optional, Self, List, Any, Tuple, Iterable, Iterator
 
 from toolsaf.common.basics import Status
@@ -114,41 +113,4 @@ class Entity:
 
     def __repr__(self) -> str:
         s = f"{self.status_string()} {self.long_name()}"
-        return s
-
-
-class SafeNameMap:
-    """Safe names for entities"""
-    def __init__(self, prefix: str="") -> None:
-        self.prefix = prefix
-        self.safe_names: Dict[Any, str] = {}
-        self.reverse_map: Dict[str, Any] = {}
-
-    def get_safe_name(self, entity: Entity) -> str:
-        """Get safe name for an entity to use in file names, variables, etc."""
-        sn = self.safe_names.get(entity)
-        if sn is None:
-            sn = self.prefix + self.replace_non_alphanumeric(entity.long_name())
-            self.safe_names[entity] = sn
-            self.reverse_map[sn] = entity
-        elif self.reverse_map.get(sn) != entity:
-            raise ValueError(f"Safe name collision: {sn} for {entity} and {self.reverse_map[sn]}")
-        return sn
-
-    def get_env_name(self, entity: Entity) -> str:
-        """Get environment variable name for an entity"""
-        sn = self.get_safe_name(entity).upper()
-        if sn not in self.reverse_map:
-            self.reverse_map[sn] = entity
-        elif self.reverse_map[sn] != entity:
-            raise ValueError(f"Safe name collision: {sn} for {entity} and {self.reverse_map[sn]}")
-        return sn
-
-    @classmethod
-    def replace_non_alphanumeric(cls, string: str) -> str:
-        """Replace any character that is NOT alphanumeric or underscore with an underscore"""
-        s = re.sub(r'[^a-zA-Z0-9_]', '_', string)
-        s = re.sub(r'_+', '_', s)  # repeated _:s
-        if s and '0' <= s[0] <= '9':
-            s = f"_{s}"
         return s
