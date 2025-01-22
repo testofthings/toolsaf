@@ -56,8 +56,6 @@ system.online_resource("security-policy", url="https://ruuvi.com/terms/vulnerabi
 
 # Additional DNS names
 backend_2.dns("api.github.com").dns("objects.githubusercontent.com")
-# Gateway NTP servers
-gateway.ignore_name_requests("time.google.com", "time.nist.gov", "pool.ntp.org", "ntp1.glb.nist.gov")
 
 # Cookies (experimental feature, perhaps not a way forward)
 cookies = user.cookies()
