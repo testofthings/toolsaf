@@ -5,7 +5,6 @@ from typing import Iterable, List, Optional, Dict, Set
 
 from toolsaf.common.release_info import ReleaseInfo
 from toolsaf.core.model import IoTSystem, NodeComponent, Connection, NetworkNode, Host, SensitiveData, Addressable
-from toolsaf.common.address import AddressSequence, EntityTag
 
 
 class Software(NodeComponent):
