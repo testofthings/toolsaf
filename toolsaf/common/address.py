@@ -248,10 +248,10 @@ class Addresses:
         return EndpointAddress(addr, Protocol.get_protocol(prot), int(port))
 
     @classmethod
-    def parse_system_address(cls, value: str) -> AnyAddress:
+    def parse_system_address(cls, value: str) -> 'AddressSequence':
         """Parse system addresses"""
         if value.count("/") <= 1 and "=" not in value:
-            return cls.parse_endpoint(value)
+            return AddressSequence.new(cls.parse_endpoint(value))
 
         sequence = AddressSequence.new()
         endpoint_regex = re.compile(r"([0-9.:|a-z]+\/\w+:[0-9]+)|(\w+\/\w+:[0-9]+)")

@@ -199,27 +199,27 @@ def test_get_system_address():
 def test_parse_system_address():
     assert Addresses.parse_system_address(
         "1.2.3.4"
-    ) == IPAddress.new("1.2.3.4")
+    ) == AddressSequence.new(IPAddress.new("1.2.3.4"))
 
     assert Addresses.parse_system_address(
         "1:2:3:4:5:6|hw"
-    ) == HWAddress.new("1:2:3:4:5:6")
+    ) == AddressSequence.new(HWAddress.new("1:2:3:4:5:6"))
 
     assert Addresses.parse_system_address(
         "Test_Device"
-    ) == EntityTag("Test_Device")
+    ) == AddressSequence.new(EntityTag("Test_Device"))
 
     assert Addresses.parse_system_address(
         "1.2.3.4/udp:1234"
-    ) == EndpointAddress(IPAddress.new("1.2.3.4"), Protocol.UDP, 1234)
+    ) == AddressSequence.new(EndpointAddress(IPAddress.new("1.2.3.4"), Protocol.UDP, 1234))
 
     assert Addresses.parse_system_address(
         "Test_Device/tcp:80"
-    ) == EndpointAddress(EntityTag("Test_Device"), Protocol.TCP, 80)
+    ) == AddressSequence.new(EndpointAddress(EntityTag("Test_Device"), Protocol.TCP, 80))
 
     assert Addresses.parse_system_address(
         "ff_ff_ff_ff_ff_ff/arp"
-    ) == EndpointAddress(EntityTag("ff_ff_ff_ff_ff_ff"), Protocol.ARP)
+    ) == AddressSequence.new(EndpointAddress(EntityTag("ff_ff_ff_ff_ff_ff"), Protocol.ARP))
 
     assert Addresses.parse_system_address(
         "Test_Device/software=Test_SW"
