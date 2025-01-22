@@ -82,12 +82,5 @@ cookies.set({
 system.network().mask("192.168.0.0/16")  # Assuming 192.168 local network
 system.network().mask("10.10.0.0/24")    # Gateway's setup network
 
-gateway.hw("30:c6:f7:52:db:5c")
-tags.hw("fd:5b:e3:39:f7:24")
-mobile.hw("c2:77:15:ab:b5:b0")
-
-# Infrastructure Raspberry can do whatever
-infra = system.infra().hw("dc:a6:32:28:34:e3")
-
 if __name__ == "__main__":
     system.run()
