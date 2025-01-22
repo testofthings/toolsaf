@@ -1,12 +1,14 @@
 # Tool Adapters
+
+[Architecture root](README.md)
+
 This document provides information the contents of the [adapters](../../toolsaf/adapters/) directory.
 
 ## Adapter Base Classes
 
-### ToolAdapter
-File: [tools.py](../../toolsaf/adapters/tools.py).
+### File [tools.py](../../toolsaf/adapters/tools.py).
 
-Parent of all the other tool base classes.
+Parent of all the other tool adapter base classes.
 
 Notable variabels:
 | Variable   | Description  |
@@ -17,37 +19,49 @@ Notable variabels:
 | `load_baseline`    | **FIXME**. Default `False`. Read from `00meta.json` |
 
 ---
-### SystemWideTool
-File: [tools.py](../../toolsaf/adapters/tools.py).
+### `SystemWideTool`
 
 The tool data processed by SystemWideTools include all the addresses/info necessary for output analysis, e.g. IP addresses, DNS names and ports. The output of a SystemWideTool is applied to the `system` as indicated by the provided tool output.
 
-File can have any name.
+**Input file name:** Any name.
 
 ---
-### EndpointTool
-File: [tools.py](../../toolsaf/adapters/tools.py).
+### `EndpointTool`
 
 EndpointTool applies tool output to specific endpoints. Endpoints are specified in tool outputs' file names. For example, a file called Mobile_App.xml would apply produced results to the system's endpoint named Mobile_App.
 
-As such, tool output must be named _AnyAddress_ + `data_file_suffix`. _AnyAddress_ can an address tag from `00meta.json`, and IP address or DNS name.
+**Input file name:** File must be named _address_ + `data_file_suffix`, where _address_ can an address tag from `00meta.json`, and IP address or DNS name.
 
----
-### NetworkNodeTool
-File: [tools.py](../../toolsaf/adapters/tools.py).
+### `NetworkNodeTool`
 
 Tool output applied to network nodes.
 
-Files are named after hosts/nodes in the system. For example, Browser + `data_file_suffix`.
+**Input file name:** Files must be named after hosts tag addresses. For example, `Browser` + `data_file_suffix`.
 
 ---
-### NodeComponentTool
-File: [tools.py](../../toolsaf/adapters/tools.py).
+### `NodeComponentTool`
 
-NodeComponentTool applies tool output to node components. Sample data files need to be named after components. For example, if we want to apply tool output to Mobile_App's SW component, the file name must be Mobile_App_SW + `data_file_suffix`
+NodeComponentTool applies tool output to node components.
+
+**Input file name:** Sample data files need to be named after components. For example, if we want to apply tool output to Mobile_App's SW component, the file name must be Mobile_App_SW + `data_file_suffix`
 
 ---
+## Writing new tool adapters
+
+A _tool adapter_ reads tool result files and sends [`Event`s](Common.md) to update model and give verdicts.
+A tool adapter must never directly set a property,
+but properties are carried from tool adapters into entities by the Events.
+This ensures that the evidence for each property change is logged properly.
+
+A new tool adapter must be derived from appropriate base class, listed above.
+The selection of base class depends on how much information is contained on the
+tool output, e.g. `SystemWideTool` can direct the output to proper entity without any help.
+
+FIXME: Not very comprehensive, yet. Use the source!
+
 ## Tool Adapters
+
+The following lists basic information for the existing tool adapters.
 
 ### AndroidManifestScan
 | Property | Details |
