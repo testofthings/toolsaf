@@ -459,6 +459,20 @@ class Host(Addressable):
                 return AddressSequence.new(address)
         return AddressSequence.new(Addresses.get_prioritized(self.addresses))
 
+    def find_entity(self, address: AddressSequence) -> Optional[Entity]:
+        if len(address.segments) == 0:
+            return self
+        segment = address.segments.pop(0)
+        match segment.segment_type:
+            case "software":
+                for component in self.components:
+                    assert isinstance(segment.address, EntityTag)
+                    if segment.address.tag == component.name.replace(" ", "_"):
+                        return component
+            case _:
+                raise NotImplementedError()
+        return None
+
 
 class Service(Addressable):
     """A service"""
@@ -533,6 +547,11 @@ class Service(Addressable):
             parent=self.parent.get_system_address(),
             service=list(self.addresses)[0]
         )
+
+    def find_entity(self, address: AddressSequence) -> Optional[Entity]:
+        if len(address.segments) == 0:
+            return self
+        return None
 
     def __repr__(self) -> str:
         return f"{self.status_string()} {self.parent.long_name()} {self.name}"
@@ -721,6 +740,29 @@ class IoTSystem(NetworkNode):
         else:
             e = None
         return e
+
+    def find_entity(self, address: AddressSequence) -> Optional[Entity]:
+        if not address.segments:
+            raise ValueError("Empty address sequence")
+
+        if address.segments[0].segment_type == "source":
+            source = address.segments[0]
+            target = address.segments[1]
+            for connection in self.get_connections(relevant_only=False):
+                source_addresses = connection.source.get_addresses()
+                target_addresses = connection.target.get_addresses()
+                if source.address in source_addresses and target.address in target_addresses:
+                    return connection
+        else:
+            segment = address.segments.pop(0)
+            if isinstance(segment.address, EndpointAddress):
+                endpoint = self.find_endpoint(segment.address)
+                assert endpoint
+                return endpoint.find_entity(address)
+            for host in self.get_hosts():
+                if segment.address.get_host() in host.addresses:
+                    return host.find_entity(address)
+        return None
 
     def new_connection(self, source: Tuple[Addressable, AnyAddress],
                        target: Tuple[Addressable, AnyAddress]) -> Connection:

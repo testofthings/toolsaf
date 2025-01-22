@@ -1,4 +1,4 @@
-from toolsaf.common.address import EndpointAddress, EntityTag, Protocol, DNSName, IPAddress, HWAddress
+from toolsaf.common.address import EndpointAddress, EntityTag, Protocol, DNSName, IPAddress, HWAddress, AddressSequence, Addresses
 from toolsaf.core.inspector import Inspector
 from toolsaf.core.model import Host, IoTSystem
 from toolsaf.common.verdict import Verdict
@@ -482,3 +482,28 @@ def test_unknown_service_in_subnet():
     addr = EndpointAddress.ip("169.254.6.7", Protocol.TCP, 8686)
     s0 = system.get_endpoint(addr)
     assert s0.get_parent_host() != dev1.entity
+
+
+def test_find_entity():
+    system = Setup().system
+    device = system.device("Test Device")
+
+    seq = Addresses.parse_system_address("Test_Device")
+    assert system.system.find_entity(seq) == device.entity
+
+    seq = Addresses.parse_system_address("Test_Device/software=Test_SW")
+    software = device.software("Test SW").get_software()
+    assert system.system.find_entity(seq) == software
+
+    service = (device / TCP(port=12)).entity
+    seq = Addresses.parse_system_address("Test_Device/tcp:12")
+    assert system.system.find_entity(seq) == service
+
+    backend = system.backend("Test Backend")
+    connection = (device >> backend / TCP(22)).connection
+    seq = Addresses.parse_system_address("source=Test_Device/target=Test_Backend/tcp:22")
+    assert system.system.find_entity(seq) == connection
+
+    device.new_address_(IPAddress.new("1.2.3.4"))
+    seq = Addresses.parse_system_address("1.2.3.4")
+    assert system.system.find_entity(seq) == device.entity

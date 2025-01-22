@@ -117,6 +117,12 @@ class Entity:
         """Get system address for this entity"""
         return AddressSequence.new()
 
+    def find_entity(self, address: AddressSequence) -> Optional['Entity']:
+        """Find an entity by address"""
+        if len(address.segments) == 0:
+            return self
+        return None
+
     def __repr__(self) -> str:
         s = f"{self.status_string()} {self.long_name()}"
         return s
