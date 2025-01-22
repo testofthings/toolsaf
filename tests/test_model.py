@@ -8,6 +8,7 @@ from toolsaf.core.matcher import SystemMatcher
 from toolsaf.common.basics import ExternalActivity
 from toolsaf.common.traffic import IPFlow
 from toolsaf.common.basics import Status
+from toolsaf.core.components import Software
 
 
 class Setup:
@@ -507,3 +508,8 @@ def test_find_entity():
     device.new_address_(IPAddress.new("1.2.3.4"))
     seq = Addresses.parse_system_address("1.2.3.4")
     assert system.system.find_entity(seq) == device.entity
+
+    software = Software(service, "Service SW")
+    service.components.append(software)
+    seq = Addresses.parse_system_address("Test_Device/tcp:12/software=Service_SW")
+    assert system.system.find_entity(seq) == software
