@@ -195,6 +195,14 @@ if the backend has not explicitly defined them.
 
 Check out the [services](Services.md) documentation for more details and the list of available protocols.
 
+### Local and Global Networks
+
+Toolsaf needs to separate local and global IP addresses, to accurately detect endpoints which
+are connected through routers.
+As default, the local _network mask_ is assumed to be `192.168.0.0/16`.
+You can change this by method `system.network(<mask>)`.
+Several local networks can be defined by calling the method many times.
+
 ## Software Bill of Materials (SBOM)
 
 A Software Bill of Materials (SBOM) is an inventory of the software components, libraries, dependencies, and other elements that make up the software of an (IoT) system.

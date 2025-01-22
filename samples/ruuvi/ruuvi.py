@@ -78,9 +78,10 @@ cookies.set({
     "_ttp": (".ruuvi.com", "/", "FIXME"),
 })
 
-# Concrete addresses
-system.network().mask("192.168.0.0/16")
-system.network().mask("10.10.0.0/24")
+# Network masks
+system.network().mask("192.168.0.0/16")  # Assuming 192.168 local network
+system.network().mask("10.10.0.0/24")    # Gateway's setup network
+
 gateway.hw("30:c6:f7:52:db:5c")
 tags.hw("fd:5b:e3:39:f7:24")
 mobile.hw("c2:77:15:ab:b5:b0")
