@@ -250,25 +250,28 @@ class Addresses:
     @classmethod
     def parse_system_address(cls, value: str) -> AnyAddress:
         """Parse system addresses"""
-        # FIXME ADDRESSSEGMENTS
         if value.count("/") <= 1 and "=" not in value:
             return cls.parse_endpoint(value)
 
         sequence = AddressSequence.new()
-        endpoint_regex = re.compile(r"\w+\/\w+:[0-9]+")
+        endpoint_regex = re.compile(r"([0-9.:|a-z]+\/\w+:[0-9]+)|(\w+\/\w+:[0-9]+)")
 
         while value:
             endpoint_addr = re.search(endpoint_regex, value)
             idx = value.index("/") if "/" in value else 0
             if endpoint_addr and endpoint_addr.start() in [0, 7]:
-                if value.startswith(("source=", "target=")):
-                    sequence.append(cls.parse_endpoint(value[7:endpoint_addr.end()]))
-                else:
-                    sequence.append(cls.parse_endpoint(value[ :endpoint_addr.end()]))
+                idx = 7 if value.startswith(("source=", "target=")) else 0
+                segment_type = value[:6] if idx else None
+                segment = value[idx:endpoint_addr.end()]
+                sequence.append(AddressSegment(cls.parse_endpoint(segment), segment_type))
                 value = value[endpoint_addr.end()+1:]
             else:
-                segment = (value[:idx] if idx else value).split("=")[-1]
-                sequence.append(EntityTag.new(segment))
+                segment_type, _, segment = (value[:idx] if idx else value).rpartition("=")
+                segment_type = segment_type if segment_type else None
+                if "." in segment or ":" in segment or "|" in segment:
+                    sequence.append(AddressSegment(cls.parse_endpoint(segment), segment_type))
+                else:
+                    sequence.append(AddressSegment(EntityTag.new(segment), segment_type))
                 value = value[idx+1:] if idx else ""
         return sequence
 
@@ -579,6 +582,11 @@ class AddressSegment(AnyAddress):
             return f"{self.segment_type}={self.address.get_parseable_value()}"
         return self.address.get_parseable_value()
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, AddressSegment):
+            return False
+        return self.address == other.address and self.segment_type == other.segment_type
+
     def __repr__(self) -> str:
         return (f"{self.segment_type}=" if self.segment_type else "") + str(self.address)
 
@@ -586,20 +594,29 @@ class AddressSegment(AnyAddress):
 class AddressSequence(AnyAddress):
     """AnyAddress sequences representing system addresses"""
     @classmethod
-    def connection(cls, source: AnyAddress, target: AnyAddress) -> 'AddressSequence':
-        """Create connection sequence"""
-        return AddressSequence(segments=[
-            AddressSegment(source, segment_type="source"),
-            AddressSegment(target, segment_type="target")
-        ])
+    def service(cls, parent: 'AddressSequence', service: AnyAddress) -> 'AddressSequence':
+        """Create service sequence"""
+        return AddressSequence(parent.segments + [AddressSegment(service)])
 
     @classmethod
-    def component(cls, parent: AnyAddress, component_name: str, segment_type: str) -> 'AddressSequence':
+    def component(cls, parent: 'AddressSequence', component_name: str, segment_type: str) -> 'AddressSequence':
         """Create component sequence"""
-        return AddressSequence(segments=[
-            AddressSegment(parent),
-            AddressSegment(EntityTag(component_name), segment_type=segment_type)
-        ])
+        return AddressSequence(
+            parent.segments +
+            [AddressSegment(EntityTag(component_name), segment_type=segment_type)]
+        )
+
+    @classmethod
+    def connection(cls, source: 'AddressSequence', target: 'AddressSequence') -> 'AddressSequence':
+        """Create connection sequence"""
+        source.segments[0].segment_type = "source"
+        target.segments[0].segment_type = "target"
+        return AddressSequence(source.segments + target.segments)
+
+    @classmethod
+    def iot_system(cls, name: str, segment_type: str) -> 'AddressSequence':
+        """Create IoT system sequence"""
+        return AddressSequence([AddressSegment(EntityTag(name), segment_type=segment_type)])
 
     @classmethod
     def new(cls, *segments: AnyAddress) -> 'AddressSequence':
@@ -608,18 +625,18 @@ class AddressSequence(AnyAddress):
             segments=[AddressSegment(segment) for segment in segments]
         )
 
-    def __init__(self, segments: List[AnyAddress]) -> None:
+    def __init__(self, segments: List[AddressSegment]) -> None:
         self.segments = segments
+        self.value = self.get_parseable_value()
+
+    def append(self, segment: AddressSegment) -> None:
+        """Add new segment to AddressSequence"""
+        self.segments += [segment]
         self.value = self.get_parseable_value()
 
     def _parse_segment(self, segment: str) -> str:
         """Parse given segment"""
         return segment.replace(" ", "_").replace("*/", "")
-
-    def append(self, segment: AnyAddress) -> None:
-        """Add new segment to AddressSequence"""
-        self.segments += [segment]
-        self.value = self.get_parseable_value()
 
     def get_parseable_value(self) -> str:
         return "/".join([self._parse_segment(segment.get_parseable_value()) for segment in self.segments])
