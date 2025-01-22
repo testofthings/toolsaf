@@ -1,6 +1,5 @@
 """Base entity class and related classes"""
 
-import re
 from typing import Dict, Optional, Self, List, Any, Tuple, Iterable, Iterator
 
 from toolsaf.common.basics import Status
