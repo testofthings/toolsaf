@@ -41,30 +41,25 @@ See [end of this page](#advanced-metafile-definitions) for advanced options requ
 
 In the following list you can find the tools and formats Toolsaf supports. Short descriptions and commands for output capturing in proper formats are provided in their own sections.
 
-| Tool | File Format | Apply tool to |
-|------|-------------|--------------|
-| [apktool](Tools.md#android-manifest) | .xml | Inspect application permissions from Android APK packages
-| [certmitm](Tools.md#certmitm) | .zip | Attempt to break TLS encryption by Man-In-The-Middle attacks
-| [GitHub Releases](Tools.md#github-releases) | .json | Read release history from GitHub
-| [HAR](Tools.md#har) | .json | Inspect browsing session HAR-capture, even when encrypted
-| [nmap](Tools.md#nmap) | .xml | Scan network to detect hosts and services
-| [Wireshark / tcpdump](Tools.md#pcap) | .pcap | Detect hosts, services, and connections between them from network captures.
-| [SPDX SBOM](Tools.md#spdx) | .json | Read SBOM from standard SPDX files
-| [ssh-audit](Tools.md#ssh-audit) | .json | Verify a SSH service
-| [testssl.sh](Tools.md#testsslsh) | .json | Verify a TLS-encrypted service
-| [Tshark (BLE only)](Tools.md#tshark-ble-only) | .json | Detect Bluetooth LE traffic from JSON-formatted traffic capture
-| [curl](Tools.md#http-responses) | .http | Ensure web-page availability with curl-command.
-| [ZED Attack Proxy (ZAP)](Tools.md#zed-attack-proxy-zap) | .json | Verify web-service best practises with ZAP-tool.
-| Commercial tools | €€€ |
-| [Black Duck Vulns](Tools.md#black-duck-vulnerabilities) | .csv | Incorporate known-vulnerability information to SBOM
-| [Censys](Tools.md#censys) | .json | Verify backend security from Censys-scan output
-| [Shodan](Tools.md#shodan) | .json | Verify backend security from Shodan-scan output
+| Tool | File Format |
+|------|-------------|
+| [apktool](Tools.md#android-manifest) | .xml |
+| [Black Duck Vulns](Tools.md#black-duck-vulnerabilities) | .csv |
+| [Censys](Tools.md#censys) | .json |
+| [certmitm](Tools.md#certmitm) | .zip |
+| [GitHub Releases](Tools.md#github-releases) | .json |
+| [HAR](Tools.md#har) | .json |
+| [nmap](Tools.md#nmap) | .xml |
+| [Wireshark / tcpdump](Tools.md#pcap) | .pcap |
+| [Shodan](Tools.md#shodan) | .json |
+| [SPDX SBOM](Tools.md#spdx) | .json |
+| [ssh-audit](Tools.md#ssh-audit) | .json |
+| [testssl.sh](Tools.md#testsslsh) | .json |
+| [Tshark (BLE only)](Tools.md#tshark-ble-only) | .json |
+| [cURL](Tools.md#http-responses) | .http |
+| [ZED Attack Proxy (ZAP)](Tools.md#zed-attack-proxy-zap) | .json |
 
 ### Android Manifest
-
-> 🌐 [APKpure](https://apkpure.net) to fetch APK packages
-> 🌐 [apktool](https://apktool.org) to analyze them.
-
 Toolsaf checks the permissions listed in `.xml` format Android Manifest files. These can be extracted from mobile application's `.apk` files. Example metafile `00meta.json`:
 
 ```json
@@ -85,8 +80,6 @@ We divide Android permissions into [different categories](../toolsaf/adapters/da
 
 ### Black Duck vulnerabilities
 
-> 🌐 [Black Duck SCA](https://www.blackduck.com/software-composition-analysis-tools/black-duck-sca.html)
-
 Data files are csv-files downloaded from Black Duck binary analyzer and named as `<component>.csv` where `<component>` is the name of the SW component.
 Example metafile `00meta.json`:
 
@@ -97,8 +90,6 @@ Example metafile `00meta.json`:
 ```
 
 ### Censys
-
-> 🌐 [Censys](https://search.censys.io)
 
 Data files are json-files fetched by Censys search API and named as `<address>.json` where `<address>` is the address of the scanned remote host.
 Example metafile `00meta.json`:
@@ -115,10 +106,7 @@ $ python toolsaf/censys_scan <address>
 ```
 
 ### Certmitm
-
-> 🌐 [Certmitm](https://github.com/aapooksman/certmitm)
-
-Certmitm-command produces files and folders as its output. To provide this data to Toolsaf, create a compressed `.zip` file containing the output.
+[Certmitm](https://github.com/aapooksman/certmitm) produces files and folders as its output. To provide this data to Toolsaf, create a compressed `.zip` file containing the output.
 Example metafile `00meta.json`:
 ```json
 {
@@ -132,8 +120,6 @@ Example metafile `00meta.json`:
 To properly process certmitm results, IP addresses for the hosts present in the output need to be provided in the metafile.
 
 ### Github releases
-
-> 🌐 https://github.com
 
 Data files are release json-files fetched from GitHub and named as `<component>.json` where `<component>` is the name of the SW component.
 Example metafile `00meta.json`:
@@ -155,8 +141,6 @@ curl -L \
 
 ### HAR
 
-> 🌐 [HAR-format](http://www.softwareishard.com/blog/har-12-spec/)
-
 Data files are HAR json-files saved by the browser and named as `<host>.json` where `<host>` is the name of the browsing host.
 Example metafile `00meta.json`:
 
@@ -169,8 +153,6 @@ Chrome can save HAR-files compatible with the reader.
 The way to save HAR-file depends on the browser.
 
 ### Nmap
-
-> 🌐 [Nmap](https://nmap.org)
 
 Data files are Nmap XML-formatted output files with suffix `.xml`. Example metafile `00meta.json`:
 ```json
@@ -186,8 +168,6 @@ $ nmap -oX <file>.xml <target>
 
 ### PCAP
 
-> 🌐 [Wireshark](https://www.wireshark.org/) and [Tcpdump](https://www.tcpdump.org)
-
 Data files are PCAP (not pcap-ng) files with suffix `.pcap`. Example metafile `00meta.json`:
 ```json
 {
@@ -198,9 +178,6 @@ Data files are PCAP (not pcap-ng) files with suffix `.pcap`. Example metafile `0
 Files can be captured by _Wireshark_ or `tcpdump`, see their documentation for instructions.
 
 ### Shodan
-
-> 🌐 [Shodan](https://www.shodan.io/)
-
 Data files are JSON format Shodan scan results with suffix `.json`. Example metafile `00meta.json`:
 ```json
 {
@@ -220,8 +197,6 @@ python3 toolsaf/adapters/shodan_scan.py dnslookup ruuvi.com # Results for multip
 
 ### SPDX
 
-> 🌐 [SPDX tools](https://spdx.dev/use/spdx-tools/)
-
 Data is Software Package Data Exchange (SPDX) json-files with suffix `.json`.
 Example metafile `00meta.json`:
 ```json
@@ -233,8 +208,6 @@ Example metafile `00meta.json`:
 SPDX file import is tested with files downloaded from Black Duck service. You can also use open-source SBOM generators to create `.json` format SPDX files.
 
 ### Ssh-audit
-
-> 🌐 [Ssh-audit](https://github.com/jtesta/ssh-audit)
 
 Data is output from `Ssh-audit` tool named as `<address>.<port>.json` where `<address>` is the host address and `<port>` is the TCP port number.
 Example metafile `00meta.json`:
@@ -248,8 +221,6 @@ See the tool manual for how to save scanning data.
 
 ### Testssl.sh
 
-> 🌐 [Testssl.sh](https://testssl.sh)
-
 Data is output from `Testssl.sh` tool named as `<address>.<port>.json` where `<address>` is the host address and `<port>` is the TCP port number.
 Example metafile `00meta.json`:
 ```json
@@ -262,10 +233,7 @@ See the tool manual for how to save scanning data.
 
 ### Tshark (BLE only)
 
-> 🌐 [HCIdump](https://www.bluez.org) and [Tshark](https://www.wireshark.org/docs/wsug_html_chunked/AppToolstshark.html)
-
 Data files are `tshark` command JSON-formatted PCAP of Bluetooth Low-Energy (BLE) traffic with suffix `.json`.
-The actual frames must be captured with BLE enabled device, using e.g. _HCIdump_ tool.
 Example metafile `00meta.json`:
 ```json
 {
@@ -276,8 +244,6 @@ Example metafile `00meta.json`:
 Note, only BLE data is read from JSON-formatted capture. The command-line tool `tshark` can capture data in this format and convert pcap-files to it. See `tshark` documentation for instructions.
 
 ### HTTP responses
-
-> 🌐 [curl](https://curl.se/)
 
 Data files are the HTTP requests and their payloads with suffix `.http`.
 Example metafile `00meta.json`:
@@ -294,8 +260,6 @@ $ (echo "<url>"; curl -Li <url>) > <file-name>.http
 NOTE: The first line of the `.http` file must contain the page's URL starting with `https://` or `http://`. The second line must contain the request's status code.
 
 ### ZED attack proxy (ZAP)
-
-> 🌐 [ZAP](https://www.zaproxy.org/)
 
 Data is output from _ZED attack proxy_ (ZAP) tool named as `<address>.json` where `<address>` is the host address.
 Example metafile `00meta.json`:
