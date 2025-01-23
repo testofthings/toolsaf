@@ -248,31 +248,13 @@ class Addresses:
     @classmethod
     def parse_system_address(cls, value: str) -> 'AddressSequence':
         """Parse system addresses"""
-        if value.count("/") <= 1 and "=" not in value:
-            return AddressSequence.new(cls.parse_endpoint(value))
-
         sequence = AddressSequence.new()
-        endpoint_regex = re.compile(r"([0-9.:|a-z]+\/\w+:[0-9]+)|(\w+\/\w+:[0-9]+)")
-
-        while value:
-            endpoint_addr = re.search(endpoint_regex, value)
-            idx = value.index("/") if "/" in value else 0
-            if endpoint_addr and endpoint_addr.start() in [0, 7]:
-                idx = 7 if value.startswith(("source=", "target=")) else 0
-                segment_type = value[:6] if idx else None
-                segment = value[idx:endpoint_addr.end()]
-                sequence.append(AddressSegment(cls.parse_endpoint(segment), segment_type))
-                value = value[endpoint_addr.end()+1:]
+        for segment in value.split("&"):
+            if len(segment_split := segment.split("=")) == 2:
+                sequence.append(AddressSegment(cls.parse_endpoint(segment_split[1]), segment_split[0]))
             else:
-                segment_type, _, segment = (value[:idx] if idx else value).rpartition("=")
-                segment_type = segment_type if segment_type else None
-                if "." in segment or ":" in segment or "|" in segment:
-                    sequence.append(AddressSegment(cls.parse_endpoint(segment), segment_type))
-                else:
-                    sequence.append(AddressSegment(EntityTag.new(segment), segment_type))
-                value = value[idx+1:] if idx else ""
+                sequence.append(AddressSegment(cls.parse_endpoint(segment)))
         return sequence
-
 
 
 class HWAddress(AnyAddress):
@@ -637,7 +619,7 @@ class AddressSequence(AnyAddress):
         return segment.replace(" ", "_").replace("*/", "")
 
     def get_parseable_value(self) -> str:
-        return "/".join([self._parse_segment(segment.get_parseable_value()) for segment in self.segments])
+        return "&".join([self._parse_segment(segment.get_parseable_value()) for segment in self.segments])
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, AddressSequence):

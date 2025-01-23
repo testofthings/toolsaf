@@ -492,7 +492,7 @@ def test_find_entity():
     seq = Addresses.parse_system_address("Test_Device")
     assert system.system.find_entity(seq) == device.entity
 
-    seq = Addresses.parse_system_address("Test_Device/software=Test_SW")
+    seq = Addresses.parse_system_address("Test_Device&software=Test_SW")
     software = device.software("Test SW").get_software()
     assert system.system.find_entity(seq) == software
 
@@ -502,7 +502,7 @@ def test_find_entity():
 
     backend = system.backend("Test Backend")
     connection = (device >> backend / TCP(22)).connection
-    seq = Addresses.parse_system_address("source=Test_Device/target=Test_Backend/tcp:22")
+    seq = Addresses.parse_system_address("source=Test_Device&target=Test_Backend/tcp:22")
     assert system.system.find_entity(seq) == connection
 
     device.new_address_(IPAddress.new("1.2.3.4"))
@@ -511,5 +511,5 @@ def test_find_entity():
 
     software = Software(service, "Service SW")
     service.components.append(software)
-    seq = Addresses.parse_system_address("Test_Device/tcp:12/software=Service_SW")
+    seq = Addresses.parse_system_address("Test_Device/tcp:12&software=Service_SW")
     assert system.system.find_entity(seq) == software
