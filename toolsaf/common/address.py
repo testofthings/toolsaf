@@ -5,6 +5,7 @@ import enum
 import ipaddress
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network
 from typing import Union, Optional, Tuple, Iterable, Self, List
+from copy import deepcopy
 
 
 class Protocol(enum.Enum):
@@ -588,9 +589,15 @@ class AddressSequence(AnyAddress):
     @classmethod
     def connection(cls, source: 'AddressSequence', target: 'AddressSequence') -> 'AddressSequence':
         """Create connection sequence"""
-        source.segments[0].segment_type = "source"
-        target.segments[0].segment_type = "target"
-        return AddressSequence(source.segments + target.segments)
+        new_segments_source = [
+            AddressSegment(address=segment.address) for segment in source.segments
+        ]
+        new_segments_target = [
+            AddressSegment(address=segment.address) for segment in target.segments
+        ]
+        new_segments_source[0].segment_type = "source"
+        new_segments_target[0].segment_type = "target"
+        return AddressSequence(new_segments_source + new_segments_target)
 
     @classmethod
     def iot_system(cls, name: str, segment_type: str) -> 'AddressSequence':
