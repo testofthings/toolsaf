@@ -402,15 +402,18 @@ class Addressable(NetworkNode):
         """Get the parent host"""
         raise NotImplementedError()
 
-    def find_entity(self, address: AddressSequence, depth: int=0) -> Optional[Entity]:
-        if depth == len(address.segments):
+    def find_entity(self, address: AnyAddress) -> Optional[Entity]:
+        if not isinstance(address, AddressSequence):
+            return self.find_endpoint(address)
+
+        if not address.segments:
             return self
-        segment = address.segments[depth]
+        segment = address.segments[0]
         match segment.segment_type:
             case "software":
                 for component in self.components:
                     if component.tag == segment.address:
-                        return component.find_entity(address, depth + 1)
+                        return component.find_entity(address.tail())
             case _:
                 raise NotImplementedError()
         return None
@@ -714,6 +717,9 @@ class IoTSystem(NetworkNode):
         return e
 
     def find_endpoint(self, address: AnyAddress, at_network: Optional[Network] = None) -> Optional[Addressable]:
+        if isinstance(address, AddressSequence):
+            return self.find_entity(address) # type: ignore[return-value]
+
         h_add = address.get_host()
         network = at_network or self.get_default_network()
         e: Optional[Addressable]
@@ -728,23 +734,25 @@ class IoTSystem(NetworkNode):
             e = None
         return e
 
-    def find_entity(self, address: AddressSequence, depth: int=0) -> Optional[Entity]:
-        if not address.segments:
-            raise ValueError("Empty address sequence")
+    def find_entity(self, address: AnyAddress) -> Optional[Entity]:
+        if not isinstance(address, AddressSequence):
+            return self.find_endpoint(address)
 
-        if address.segments[depth].segment_type == "source":
-            source = address.segments[depth]
-            target = address.segments[depth + 1]
-            for connection in self.get_connections(relevant_only=False):
-                source_addresses = connection.source.get_addresses()
-                target_addresses = connection.target.get_addresses()
-                if source.address in source_addresses and target.address in target_addresses:
+        if not address.segments:
+            return self
+
+        segment = address.segments[0]
+        if segment.segment_type == "source":
+            source = self.find_endpoint(segment.address)
+            target = self.find_endpoint(address.tail().segments[0].address)
+            if not source or not target:
+                return None
+            for connection in source.get_connections():
+                if connection.target == target:
                     return connection
         else:
-            segment = address.segments[depth]
-            endpoint = self.find_endpoint(segment.address)
-            if endpoint:
-                return endpoint.find_entity(address, depth + 1)
+            if (endpoint := self.find_endpoint(segment.address)):
+                return endpoint.find_entity(address.tail())
         return None
 
 

@@ -488,24 +488,42 @@ def test_unknown_service_in_subnet():
 def test_find_entity():
     system = Setup().system
     device = system.device("Test Device")
+    device.new_address_(IPAddress.new("1.2.3.4"))
+    service = (device / TCP(port=12)).entity
+
+    assert system.system.find_entity(EntityTag("Not Found")) == None
+    assert system.system.find_entity(EntityTag("Test_Device")) == device.entity
+    assert system.system.find_entity(IPAddress.new("1.2.3.4")) == device.entity
+    assert system.system.find_entity(
+        EndpointAddress(EntityTag.new("Test Device"), Protocol.TCP, 22)
+    ) == device.entity
+
+    seq = Addresses.parse_system_address("Not_Found")
+    assert system.system.find_entity(seq) == None
 
     seq = Addresses.parse_system_address("Test_Device")
     assert system.system.find_entity(seq) == device.entity
 
     seq = Addresses.parse_system_address("Test_Device&software=Test_SW")
     software = device.software("Test SW").get_software()
-    assert system.system.find_entity(seq) == software
+    for _ in range(2): # Test that address is not modified
+        assert system.system.find_entity(seq) == software
 
-    service = (device / TCP(port=12)).entity
+    seq = Addresses.parse_system_address("Test_Device&software=Not_Found_SW")
+    assert system.system.find_entity(seq) == None
+
     seq = Addresses.parse_system_address("Test_Device/tcp:12")
     assert system.system.find_entity(seq) == service
 
     backend = system.backend("Test Backend")
     connection = (device >> backend / TCP(22)).connection
     seq = Addresses.parse_system_address("source=Test_Device&target=Test_Backend/tcp:22")
-    assert system.system.find_entity(seq) == connection
+    for _ in range(2): # Test that address is not modified
+        assert system.system.find_entity(seq) == connection
 
-    device.new_address_(IPAddress.new("1.2.3.4"))
+    seq = Addresses.parse_system_address("source=Test_Device&target=Test_Backend/tcp:1000")
+    assert system.system.find_entity(seq) == None
+
     seq = Addresses.parse_system_address("1.2.3.4")
     assert system.system.find_entity(seq) == device.entity
 

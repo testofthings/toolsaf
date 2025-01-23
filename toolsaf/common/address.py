@@ -608,6 +608,10 @@ class AddressSequence(AnyAddress):
         self.segments = segments
         self.value = self.get_parseable_value()
 
+    def tail(self) -> 'AddressSequence':
+        """Returns new AddressSequence with first segment removed"""
+        return AddressSequence(self.segments[1:])
+
     def append(self, segment: AddressSegment) -> None:
         """Add new segment to AddressSequence"""
         self.segments += [segment]
