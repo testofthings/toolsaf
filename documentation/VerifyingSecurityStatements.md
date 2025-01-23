@@ -30,18 +30,17 @@ The metadata includes at least the IP or HW addresses of the system hosts, so th
 can be assigned to the correct hosts and services.
 To this end, the collected data must be stored in a [batch directory](Tools.md#batch-files-and-directories) structure.
 
-## Which tools to use
+## Which Tools to Use
 
 Usually, the first data to capture are either _traffic captures_ or _network scans_.
-Traffic capture should contain the messages exchanged between IoT product nodes and
-it allows to identify hosts, services, connections, and protocols.
+Traffic capture should contain the messages exchanged between IoT product nodes, which allows identification of hosts, services, connections, and protocols.
 Popular tools for network capturing are [Wireshark](https://www.wireshark.org/) and [Tcpdump](https://www.tcpdump.org).
 Network scans traverse the network nodes and can also identify hosts, services, and protocols.
-Popular tool for scanning is [Nmap](https://nmap.org).
+A popular tool for scanning is [Nmap](https://nmap.org).
 
-Traffic capture and network scanning complement each other. Capture can reveal unidentified connections, or lack of connections, between nodes while scans can reveal services which are passive during the testing.
+Traffic capture and network scanning complement each other. Captures can reveal unidentified connections or the lack of connections between nodes, while scans can reveal services that are passive during testing.
 
-Check out the list of [supported tools](Tools.md#list-of-supported-tools) for information which tools to apply to verify your security statement.
+Check out the list of [supported tools](Tools.md#list-of-supported-tools) for information on which tools to apply to verify your security statement.
 
 ### Notes on Collecting Network Traffic
 
