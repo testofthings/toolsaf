@@ -1,6 +1,5 @@
 """Addresses and protocols"""
 
-import re
 from dataclasses import dataclass
 import enum
 import ipaddress
