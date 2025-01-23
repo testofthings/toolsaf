@@ -60,10 +60,6 @@ class AnyAddress:
         """Get host or self"""
         return self
 
-    def open_envelope(self) -> 'AnyAddress':
-        """Open address envelope, if any. If none, return this address"""
-        return self
-
     def get_protocol_port(self) -> Optional[Tuple[Protocol, int]]:
         """Get protocol and port, if any"""
         return None

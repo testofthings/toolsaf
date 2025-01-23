@@ -699,8 +699,6 @@ class IoTSystem(NetworkNode):
         h_add = address.get_host()
         assert h_add, f"Cannot find endpoint by address {address}"
 
-        e_add = address.open_envelope()  # scan from inside is in envelope
-
         e = Host(self, f"{h_add}")
         if h_add.is_multicast():
             e.host_type = HostType.ADMINISTRATIVE
@@ -710,21 +708,20 @@ class IoTSystem(NetworkNode):
         e.addresses.add(h_add)
         e.external_activity = ExternalActivity.UNLIMITED  # we know nothing about its behavior
         self.children.append(e)
-        if isinstance(e_add, EndpointAddress) and e.is_host():
-            e = e.create_service(e_add)
+        if isinstance(address, EndpointAddress) and e.is_host():
+            return e.create_service(address)
         return e
 
     def find_endpoint(self, address: AnyAddress, at_network: Optional[Network] = None) -> Optional[Addressable]:
         h_add = address.get_host()
-        e_add = address.open_envelope()  # scan from inside is in envelope
         network = at_network or self.get_default_network()
         e: Optional[Addressable]
         for e in self.children:
             if e.networks and network not in e.networks:
                 continue  # not in the right network
             if h_add in e.addresses:
-                if isinstance(e_add, EndpointAddress):
-                    e = e.find_endpoint(e_add) or e
+                if isinstance(address, EndpointAddress):
+                    e = e.find_endpoint(address) or e
                 break
         else:
             e = None
