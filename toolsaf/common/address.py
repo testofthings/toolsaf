@@ -597,11 +597,11 @@ class AddressSequence(AnyAddress):
         return AddressSequence(parent.segments + [AddressSegment(service)])
 
     @classmethod
-    def component(cls, parent: 'AddressSequence', component_name: str, segment_type: str) -> 'AddressSequence':
+    def component(cls, parent: 'AddressSequence', tag: EntityTag, segment_type: str) -> 'AddressSequence':
         """Create component sequence"""
         return AddressSequence(
             parent.segments +
-            [AddressSegment(EntityTag(component_name), segment_type=segment_type)]
+            [AddressSegment(tag, segment_type=segment_type)]
         )
 
     @classmethod

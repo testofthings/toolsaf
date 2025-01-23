@@ -105,6 +105,7 @@ class NodeComponent(Entity):
         self.name = name
         self.sub_components: List[NodeComponent] = []
         self.status = Status.EXPECTED
+        self.tag = EntityTag.new(name)
 
     def get_children(self) -> Iterable['Entity']:
         return self.sub_components
@@ -130,7 +131,7 @@ class NodeComponent(Entity):
     def get_system_address(self) -> AddressSequence:
         return AddressSequence.component(
             parent=self.entity.get_system_address(),
-            component_name=self.name,
+            tag=self.tag,
             segment_type=self.concept_name
         )
 
