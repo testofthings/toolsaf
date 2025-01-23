@@ -692,29 +692,24 @@ class IoTSystem(NetworkNode):
         return self
 
     def get_endpoint(self, address: AnyAddress, at_network: Optional[Network] = None) -> Addressable:
+        find_ep = self.find_endpoint(address, at_network)
+        if find_ep:
+            return find_ep
+        # create new host and possibly service
         h_add = address.get_host()
         assert h_add, f"Cannot find endpoint by address {address}"
 
         e_add = address.open_envelope()  # scan from inside is in envelope
-        network = at_network or self.get_default_network()
-        for e in self.children:
-            if e.networks and network not in e.networks:
-                continue  # not in the right network
-            if h_add in e.addresses:
-                if isinstance(e_add, EndpointAddress):
-                    e = e.get_endpoint(e_add) or e
-                break
+
+        e = Host(self, f"{h_add}")
+        if h_add.is_multicast():
+            e.host_type = HostType.ADMINISTRATIVE
         else:
-            # create new host and possibly service
-            e = Host(self, f"{h_add}")
-            if h_add.is_multicast():
-                e.host_type = HostType.ADMINISTRATIVE
-            else:
-                e.host_type = HostType.REMOTE if self.is_external(h_add) else HostType.GENERIC
-            e.description = "Unexpected host"
-            e.addresses.add(h_add)
-            e.external_activity = ExternalActivity.UNLIMITED  # we know nothing about its behavior
-            self.children.append(e)
+            e.host_type = HostType.REMOTE if self.is_external(h_add) else HostType.GENERIC
+        e.description = "Unexpected host"
+        e.addresses.add(h_add)
+        e.external_activity = ExternalActivity.UNLIMITED  # we know nothing about its behavior
+        self.children.append(e)
         if isinstance(e_add, EndpointAddress) and e.is_host():
             e = e.create_service(e_add)
         return e
@@ -729,7 +724,7 @@ class IoTSystem(NetworkNode):
                 continue  # not in the right network
             if h_add in e.addresses:
                 if isinstance(e_add, EndpointAddress):
-                    e = e.find_endpoint(e_add)
+                    e = e.find_endpoint(e_add) or e
                 break
         else:
             e = None
