@@ -409,7 +409,7 @@ class Addressable(NetworkNode):
         match segment.segment_type:
             case "software":
                 for component in self.components:
-                    if component.name.replace("_", " ") == str(segment.address).replace("_", " "):
+                    if component.tag == segment.address:
                         return component.find_entity(address, depth + 1)
             case _:
                 raise NotImplementedError()
