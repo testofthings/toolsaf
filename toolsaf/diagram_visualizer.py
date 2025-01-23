@@ -3,13 +3,10 @@
 # pylint: disable=expression-not-assigned
 # pylint: disable=cyclic-import
 
-from typing import Self, Union, Dict, List, Tuple, Any
-from urllib.request import urlretrieve
+from typing import Dict, List, Tuple, Any, Optional
+from pathlib import Path
 from diagrams import Diagram, Edge, Node
 from diagrams.custom import Custom
-from diagrams.aws.iot import IotSensor
-from diagrams.ibm.user import Browser
-from diagrams.generic import device, storage
 
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.basics import HostType
@@ -32,11 +29,11 @@ class DiagramVisualizer(DV):
         self.outformat: str = "png"
         self.filename = system.system.long_name()
         self.should_create_diagram: bool = False
+        self._path = Path(__file__).parent.as_posix()
         self.nodes: Dict[str, Node] = {}
         self.connections: set[Tuple[str, Any, str, str, str]] = set()
-        self.images: Dict[str, str] = {}
 
-    def set_outformat(self, create_diagram: Union[str, None], show_diagram: Union[str, None]) -> None:
+    def set_outformat(self, create_diagram: Optional[str], show_diagram: Optional[str]) -> None:
         """Set outputformat for created diagram"""
         if create_diagram is not None and show_diagram is not None:
             self.outformat = next((format for format in [create_diagram, show_diagram] if format != "png"), "png")
@@ -48,21 +45,6 @@ class DiagramVisualizer(DV):
         if file_name:
             self.filename = file_name
 
-    def add_images(self, host_image_dict: Dict['BB.HostBackend', str]) -> Self:
-        """Use locally stored images for specified nodes in visualization.
-            Must be .png images"""
-        for host_backend, file_path in host_image_dict.items():
-            self.images[host_backend.entity.name] = file_path
-        return self
-
-    def add_remote_images(self, host_image_url_dict: Dict['BB.HostBackend', str]) -> Self:
-        """Use images from the internet for specified nodes"""
-        for host_backend, url in host_image_url_dict.items():
-            name = host_backend.entity.name
-            urlretrieve(url, f"{name}.png")
-            self.images[name] = f"{name}.png"
-        return self
-
     def _get_hosts(self) -> List[Host]:
         return [
             host for host in self.system.system.get_hosts() if host.is_relevant()
@@ -72,26 +54,48 @@ class DiagramVisualizer(DV):
         """Turn certain symbols to HTML character"""
         return label.replace("&", "&amp;")
 
-    def _custom_image(self, label: str) -> Custom:
+    def _custom_image(self, label: str, path: str) -> Custom:
         return Custom(
             label=label,
-            icon_path="",
+            icon_path=path,
             fontsize=self.__font_size_node
         )
 
-    def _get_node_type(self, host: Host) -> Union[Node, None]:
-        """Returns a suitable node type for a given Host."""
-        if host.name in self.images:
-            return Custom
+    def iot_device(self, label: str) -> Custom:
+        """Custom representation for IoT devices"""
+        return self._custom_image(
+            label, f"{self._path}/diagram_visualizer/device.png"
+        )
+
+    def mobile(self, label: str) -> Custom:
+        """Custom representation for mobile applications"""
+        return self._custom_image(
+            label, f"{self._path}/diagram_visualizer/mobile.png"
+        )
+
+    def browser(self, label: str) -> Custom:
+        """Custom representation for browsers"""
+        return self._custom_image(
+            label, f"{self._path}/diagram_visualizer/browser.png"
+        )
+
+    def backend(self, label: str) -> Custom:
+        """Custom representation for backend services"""
+        return self._custom_image(
+            label, f"{self._path}/diagram_visualizer/backend.png"
+        )
+
+    def _get_node_by_type(self, host: Host, label: str) -> Optional[Node]:
+        """Returns a suitable visual representation based on host's type."""
         match host.host_type:
             case HostType.DEVICE:
-                return IotSensor
+                return self.iot_device(label)
             case HostType.MOBILE:
-                return device.Mobile
+                return self.mobile(label)
             case HostType.BROWSER:
-                return Browser
+                return self.browser(label)
             case HostType.REMOTE:
-                return storage.Storage
+                return self.backend(label)
             case _:
                 return None
 
@@ -116,15 +120,11 @@ class DiagramVisualizer(DV):
         return f"<<font color='{self._get_label_color(verdict)}'><b>" + \
                f"\n{self._sanitize_label(host.name)}</b></font>>"
 
-    def _get_node(self, host: Host) -> Union[Node, None]:
+    def _get_node(self, host: Host) -> Optional[Node]:
         """Returns a suitable visual representation for a given Host"""
         verdict = host.get_verdict({})
         label = self._get_node_label(host, verdict)
-        if (node := self._get_node_type(host)) is Custom:
-            return node(label=label, icon_path=self.images[host.name], fontsize=self.__font_size_node)
-        if node is not None:
-            return node(label=label, fontsize=self.__font_size_node)
-        return None
+        return self._get_node_by_type(host, label)
 
     def _add_connections(self, host: Host) -> None:
         """Adds connections between nodes"""
