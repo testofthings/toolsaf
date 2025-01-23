@@ -744,15 +744,9 @@ class IoTSystem(NetworkNode):
                     return connection
         else:
             segment = address.segments[depth]
-            if isinstance(segment.address, EndpointAddress):
-                endpoint = self.find_endpoint(segment.address)
-                if not endpoint:
-                    return None
+            endpoint = self.find_endpoint(segment.address)
+            if endpoint:
                 return endpoint.find_entity(address, depth + 1)
-            for host in self.get_hosts():
-                if segment.address.get_host() in host.addresses:
-                    return host.find_entity(address, depth + 1)
-
         return None
 
 
