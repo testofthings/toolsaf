@@ -100,13 +100,16 @@ The following documents describe security statements creation and verification:
 Toolsaf is a command-line tool, and its command-line options are listed [here](documentation/CommandLineOptions.md).
 
 ## Sample Security Statements
-A security statement for _Ruuvi gateway and tags_ (https://ruuvi.com/) was developed during the PhD research. The statement is in the directory `samples/ruuvi/`. The data for verifying the security statement is available for academic research, please request it from Rauli. Please specify the goals of the research and the organization performing it. Right to refuse requests is reserved.
-
-The security statement for Ruuvi is executed like this, assuming working directory is the _toolsaf_ root directory:
+Minimal security statement examples are available in the `samples` directory. They can be executed like this:
 ```shell
-python samples/ruuvi/ruuvi.py
+python samples/device-backend/statement.py
 ```
 The command outputs basic information about the security statement.
+
+Security statements for **real devices** are available in their own repositories:
+- [Ruuvi Gateway & Tags](https://github.com/testofthings/statement-ruuvi/)
+- [Deltaco Smart Outdoor Plug](https://github.com/testofthings/statement-deltaco-smart-outdoor-plug)
+- [IPC360](https://github.com/testofthings/statement-IPC360)
 
 ## License and Contributions
 
