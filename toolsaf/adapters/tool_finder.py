@@ -10,7 +10,6 @@ from toolsaf.adapters.pcap_reader import PCAPReader
 from toolsaf.adapters.ping_command import PingCommand
 from toolsaf.adapters.github_releases import GithubReleaseReader
 from toolsaf.adapters.setup_reader import SetupCSVReader
-#from toolsaf.adapters.shell_commands import ShellCommandPs, ShellCommandSs
 from toolsaf.adapters.shodan_scan import ShodanScan
 from toolsaf.adapters.spdx_reader import SPDXReader
 from toolsaf.adapters.ssh_audit_scan import SSHAuditScan
@@ -86,8 +85,6 @@ class ToolFinderImplementation:
         self.pcap = ToolDepiction("capture-json", TSharkReader, extension="json")
         self.pcap_flow = ToolDepiction("exp-flow", SimpleFlowTool, extension="json")
         self.setup = ToolDepiction("setup", SetupCSVReader, extension="csv")
-        #self.shell_ps = ToolDepiction("shell-ps", ShellCommandPs)
-        #self.shell_ss = ToolDepiction("shell-ss", ShellCommandSs)
         self.shodan = ToolDepiction("shodan", ShodanScan, extension="json")
         self.sdpx = ToolDepiction("spdx", SPDXReader)
         self.ssh_audit = ToolDepiction("ssh-audit", SSHAuditScan)
