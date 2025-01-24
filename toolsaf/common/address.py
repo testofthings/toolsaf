@@ -5,7 +5,6 @@ import enum
 import ipaddress
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network
 from typing import Union, Optional, Tuple, Iterable, Self, List
-from copy import deepcopy
 
 
 class Protocol(enum.Enum):

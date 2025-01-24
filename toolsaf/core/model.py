@@ -261,7 +261,8 @@ class NetworkNode(Entity):
         """Get or create a new endpoint, service or host"""
         raise NotImplementedError()
 
-    def find_endpoint(self, address: AnyAddress, at_network: Optional[Network] = None) -> Optional['Addressable']:
+    def find_endpoint(self, address: AnyAddress, at_network: Optional[Network] = None) \
+            -> Union['Addressable', Entity, None]:
         """Find existing endpoint, service or host"""
         raise NotImplementedError()
 
@@ -698,6 +699,7 @@ class IoTSystem(NetworkNode):
     def get_endpoint(self, address: AnyAddress, at_network: Optional[Network] = None) -> Addressable:
         find_ep = self.find_endpoint(address, at_network)
         if find_ep:
+            assert isinstance(find_ep, Addressable)
             return find_ep
         # create new host and possibly service
         h_add = address.get_host()
@@ -716,9 +718,10 @@ class IoTSystem(NetworkNode):
             return e.create_service(address)
         return e
 
-    def find_endpoint(self, address: AnyAddress, at_network: Optional[Network] = None) -> Optional[Addressable]:
+    def find_endpoint(self, address: AnyAddress, at_network: Optional[Network] = None) \
+            -> Union[Addressable, Entity, None]:
         if isinstance(address, AddressSequence):
-            return self.find_entity(address) # type: ignore[return-value]
+            return self.find_entity(address)
 
         h_add = address.get_host()
         network = at_network or self.get_default_network()
@@ -747,6 +750,7 @@ class IoTSystem(NetworkNode):
             target = self.find_endpoint(address.tail().segments[0].address)
             if not source or not target:
                 return None
+            assert isinstance(source, NetworkNode) and isinstance(target, NetworkNode)
             for connection in source.get_connections():
                 if connection.target == target:
                     return connection

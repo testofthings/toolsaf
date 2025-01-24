@@ -10,7 +10,7 @@ from typing import Dict, List, Optional, Any, Set
 from toolsaf.common.address import Addresses
 from toolsaf.common.basics import ExternalActivity
 from toolsaf.core.event_interface import EventInterface
-from toolsaf.core.model import EvidenceNetworkSource, IoTSystem
+from toolsaf.core.model import EvidenceNetworkSource, IoTSystem, Addressable
 from toolsaf.adapters.tool_finder import ToolDepiction, ToolFinder
 from toolsaf.common.traffic import EvidenceSource
 
@@ -204,6 +204,7 @@ class FileMetaInfo:
             entity = system.find_endpoint(ent)
             if not entity:
                 raise ValueError(f"Unknown entity {ent_s}")
+            assert isinstance(entity, Addressable)
             r.source.address_map[address] = entity
 
         # read batch-specific external activity policies
@@ -212,6 +213,7 @@ class FileMetaInfo:
             node = system.find_endpoint(ent)
             if not node:
                 raise ValueError(f"Unknown entity '{ent_s}'")
+            assert isinstance(node, Addressable)
             policy = ExternalActivity[policy_n]
             r.source.activity_map[node] = policy
         return r

@@ -378,6 +378,7 @@ class Finder:
                 t = system.find_endpoint(addrs[1])
                 if not t:
                     raise ValueError(f"Cannot find connection target: {add_r}")
+                assert isinstance(s, Addressable) and isinstance(t, Addressable)
                 entity = s.get_parent_host().find_connection(t)
         comp_s = specifier.get("software")
         if comp_s:
