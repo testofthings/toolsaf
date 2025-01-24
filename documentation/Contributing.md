@@ -5,6 +5,8 @@
 This document will eventually describe how to contribute to Toolsaf.
 In the meantime, please engage the existing project contributors if you want to contribute!
 
+Before you start, please take a look at the [architecture documentation](architecture/README.md).
+
 ## Unit Test
 To run the unit tests, install _pytest_:
 ```shell
