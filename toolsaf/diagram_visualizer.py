@@ -20,7 +20,7 @@ class DiagramVisualizer(DV):
 
     __font_size_node = "18"
     __font_size_edge = "16"
-    __graph_attr = {"splines": "spline", "center": "true"}
+    __graph_attr = {"splines": "polyline", "center": "true"}
 
     def __init__(self, system: 'BB.SystemBackend'):
         self.system = system
@@ -85,8 +85,16 @@ class DiagramVisualizer(DV):
             label, f"{self._path}/diagram_visualizer/backend.png"
         )
 
+    def multicast(self, label: str) -> Custom:
+        """Custom representation for a multicast"""
+        return self._custom_image(
+            label, f"{self._path}/diagram_visualizer/multicast.png"
+        )
+
     def _get_node_by_type(self, host: Host, label: str) -> Optional[Node]:
         """Returns a suitable visual representation based on host's type."""
+        if host.is_multicast() and not host.host_type == HostType.ADMINISTRATIVE:
+            return self.multicast(label)
         match host.host_type:
             case HostType.DEVICE:
                 return self.iot_device(label)
@@ -129,24 +137,10 @@ class DiagramVisualizer(DV):
     def _add_connections(self, host: Host) -> None:
         """Adds connections between nodes"""
         for connection in host.connections:
-            if connection.target.parent is None:
-                continue
             verdict = connection.get_verdict({})
             self.connections.add((
                 connection.source.name, connection.target.parent.name,
                 f"{self._get_verdict_text(verdict)}{connection.target.name}", "black", self._get_label_color(verdict)
-            ))
-
-    def _add_ble_connection(self, host: Host) -> None:
-        """Adds Bluetooth connections between devices"""
-        if len(host.connections) < 2:
-            return
-        source_name = host.connections[0].source.name
-        for connection in host.connections[1:]:
-            verdict = connection.get_verdict({})
-            self.connections.add((
-                source_name, connection.source.name, f"{self._get_verdict_text(verdict)}BLE",
-                "blue", self._get_label_color(verdict)
             ))
 
     def create_diagram(self) -> None:
@@ -165,11 +159,7 @@ class DiagramVisualizer(DV):
             show=self.show, outformat=self.outformat
         ):
             for host in self._get_hosts():
-                if 'Bluetooth' in host.description:
-                    self._add_ble_connection(host)
-                else:
-                    self._add_connections(host)
-
+                self._add_connections(host)
                 if (node := self._get_node(host)) is not None:
                     self.nodes[host.name] = node
 
