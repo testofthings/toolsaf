@@ -33,7 +33,7 @@ class SSHAuditScan(EndpointTool):
         evidence = Evidence(source)
 
         # NOTE: There would be CVEs to collect, if someone listens for them!
-        issues = {}
+        issues: Dict[PropertyKey, str] = {}
 
         def make_issue(op: str, kind: str, item: Dict[str, str]) -> None:
             op_s = "Change" if op == "chg" else "Delete"
@@ -46,11 +46,18 @@ class SSHAuditScan(EndpointTool):
                 for i in items:
                     make_issue(op, kind, i)
 
+        addressable = self.system.find_endpoint(endpoint)
+
         bp_keys: Set[PropertyKey] = set()  # best practices
         vn_keys: Set[PropertyKey] = set()  # vulnerabilities (none)
         for key, exp in issues.items():
             self.logger.info("SSH issue %s: %s", key, exp)
-            ev = PropertyAddressEvent(evidence, endpoint, key.verdict(Verdict.FAIL, f"{self.tool.name}: {exp}"))
+            verdict = Verdict.FAIL
+            ignore, at, reason = interface.should_ignore(self.tool_label, key)
+            if ignore and (not at or addressable in at):
+                exp = reason if reason else exp
+                verdict = Verdict.IGNORE
+            ev = PropertyAddressEvent(evidence, endpoint, key.verdict(verdict, f"{self.tool.name}: {exp}"))
             bp_keys.add(key)
             interface.property_address_update(ev)
 

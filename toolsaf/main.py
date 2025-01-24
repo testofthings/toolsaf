@@ -76,6 +76,10 @@ class SystemBuilder:
         """Load built-in evidence"""
         raise NotImplementedError()
 
+    def ignore(self) -> 'IgnoreRulesBuilder':
+        """Create an ignore rule"""
+        raise NotImplementedError()
+
 
 class NodeBuilder:
     """Node builder base class"""
@@ -270,6 +274,29 @@ class DiagramVisualizer:
 
     def create_diagram(self) -> None:
         """Create a diagram based on the security statement"""
+        raise NotImplementedError()
+
+
+class IgnoreRulesBuilder:
+    """Collection of ignore rules"""
+    def tool(self, name: str) -> Self:
+        """Set tool that results apply to"""
+        raise NotImplementedError()
+
+    def results(self, *results: Tuple[str, ...]) -> Self:
+        """Result keys to ignore"""
+        raise NotImplementedError()
+
+    def all_results(self) -> Self:
+        """Ignore all results for this tool"""
+        raise NotImplementedError()
+
+    def at(self, *locations: Union[SystemBuilder, NodeBuilder, ConnectionBuilder]) -> Self:
+        """Ignore at specific location"""
+        raise NotImplementedError()
+
+    def reason(self, explanation: str) -> Self:
+        """Set reason for ignore"""
         raise NotImplementedError()
 
 

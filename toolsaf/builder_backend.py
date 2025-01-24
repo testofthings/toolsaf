@@ -6,6 +6,7 @@ import logging
 import pathlib
 import sys
 import inspect
+from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union, cast
 
 from toolsaf.common.address import (AddressAtNetwork, Addresses, AnyAddress, DNSName, EndpointAddress, EntityTag,
@@ -20,9 +21,10 @@ from toolsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP,
                         CookieBuilder, HostBuilder, NetworkBuilder, NodeBuilder, NodeVisualBuilder,
                         ConfigurationException, OSBuilder, Proprietary, ProtocolConfigurer, ProtocolType,
                         SensitiveDataBuilder, ServiceBuilder, ServiceGroupBuilder, ServiceOrGroup,
-                        SoftwareBuilder, SystemBuilder)
+                        SoftwareBuilder, SystemBuilder, IgnoreRulesBuilder)
 from toolsaf.core.main_tools import EvidenceLoader, NodeManipulator
 from toolsaf.core.model import Addressable, Connection, Host, IoTSystem, SensitiveData, Service
+from toolsaf.common.entity import Entity
 from toolsaf.common.property import Properties, PropertyKey
 from toolsaf.core.registry import Registry
 from toolsaf.core.inspector import Inspector
@@ -48,6 +50,7 @@ class SystemBackend(SystemBuilder):
         self.diagram = DiagramVisualizer(self)
         self.loaders: List[EvidenceLoader] = []
         self.protocols: Dict[Any, 'ProtocolBackend'] = {}
+        self.ignore_rules = IgnoreRulesBackend()
 
     def network(self, subnet: str="", ip_mask: Optional[str] = None) -> 'NetworkBuilder':
         if subnet:
@@ -146,6 +149,10 @@ class SystemBackend(SystemBuilder):
         el = EvidenceLoader(self)
         self.loaders.append(el)
         return el
+
+    def ignore(self) -> 'IgnoreRulesBackend':
+        self.ignore_rules.reset_current_rule()
+        return self.ignore_rules
 
     # Backend methods
 
@@ -966,6 +973,87 @@ class OSBackend(OSBuilder):
         return self
 
 
+@dataclass
+class IgnoreRule:
+    """Data class representing a single rule"""
+    tool: str
+    results: List[PropertyKey]
+    at: List[Entity]
+    all_result: bool=False
+    explanation: str=""
+
+    def to_dict(self) -> Dict[PropertyKey, Dict[str, Union[List[Entity], str]]]:
+        """Convert to dictionary"""
+        return {key: {"at": self.at, "exp": self.explanation} for key in self.results}
+
+    def __repr__(self) -> str:
+        return f"IgnoreRule {self.tool}"
+
+
+class IgnoreRulesBackend(IgnoreRulesBuilder):
+    """Collection of ignore rules"""
+    def __init__(self) -> None:
+        self.rules: List[IgnoreRule] = []
+        self._current_rule: Optional[IgnoreRule] = None
+        self._dict: Dict[str, Dict[PropertyKey, Dict[str, Union[List[Entity], str]]]] = {}
+
+    def tool(self, name: str) -> Self:
+        self._current_rule = IgnoreRule(name, [], [])
+        self.rules.append(self._current_rule)
+        return self
+
+    def results(self, *results: Tuple[str, ...]) -> Self:
+        assert self._current_rule, "Call tool() first"
+        for result in results:
+            self._current_rule.results.append(PropertyKey(*result))
+        return self
+
+    def all_results(self) -> Self:
+        assert self._current_rule, "Call tool() first"
+        self._current_rule.all_result = True
+        return self
+
+    def at(self, *locations: Union[SystemBuilder, NodeBuilder, ConnectionBuilder]) -> Self:
+        assert self._current_rule, "Call tool() first"
+        for location in locations:
+            if isinstance(location, SystemBackend):
+                self._current_rule.at.append(location.system)
+            elif isinstance(location, NodeBackend):
+                self._current_rule.at.append(location.entity)
+            elif isinstance(location, ConnectionBackend):
+                self._current_rule.at.append(location.connection)
+            else:
+                raise ConfigurationException(f"Unsupported value given ({location})")
+        return self
+
+    def reason(self, explanation: str) -> Self:
+        assert self._current_rule, "Call tool() first"
+        self._current_rule.explanation = explanation
+        return self
+
+    def reset_current_rule(self) -> None:
+        """FIXME not supported yet"""
+        self._current_rule = None
+
+    def _build_dict(self) -> None:
+        for rule in self.rules:
+            if rule.tool not in self._dict:
+                self._dict[rule.tool] = rule.to_dict()
+            else:
+                self._dict[rule.tool].update(rule.to_dict())
+
+    def should_ignore(self, tool: str, key: PropertyKey) \
+            -> Tuple[bool, List[Entity], str]:
+        """Check if given key shoul be ignored. Also returns at and explanation"""
+        if not self._dict:
+            self._build_dict()
+
+        entry = self._dict.get(tool, {}).get(key, {})
+        if not entry:
+            return False, [], ""
+        return True, cast(List[Entity], entry["at"]), cast(str, entry["exp"])
+
+
 class SystemBackendRunner(SystemBackend):
     """Backend for system builder"""
 
@@ -1016,7 +1104,7 @@ class SystemBackendRunner(SystemBackend):
 
         self.finish_()
 
-        registry = Registry(Inspector(self.system))
+        registry = Registry(Inspector(self.system), ignore_rules=self.ignore_rules)
 
         log_events = args.log_events
         if log_events:
