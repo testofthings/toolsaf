@@ -280,23 +280,19 @@ class DiagramVisualizer:
 class IgnoreRulesBuilder:
     """Collection of ignore rules"""
     def tool(self, name: str) -> Self:
-        """Set tool that results apply to"""
+        """Set tool that the rules apply to"""
         raise NotImplementedError()
 
     def results(self, *results: Tuple[str, ...]) -> Self:
-        """Result keys to ignore"""
-        raise NotImplementedError()
-
-    def all_results(self) -> Self:
-        """Ignore all results for this tool"""
+        """Result keys to ignore. Leave empty to ignore everything"""
         raise NotImplementedError()
 
     def at(self, *locations: Union[SystemBuilder, NodeBuilder, ConnectionBuilder]) -> Self:
-        """Ignore at specific location"""
+        """Set specific locations to which this rule is applied to"""
         raise NotImplementedError()
 
     def reason(self, explanation: str) -> Self:
-        """Set reason for ignore"""
+        """Set reason for the ignore"""
         raise NotImplementedError()
 
 

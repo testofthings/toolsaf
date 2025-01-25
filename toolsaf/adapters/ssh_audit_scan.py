@@ -46,15 +46,15 @@ class SSHAuditScan(EndpointTool):
                 for i in items:
                     make_issue(op, kind, i)
 
-        addressable = self.system.find_endpoint(endpoint)
+        location = self.system.find_endpoint(endpoint)
 
         bp_keys: Set[PropertyKey] = set()  # best practices
         vn_keys: Set[PropertyKey] = set()  # vulnerabilities (none)
         for key, exp in issues.items():
             self.logger.info("SSH issue %s: %s", key, exp)
             verdict = Verdict.FAIL
-            ignore, at, reason = interface.should_ignore(self.tool_label, key)
-            if ignore and (not at or addressable in at):
+            ignore, reason = self.should_ignore(key, location)
+            if ignore:
                 exp = reason if reason else exp
                 verdict = Verdict.IGNORE
             ev = PropertyAddressEvent(evidence, endpoint, key.verdict(verdict, f"{self.tool.name}: {exp}"))

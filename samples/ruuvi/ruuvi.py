@@ -93,6 +93,7 @@ mobile.hw("c2:77:15:ab:b5:b0")
 # Infrastructure Raspberry can do whatever
 infra = system.infra().hw("dc:a6:32:28:34:e3")
 
+
 system.ignore().tool("ssh-audit").results(
     ("ssh-audit", "del", "kex", "ecdh-sha2-nistp256"),
     ("ssh-audit", "del", "kex", "ecdh-sha2-nistp384"),
@@ -106,6 +107,8 @@ system.ignore().tool("ssh-audit").results(
     ("ssh-audit", "del", "key", "ecdsa-sha2-nistp256"),
     ("ssh-audit", "del", "mac", "hmac-sha1-etm@openssh.com")
 ).at(web_2 / SSH).reason("Testing...")
+
+system.ignore().tool("ssh-audit").reason("Just ignore everything").at(web_2/SSH)
 
 
 if __name__ == "__main__":

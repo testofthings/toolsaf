@@ -13,15 +13,17 @@ from toolsaf.core.event_interface import EventInterface
 from toolsaf.core.model import EvidenceNetworkSource, IoTSystem
 from toolsaf.adapters.tool_finder import ToolDepiction, ToolFinder
 from toolsaf.common.traffic import EvidenceSource
+from toolsaf.core.ignore_rules import IgnoreRules
 
 
 class BatchImporter:
     """Batch importer for importing a batch of files from a directory."""
     def __init__(self, interface: EventInterface, label_filter: Optional['LabelFilter'] = None,
-                 load_baseline: bool=False) -> None:
+                 load_baseline: bool=False, ignore_rules: Optional[IgnoreRules]=None) -> None:
         self.interface = interface
         self.system = interface.get_system()
         self.label_filter = label_filter or LabelFilter()
+        self.ignore_rules = ignore_rules
         self.logger = logging.getLogger("batch_importer")
         self.load_baseline = load_baseline  # True to load baseline, false to check it
         self.meta_file_count = 0
@@ -113,7 +115,7 @@ class BatchImporter:
 
         file_name = file_path.name
         file_ext = file_path.suffix.lower()
-        reader = tool.create_tool(self.system, "" if info.from_pipe else file_ext)
+        reader = tool.create_tool(self.system, "" if info.from_pipe else file_ext, ignore_rules=self.ignore_rules)
 
         try:
             if reader:
@@ -136,7 +138,7 @@ class BatchImporter:
     def _do_process_files(self, files: List[pathlib.Path], info: 'FileMetaInfo', tool: ToolDepiction,
                           skip_processing: bool) -> None:
         """Process files"""
-        reader = tool.create_tool(self.system)
+        reader = tool.create_tool(self.system, ignore_rules=self.ignore_rules)
         if not reader:
             return
         reader.load_baseline = info.load_baseline or self.load_baseline

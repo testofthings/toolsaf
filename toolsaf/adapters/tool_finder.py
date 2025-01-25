@@ -21,6 +21,7 @@ from toolsaf.adapters.vulnerability_reader import VulnerabilityReader
 from toolsaf.adapters.web_checker import WebChecker
 from toolsaf.adapters.zed_reader import ZEDReader
 from toolsaf.core.model import IoTSystem
+from toolsaf.core.ignore_rules import IgnoreRules
 
 
 class ToolDepiction:
@@ -45,7 +46,8 @@ class ToolDepiction:
         """Does the tool filter files itself?"""
         return len(self.tools) == 1 and "" in self.tools
 
-    def create_tool(self, system: IoTSystem, file_extension: str="") -> Optional[ToolAdapter]:
+    def create_tool(self, system: IoTSystem, file_extension: str="",
+                    ignore_rules: Optional[IgnoreRules]=None) -> Optional[ToolAdapter]:
         """Create tool, optionally by data file extension"""
         if file_extension:
             file_extension = file_extension.lower()
@@ -58,6 +60,7 @@ class ToolDepiction:
         # NOTE: All constructors are assumed to only consume system, and provide name for ToolAdapter
         tool = tc(system)  # type: ignore [call-arg, arg-type]
         assert tool.system == system  # ...try to assert that this happens
+        tool.ignore_rules = ignore_rules
         return tool
 
     def __repr__(self) -> str:

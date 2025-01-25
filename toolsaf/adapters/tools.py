@@ -3,13 +3,15 @@
 from io import BufferedReader
 import json
 import logging
-from typing import Optional, Dict, Set
+from typing import Optional, Dict, Set, Tuple
 
 from toolsaf.common.address import DNSName, IPAddress, AnyAddress
 from toolsaf.core.event_interface import EventInterface
 from toolsaf.core.model import NetworkNode, Addressable, IoTSystem, NodeComponent
 from toolsaf.common.traffic import Evidence, EvidenceSource, Tool, IPFlow
 from toolsaf.common.basics import Status
+from toolsaf.common.property import PropertyKey
+from toolsaf.core.ignore_rules import IgnoreRules
 
 
 class ToolAdapter:
@@ -19,6 +21,7 @@ class ToolAdapter:
         self.tool = Tool(tool_label)  # human readable
         self.data_file_suffix = ""
         self.system = system
+        self.ignore_rules: Optional[IgnoreRules] = None
         self.logger = logging.getLogger(tool_label)
         self.send_events = True  # True to send events to interface
         self.load_baseline = False  # True to load baseline, false to check it
@@ -48,6 +51,12 @@ class ToolAdapter:
     def get_processed_files(self) -> Set[str]:
         """Get processed files to check if there are other files"""
         return set()
+
+    def should_ignore(self, key: PropertyKey, at: Optional[Addressable]) -> Tuple[bool, str]:
+        """Should key at specific location be ignored. Also returns reason"""
+        if not self.ignore_rules:
+            return False, ""
+        return self.ignore_rules.should_ignore(self.tool_label, key, at)
 
 class SystemWideTool(ToolAdapter):
     """Apply tool output to system as output indicates"""
