@@ -1,6 +1,6 @@
 """Event interface to consume model events"""
 
-from typing import Dict, Optional, Type, Callable, Any, Tuple, List
+from typing import Dict, Optional, Type, Callable, Any, Tuple
 
 from toolsaf.common.address import Addresses, AnyAddress
 from toolsaf.common.verdict import Verdict
@@ -41,10 +41,6 @@ class EventInterface:
 
     def host_scan(self, scan: HostScan) -> Optional[Host]:
         """The given host have these services and not other ones"""
-        raise NotImplementedError()
-
-    def should_ignore(self, tool_label: str, key: PropertyKey) -> Tuple[bool, List[Entity], str]:
-        """Check if given key shoul be ignored. Also returns at and explanation"""
         raise NotImplementedError()
 
     def consume(self, event: Event) -> None:

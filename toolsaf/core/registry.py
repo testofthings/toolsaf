@@ -1,7 +1,7 @@
 """Event registry backed by database"""
 
 import logging
-from typing import Optional, Dict, Self, Any, Set, List, Tuple
+from typing import Optional, Dict, Self, Any, Set
 
 from toolsaf.common.entity import Entity
 from toolsaf.core.entity_database import EntityDatabase, InMemoryDatabase
@@ -10,7 +10,6 @@ from toolsaf.core.event_logger import EventLogger
 from toolsaf.core.inspector import Inspector
 from toolsaf.core.model import IoTSystem, Connection, Host, Service
 from toolsaf.core.services import NameEvent
-from toolsaf.common.property import PropertyKey
 from toolsaf.common.traffic import ServiceScan, HostScan, Event, EvidenceSource, Flow
 #import toolsaf.builder_backend as BB
 
@@ -110,11 +109,6 @@ class Registry(EventInterface):
     def host_scan(self, scan: HostScan) -> Optional[Host]:
         self._new_event(scan)
         return self.logging.host_scan(scan)
-
-    def should_ignore(self, tool_label: str, key: PropertyKey) -> Tuple[bool, List[Entity], str]:
-        """Check if given key shoul be ignored. Also returns at and explanation"""
-        assert self.ignore_rules
-        return self.ignore_rules.should_ignore(tool_label, key)
 
     def __repr__(self) -> str:
         return self.logging.__repr__()
