@@ -978,6 +978,7 @@ class IgnoreRulesBackend(IgnoreRulesBuilder):
         self.ignore_rules = IgnoreRules()
 
     def new_rule(self, file_type: str) -> Self:
+        """Create a new rule"""
         self.ignore_rules.new_rule(file_type)
         return self
 

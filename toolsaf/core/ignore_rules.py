@@ -1,6 +1,6 @@
 """IgnoreRules definition"""
 from dataclasses import dataclass
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, cast
 
 from toolsaf.common.entity import Entity
 from toolsaf.common.verdict import Verdict
@@ -26,14 +26,17 @@ class IgnoreRules:
         self._current_rule: Optional[IgnoreRule] = None
 
     def new_rule(self, file_type: str) -> None:
+        """Create a new rule"""
         self._current_rule = IgnoreRule(file_type, [], [])
         self.rules.setdefault(file_type, []).append(self._current_rule)
 
     def properties(self, *properties: Tuple[str, ...]) -> None:
         """Set properties that the rule applies to. Leave empty for all properties"""
         assert self._current_rule, "Call ignore() first"
-        for result in properties:
-            self._current_rule.properties.append(PropertyKey.parse(result))
+        for entry in properties:
+            self._current_rule.properties.append(
+                PropertyKey.parse(cast(str, entry))
+            )
 
     def at(self, location: Entity) -> None:
         """Set location to which the rules apply to"""
