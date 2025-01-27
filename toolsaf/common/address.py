@@ -247,13 +247,13 @@ class Addresses:
     @classmethod
     def parse_system_address(cls, value: str) -> 'AddressSequence':
         """Parse system addresses"""
-        sequence = AddressSequence.new()
+        segments = []
         for segment in value.split("&"):
             if len(segment_split := segment.split("=")) == 2:
-                sequence.append(AddressSegment(cls.parse_endpoint(segment_split[1]), segment_split[0]))
+                segments.append(AddressSegment(cls.parse_endpoint(segment_split[1]), segment_split[0]))
             else:
-                sequence.append(AddressSegment(cls.parse_endpoint(segment)))
-        return sequence
+                segments.append(AddressSegment(cls.parse_endpoint(segment)))
+        return AddressSequence(segments)
 
 
 class HWAddress(AnyAddress):
@@ -617,11 +617,6 @@ class AddressSequence(AnyAddress):
     def tail(self) -> 'AddressSequence':
         """Returns new AddressSequence with first segment removed"""
         return AddressSequence(self.segments[1:])
-
-    def append(self, segment: AddressSegment) -> None:
-        """Add new segment to AddressSequence"""
-        self.segments += [segment]
-        self.value = self.get_parseable_value()
 
     def _parse_segment(self, segment: str) -> str:
         """Parse given segment"""

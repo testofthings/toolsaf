@@ -123,15 +123,6 @@ def test_address_sequence():
     assert seq.segments == [_segment(addr1), _segment(addr2)]
 
 
-def test_address_sequence_append():
-    addr1 = EntityTag.new("Test1")
-    addr2 = EndpointAddress(EntityTag("Test2"), Protocol.TCP, 80)
-    seq = AddressSequence.new(addr1)
-    assert seq.segments == [_segment(addr1)]
-    seq.append(_segment(addr2))
-    assert seq.segments == [_segment(addr1), _segment(addr2)]
-
-
 def test_address_sequence_parse_segment():
     seq = AddressSequence.new()
     assert seq._parse_segment("Test") == "Test"
