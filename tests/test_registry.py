@@ -3,6 +3,7 @@ from toolsaf.builder_backend import SystemBackend
 from test_inspector import simple_setup_3
 from test_model import simple_setup_1
 from toolsaf.core.inspector import Inspector
+from toolsaf.core.ignore_rules import IgnoreRules
 from toolsaf.main import DHCP
 from toolsaf.core.registry import Registry
 from toolsaf.common.traffic import IPFlow, NO_EVIDENCE
@@ -12,7 +13,7 @@ from toolsaf.common.basics import Status
 def test_reset():
     sb = simple_setup_3()
     s = sb.system
-    r = Registry(Inspector(s))
+    r = Registry(Inspector(s, IgnoreRules()))
     dev1 = sb.device("Device 1").entity
     dev2 = sb.device("Device 2").entity
     dev3 = sb.device("Device 3").entity
@@ -68,7 +69,7 @@ def test_reset():
 
 def test_reset_2():
     sb = simple_setup_1(external=True)
-    r = Registry(Inspector(sb.system))
+    r = Registry(Inspector(sb.system, IgnoreRules()))
 
     flows = r.logging.collect_flows()
     assert len(flows) == 1
@@ -111,7 +112,7 @@ def test_reset_dhcp():
     dev1 = sb.device().hw("1:0:0:0:0:1")
     dhcp = sb.any() / DHCP
     c1 = dev1 >> dhcp
-    r = Registry(Inspector(sb.system))
+    r = Registry(Inspector(sb.system, IgnoreRules()))
 
     f1 = r.connection(IPFlow.UDP("1:0:0:0:0:1", "0.0.0.0", 68) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 67))
     f2 = r.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 68) << ("1:0:0:0:0:2", "192.168.0.2", 67))

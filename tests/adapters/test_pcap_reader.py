@@ -4,13 +4,14 @@ from toolsaf.core.inspector import Inspector
 from toolsaf.core.model import IoTSystem
 from toolsaf.adapters.pcap_reader import PCAPReader
 from toolsaf.core.registry import Registry
+from toolsaf.core.ignore_rules import IgnoreRules
 from toolsaf.common.traffic import IPFlow, EvidenceSource
 from toolsaf.common.address import IPAddress
 from tests.test_model import Setup
 
 
 def test_pcap():
-    m = Registry(Inspector(IoTSystem()))
+    m = Registry(Inspector(IoTSystem(), IgnoreRules()))
     pcap = PCAPReader.inspect(pathlib.Path("tests/samples/pcap/deltaco-setup.pcap"), m)
     cs = m.logging.collect_flows()
 

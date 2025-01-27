@@ -5,6 +5,7 @@ from toolsaf.common.verdict import Verdict
 from toolsaf.builder_backend import SystemBackend
 from toolsaf.main import TCP, UDP, SSH
 from toolsaf.core.matcher import SystemMatcher
+from toolsaf.core.ignore_rules import IgnoreRules
 from toolsaf.common.basics import ExternalActivity
 from toolsaf.common.traffic import IPFlow
 from toolsaf.common.basics import Status
@@ -21,7 +22,7 @@ class Setup:
 
     def get_inspector(self):
         """Get inspector"""
-        return Inspector(self.get_system())
+        return Inspector(self.get_system(), IgnoreRules())
 
     def get_hosts(self):
         """Get hosts"""

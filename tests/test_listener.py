@@ -4,6 +4,7 @@ from toolsaf.common.property import PropertyKey
 from test_model import simple_setup_1
 from toolsaf.common.address import AnyAddress, EndpointAddress, IPAddress, Protocol
 from toolsaf.core.inspector import Inspector
+from toolsaf.core.ignore_rules import IgnoreRules
 from toolsaf.core.model import ModelListener, IoTSystem, Host, Connection, Service
 from toolsaf.core.registry import Registry
 from toolsaf.common.traffic import Flow, IPFlow
@@ -43,7 +44,7 @@ class AModelListener(ModelListener):
 def test_model_events():
     sb = simple_setup_1()
     lis = AModelListener()
-    reg = Registry(Inspector(sb.system))
+    reg = Registry(Inspector(sb.system, IgnoreRules()))
     reg.system.model_listeners.append(lis)
 
     cs1 = reg.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1100) >> ("1:0:0:0:0:2", "192.168.0.2", 1234))
@@ -72,7 +73,7 @@ def test_model_events():
 
 def test_registry_events():
     sb = simple_setup_1()
-    reg = Registry(Inspector(sb.system))
+    reg = Registry(Inspector(sb.system, IgnoreRules()))
 
     lis0 = AModelListener()
     reg.system.model_listeners.append(lis0)

@@ -8,6 +8,7 @@ from toolsaf.common.property import Properties
 from toolsaf.core.registry import Registry, Inspector
 from toolsaf.core.sql_database import SQLDatabase
 from toolsaf.common.traffic import NO_EVIDENCE, Evidence, EvidenceSource, IPFlow
+from toolsaf.core.ignore_rules import IgnoreRules
 
 
 def test_db_id_storage():
@@ -19,19 +20,19 @@ def test_db_id_storage():
         # Run 1
         sb = SystemBackend()
         dev1 = sb.device()
-        reg = Registry(Inspector(sb.system), db=SQLDatabase(f"sqlite:///{tmp}")).finish_model_load()
+        reg = Registry(Inspector(sb.system, IgnoreRules()), db=SQLDatabase(f"sqlite:///{tmp}")).finish_model_load()
         assert reg.get_id(dev1.entity) == 2
 
         # Run 2
         sb = SystemBackend()
         dev2 = sb.device("Device two")
-        reg = Registry(Inspector(sb.system), db=SQLDatabase(f"sqlite:///{tmp}")).finish_model_load()
+        reg = Registry(Inspector(sb.system, IgnoreRules()), db=SQLDatabase(f"sqlite:///{tmp}")).finish_model_load()
         assert reg.get_id(dev2.entity) == 3
 
         # Run 3
         sb = SystemBackend()
         dev3 = sb.device("Device three")
-        reg = Registry(Inspector(sb.system), db=SQLDatabase(f"sqlite:///{tmp}")).finish_model_load()
+        reg = Registry(Inspector(sb.system, IgnoreRules()), db=SQLDatabase(f"sqlite:///{tmp}")).finish_model_load()
         assert reg.get_id(dev1.entity) == 2
         assert reg.get_id(dev3.entity) == 4
         assert reg.get_id(dev2.entity) == 3
@@ -45,7 +46,7 @@ def test_with_unepxected_entities():
         # Run 1
         sb = SystemBackend()
         dev1 = sb.device().hw("1:0:0:0:0:1")
-        reg = Registry(Inspector(sb.system), db=SQLDatabase(f"sqlite:///{tmp}")).finish_model_load()
+        reg = Registry(Inspector(sb.system, IgnoreRules()), db=SQLDatabase(f"sqlite:///{tmp}")).finish_model_load()
         # connection, target is new unexpected entity
         p = IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1100) >> ("1:0:0:0:0:2", "192.168.0.2", 1234)
         con = reg.connection(p)
@@ -60,7 +61,7 @@ def test_with_unepxected_entities():
         # Run 2
         sb = SystemBackend()
         dev1 = sb.device().hw("1:0:0:0:0:1")
-        reg = Registry(Inspector(sb.system), db=SQLDatabase(f"sqlite:///{tmp}")).finish_model_load()
+        reg = Registry(Inspector(sb.system, IgnoreRules()), db=SQLDatabase(f"sqlite:///{tmp}")).finish_model_load()
 
 
 def test_db_source_storage():
@@ -70,7 +71,7 @@ def test_db_source_storage():
 
         sb = SystemBackend()
         dev1 = sb.device()
-        reg = Registry(Inspector(sb.system), db=SQLDatabase(f"sqlite:///{tmp}")).finish_model_load()
+        reg = Registry(Inspector(sb.system, IgnoreRules()), db=SQLDatabase(f"sqlite:///{tmp}")).finish_model_load()
 
         src = EvidenceNetworkSource("Source A")
         src.address_map[HWAddress.new("1:0:0:0:0:1")] = dev1.entity
@@ -83,7 +84,7 @@ def test_db_source_storage():
 
         sb = SystemBackend()
         dev1 = sb.device()
-        reg = Registry(Inspector(sb.system), db=SQLDatabase(f"sqlite:///{tmp}"))
+        reg = Registry(Inspector(sb.system, IgnoreRules()), db=SQLDatabase(f"sqlite:///{tmp}"))
         assert dev1.entity.connections == []
         reg.finish_model_load()
         assert dev1.entity.connections[0].source == dev1.entity  # thanks to address mapping

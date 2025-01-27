@@ -1,6 +1,7 @@
 from toolsaf.common.address import Protocol
 from toolsaf.builder_backend import SystemBackend
 from toolsaf.core.inspector import Inspector
+from toolsaf.core.ignore_rules import IgnoreRules
 from toolsaf.main import ARP
 from toolsaf.common.basics import ExternalActivity
 from toolsaf.common.traffic import EthernetFlow
@@ -17,7 +18,7 @@ def test_serve_arp():
     dev4 = sb.device().hw("1:0:0:0:0:4")
     dev4 >> dev1 / ARP
 
-    m = Inspector(sb.system)
+    m = Inspector(sb.system, IgnoreRules())
 
     # dev3 can make external calls
     f1 = m.connection(EthernetFlow.new(Protocol.ARP, "1:0:0:0:0:3") >> "ff:ff:ff:ff:ff:ff")
