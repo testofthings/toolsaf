@@ -46,18 +46,11 @@ class SSHAuditScan(EndpointTool):
                 for i in items:
                     make_issue(op, kind, i)
 
-        location = self.system.find_endpoint(endpoint)
-
         bp_keys: Set[PropertyKey] = set()  # best practices
         vn_keys: Set[PropertyKey] = set()  # vulnerabilities (none)
         for key, exp in issues.items():
             self.logger.info("SSH issue %s: %s", key, exp)
-            verdict = Verdict.FAIL
-            ignore, reason = self.should_ignore(key, location)
-            if ignore:
-                exp = reason if reason else exp
-                verdict = Verdict.IGNORE
-            ev = PropertyAddressEvent(evidence, endpoint, key.verdict(verdict, f"{self.tool.name}: {exp}"))
+            ev = PropertyAddressEvent(evidence, endpoint, key.verdict(Verdict.FAIL, f"{self.tool.name}: {exp}"))
             bp_keys.add(key)
             interface.property_address_update(ev)
 

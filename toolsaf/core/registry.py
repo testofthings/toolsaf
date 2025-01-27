@@ -11,16 +11,14 @@ from toolsaf.core.inspector import Inspector
 from toolsaf.core.model import IoTSystem, Connection, Host, Service
 from toolsaf.core.services import NameEvent
 from toolsaf.common.traffic import ServiceScan, HostScan, Event, EvidenceSource, Flow
-#import toolsaf.builder_backend as BB
 
 
 class Registry(EventInterface):
     """Record, store, and recall events as required"""
-    def __init__(self, inspector: Inspector, db: Optional[EntityDatabase] = None, ignore_rules: Any=None) -> None:
+    def __init__(self, inspector: Inspector, db: Optional[EntityDatabase] = None) -> None:
         self.logger = logging.getLogger("registry")
         self.logging = EventLogger(inspector)
         self.system = inspector.system
-        self.ignore_rules = ignore_rules
         self.all_evidence: Set[EvidenceSource] = set()
         self.evidence_filter: Dict[str, bool] = {}  # key is label, not present == False
         if db is None:

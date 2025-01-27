@@ -9,6 +9,7 @@ from toolsaf.common.entity import Entity
 from toolsaf.core.event_interface import EventInterface, PropertyAddressEvent, PropertyEvent
 from toolsaf.core.matcher import SystemMatcher
 from toolsaf.core.model import IoTSystem, Connection, Service, Host, Addressable
+from toolsaf.core.ignore_rules import IgnoreRules
 from toolsaf.common.property import Properties
 from toolsaf.core.services import NameEvent
 from toolsaf.common.traffic import EvidenceSource, ServiceScan, HostScan, Flow
@@ -17,9 +18,10 @@ from toolsaf.common.verdict import Verdict
 
 class Inspector(EventInterface):
     """Inspector"""
-    def __init__(self, system: IoTSystem) -> None:
+    def __init__(self, system: IoTSystem, ignore_rules: IgnoreRules) -> None:
         self.matcher = SystemMatcher(system)
         self.system = system
+        self.ignore_rules = ignore_rules
         self.logger = logging.getLogger("inspector")
         self.connection_count: Dict[Connection, int] = {}  # count connections
         self.direction: Dict[Flow, bool] = {}              # direction: false = request, true = reply
@@ -181,6 +183,7 @@ class Inspector(EventInterface):
         if key.model and key not in s.properties:
             self.logger.debug("Value for model property %s ignored, as it is not in model", key)
             return None
+        self.ignore_rules.update_based_on_rules(update.evidence.source.label, key, val, s)
         key.update(s.properties, val)
         # call listeners
         self.system.call_listeners(lambda ln: ln.property_change(s, (key, val)))
@@ -195,6 +198,7 @@ class Inspector(EventInterface):
             # no properties for placeholders or unexpected entities
             return s
         key, val = update.key_value
+        self.ignore_rules.update_based_on_rules(update.evidence.source.label, key, val, s)
         if key.model and key not in s.properties:
             self.logger.debug("Value for model property %s ignored, as it is not in model", key)
             return s

@@ -1060,7 +1060,7 @@ class SystemBackendRunner(SystemBackend):
 
         self.finish_()
 
-        registry = Registry(Inspector(self.system))
+        registry = Registry(Inspector(self.system, ignore_rules=self.ignore().get_rules()))
 
         log_events = args.log_events
         if log_events:
@@ -1078,7 +1078,7 @@ class SystemBackendRunner(SystemBackend):
         label_filter = LabelFilter(args.def_loads or "")
 
         # load file batches, if defined
-        batch_import = BatchImporter(registry, label_filter=label_filter, ignore_rules=self.ignore().get_rules())
+        batch_import = BatchImporter(registry, label_filter=label_filter)
         for in_file in args.read or []:
             batch_import.import_batch(pathlib.Path(in_file))
 
