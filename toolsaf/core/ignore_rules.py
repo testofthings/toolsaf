@@ -3,8 +3,8 @@ from dataclasses import dataclass
 from typing import List, Dict, Union, Tuple, Optional
 
 from toolsaf.common.entity import Entity
-from toolsaf.common.property import PropertyKey
-from toolsaf.core.model import Addressable
+from toolsaf.common.verdict import Verdict
+from toolsaf.common.property import PropertyKey, PropertyVerdictValue
 
 
 @dataclass
@@ -56,11 +56,12 @@ class IgnoreRules:
         """Reset current rule"""
         self._current_rule = None
 
-    def should_ignore(self, tool: str, key: PropertyKey, at: Optional[Addressable]) \
-            -> Tuple[bool, str]:
-        """Check if given key should be ignored at given location.
-           Also returns an explanation that may be empty"""
-        for rule in self.rules.get(tool, []):
+    def update_based_on_rules(self, file_type: str, key: PropertyKey,
+            prop_set_value: PropertyVerdictValue, at: Entity) -> None:
+        """Update given propertys verdict and explanation at given location"""
+        for rule in self.rules.get(file_type, []):
             if (key in rule.results or not rule.results) and (not rule.at or at in rule.at):
-                return True, rule.explanation
-        return False, ""
+                prop_set_value.verdict = Verdict.IGNORE
+                if rule.explanation:
+                    prop_set_value.explanation = rule.explanation
+                break
