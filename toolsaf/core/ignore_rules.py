@@ -10,7 +10,7 @@ from toolsaf.common.property import PropertyKey, PropertyVerdictValue
 @dataclass
 class IgnoreRule:
     """Data class representing a single rule"""
-    tool: str
+    file_type: str
     results: List[PropertyKey]
     at: List[Entity]
     explanation: str=""
@@ -29,32 +29,27 @@ class IgnoreRules:
         self.rules: Dict[str, List[IgnoreRule]] = {}
         self._current_rule: Optional[IgnoreRule] = None
 
-    def tool(self, name: str) -> None:
-        """Set tool that result applies to"""
-        self._current_rule = IgnoreRule(name, [], [])
-        if name not in self.rules:
-            self.rules[name] = []
-        self.rules[name] += [self._current_rule]
+    def new_rule(self, file_type: str) -> None:
+        self._current_rule = IgnoreRule(file_type, [], [])
+        if file_type not in self.rules:
+            self.rules[file_type] = []
+        self.rules[file_type] += [self._current_rule]
 
-    def results(self, *results: Tuple[str, ...]) -> None:
-        """Set result keys that rule applies to"""
-        assert self._current_rule, "Call tool() first"
-        for result in results:
+    def properties(self, *properties: Tuple[str, ...]) -> None:
+        """Set properties that the rule applies to. Leave empty for all properties"""
+        assert self._current_rule, "Call ignore() first"
+        for result in properties:
             self._current_rule.results.append(PropertyKey(*result))
 
     def at(self, location: Entity) -> None:
         """Set location to which the rules apply to"""
-        assert self._current_rule, "Call tool() first"
+        assert self._current_rule, "Call ignore() first"
         self._current_rule.at.append(location)
 
-    def reason(self, explanation: str) -> None:
+    def because(self, explanation: str) -> None:
         """Give reason for the ignore rule"""
-        assert self._current_rule, "Call tool() first"
+        assert self._current_rule, "Call ignore() first"
         self._current_rule.explanation = explanation
-
-    def reset_current_rule(self) -> None:
-        """Reset current rule"""
-        self._current_rule = None
 
     def update_based_on_rules(self, file_type: str, key: PropertyKey,
             prop_set_value: PropertyVerdictValue, at: Entity) -> None:

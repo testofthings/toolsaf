@@ -149,8 +149,8 @@ class SystemBackend(SystemBuilder):
         self.loaders.append(el)
         return el
 
-    def ignore(self) -> 'IgnoreRulesBackend':
-        self.ignore_backend.reset_current_rule()
+    def ignore(self, file_type: str) -> 'IgnoreRulesBackend':
+        self.ignore_backend.new_rule(file_type)
         return self.ignore_backend
 
     # Backend methods
@@ -977,12 +977,12 @@ class IgnoreRulesBackend(IgnoreRulesBuilder):
     def __init__(self) -> None:
         self.ignore_rules = IgnoreRules()
 
-    def tool(self, name: str) -> Self:
-        self.ignore_rules.tool(name)
+    def new_rule(self, file_type: str) -> Self:
+        self.ignore_rules.new_rule(file_type)
         return self
 
-    def results(self, *results: Tuple[str, ...]) -> Self:
-        self.ignore_rules.results(*results)
+    def properties(self, *properties: Tuple[str, ...]) -> Self:
+        self.ignore_rules.properties(*properties)
         return self
 
     def at(self, *locations: Union[SystemBuilder, NodeBuilder, ConnectionBuilder]) -> Self:
@@ -997,17 +997,13 @@ class IgnoreRulesBackend(IgnoreRulesBuilder):
                 raise ConfigurationException(f"Unsupported value given ({location})")
         return self
 
-    def reason(self, explanation: str) -> Self:
-        self.ignore_rules.reason(explanation)
+    def because(self, explanation: str) -> Self:
+        self.ignore_rules.because(explanation)
         return self
 
     def get_rules(self) -> IgnoreRules:
         """Get the ignore rules"""
         return self.ignore_rules
-
-    def reset_current_rule(self) -> None:
-        """Reset current rule in IgnoreRules"""
-        self.ignore_rules.reset_current_rule()
 
 
 class SystemBackendRunner(SystemBackend):
@@ -1060,7 +1056,7 @@ class SystemBackendRunner(SystemBackend):
 
         self.finish_()
 
-        registry = Registry(Inspector(self.system, ignore_rules=self.ignore().get_rules()))
+        registry = Registry(Inspector(self.system, self.ignore_backend.get_rules()))
 
         log_events = args.log_events
         if log_events:
