@@ -1,5 +1,4 @@
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from toolsaf.core.ignore_rules import IgnoreRules
 from toolsaf.builder_backend import IgnoreRulesBackend
