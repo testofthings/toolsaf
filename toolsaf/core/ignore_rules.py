@@ -13,7 +13,6 @@ class IgnoreRule:
     tool: str
     results: List[PropertyKey]
     at: List[Entity]
-    all_result: bool=False
     explanation: str=""
 
     def to_dict(self) -> Dict[PropertyKey, Dict[str, Union[List[Entity], str]]]:
@@ -59,11 +58,9 @@ class IgnoreRules:
 
     def should_ignore(self, tool: str, key: PropertyKey, at: Optional[Addressable]) \
             -> Tuple[bool, str]:
-        """Check if given key should be ignored at given location. Also returns an explanation"""
-        tool_specific_rules: Optional[List[IgnoreRule]] = self.rules.get(tool, None)
-        if not tool_specific_rules:
-            return False, ""
-        for rule in tool_specific_rules:
+        """Check if given key should be ignored at given location.
+           Also returns an explanation that may be empty"""
+        for rule in self.rules.get(tool, []):
             if (key in rule.results or not rule.results) and (not rule.at or at in rule.at):
                 return True, rule.explanation
         return False, ""
