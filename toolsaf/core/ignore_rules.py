@@ -39,7 +39,7 @@ class IgnoreRules:
         """Set properties that the rule applies to. Leave empty for all properties"""
         assert self._current_rule, "Call ignore() first"
         for result in properties:
-            self._current_rule.results.append(PropertyKey(*result))
+            self._current_rule.results.append(PropertyKey.parse(result))
 
     def at(self, location: Entity) -> None:
         """Set location to which the rules apply to"""
