@@ -677,7 +677,7 @@ class ProtocolBackend:
         if old:
             return old
         b = self._create_service(parent)
-        parent.service_builders[(self.transport, self.service_port)] = b
+        parent.service_builders[key] = b
         b.entity.status = Status.EXPECTED
         assert b.entity.parent == parent.entity
         parent.entity.children.append(b.entity)
