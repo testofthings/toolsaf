@@ -183,7 +183,7 @@ class NetworkNode(Entity):
         return False
 
     def is_multicast(self) -> bool:
-        """Is a multicast source service?"""
+        """Is a multicast source or target?"""
         return False
 
     def is_relevant(self) -> bool:
@@ -433,6 +433,11 @@ class Host(Addressable):
         return self.host_type not in {HostType.MOBILE, HostType.BROWSER} and not self.any_host \
             and not self.is_multicast()
 
+    def is_multicast(self):
+        # NOTE: Multicast 'hosts' created for unexpected multicasts only
+        return any(a.is_multicast() for a in self.addresses)
+
+
     def get_connections(self, relevant_only: bool=True) -> List[Connection]:
         """Get relevant connections"""
         cs = []
@@ -504,7 +509,7 @@ class Service(Addressable):
         return True
 
     def is_multicast(self):
-        return self.multicast_source is not None
+        return self.multicast_source or any(a.is_multicast() for a in self.addresses) or self.parent.is_multicast()
 
     def long_name(self) -> str:
         if self.parent.name != self.name:

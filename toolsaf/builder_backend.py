@@ -425,13 +425,14 @@ class HostBackend(NodeBackend, HostBuilder):
     def __lshift__(self, multicast: ServiceBuilder) -> 'ConnectionBackend':
         assert isinstance(multicast, ServiceBackend)
         mc = multicast.entity
-        assert mc.is_multicast() and multicast.multicast_protocol, "Can only receive multicast"
-        # create a service for multicast - there is a service on both ends!
+        assert mc.multicast_source and multicast.multicast_protocol, "Can only receive multicast"
+        # create a service for multicast
         sb = self / multicast.multicast_protocol
-        # share multicast address with the source
+        # the target is listening broadcast address + port (if any)
         sb.entity.addresses.clear()
-        sb.entity.addresses.update(mc.addresses)
-        c = multicast >> sb  # connection from broadcasting service to service here
+        for ep in mc.addresses:
+            sb.entity.addresses.add(ep.change_host(mc.multicast_source))
+        c = multicast.parent >> sb  # broadcast is not by any means from the multicast port
         return c
 
     def cookies(self) -> 'CookieBackend':
