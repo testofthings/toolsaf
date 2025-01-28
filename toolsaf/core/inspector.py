@@ -3,7 +3,7 @@
 import logging
 from typing import Dict, Optional, Set, List
 
-from toolsaf.common.address import AnyAddress
+from toolsaf.common.address import Addresses, AnyAddress
 from toolsaf.common.basics import ExternalActivity, Status
 from toolsaf.common.entity import Entity
 from toolsaf.core.event_interface import EventInterface, PropertyAddressEvent, PropertyEvent
@@ -78,10 +78,32 @@ class Inspector(EventInterface):
 
         updated = set()   # entity which status updated
 
-        def update_seen_status(entity: Addressable) -> None:
+        def update_seen_status(entity: Addressable) -> bool:
+            """Update seen status of entity"""
             changed: List[Entity] = []
-            entity.set_seen_now(changed)
+            change = entity.set_seen_now(changed)
             updated.update(changed)
+            return change
+
+        def update_all_broadcast_listeners(target: Addressable) -> bool:
+            """Matcher only finds one broadcast listener, update the remaining"""
+            if not update_seen_status(target):
+                return False
+            mc = Addresses.get_multicast(target.addresses)
+            if not mc:
+                return True
+            for c in self.system.get_connections():
+                if mc in c.target.addresses:
+                    # must be same
+                    change = c.set_seen_now()
+                    if change:
+                        self._check_entity(c)
+                        updated.add(c)
+                    change = c.target.set_seen_now()
+                    if change:
+                        self._check_entity(c.target)
+                        updated.add(c.target)
+
 
         # if we have a connection, the endpoints cannot be placeholders
         source, target = conn.source, conn.target
@@ -106,7 +128,7 @@ class Inspector(EventInterface):
                     update_seen_status(target)
                 elif conn.target.is_relevant() and conn.target.is_multicast():
                     # multicast updated when sent to
-                    update_seen_status(target)
+                    update_all_broadcast_listeners(target)
                 elif target.status == Status.EXTERNAL:
                     # external target, send update even that verdict remains inconclusve
                     exp = conn.target.get_expected_verdict(default=None)

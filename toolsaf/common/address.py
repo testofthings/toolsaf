@@ -206,6 +206,14 @@ class Addresses:
         return add or IPAddresses.NULL
 
     @classmethod
+    def get_multicast(cls, addresses: Iterable[AnyAddress]) -> Optional[AnyAddress]:
+        """Find multicast address"""
+        for a in addresses:
+            if a.is_multicast():
+                return a
+        return None
+
+    @classmethod
     def get_tag(cls, addresses: Iterable[AnyAddress]) -> Optional[EntityTag]:
         """Get tag from addresses"""
         for a in addresses:
