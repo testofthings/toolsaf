@@ -490,11 +490,12 @@ class Service(Addressable):
         self.con_type = ConnectionType.UNKNOWN
         self.authentication = False            # Now a flag, an object later?
         self.client_side = False               # client side "service" (DHCP)
+        self.multicast_source = False          # Multicast source? (targets not specially marked)
         self.reply_from_other_address = False  # reply comes from other port (DHCP)
 
     @classmethod
     def make_name(cls, service_name: str, port: int=-1) -> str:
-        """Make service name"""
+        """Make service base name"""
         if not service_name:
             return f"{port}" if port >= 0 else "???"
         return f"{service_name}:{port}" if port >= 0 else service_name

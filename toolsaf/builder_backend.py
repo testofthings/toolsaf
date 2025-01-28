@@ -104,16 +104,6 @@ class SystemBackend(SystemBuilder):
         b.entity.match_priority = 5
         return b
 
-    def multicast(self, address: str, protocol: 'ProtocolConfigurer') -> 'ServiceBackend':
-        conf = self.get_protocol_backend(protocol)
-        return conf.as_multicast_(address, self)
-
-    def broadcast(self, protocol: 'ProtocolConfigurer') -> 'ServiceBackend':
-        conf = self.get_protocol_backend(protocol)
-        add = f"{IPAddresses.BROADCAST}" if conf.transport == Protocol.UDP \
-            else f"{HWAddresses.BROADCAST}"
-        return self.multicast(add, protocol)
-
     def data(self, names: List[str], personal: bool=False, password: bool=False) -> 'SensitiveDataBackend':
         d = [SensitiveData(n, personal=personal, password=password)
              for n in names]
@@ -328,6 +318,7 @@ class ServiceBackend(NodeBackend, ServiceBuilder):
         self.entity.match_priority = 10
         self.entity.external_activity = host.entity.external_activity
         self.parent: HostBackend = host
+        self.multicast_protocol: Optional[ProtocolConfigurer] = None  # in broadcast 'source' services
         self.source_fixer: Optional[Callable[[
             'HostBackend'], 'ServiceBackend']] = None
 
@@ -418,16 +409,29 @@ class HostBackend(NodeBackend, HostBuilder):
             self / p  # pylint: disable=pointless-statement
         return self
 
+    def multicast(self, address: str, protocol: 'ProtocolConfigurer') -> 'ServiceBackend':
+        conf = self.system.get_protocol_backend(protocol)
+        return conf.as_multicast_(address, self)
+
+    def broadcast(self, protocol: 'ProtocolConfigurer') -> 'ServiceBackend':
+        conf = self.system.get_protocol_backend(protocol)
+        add = f"{IPAddresses.BROADCAST}" if conf.transport == Protocol.UDP \
+            else f"{HWAddresses.BROADCAST}"
+        return self.multicast(add, protocol)
+
     def os(self) -> OSBuilder:
         return OSBackend(self)
 
     def __lshift__(self, multicast: ServiceBuilder) -> 'ConnectionBackend':
         assert isinstance(multicast, ServiceBackend)
         mc = multicast.entity
-        assert mc.is_multicast(), "Can only receive multicast"
-        # no service created, just connection from this to the multicast node
-        c = self >> multicast
-        c.logical_only()
+        assert mc.is_multicast() and multicast.multicast_protocol, "Can only receive multicast"
+        # create a service for multicast - there is a service on both ends!
+        sb = self / multicast.multicast_protocol
+        # share multicast address with the source
+        sb.entity.addresses.clear()
+        sb.entity.addresses.update(mc.addresses)
+        c = multicast >> sb  # connection from broadcasting service to service here
         return c
 
     def cookies(self) -> 'CookieBackend':
@@ -665,7 +669,7 @@ class ProtocolBackend:
         self.external_activity: Optional[ExternalActivity] = None
         self.critical_parameter: List[SensitiveData] = []
 
-    def as_multicast_(self, address: str, system: SystemBackend) -> 'ServiceBackend':
+    def as_multicast_(self, address: str, host: 'HostBackend') -> 'ServiceBackend':
         """The protocol as multicast"""
         raise ConfigurationException(
             f"{self.service_name} cannot be broad/multicast")
@@ -911,18 +915,20 @@ class UDPBackend(ProtocolBackend):
 
     def __init__(self, configurer: UDP) -> None:
         super().__init__(Protocol.UDP, port=configurer.port, name=configurer.name)
+        self.configurer = configurer
         if configurer.administrative:
             self.host_type = HostType.ADMINISTRATIVE
             self.con_type = ConnectionType.ADMINISTRATIVE
 
-    def as_multicast_(self, address: str, system: SystemBackend) -> 'ServiceBackend':
-        b = system.get_host_(address, description="Multicast")
-        # Explicitly configured multicast nodes, at least are not administrative
-        # b.entity.host_type = HostType.ADMINISTRATIVE
+    def as_multicast_(self, address: str, host: HostBackend) -> 'ServiceBackend':
+        sb = self.get_service_(host)
+        assert sb.entity.protocol == Protocol.UDP
         addr = IPAddress.new(address)
-        if addr not in b.entity.addresses:
-            b.new_address_(addr)
-        return self.get_service_(b)
+        sb.entity.multicast_source = True
+        sb.entity.name += " broadcast"
+        sb.entity.addresses = {EndpointAddress(addr, self.protocol, self.service_port)}
+        sb.multicast_protocol = self.configurer
+        return sb
 
 
 class BLEAdvertisementBackend(ProtocolBackend):
@@ -931,13 +937,16 @@ class BLEAdvertisementBackend(ProtocolBackend):
     def __init__(self, configurer: BLEAdvertisement) -> None:
         super().__init__(Protocol.BLE, port=configurer.event_type,
                          name=configurer.name, protocol=Protocol.BLE)
+        self.configurer = configurer
 
-    def as_multicast_(self, address: str, system: SystemBackend) -> 'ServiceBackend':
-        b = system.get_host_(
-            name="BLE Ads", description="Bluetooth LE Advertisements")
-        b.new_address_(Addresses.BLE_Ad)
-        b.entity.external_activity = ExternalActivity.PASSIVE
-        return self.get_service_(b)
+    def as_multicast_(self, _address: str, host: HostBackend) -> 'ServiceBackend':
+        sb = self.get_service_(host)
+        assert sb.entity.protocol == Protocol.BLE
+        sb.entity.name += " broadcast"
+        sb.entity.multicast_source = True
+        sb.entity.addresses = {EndpointAddress(Addresses.BLE_Ad, self.protocol, self.service_port)}
+        sb.multicast_protocol = self.configurer
+        return sb
 
 
 class ProprietaryProtocolBackend(ProtocolBackend):

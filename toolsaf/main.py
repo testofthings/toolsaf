@@ -48,14 +48,6 @@ class SystemBuilder:
         """Part of the testing infrastructure, not part of the system itself"""
         raise NotImplementedError()
 
-    def multicast(self, address: str, protocol: 'ProtocolConfigurer') -> 'ServiceBuilder':
-        """IP multicast target"""
-        raise NotImplementedError()
-
-    def broadcast(self, protocol: 'ProtocolConfigurer') -> 'ServiceBuilder':
-        """IP broadcast target"""
-        raise NotImplementedError()
-
     def data(self, names: List[str], personal: bool=False, password: bool=False) -> 'SensitiveDataBuilder':
         """Declare pieces of security-relevant data"""
         raise NotImplementedError()
@@ -150,6 +142,14 @@ class HostBuilder(NodeBuilder):
 
     def serve(self, *protocols: ProtocolType) -> Self:
         """Serve the configured protocol or protocols"""
+        raise NotImplementedError()
+
+    def multicast(self, address: str, protocol: 'ProtocolConfigurer') -> 'ServiceBuilder':
+        """Sends IP multicasts"""
+        raise NotImplementedError()
+
+    def broadcast(self, protocol: 'ProtocolConfigurer') -> 'ServiceBuilder':
+        """Sends IP broadcasts"""
         raise NotImplementedError()
 
     def __lshift__(self, multicast: ServiceBuilder) -> 'ConnectionBuilder':
