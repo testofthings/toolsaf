@@ -228,6 +228,7 @@ Toolsaf also reads the `versionInfo` fields of individual packages from the SPDX
 ## More DSL Features.
 
 There are [more features](MoreStatementFeatures.md) in the security statement DSL. Check them out.
+  - Masking false positive tool outputs
   - Defining online resources to verify them
   - Specifying permissions for Android applications
 

@@ -126,3 +126,7 @@ Connection verdicts can have any of the following:
 | `Logical`         | Connection does not represent a physical connection and thus cannot be verified |
 
 Connection properties and their verdicts are listed below their respective connections. Connection properties can include, e.g. [certmitm](Tools.md#certmitm) results.
+
+### False Positives
+
+If you determine that one or more properties marked with a `Fail` verdict in the statement output are false positives, you can mask them. More information on masking can be found [here](MoreStatementFeatures.md#masking-false-positive-tool-outputs).

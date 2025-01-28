@@ -25,6 +25,10 @@ This file contains implementations for some special _services_.
 
 This file contains the implementation of network node _components_.
 
+## File [`ignore_rules.py`](../../toolsaf/core/ignore_rules.py)
+
+Enables the creation of _IgnoreRules_ for masking false positive security tool findings in security statements.
+
 ## File [`event_interface.py`](../../toolsaf/core/event_interface.py) and related files
 
 The event interface is the base class for classes that receive and process _events_.
@@ -32,7 +36,7 @@ Implementations are in the following files:
 
   * File [`registry.py`](../../toolsaf/core/registry.py) implements entity identities and experimental DB storage of events.
   * File [`event_logger.py`](../../toolsaf/core/event_logger.py) creates logs of events to assign them to property changes.
-  * File [`inspector.py`](../../toolsaf/core/inspector.py) processes events and updates the model accordingly, including the creation of unexpected nodes and services, and verdict assignment.
+  * File [`inspector.py`](../../toolsaf/core/inspector.py) processes events and updates the model accordingly, including the creation of unexpected nodes and services, and verdict assignment. Takes _IgnoreRules_ into account.
 
 ## Files [`entity_database.py`](../../toolsaf/core/entity_database.py) and [`sql_database.py`](../../toolsaf/core/sql_database.py)
 
