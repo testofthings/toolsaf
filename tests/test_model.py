@@ -1,4 +1,4 @@
-from toolsaf.common.address import AddressEnvelope, EndpointAddress, EntityTag, Protocol, DNSName, IPAddress, HWAddress
+from toolsaf.common.address import EndpointAddress, EntityTag, Protocol, DNSName, IPAddress, HWAddress, AddressSequence, Addresses
 from toolsaf.core.inspector import Inspector
 from toolsaf.core.model import Host, IoTSystem
 from toolsaf.common.verdict import Verdict
@@ -8,6 +8,7 @@ from toolsaf.core.matcher import SystemMatcher
 from toolsaf.common.basics import ExternalActivity
 from toolsaf.common.traffic import IPFlow
 from toolsaf.common.basics import Status
+from toolsaf.core.components import Software
 
 
 class Setup:
@@ -465,31 +466,12 @@ def test_reply_misinterpretation():
     assert c0 != c1
 
 
-def test_pick_service_from_subnet():
-    su = Setup()
-    net1 = su.system.network("VPN", "169.254.0.0/16")
-    dev1 = su.system.device().in_networks(net1, su.system.network()).ip("192.168.4.5")
-
-    ins = su.get_inspector()
-    addr = AddressEnvelope(
-        address=IPAddress.new("192.168.4.5"),
-        content=EndpointAddress.ip("169.254.6.7", Protocol.UDP, 1234))
-
-
 def test_unknown_service_in_subnet():
     su = Setup()
     net1 = su.system.network("VPN", "169.254.0.0/16")
     dev1 = su.system.device().in_networks(net1, su.system.network()).ip("192.168.4.5")
     ser1_1 = dev1 / TCP(8686).in_network(net1)
     system = su.get_system()
-
-    # the known service with envelope address
-    addr = AddressEnvelope(
-        address=IPAddress.new("192.168.4.5"),
-        content=EndpointAddress.ip("169.254.6.7", Protocol.TCP, 8686))
-    s0 = system.get_endpoint(addr)
-    assert s0 == ser1_1.entity
-    assert s0.get_parent_host() == dev1.entity
 
     # right host, but service in different subnet
     addr = EndpointAddress.ip("192.168.4.5", Protocol.TCP, 8686)
@@ -501,3 +483,51 @@ def test_unknown_service_in_subnet():
     addr = EndpointAddress.ip("169.254.6.7", Protocol.TCP, 8686)
     s0 = system.get_endpoint(addr)
     assert s0.get_parent_host() != dev1.entity
+
+
+def test_find_entity():
+    system = Setup().system
+    device = system.device("Test Device")
+    device.new_address_(IPAddress.new("1.2.3.4"))
+    service = (device / TCP(port=12)).entity
+
+    assert system.system.find_entity(EntityTag("Not Found")) == None
+    assert system.system.find_entity(EntityTag("Test_Device")) == device.entity
+    assert system.system.find_entity(IPAddress.new("1.2.3.4")) == device.entity
+    assert system.system.find_entity(
+        EndpointAddress(EntityTag.new("Test Device"), Protocol.TCP, 22)
+    ) == device.entity
+
+    seq = Addresses.parse_system_address("Not_Found")
+    assert system.system.find_entity(seq) == None
+
+    seq = Addresses.parse_system_address("Test_Device")
+    assert system.system.find_entity(seq) == device.entity
+
+    seq = Addresses.parse_system_address("Test_Device&software=Test_SW")
+    software = device.software("Test SW").get_software()
+    for _ in range(2): # Test that address is not modified
+        assert system.system.find_entity(seq) == software
+
+    seq = Addresses.parse_system_address("Test_Device&software=Not_Found_SW")
+    assert system.system.find_entity(seq) == None
+
+    seq = Addresses.parse_system_address("Test_Device/tcp:12")
+    assert system.system.find_entity(seq) == service
+
+    backend = system.backend("Test Backend")
+    connection = (device >> backend / TCP(22)).connection
+    seq = Addresses.parse_system_address("source=Test_Device&target=Test_Backend/tcp:22")
+    for _ in range(2): # Test that address is not modified
+        assert system.system.find_entity(seq) == connection
+
+    seq = Addresses.parse_system_address("source=Test_Device&target=Test_Backend/tcp:1000")
+    assert system.system.find_entity(seq) == None
+
+    seq = Addresses.parse_system_address("1.2.3.4")
+    assert system.system.find_entity(seq) == device.entity
+
+    software = Software(service, "Service SW")
+    service.components.append(software)
+    seq = Addresses.parse_system_address("Test_Device/tcp:12&software=Service_SW")
+    assert system.system.find_entity(seq) == software

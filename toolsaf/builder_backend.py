@@ -6,7 +6,7 @@ import logging
 import pathlib
 import sys
 import inspect
-from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union, cast
+from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union, cast, Set
 
 from toolsaf.common.address import (AddressAtNetwork, Addresses, AnyAddress, DNSName, EndpointAddress, EntityTag,
                                   HWAddress, HWAddresses, IPAddress, IPAddresses, Network, Protocol)
@@ -182,12 +182,26 @@ class SystemBackend(SystemBuilder):
                 h.entity.name: h for h in self.hosts_by_name.values()}
         return n
 
+    def _check_unique_under_parent(self, host: Host) -> None:
+        """Check that all children of the host have unique names"""
+        child_names: Set[str] = set()
+        for child in host.children:
+            if child.name in child_names:
+                raise ConfigurationException(f"Name {child.name} used more than once for {host.name}")
+            child_names.add(child.name)
+
     def finish_(self) -> None:
         """Finish the model"""
-        # each real host must have software
-        for h in self.system.get_hosts():
+        host_names: Set[str] = set()
+        hosts = self.system.get_hosts()
+        # each real host must have software and names under parents are unique
+        for h in hosts:
             if not h.any_host and h.host_type != HostType.BROWSER:
                 Software.ensure_default_software(h)
+            if h.name in host_names:
+                raise ConfigurationException(f"Name {h.name} used more than once")
+            host_names.add(h.name)
+            self._check_unique_under_parent(h)
 
         # We want to have a authenticator related to each authenticated service
         # NOTE: Not ready to go into this level now...

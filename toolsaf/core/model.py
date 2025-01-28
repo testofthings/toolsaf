@@ -7,7 +7,7 @@ from typing import List, Set, Optional, Tuple, TypeVar, Callable, Dict, Any, Sel
 from urllib.parse import urlparse
 
 from toolsaf.common.address import AnyAddress, Addresses, EndpointAddress, EntityTag, Network, Protocol, IPAddress, \
-    DNSName
+    DNSName, AddressSequence
 from toolsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status
 from toolsaf.common.entity import Entity
 from toolsaf.common.property import PropertyKey
@@ -76,6 +76,11 @@ class Connection(Entity):
         """A long name for human consumption"""
         return f"{self.source.long_name()} => {self.target.long_name()}"
 
+    def get_system_address(self) -> AddressSequence:
+        return AddressSequence.connection(
+            self.source.get_system_address(),
+            self.target.get_system_address()
+        )
 
 T = TypeVar("T")
 
@@ -100,6 +105,7 @@ class NodeComponent(Entity):
         self.name = name
         self.sub_components: List[NodeComponent] = []
         self.status = Status.EXPECTED
+        self.tag = EntityTag.new(name)
 
     def get_children(self) -> Iterable['Entity']:
         return self.sub_components
@@ -121,6 +127,13 @@ class NodeComponent(Entity):
         super().reset()
         for s in self.sub_components:
             s.reset()
+
+    def get_system_address(self) -> AddressSequence:
+        return AddressSequence.component(
+            parent=self.entity.get_system_address(),
+            tag=self.tag,
+            segment_type=self.concept_name
+        )
 
     def __repr__(self) -> str:
         return self.long_name()
@@ -248,7 +261,8 @@ class NetworkNode(Entity):
         """Get or create a new endpoint, service or host"""
         raise NotImplementedError()
 
-    def find_endpoint(self, address: AnyAddress, at_network: Optional[Network] = None) -> Optional['Addressable']:
+    def find_endpoint(self, address: AnyAddress, at_network: Optional[Network] = None) \
+            -> Union['Addressable', Entity, None]:
         """Find existing endpoint, service or host"""
         raise NotImplementedError()
 
@@ -389,6 +403,22 @@ class Addressable(NetworkNode):
         """Get the parent host"""
         raise NotImplementedError()
 
+    def find_entity(self, address: AnyAddress) -> Optional[Entity]:
+        if not isinstance(address, AddressSequence):
+            return self.find_endpoint(address)
+
+        if not address.segments:
+            return self
+        segment = address.segments[0]
+        match segment.segment_type:
+            case "software":
+                for component in self.components:
+                    if component.tag == segment.address:
+                        return component.find_entity(address.tail())
+            case _:
+                raise NotImplementedError()
+        return None
+
 
 class Host(Addressable):
     """A host"""
@@ -440,6 +470,12 @@ class Host(Addressable):
 
     def get_tag(self) -> Optional[EntityTag]:
         return Addresses.get_tag(self.addresses)
+
+    def get_system_address(self) -> AddressSequence:
+        for address in self.addresses: # get_prioritized skips EntityTags
+            if isinstance(address, EntityTag):
+                return AddressSequence.new(address)
+        return AddressSequence.new(Addresses.get_prioritized(self.addresses))
 
 
 class Service(Addressable):
@@ -509,6 +545,12 @@ class Service(Addressable):
 
     def get_parent_host(self) -> 'Host':
         return self.parent.get_parent_host()
+
+    def get_system_address(self) -> AddressSequence:
+        return AddressSequence.service(
+            parent=self.parent.get_system_address(),
+            service=list(self.addresses)[0]
+        )
 
     def __repr__(self) -> str:
         return f"{self.status_string()} {self.parent.long_name()} {self.name}"
@@ -655,48 +697,68 @@ class IoTSystem(NetworkNode):
         return self
 
     def get_endpoint(self, address: AnyAddress, at_network: Optional[Network] = None) -> Addressable:
+        find_ep = self.find_endpoint(address, at_network)
+        if find_ep:
+            assert isinstance(find_ep, Addressable)
+            return find_ep
+        # create new host and possibly service
         h_add = address.get_host()
         assert h_add, f"Cannot find endpoint by address {address}"
 
-        e_add = address.open_envelope()  # scan from inside is in envelope
-        network = at_network or self.get_default_network()
-        for e in self.children:
-            if e.networks and network not in e.networks:
-                continue  # not in the right network
-            if h_add in e.addresses:
-                if isinstance(e_add, EndpointAddress):
-                    e = e.get_endpoint(e_add) or e
-                break
+        e = Host(self, f"{h_add}")
+        if h_add.is_multicast():
+            e.host_type = HostType.ADMINISTRATIVE
         else:
-            # create new host and possibly service
-            e = Host(self, f"{h_add}")
-            if h_add.is_multicast():
-                e.host_type = HostType.ADMINISTRATIVE
-            else:
-                e.host_type = HostType.REMOTE if self.is_external(h_add) else HostType.GENERIC
-            e.description = "Unexpected host"
-            e.addresses.add(h_add)
-            e.external_activity = ExternalActivity.UNLIMITED  # we know nothing about its behavior
-            self.children.append(e)
-        if isinstance(e_add, EndpointAddress) and e.is_host():
-            e = e.create_service(e_add)
+            e.host_type = HostType.REMOTE if self.is_external(h_add) else HostType.GENERIC
+        e.description = "Unexpected host"
+        e.addresses.add(h_add)
+        e.external_activity = ExternalActivity.UNLIMITED  # we know nothing about its behavior
+        self.children.append(e)
+        if isinstance(address, EndpointAddress) and e.is_host():
+            return e.create_service(address)
         return e
 
-    def find_endpoint(self, address: AnyAddress, at_network: Optional[Network] = None) -> Optional[Addressable]:
+    def find_endpoint(self, address: AnyAddress, at_network: Optional[Network] = None) \
+            -> Union[Addressable, Entity, None]:
+        if isinstance(address, AddressSequence):
+            return self.find_entity(address)
+
         h_add = address.get_host()
-        e_add = address.open_envelope()  # scan from inside is in envelope
         network = at_network or self.get_default_network()
         e: Optional[Addressable]
         for e in self.children:
             if e.networks and network not in e.networks:
                 continue  # not in the right network
             if h_add in e.addresses:
-                if isinstance(e_add, EndpointAddress):
-                    e = e.find_endpoint(e_add)
+                if isinstance(address, EndpointAddress):
+                    e = e.find_endpoint(address) or e
                 break
         else:
             e = None
         return e
+
+    def find_entity(self, address: AnyAddress) -> Optional[Entity]:
+        if not isinstance(address, AddressSequence):
+            return self.find_endpoint(address)
+
+        if not address.segments:
+            return self
+
+        segment = address.segments[0]
+        if segment.segment_type == "source":
+            source = self.find_endpoint(segment.address)
+            target = self.find_endpoint(address.tail().segments[0].address)
+            if not source or not target:
+                return None
+            assert isinstance(source, NetworkNode) and isinstance(target, NetworkNode)
+            for connection in source.get_connections():
+                if connection.target == target:
+                    return connection
+        else:
+            if (endpoint := self.find_endpoint(segment.address)):
+                return endpoint.find_entity(address.tail())
+        return None
+
 
     def new_connection(self, source: Tuple[Addressable, AnyAddress],
                        target: Tuple[Addressable, AnyAddress]) -> Connection:
@@ -775,6 +837,9 @@ class IoTSystem(NetworkNode):
         if path.endswith("/"):
             path = path[0:-1]
         return se, path
+
+    def get_system_address(self) -> AddressSequence:
+        return AddressSequence.iot_system(self.name, segment_type=self.concept_name)
 
     def __repr__(self) -> str:
         s = [self.long_name()]
