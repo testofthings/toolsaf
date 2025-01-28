@@ -14,7 +14,6 @@ from toolsaf.adapters.pcap_reader import PCAPReader
 from toolsaf.adapters.tshark_reader import TSharkReader
 from toolsaf.adapters.tools import SimpleFlowTool
 from toolsaf.adapters.setup_reader import SetupCSVReader
-from toolsaf.adapters.shell_commands import ShellCommandPs, ShellCommandSs
 from toolsaf.adapters.shodan_scan import ShodanScan
 from toolsaf.adapters.spdx_reader import SPDXReader
 from toolsaf.adapters.ssh_audit_scan import SSHAuditScan
@@ -40,8 +39,6 @@ from tests.test_model import Setup
         ("capture-json", TSharkReader),
         ("exp-flow", SimpleFlowTool),
         ("setup", SetupCSVReader),
-        ("shell-ps", ShellCommandPs),
-        ("shell-ss", ShellCommandSs),
         ("shodan", ShodanScan),
         ("spdx", SPDXReader),
         ("ssh-audit", SSHAuditScan),

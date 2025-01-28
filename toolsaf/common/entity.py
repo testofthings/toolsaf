@@ -6,6 +6,7 @@ from toolsaf.common.basics import Status
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.property import Properties, PropertyKey
 from toolsaf.common.verdict import Verdictable
+from toolsaf.common.address import AddressSequence, AnyAddress
 
 
 class Entity:
@@ -110,6 +111,17 @@ class Entity:
         if v is not None and v is not Verdict.INCON:
             st = f"{st}/{v.value}"
         return st
+
+    def get_system_address(self) -> AddressSequence:
+        """Get system address for this entity"""
+        return AddressSequence.new()
+
+    def find_entity(self, address: AnyAddress) -> Optional['Entity']:
+        """Find an entity by address"""
+        if isinstance(address, AddressSequence):
+            if not address.segments:
+                return self
+        raise NotImplementedError()
 
     def __repr__(self) -> str:
         s = f"{self.status_string()} {self.long_name()}"
