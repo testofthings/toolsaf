@@ -161,7 +161,6 @@ Once the system object is created, you can begin defining the various network _h
 | `system.backend()`   | Backend services |
 | `system.network()`   | System networks |
 | `system.any()`       | Services provided by anyone from environment, e.g. network router |
-| `system.broadcast()` | Network broadcast addresses |
 
 
 Each host can be assigned a name. It's best to name them according to what they represent. For instance, if the system includes a smart plug, it should be added to the system like this:
@@ -194,6 +193,23 @@ A service which is not created explicitly by the method `serve()` is created imp
 if the backend has not explicitly defined them.
 
 Check out the [services](Services.md) documentation for more details and the list of available protocols.
+
+## Multicast and broadcast
+
+A host can send _multicast_ or _broadcast_ messages.
+The following shows example of host sending UDP broadcast to port `1234`.
+Multicast is used similarly by method `multicast`, but the used address must be specified.
+```python
+bcast = device.broadcast(UDP(port=1234))
+```
+
+Broadcasts listening is marked by `<<`, e.g.:
+```python
+gateway << bcast
+```
+
+Currently UDP and BLE _Advertisement_ protocols allow broadcast and multicast.
+
 
 ## Software Bill of Materials (SBOM)
 
