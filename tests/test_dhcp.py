@@ -66,10 +66,11 @@ def test_dhcp():
     assert h3.addresses == {HWAddress.new("1:0:0:0:0:6"), IPAddress.new("192.168.0.1")}
     assert h3.name == "192.168.0.1 2"
 
+
 def test_unexpected_dhcp_matching():
     sb = SystemBackend()
     dhcp = sb.any() / DHCP
-    other = sb.broadcast(UDP(port=7777))
+    other = sb.device().broadcast(UDP(port=7777))
     dev = sb.device().hw("30:c6:f7:52:db:5c")
     dev >> dhcp
     m = EventLogger(Inspector(sb.system))
@@ -77,13 +78,14 @@ def test_unexpected_dhcp_matching():
 
     # not the expected connection - should still have target DHCP
     c0 = m.connection(IPFlow.UDP("30:c6:f7:52:db:00", "192.168.0.10", 68) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 67))
-    assert c0.status == Status.UNEXPECTED
-    # assert c0.target == dhcp.entity  # ... creates new entity
+    assert c0.source.status == Status.EXTERNAL
+    assert c0.target.status == Status.EXPECTED
+    assert c0.status == Status.EXTERNAL
 
 
 def test_from_pcap():
     sb = SystemBackend()
-    other = sb.broadcast(UDP(port=7777))
+    other = sb.device().broadcast(UDP(port=7777))
     dhcp = sb.any() / DHCP
     dev = sb.device().hw("30:c6:f7:52:db:5c")
     dev >> dhcp

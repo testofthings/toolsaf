@@ -153,7 +153,8 @@ def test_foreign_connection():
 def test_multicast():
     sb = SystemBackend()
     dev1 = sb.device().hw("1:0:0:0:0:1")
-    dev1 >> sb.broadcast(UDP(port=333))
+    broadcast = dev1.broadcast(UDP(port=333))
+    bc = sb.any() << broadcast  # use any host here
     i = Inspector(sb.system)
 
     cs1 = i.connection(IPFlow.UDP(
@@ -168,8 +169,7 @@ def test_multicast():
     assert cs2.status_verdict() == (Status.UNEXPECTED, Verdict.FAIL)
     assert cs2.source.status_verdict() == (Status.EXPECTED, Verdict.PASS)
     assert cs2.target.is_multicast()
-    # target is the multicast 'host', not service - is that ok...
-    assert cs2.target.status_verdict() == (Status.EXPECTED, Verdict.PASS)
+    assert cs2.target.status_verdict() == (Status.UNEXPECTED, Verdict.FAIL)
 
 
 def test_external_dhcp_multicast():

@@ -18,8 +18,8 @@ def test_process_file():
     device = setup.system.device("Device")
     device.new_address_(hw_addr)
 
-    ble_ad = setup.system.broadcast(BLEAdvertisement(event_type=0x01))
-    device >> ble_ad
+    ble_ad = device.broadcast(BLEAdvertisement(event_type=0x01))
+    setup.system.any() << ble_ad
 
     with Path("tests/samples/tshark/capture.json").open("rb") as f:
         reader.process_file(f, "", setup.get_inspector(), source)
@@ -36,7 +36,7 @@ def test_process_file():
 
         # Different event_type
         assert connections[1].source == device.entity
-        assert connections[1].target.name == "BLE Ads"
+        assert connections[1].target.name == "BLE_Ad"
         assert connections[1].get_verdict({}) == Verdict.FAIL
 
         # Unknown device
