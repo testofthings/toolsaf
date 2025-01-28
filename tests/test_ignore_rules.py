@@ -52,6 +52,13 @@ def test_at():
         (device / SSH).entity, (device / TCP(1)).entity
     ]
 
+    software = device.software("Test SW").sw
+    system.ignore("test-type").at(device.software("Test SW"))
+    rules = system.ignore_backend.get_rules()
+    assert rules._current_rule.at == [
+        software
+    ]
+
 
 def test_because():
     system = Setup().system

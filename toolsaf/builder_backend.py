@@ -992,6 +992,8 @@ class IgnoreRulesBackend(IgnoreRulesBuilder):
                 self.ignore_rules.at(location.system)
             elif isinstance(location, NodeBackend):
                 self.ignore_rules.at(location.entity)
+            elif isinstance(location, SoftwareBackend):
+                self.ignore_rules.at(location.sw)
             elif isinstance(location, ConnectionBackend):
                 self.ignore_rules.at(location.connection)
             else:
