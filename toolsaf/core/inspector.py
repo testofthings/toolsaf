@@ -94,7 +94,7 @@ class Inspector(EventInterface):
                 return True
             for c in self.system.get_connections():
                 if mc in c.target.addresses:
-                    # must be same
+                    # same target address -> same broadcast
                     change = c.set_seen_now()
                     if change:
                         self._check_entity(c)
@@ -103,6 +103,7 @@ class Inspector(EventInterface):
                     if change:
                         self._check_entity(c.target)
                         updated.add(c.target)
+            return True
 
 
         # if we have a connection, the endpoints cannot be placeholders

@@ -433,10 +433,9 @@ class Host(Addressable):
         return self.host_type not in {HostType.MOBILE, HostType.BROWSER} and not self.any_host \
             and not self.is_multicast()
 
-    def is_multicast(self):
+    def is_multicast(self) -> bool:
         # NOTE: Multicast 'hosts' created for unexpected multicasts only
         return any(a.is_multicast() for a in self.addresses)
-
 
     def get_connections(self, relevant_only: bool=True) -> List[Connection]:
         """Get relevant connections"""
@@ -508,8 +507,9 @@ class Service(Addressable):
     def is_service(self) -> bool:
         return True
 
-    def is_multicast(self):
-        return self.multicast_source or any(a.is_multicast() for a in self.addresses) or self.parent.is_multicast()
+    def is_multicast(self) -> bool:
+        return self.multicast_source is not None \
+            or any(a.is_multicast() for a in self.addresses) or self.parent.is_multicast()
 
     def long_name(self) -> str:
         if self.parent.name != self.name:
