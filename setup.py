@@ -25,7 +25,7 @@ setup(
     long_description='Tool-Driven Security Assessment Framework',
     url='https://github.com/testofthings/toolsaf',
     include_package_data=True,
-    package_data={'toolsaf.adapters': ['data/*.json']},
+    package_data={'toolsaf.adapters': ['data/*.json'], 'toolsaf': ['diagram_visualizer/*.png']},
     install_requires=requirements,
     classifiers=[
         "Programming Language :: Python :: 3",

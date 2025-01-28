@@ -1013,9 +1013,9 @@ class SystemBackendRunner(SystemBackend):
                             help="Disables output text truncation")
         parser.add_argument("-c", "--color", action="store_true",
                             help="Keep colors in output even when output is piped")
-        parser.add_argument("-C", "--create-diagram", const="png", nargs="?", choices=["png", "jpg", "svg", "pdf"],
+        parser.add_argument("-C", "--create-diagram", const="png", nargs="?", choices=["png", "jpg", "pdf"],
                             help="Creat a diagram of a security statement with given file format. Default is png")
-        parser.add_argument("-S", "--show-diagram", const="png", nargs="?", choices=["png", "jpg", "svg", "pdf"],
+        parser.add_argument("-S", "--show-diagram", const="png", nargs="?", choices=["png", "jpg", "pdf"],
                             help="Display the visualizer's output. Can also set file format. Default is png")
         parser.add_argument("-N", "--diagram-name", type=str,
                             help="File name for created diagram. Default is the system's name")
