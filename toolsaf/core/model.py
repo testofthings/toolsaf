@@ -183,7 +183,7 @@ class NetworkNode(Entity):
         return False
 
     def is_multicast(self) -> bool:
-        """Is a multicast target rather than real host?"""
+        """Is a multicast source service?"""
         return False
 
     def is_relevant(self) -> bool:
@@ -332,11 +332,6 @@ class Addressable(NetworkNode):
             return True
         sm = self.get_system()
         return len(self.addresses) > 0 and any(sm.is_external(a) for a in self.addresses)
-
-    def is_multicast(self) -> bool:
-        if self.parent and self.parent.is_multicast():
-            return True
-        return bool(self.addresses and any(a.is_multicast() for a in self.addresses))
 
     def get_networks(self) -> List[Network]:
         """Get networks"""
@@ -490,7 +485,7 @@ class Service(Addressable):
         self.con_type = ConnectionType.UNKNOWN
         self.authentication = False            # Now a flag, an object later?
         self.client_side = False               # client side "service" (DHCP)
-        self.multicast_source = False          # Multicast source? (targets not specially marked)
+        self.multicast_source: Optional[AnyAddress] = None # Multicast source address (targets not specially marked)
         self.reply_from_other_address = False  # reply comes from other port (DHCP)
 
     @classmethod
@@ -507,6 +502,9 @@ class Service(Addressable):
 
     def is_service(self) -> bool:
         return True
+
+    def is_multicast(self):
+        return self.multicast_source is not None
 
     def long_name(self) -> str:
         if self.parent.name != self.name:

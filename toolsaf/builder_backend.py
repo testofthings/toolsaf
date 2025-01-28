@@ -922,11 +922,9 @@ class UDPBackend(ProtocolBackend):
 
     def as_multicast_(self, address: str, host: HostBackend) -> 'ServiceBackend':
         sb = self.get_service_(host)
-        assert sb.entity.protocol == Protocol.UDP
         addr = IPAddress.new(address)
-        sb.entity.multicast_source = True
-        sb.entity.name += " broadcast"
-        sb.entity.addresses = {EndpointAddress(addr, self.protocol, self.service_port)}
+        sb.entity.multicast_source = addr
+        sb.entity.name += " multicast"
         sb.multicast_protocol = self.configurer
         return sb
 
@@ -941,10 +939,8 @@ class BLEAdvertisementBackend(ProtocolBackend):
 
     def as_multicast_(self, _address: str, host: HostBackend) -> 'ServiceBackend':
         sb = self.get_service_(host)
-        assert sb.entity.protocol == Protocol.BLE
-        sb.entity.name += " broadcast"
-        sb.entity.multicast_source = True
-        sb.entity.addresses = {EndpointAddress(Addresses.BLE_Ad, self.protocol, self.service_port)}
+        sb.entity.name += " multicast"
+        sb.entity.multicast_source = Addresses.BLE_Ad
         sb.multicast_protocol = self.configurer
         return sb
 
