@@ -1,6 +1,6 @@
 """Model builder"""
 
-from typing import Any, Dict, List, Optional, Self, Tuple, Type, Union
+from typing import Dict, List, Optional, Self, Tuple, Type, Union
 from toolsaf.common.address import AnyAddress, HWAddress, HWAddresses, IPAddress, IPAddresses, Network
 from toolsaf.common.basics import ConnectionType, HostType, ExternalActivity
 from toolsaf.common.android import MobilePermissions
@@ -257,15 +257,6 @@ class DiagramVisualizer:
     """Security statement visualizer"""
     def visualize(self) -> None:
         """Visualize statement"""
-        raise NotImplementedError()
-
-    def add_images(self, host_image_dict: Dict[Any, str]) -> Self:
-        """Use locally stored images for specified nodes in visualization.
-            Must be .png images"""
-        raise NotImplementedError()
-
-    def add_remote_images(self, host_image_url_dict: Dict[Any, str]) -> Self:
-        """Use images from the internet for specified nodes"""
         raise NotImplementedError()
 
     def create_diagram(self) -> None:

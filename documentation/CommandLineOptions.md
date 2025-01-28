@@ -69,7 +69,7 @@ pcap-1    PCAP reader
 ```
 
 ## Create Diagram Visualization
-You can create a diagram based on your security statement with `-C` or `--create-diagram`. The diagram will not be automatically displayed with this command. You can also set the diagram's file format with this flag. The format can be `png`, `jpg`, `svg`, or `pdf`. The default format is `png`.
+You can create a diagram based on your security statement with `-C` or `--create-diagram`. The diagram will not be automatically displayed with this command. You can also set the diagram's file format with this flag. The format can be `png`, `jpg`, or `pdf`. The default format is `png`.
 ```shell
 python product/statement.py --create-diagram
 # OR
@@ -78,7 +78,7 @@ python product/statement.py -C jpg
 Diagram creation requires you to install [Graphviz](https://graphviz.org/download/).
 
 ## Create and Show Diagram Visualization
-You can use `-S` or `--show-diagram` to create and display a diagram based on your security statement. You can also set the diagram's file format with this flag. The format can be `png`, `jpg`, `svg`, or `pdf`. The default format is `png`.
+You can use `-S` or `--show-diagram` to create and display a diagram based on your security statement. You can also set the diagram's file format with this flag. The format can be `png`, `jpg`, or `pdf`. The default format is `png`.
 ```shell
 python product/statement.py --show-diagram
 # OR
