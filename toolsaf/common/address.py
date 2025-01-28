@@ -155,6 +155,7 @@ class PseudoAddress(AnyAddress):
     """Pseudo-address"""
     def __init__(self, name: str, wildcard: bool=False, multicast: bool=False, hardware: bool=False) -> None:
         self.name = name
+        # only name used in equality
         self.wildcard = wildcard
         self.multicast = multicast
         self.hardware = hardware
@@ -177,6 +178,13 @@ class PseudoAddress(AnyAddress):
     def __repr__(self) -> str:
         return self.name
 
+    def __hash__(self) -> int:
+        return self.name.__hash__()
+
+    def __eq__(self, value) -> bool:
+        if not isinstance(value, PseudoAddress):
+            return False
+        return self.name == value.name
 
 class Addresses:
     """Address constants and utilities"""
