@@ -2,9 +2,9 @@ from toolsaf.common.basics import ExternalActivity, Status
 from toolsaf.builder_backend import SystemBackend
 from toolsaf.core.services import NameEvent
 import test_model
-from toolsaf.common.address import DNSName, EndpointAddress, Protocol, IPAddress
+from toolsaf.common.address import DNSName, EndpointAddress, Protocol, IPAddress, PseudoAddress
 from toolsaf.core.inspector import Inspector
-from toolsaf.main import DHCP, DNS, UDP, TCP
+from toolsaf.main import DHCP, DNS, UDP, TCP, Proprietary
 from toolsaf.common.traffic import NO_EVIDENCE, IPFlow, Evidence, EvidenceSource, ServiceScan, HostScan
 from toolsaf.common.verdict import Verdict
 
@@ -186,6 +186,16 @@ def test_multicast_many_listeners():
     assert bc10.connection.status_verdict() == (Status.EXPECTED, Verdict.PASS)
     assert bc11.connection.status_verdict() == (Status.EXPECTED, Verdict.PASS)
     assert bc12.connection.status_verdict() == (Status.EXPECTED, Verdict.PASS)
+
+
+def test_multicast_proprietary():
+    sb = SystemBackend()
+    dev1 = sb.device().hw("1:0:0:0:0:1")
+    broadcast = dev1.multicast("ADDRESS", Proprietary("Custom", port=9000))
+    cb = sb.device().ip("192.168.2.10") << broadcast
+    assert cb.connection.target.addresses == \
+        {EndpointAddress(PseudoAddress("ADDRESS"), Protocol.OTHER, 9000)}
+
 
 
 def test_external_dhcp_multicast():

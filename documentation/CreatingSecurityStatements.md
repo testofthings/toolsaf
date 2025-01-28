@@ -208,7 +208,7 @@ Broadcasts listening is marked by `<<`, e.g.:
 gateway << bcast
 ```
 
-Currently UDP and BLE _Advertisement_ protocols allow broadcast and multicast.
+Currently UDP, BLE _Advertisement_, and `Proprietary` protocols allow broadcast and multicast.
 
 
 ## Software Bill of Materials (SBOM)

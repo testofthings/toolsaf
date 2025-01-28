@@ -9,7 +9,7 @@ import inspect
 from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union, cast, Set
 
 from toolsaf.common.address import (AddressAtNetwork, Addresses, AnyAddress, DNSName, EndpointAddress, EntityTag,
-                                  HWAddress, HWAddresses, IPAddress, IPAddresses, Network, Protocol)
+                                  HWAddress, HWAddresses, IPAddress, IPAddresses, Network, Protocol, PseudoAddress)
 from toolsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status
 from toolsaf.adapters.batch_import import BatchImporter, LabelFilter
 from toolsaf.core.components import CookieData, Cookies, DataReference, StoredData, OperatingSystem, Software
@@ -951,7 +951,15 @@ class ProprietaryProtocolBackend(ProtocolBackend):
 
     def __init__(self, configurer: Proprietary) -> None:
         super().__init__(Protocol.OTHER, port=configurer.port, name=configurer.name)
+        self.configurer = configurer
 
+    def as_multicast_(self, address: str, host: HostBackend) -> 'ServiceBackend':
+        # play along also with multicast
+        sb = self.get_service_(host)
+        sb.entity.name += " multicast"
+        sb.entity.multicast_source = PseudoAddress(address, multicast=True)
+        sb.multicast_protocol = self.configurer
+        return sb
 
 class ProtocolConfigurers:
     """Protocol configurers and backends"""
