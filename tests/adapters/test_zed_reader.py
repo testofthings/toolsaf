@@ -42,7 +42,7 @@ def test_process_file():
         assert source.timestamp == datetime.strptime("Wed, 1 Jan 2025 01:01:01", "%a, %d %b %Y %H:%M:%S")
         props = backend.entity.children[0].properties
         assert len(props) == 4
-        assert props[PropertyKey("zed", "1234")].verdict == Verdict.FAIL
+        assert props[PropertyKey("zap", "1234")].verdict == Verdict.FAIL
         assert PropertyKey("check", "web") in props
         assert PropertyKey("check", "protocol", "http", "best-practices") in props
         assert backend.entity.get_verdict({}) == Verdict.FAIL
