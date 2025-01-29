@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import enum
 import ipaddress
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network
-from typing import Union, Optional, Tuple, Iterable, Self
+from typing import Union, Optional, Tuple, Iterable, Self, List
 
 
 class Protocol(enum.Enum):
@@ -57,10 +57,6 @@ class AnyAddress:
 
     def get_host(self) -> 'AnyAddress':
         """Get host or self"""
-        return self
-
-    def open_envelope(self) -> 'AnyAddress':
-        """Open address envelope, if any. If none, return this address"""
         return self
 
     def get_protocol_port(self) -> Optional[Tuple[Protocol, int]]:
@@ -220,9 +216,6 @@ class Addresses:
     @classmethod
     def parse_address(cls, address: str) -> AnyAddress:
         """Parse any address type from string, type given as 'address|type'"""
-        ad, _, con = address.partition("(")
-        if con and con.endswith(")"):
-            return AddressEnvelope(cls.parse_address(ad), cls.parse_address(con[:-1]))
         v, _, t = address.rpartition("|")
         if v == "" and t:
             # no type given
@@ -242,9 +235,6 @@ class Addresses:
     @classmethod
     def parse_endpoint(cls, value: str) -> AnyAddress:
         """Parse address or endpoint"""
-        ad, _, con = value.partition("(")
-        if con and con.endswith(")"):
-            return AddressEnvelope(cls.parse_address(ad), cls.parse_endpoint(con[:-1]))
         a, _, p = value.partition("/")
         addr = cls.parse_address(a)
         if p == "":
@@ -253,6 +243,17 @@ class Addresses:
         if port == "":
             return EndpointAddress(addr, Protocol.get_protocol(prot), -1)
         return EndpointAddress(addr, Protocol.get_protocol(prot), int(port))
+
+    @classmethod
+    def parse_system_address(cls, value: str) -> 'AddressSequence':
+        """Parse system addresses"""
+        segments = []
+        for segment in value.split("&"):
+            if len(segment_split := segment.split("=")) == 2:
+                segments.append(AddressSegment(cls.parse_endpoint(segment_split[1]), segment_split[0]))
+            else:
+                segments.append(AddressSegment(cls.parse_endpoint(segment)))
+        return AddressSequence(segments)
 
 
 class HWAddress(AnyAddress):
@@ -539,66 +540,6 @@ class Network:
         return self.name
 
 
-class AddressEnvelope(AnyAddress):
-    """Address envelope carrying content address"""
-    def __init__(self, address: AnyAddress, content: AnyAddress) -> None:
-        self.address = address
-        self.content = content
-
-    def open_envelope(self) -> 'AnyAddress':
-        return self.content
-
-    def get_ip_address(self) -> Optional[IPAddress]:
-        return self.address.get_ip_address()
-
-    def get_hw_address(self) -> Optional[HWAddress]:
-        return self.address.get_hw_address()
-
-    def get_host(self) -> AnyAddress:
-        return self.address
-
-    def get_protocol_port(self) -> Optional[Tuple[Protocol, int]]:
-        return self.address.get_protocol_port()
-
-    def change_host(self, host: Optional['AnyAddress']) -> 'AddressEnvelope':
-        return AddressEnvelope(self.address.change_host(host), self.content)
-
-    def is_null(self) -> bool:
-        return self.address.is_null()
-
-    def is_multicast(self) -> bool:
-        return self.address.is_multicast()
-
-    def is_global(self) -> bool:
-        return self.address.is_global()
-
-    def is_tag(self) -> bool:
-        return self.address.is_tag()
-
-    def is_loopback(self) -> bool:
-        return self.address.is_loopback()
-
-    def is_wildcard(self) -> bool:
-        return self.address.is_wildcard()
-
-    def priority(self) -> int:
-        return self.address.priority() + 1
-
-    def get_parseable_value(self) -> str:
-        return f"{self.address.get_parseable_value()}({self.content.get_parseable_value()})"
-
-    def __eq__(self, other: object ) -> bool:
-        if not isinstance(other, AddressEnvelope):
-            return False
-        return self.address == other.address and self.content == other.content
-
-    def __hash__(self) -> int:
-        return self.address.__hash__() ^ self.content.__hash__()
-
-    def __repr__(self) -> str:
-        return f"{self.address}({self.content})"
-
-
 @dataclass(frozen=True)
 class AddressAtNetwork:
     """Address at network"""
@@ -607,3 +548,87 @@ class AddressAtNetwork:
 
     def __repr__(self) -> str:
         return f"{self.address}@{self.network}"
+
+
+class AddressSegment(AnyAddress):
+    """Address segments in an AddressSequence"""
+    def __init__(self, address: AnyAddress, segment_type: Optional[str]=None) -> None:
+        self.segment_type = segment_type
+        self.address = address
+
+    def get_parseable_value(self) -> str:
+        if self.segment_type:
+            return f"{self.segment_type}={self.address.get_parseable_value()}"
+        return self.address.get_parseable_value()
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, AddressSegment):
+            return False
+        return self.address == other.address and self.segment_type == other.segment_type
+
+    def __repr__(self) -> str:
+        return (f"{self.segment_type}=" if self.segment_type else "") + str(self.address)
+
+
+class AddressSequence(AnyAddress):
+    """AnyAddress sequences representing system addresses"""
+    @classmethod
+    def service(cls, parent: 'AddressSequence', service: AnyAddress) -> 'AddressSequence':
+        """Create service sequence"""
+        return AddressSequence(parent.segments + [AddressSegment(service)])
+
+    @classmethod
+    def component(cls, parent: 'AddressSequence', tag: EntityTag, segment_type: str) -> 'AddressSequence':
+        """Create component sequence"""
+        return AddressSequence(
+            parent.segments +
+            [AddressSegment(tag, segment_type=segment_type)]
+        )
+
+    @classmethod
+    def connection(cls, source: 'AddressSequence', target: 'AddressSequence') -> 'AddressSequence':
+        """Create connection sequence"""
+        new_segments_source = [
+            AddressSegment(address=segment.address) for segment in source.segments
+        ]
+        new_segments_target = [
+            AddressSegment(address=segment.address) for segment in target.segments
+        ]
+        new_segments_source[0].segment_type = "source"
+        new_segments_target[0].segment_type = "target"
+        return AddressSequence(new_segments_source + new_segments_target)
+
+    @classmethod
+    def iot_system(cls, name: str, segment_type: str) -> 'AddressSequence':
+        """Create IoT system sequence"""
+        return AddressSequence([AddressSegment(EntityTag(name), segment_type=segment_type)])
+
+    @classmethod
+    def new(cls, *segments: AnyAddress) -> 'AddressSequence':
+        """Create new AddressSequence"""
+        return AddressSequence(
+            segments=[AddressSegment(segment) for segment in segments]
+        )
+
+    def __init__(self, segments: List[AddressSegment]) -> None:
+        self.segments = segments
+        self.value = self.get_parseable_value()
+
+    def tail(self) -> 'AddressSequence':
+        """Returns new AddressSequence with first segment removed"""
+        return AddressSequence(self.segments[1:])
+
+    def _parse_segment(self, segment: str) -> str:
+        """Parse given segment"""
+        return segment.replace(" ", "_").replace("*/", "")
+
+    def get_parseable_value(self) -> str:
+        return "&".join([self._parse_segment(segment.get_parseable_value()) for segment in self.segments])
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, AddressSequence):
+            return False
+        return self.segments == other.segments
+
+    def __repr__(self) -> str:
+        return self.value

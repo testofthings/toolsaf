@@ -106,16 +106,6 @@ File: [shodan_scan.py](../../toolsaf/adapters/shodan_scan.py)
 
 Adapter for processing Shodan scan results in `.json` format.
 
-### ShellCommandPs
-File: [shell_commands.py](../../toolsaf/adapters/shell_commands.py)
-
-**Experimental.**
-
-### ShellCommandSs
-File: [shell_commands.py](../../toolsaf/adapters/shell_commands.py)
-
-**Experimental.**
-
 ### SimpleFlowTool
 File: [tools.py](../../toolsaf/adapters/tools.py)
 
