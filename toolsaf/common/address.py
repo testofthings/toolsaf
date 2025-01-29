@@ -181,7 +181,7 @@ class PseudoAddress(AnyAddress):
     def __hash__(self) -> int:
         return self.name.__hash__()
 
-    def __eq__(self, value) -> bool:
+    def __eq__(self, value: object) -> bool:
         if not isinstance(value, PseudoAddress):
             return False
         return self.name == value.name
