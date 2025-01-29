@@ -4,7 +4,6 @@ from toolsaf.common.verdict import Verdict
 from toolsaf.builder_backend import SystemBackend
 from toolsaf.core.event_logger import EventLogger
 from toolsaf.core.inspector import Inspector
-from toolsaf.core.ignore_rules import IgnoreRules
 from toolsaf.main import DHCP, UDP
 from toolsaf.core.matcher import SystemMatcher
 from toolsaf.adapters.pcap_reader import PCAPReader
@@ -73,7 +72,7 @@ def test_unexpected_dhcp_matching():
     other = sb.broadcast(UDP(port=7777))
     dev = sb.device().hw("30:c6:f7:52:db:5c")
     dev >> dhcp
-    m = EventLogger(Inspector(sb.system, IgnoreRules()))
+    m = EventLogger(Inspector(sb.system))
     s = sb.system
 
     # not the expected connection - should still have target DHCP
@@ -88,7 +87,7 @@ def test_from_pcap():
     dhcp = sb.any() / DHCP
     dev = sb.device().hw("30:c6:f7:52:db:5c")
     dev >> dhcp
-    m = EventLogger(Inspector(sb.system, IgnoreRules()))
+    m = EventLogger(Inspector(sb.system))
     s = sb.system
 
     PCAPReader.inspect(pathlib.Path("tests/samples/pcap/dhcp.pcap"), m)
@@ -107,7 +106,7 @@ def test_from_pcap2():
     # learn address (not sure how this happens), messes broadcast matching unless is_any == True
     dhcp.entity.get_parent_host().addresses.add(IPAddress.new("192.168.1.15"))
 
-    m = EventLogger(Inspector(sb.system, IgnoreRules()))
+    m = EventLogger(Inspector(sb.system))
     s = sb.system
 
     # learn on address for DHCP

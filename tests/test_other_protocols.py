@@ -2,7 +2,6 @@ from toolsaf.common.address import HWAddress, Protocol, HWAddresses
 from toolsaf.common.verdict import Verdict
 from toolsaf.builder_backend import SystemBackend
 from toolsaf.core.inspector import Inspector
-from toolsaf.core.ignore_rules import IgnoreRules
 from toolsaf.main import ICMP, UDP, ARP, EAPOL
 from toolsaf.common.traffic import IPFlow, EthernetFlow, NO_EVIDENCE
 from toolsaf.common.basics import Status
@@ -12,7 +11,7 @@ def test_icmp():
     sb = SystemBackend()
     dev1 = sb.device().ip("1.0.1.1") / ICMP
     dev1 >> sb.device().ip("1.0.1.2") / UDP(port=2000)  # this used to steal icmp() endpoint
-    i = Inspector(sb.system, IgnoreRules())
+    i = Inspector(sb.system)
 
     cs = i.connection(IPFlow.IP("11:02:03:04:05:06", "1.0.0.1", 1) >> ("01:02:03:04:05:06", "1.0.1.1", 1))
     assert cs.source.name == "1.0.0.1"
@@ -43,7 +42,7 @@ def test_arp():
     sb = SystemBackend()
     dev1 = sb.device().hw("01:02:03:04:05:06")
     arp1 = dev1 / ARP  # the broadcast service
-    i = Inspector(sb.system, IgnoreRules())
+    i = Inspector(sb.system)
 
     ev = NO_EVIDENCE
 

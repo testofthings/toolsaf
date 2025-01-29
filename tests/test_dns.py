@@ -4,7 +4,6 @@ from toolsaf.common.address import EntityTag, IPAddress, DNSName, Protocol
 from toolsaf.common.verdict import Verdict
 from toolsaf.builder_backend import SystemBackend
 from toolsaf.core.inspector import Inspector
-from toolsaf.core.ignore_rules import IgnoreRules
 from toolsaf.main import DNS
 from toolsaf.core.matcher import SystemMatcher
 from toolsaf.adapters.pcap_reader import PCAPReader
@@ -32,7 +31,7 @@ def test_dns_pcap():
     dev1 = sb.device().ip("192.168.20.132")
     dns = sb.backend().ip("155.198.142.7") / DNS
     c1 = dev1 >> dns
-    m = Inspector(sb.system, IgnoreRules())
+    m = Inspector(sb.system)
 
     s = sb.system
     PCAPReader.inspect(pathlib.Path("tests/samples/pcap/dns.pcap"), m)
@@ -56,7 +55,7 @@ def test_dns_pcap():
 def test_dns_large_pcap():
     sb = SystemBackend()
     sb.any() / DNS
-    m = Inspector(sb.system, IgnoreRules())
+    m = Inspector(sb.system)
     s = sb.system
     PCAPReader.inspect(pathlib.Path("tests/samples/pcap/dns-large-set.pcap"), m)
     hosts = sorted(s.get_hosts(), key=lambda h: -len(h.addresses))
@@ -71,7 +70,7 @@ def test_dns_large_pcap():
 def test_dns_large_pcap2():
     sb = SystemBackend()
     sb.any() / DNS
-    m = Inspector(sb.system, IgnoreRules())
+    m = Inspector(sb.system)
     s = sb.system
     PCAPReader.inspect(pathlib.Path("tests/samples/pcap/dns-large-set2.pcap"), m)
     hosts = sorted(s.get_hosts(), key=lambda h: -len(h.addresses))

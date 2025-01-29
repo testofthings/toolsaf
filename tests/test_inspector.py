@@ -4,7 +4,6 @@ from toolsaf.core.services import NameEvent
 import test_model
 from toolsaf.common.address import DNSName, EndpointAddress, Protocol, IPAddress
 from toolsaf.core.inspector import Inspector
-from toolsaf.core.ignore_rules import IgnoreRules
 from toolsaf.main import DHCP, DNS, UDP, TCP
 from toolsaf.common.traffic import NO_EVIDENCE, IPFlow, Evidence, EvidenceSource, ServiceScan, HostScan
 from toolsaf.common.verdict import Verdict
@@ -24,7 +23,7 @@ def simple_setup_3(tcp=False) -> SystemBackend:
 
 def test_traffic_verdict():
     sb = simple_setup_3()
-    i = Inspector(sb.system, IgnoreRules())
+    i = Inspector(sb.system)
     dev1 = sb.device("Device 1")
     dev2 = sb.device("Device 2")
     dev3 = sb.device("Device 3")
@@ -72,7 +71,7 @@ def test_irrelevant_traffic():
     dev2 = sb.device().ip("192.168.0.2")
     dev2.external_activity(ExternalActivity.UNLIMITED)
     dev1 >> dev2 / UDP(port=1234)
-    i = Inspector(sb.system, IgnoreRules())
+    i = Inspector(sb.system)
 
     # expected connections
     cs = i.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1100) >> ("1:0:0:0:0:2", "192.168.0.2", 1234))
@@ -101,7 +100,7 @@ def test_irrelevant_traffic():
 
 def test_scan():
     sb = simple_setup_3(tcp=True)
-    i = Inspector(sb.system, IgnoreRules())
+    i = Inspector(sb.system)
 
     ev = Evidence(EvidenceSource(""))
 
@@ -124,7 +123,7 @@ def test_foreign_connection():
     sb = test_model.simple_setup_1()
     dev2 = sb.system.get_endpoint(IPAddress.new("192.168.0.2"))
     dev2.set_external_activity(ExternalActivity.UNLIMITED)
-    i = Inspector(sb.system, IgnoreRules())
+    i = Inspector(sb.system)
 
     # target is known service
     cs1 = i.connection(IPFlow.UDP(
@@ -155,7 +154,7 @@ def test_multicast():
     sb = SystemBackend()
     dev1 = sb.device().hw("1:0:0:0:0:1")
     dev1 >> sb.broadcast(UDP(port=333))
-    i = Inspector(sb.system, IgnoreRules())
+    i = Inspector(sb.system)
 
     cs1 = i.connection(IPFlow.UDP(
         "1:0:0:0:0:1", "192.168.0.1", 1100) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 333))
@@ -177,7 +176,7 @@ def test_external_dhcp_multicast():
     sb = SystemBackend()
     dev1 = sb.mobile().hw("1:0:0:0:0:1")  # unlimited activity
     dev2 = sb.backend().serve(DHCP)       # listens for broafcasts to ff:ff:ff:ff:ff:ff
-    i = Inspector(sb.system, IgnoreRules())
+    i = Inspector(sb.system)
 
     cs1 = i.connection(IPFlow.UDP(
         "1:0:0:0:0:1", "192.168.0.1", 68) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 67))
@@ -191,7 +190,7 @@ def test_learn_dns_name():
     ser0 = sb.backend("Aname.org")
     dns = sb.backend() / DNS
 
-    i = Inspector(sb.system, IgnoreRules())
+    i = Inspector(sb.system)
     # connection which initializes matching
     flow_0 = IPFlow.UDP("2:2:0:0:0:1", "192.168.0.1", 1100) >> ("2:2:0:0:0:2", "192.168.0.2", 1234)
     i.connection(flow_0)
@@ -215,7 +214,7 @@ def test_learn_dns_name_expected_connection():
     dev0 >> ser1 / UDP(port=1234)
     dns = sb.backend() / DNS
 
-    i = Inspector(sb.system, IgnoreRules())
+    i = Inspector(sb.system)
     # connection which initializes matching
     flow_0 = IPFlow.UDP("2:2:0:0:0:1", "192.168.0.1", 1100) >> ("2:2:0:0:0:2", "192.168.0.2", 1234)
     i.connection(flow_0)
