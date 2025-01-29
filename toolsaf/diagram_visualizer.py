@@ -67,10 +67,22 @@ class DiagramVisualizer(DV):
             label, f"{self._path}/diagram_visualizer/device.png"
         )
 
+    def iot_device_with_multicast(self, label: str) -> Custom:
+        """Custom representation for IoT devices that send multicasts"""
+        return self._custom_image(
+            label, f"{self._path}/diagram_visualizer/device_with_multicast.png"
+        )
+
     def mobile(self, label: str) -> Custom:
         """Custom representation for mobile applications"""
         return self._custom_image(
             label, f"{self._path}/diagram_visualizer/mobile.png"
+        )
+
+    def mobile_with_multicast(self, label: str) -> Custom:
+        """Custom representation of mobile applications that send multicasts"""
+        return self._custom_image(
+            label, f"{self._path}/diagram_visualizer/mobile_with_multicast.png"
         )
 
     def browser(self, label: str) -> Custom:
@@ -85,20 +97,24 @@ class DiagramVisualizer(DV):
             label, f"{self._path}/diagram_visualizer/backend.png"
         )
 
-    def multicast(self, label: str) -> Custom:
-        """Custom representation for a multicast"""
-        return self._custom_image(
-            label, f"{self._path}/diagram_visualizer/multicast.png"
-        )
+    def _should_return_multicast(self, host: Host) -> bool:
+        """Determines if a multicast symbol variant should be used"""
+        for connection in host.connections:
+            if connection.target.is_multicast():
+                if connection.target.host_type != HostType.ADMINISTRATIVE and connection.source == host:
+                    return True
+        return False
 
     def _get_node_by_type(self, host: Host, label: str) -> Optional[Node]:
         """Returns a suitable visual representation based on host's type."""
-        if host.is_multicast() and not host.host_type == HostType.ADMINISTRATIVE:
-            return self.multicast(label)
         match host.host_type:
             case HostType.DEVICE:
+                if self._should_return_multicast(host):
+                    return self.iot_device_with_multicast(label)
                 return self.iot_device(label)
             case HostType.MOBILE:
+                if self._should_return_multicast(host):
+                    return self.mobile_with_multicast(label)
                 return self.mobile(label)
             case HostType.BROWSER:
                 return self.browser(label)

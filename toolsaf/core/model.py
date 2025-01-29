@@ -183,7 +183,7 @@ class NetworkNode(Entity):
         return False
 
     def is_multicast(self) -> bool:
-        """Is a multicast target rather than real host?"""
+        """Is a multicast source or target?"""
         return False
 
     def is_relevant(self) -> bool:
@@ -333,11 +333,6 @@ class Addressable(NetworkNode):
         sm = self.get_system()
         return len(self.addresses) > 0 and any(sm.is_external(a) for a in self.addresses)
 
-    def is_multicast(self) -> bool:
-        if self.parent and self.parent.is_multicast():
-            return True
-        return bool(self.addresses and any(a.is_multicast() for a in self.addresses))
-
     def get_networks(self) -> List[Network]:
         """Get networks"""
         if self.networks or not self.parent:
@@ -438,6 +433,10 @@ class Host(Addressable):
         return self.host_type not in {HostType.MOBILE, HostType.BROWSER} and not self.any_host \
             and not self.is_multicast()
 
+    def is_multicast(self) -> bool:
+        # NOTE: Multicast 'hosts' created for unexpected multicasts only
+        return any(a.is_multicast() for a in self.addresses)
+
     def get_connections(self, relevant_only: bool=True) -> List[Connection]:
         """Get relevant connections"""
         cs = []
@@ -490,11 +489,12 @@ class Service(Addressable):
         self.con_type = ConnectionType.UNKNOWN
         self.authentication = False            # Now a flag, an object later?
         self.client_side = False               # client side "service" (DHCP)
+        self.multicast_source: Optional[AnyAddress] = None # Multicast source address (targets not specially marked)
         self.reply_from_other_address = False  # reply comes from other port (DHCP)
 
     @classmethod
     def make_name(cls, service_name: str, port: int=-1) -> str:
-        """Make service name"""
+        """Make service base name"""
         if not service_name:
             return f"{port}" if port >= 0 else "???"
         return f"{service_name}:{port}" if port >= 0 else service_name
@@ -506,6 +506,10 @@ class Service(Addressable):
 
     def is_service(self) -> bool:
         return True
+
+    def is_multicast(self) -> bool:
+        return self.multicast_source is not None \
+            or any(a.is_multicast() for a in self.addresses) or self.parent.is_multicast()
 
     def long_name(self) -> str:
         if self.parent.name != self.name:
