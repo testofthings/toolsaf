@@ -97,12 +97,6 @@ class DiagramVisualizer(DV):
             label, f"{self._path}/diagram_visualizer/backend.png"
         )
 
-    def multicast(self, label: str) -> Custom:
-        """Custom representation for a multicast"""
-        return self._custom_image(
-            label, f"{self._path}/diagram_visualizer/multicast.png"
-        )
-
     def _should_return_multicast(self, host: Host) -> bool:
         """Determines if a multicast symbol variant should be used"""
         for connection in host.connections:
