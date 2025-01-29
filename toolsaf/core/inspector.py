@@ -18,10 +18,10 @@ from toolsaf.common.verdict import Verdict
 
 class Inspector(EventInterface):
     """Inspector"""
-    def __init__(self, system: IoTSystem, ignore_rules: IgnoreRules) -> None:
+    def __init__(self, system: IoTSystem, ignore_rules: Optional[IgnoreRules]=None) -> None:
         self.matcher = SystemMatcher(system)
         self.system = system
-        self.ignore_rules = ignore_rules
+        self.ignore_rules = ignore_rules if ignore_rules else IgnoreRules()
         self.logger = logging.getLogger("inspector")
         self.connection_count: Dict[Connection, int] = {}  # count connections
         self.direction: Dict[Flow, bool] = {}              # direction: false = request, true = reply
