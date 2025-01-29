@@ -11,7 +11,6 @@ from toolsaf.common.address import HWAddress
 from toolsaf.core.event_interface import EventInterface
 from toolsaf.core.inspector import Inspector
 from toolsaf.core.model import IoTSystem
-from toolsaf.core.ignore_rules import IgnoreRules
 from toolsaf.adapters.tools import SystemWideTool
 from toolsaf.common.traffic import EvidenceSource, BLEAdvertisementFlow, Evidence
 
@@ -68,5 +67,5 @@ if __name__ == "__main__":
     arg_parser.add_argument("file", help="File to read")
     f_name = arg_parser.parse_args().file
     reader = TSharkReader(IoTSystem())
-    reader.read(pathlib.Path(f_name), Inspector(reader.system, IgnoreRules()), EvidenceSource(reader.tool.name))
+    reader.read(pathlib.Path(f_name), Inspector(reader.system), EvidenceSource(reader.tool.name))
     print(reader.system)
