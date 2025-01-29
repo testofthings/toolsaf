@@ -3,7 +3,7 @@
 [Table of contents](README.md)
 
 ## Masking False Positive Tool Outputs
-Depending on the situation, one or more findings made by security tools may be false positives. However, determining whether this is the case is up to the security statement's creator.
+Depending on the situation, one or more findings made by security tools may be false positives.
 
 Let's say we have a backend service serving TLS, and we test it with _testssl_.
 ```python
@@ -36,6 +36,17 @@ If the statement is run again with this addition, the output would be as follows
 ```
 
 Further examples of using `ignore()` to mask false positives can be found in the [Ruuvi security statement](https://github.com/testofthings/statement-ruuvi/blob/main/ruuvi/statement.py).
+
+### Determining if a Finding is a False Positive
+
+The task of determining whether or not a tool finding is a false positive is left to the security statement's creator. Here are some tips to help you with that:
+
+* Check tool output files, as some contain additional information on the found issues.
+* Check the documentation of used tools on their own websites (or maybe even their source code).
+* Information on Common Vulnerabilities and Exposures (CVEs) can be found using your favorite search engine.
+* Consider findings within the context of the specific IoT system. What may be a critical vulnerability in one setup might be harmless in another due to different configurations or implementations.
+
+An understanding of the tools used and the system will help you make informed decisions about handling findings.
 
 ## Mobile Application Permissions (Android Only)
 
