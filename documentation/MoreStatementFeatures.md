@@ -18,13 +18,13 @@ In this scenario, running the statement with the _testssl_ results would produce
 After reviewing the result, we determine that the `testssl:BREACH` property added to the Backend's TLS service is not actually an issue since it can't be exploited. To mask its fail verdict, we can add the following addendum to the security statement:
 ```python
 system.ignore(file_type="testssl").properties(
-    "testssl:BREACH"
+    "testssl:BREACH" # Testssl.sh (BREACH): potentially VULNERABLE, gzip HTTP compression detected  - only supplied '/' tested
 ).at(backend / TLS).because("Not exploitable")
 ```
 The above statement creates a new false positive masking rule. Here is a breakdown of the DSL statement:
 
 1. **`ignore(file_type="testssl")`**: Creates a new ignore rule that applies to result files of type `testssl`. The file types are the same as those used in _00meta.json_ files. Check them out [here](Tools.md#list-of-supported-tools).
-2. **`properties("testssl:BREACH")`**: Specifies that the `"testssl:BREACH"` property should be masked. `properties()` can be used with zero or more arguments. Calling it with zero arguments masks all properties for the given `file_type`.
+2. **`properties("testssl:BREACH")`**: Specifies that the `"testssl:BREACH"` property should be masked. `properties()` can be used with zero or more arguments. Calling it with zero arguments masks all properties for the given `file_type`. A good practice is to also add the property's description (if any) as a comment after the actual property.
 3. **`at(backend / TLS)`**: Makes the masking rule apply only to the specified service. If `at()` is not used, the rule will apply everywhere.
 4. **`because("Not exploitable")`**: Allows you to add a reason for the masking in the statement.
 
