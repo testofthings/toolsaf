@@ -4,7 +4,7 @@ from logging import Logger
 import logging
 from typing import Any, List, Set, Tuple, Dict, Optional, cast
 from toolsaf.common.address import AnyAddress
-from toolsaf.common.verdict import Verdict
+from toolsaf.common.verdict import Verdict, Verdictable
 
 from toolsaf.common.entity import Entity
 from toolsaf.core.event_interface import EventInterface, PropertyEvent, PropertyAddressEvent
@@ -12,7 +12,7 @@ from toolsaf.core.inspector import Inspector
 from toolsaf.core.model import IoTSystem, Connection, Host, ModelListener, Service
 from toolsaf.common.property import Properties, PropertyKey
 from toolsaf.core.services import NameEvent
-from toolsaf.common.traffic import EvidenceSource, HostScan, ServiceScan, Flow, Event
+from toolsaf.common.traffic import Evidence, EvidenceSource, HostScan, ServiceScan, Flow, Event
 
 
 class LoggingEvent:
@@ -41,6 +41,16 @@ class LoggingEvent:
         else:
             v += (" " if v else "") + self.property_value[0].get_value_string(self.property_value[1])
         return v
+
+    def resolve_verdict(self) -> Verdict:
+        """Resolve verdict"""
+        if self.verdict != Verdict.INCON:
+            return self.verdict
+        if self.property_value:
+            value = self.property_value[1]
+            if isinstance(value, Verdictable):
+                return value.get_verdict()
+        return Verdict.INCON
 
     def get_properties(self) -> Set[PropertyKey]:
         """Get implicit and explicit properties"""
@@ -223,4 +233,29 @@ class EventLogger(EventInterface, ModelListener):
             for p in lo.get_properties():
                 if lo.entity:
                     r.setdefault(p, {}).setdefault(lo.event.evidence.source, []).append(lo.entity)
+        return r
+
+    def collect_evidence_verdicts(self, source: EvidenceSource) -> Dict[Evidence, Verdict]:
+        """Collect batch verdicts"""
+        r = {}
+        for lo in self.logs:
+            if lo.event.evidence.source != source:
+                continue
+            ver = lo.resolve_verdict()
+            if ver == Verdict.INCON:
+                continue
+            ev = lo.event
+            r[ev.evidence] = ver
+        return r
+
+    def collect_entity_verdicts(self, source: EvidenceSource) -> Dict[Entity, Verdict]:
+        """Collect entity verdicts"""
+        r = {}
+        for lo in self.logs:
+            if lo.event.evidence.source != source or not lo.entity:
+                continue
+            ver = lo.resolve_verdict()
+            if ver == Verdict.INCON:
+                continue
+            r[lo.entity] = Verdict.aggregate(ver, r.get(lo.entity))
         return r

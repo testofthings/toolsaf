@@ -218,7 +218,6 @@ class BatchData:
         self.address_map: Dict[AnyAddress, Addressable] = {}
         self.activity_map: Dict[NetworkNode, ExternalActivity] = {}
         self.sources: List[EvidenceSource] = []
-        self.verdicts: Dict[Evidence, Verdict] = {}
 
     def __repr__(self) -> str:
         return str(self.meta_info)

@@ -11,10 +11,11 @@ from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union, cast
 from toolsaf.common.address import (AddressAtNetwork, Addresses, AnyAddress, DNSName, EndpointAddress, EntityTag,
                                   HWAddress, HWAddresses, IPAddress, IPAddresses, Network, Protocol, PseudoAddress)
 from toolsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status
-from toolsaf.adapters.batch_import import BatchImporter, LabelFilter
+from toolsaf.adapters.batch_import import BatchData, BatchImporter, LabelFilter
 from toolsaf.core.components import CookieData, Cookies, DataReference, StoredData, OperatingSystem, Software
 from toolsaf.common.release_info import ReleaseInfo
 from toolsaf.common.property import PropertyVerdictValue
+from toolsaf.core.event_logger import EventLogger
 from toolsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP, IP, TLS, MQTT, FTP,
                         BLEAdvertisement, ConnectionBuilder,
                         CookieBuilder, HostBuilder, NetworkBuilder, NodeBuilder, NodeVisualBuilder,
@@ -1037,6 +1038,14 @@ class IgnoreRulesBackend(IgnoreRulesBuilder):
         return self.ignore_rules
 
 
+class LoadedData:
+    """Loaded data for programmatic invoker"""
+    def __init__(self, system: IoTSystem, log_access: EventLogger, batches: List[BatchData]):
+        self.system = system
+        self.log_access = log_access
+        self.batches = batches
+
+
 class SystemBackendRunner(SystemBackend):
     """Backend for system builder"""
 
@@ -1077,8 +1086,8 @@ class SystemBackendRunner(SystemBackend):
             logging, args.log_level or 'INFO'))
         return args
 
-    def run(self, custom_arguments: Optional[List[str]] = None) -> None:
-        """Model is ready, run the checks"""
+    def run(self, custom_arguments: Optional[List[str]] = None) -> LoadedData:
+        """Model is ready, run the checks, return data for programmatic caller"""
         args = self._parse_arguments(custom_arguments)
         if args.dhcp:
             self.any().serve(DHCP)
@@ -1121,9 +1130,11 @@ class SystemBackendRunner(SystemBackend):
             for sub in ln.subs:
                 sub.load(registry, label_filter=label_filter)
 
+        load_data = LoadedData(self.system, registry.logging, batch_import.batch_data)
+
         if custom_arguments is not None:
             # custom arguments, return without 'running' anything
-            return
+            return load_data
 
         with_files = bool(args.with_files)
         report = Report(registry)
@@ -1138,3 +1149,5 @@ class SystemBackendRunner(SystemBackend):
             self.diagram.set_file_name(args.diagram_name)
             self.diagram.show = bool(args.show_diagram)
             self.diagram.create_diagram()
+
+        return load_data
