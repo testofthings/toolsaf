@@ -237,7 +237,7 @@ class EventLogger(EventInterface, ModelListener):
 
     def collect_evidence_verdicts(self, source: EvidenceSource) -> Dict[Evidence, Verdict]:
         """Collect batch verdicts"""
-        r = {}
+        r: Dict[Evidence, Verdict] = {}
         for lo in self.logs:
             if lo.event.evidence.source != source:
                 continue
@@ -250,7 +250,7 @@ class EventLogger(EventInterface, ModelListener):
 
     def collect_entity_verdicts(self, source: EvidenceSource) -> Dict[Entity, Verdict]:
         """Collect entity verdicts"""
-        r = {}
+        r: Dict[Entity, Verdict] = {}
         for lo in self.logs:
             if lo.event.evidence.source != source or not lo.entity:
                 continue

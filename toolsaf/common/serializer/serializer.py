@@ -5,7 +5,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, Callable
 
 class SerializerContext:
     """Serializer context"""
-    def __init__(self):
+    def __init__(self) -> None:
         self.identifier_map: Dict[Any, str] = {}
         self.object_map: Dict[str, Any] = {}
 
@@ -29,11 +29,11 @@ class SerializerStream:
     """JSON serialization stream"""
     def __init__(self, serializer: 'Serializer', context: Optional[SerializerContext] = None) -> None:
         self.serializer = serializer
-        self.context = SerializerContext() if context is None else context
+        self.context: SerializerContext = SerializerContext() if context is None else context
         self.push_to: List[Tuple[Any, Any]] = []
-        self.data = {}
+        self.data: Dict[str, Any] = {}
 
-    def write(self, start: Any) -> Iterable[Dict]:
+    def write(self, start: Any) -> Iterable[Dict[str, Any]]:
         """Write to stream"""
         self.push_object(start)
         queue = self.push_to
@@ -46,19 +46,21 @@ class SerializerStream:
                 yield self.data
             queue = self.push_to + queue[1:] # depth first order
 
-    def read(self, start: Any, data: Iterable[Dict]) -> Iterable[Any]:
+    def read(self, start: Any, data: Iterable[Dict[str, Any]]) -> Iterable[Any]:
         """Read from stream"""
         obj = start
         iterator = iter(data)
-        self.data = next(iterator, None)
-        if self.data is None:
+        next_data = next(iterator, None)
+        if next_data is None:
             return
+        self.data = next_data
         self._read_object(self.serializer, obj)
         yield obj
 
         # read the rest...
-        self.data = next(iterator, None)
-        while self.data is not None:
+        next_data = next(iterator, None)
+        while next_data is not None:
+            self.data = next_data
             type_name = self.data.get("type", "")
             serial = self.serializer.config.name_map.get(type_name)
             if not serial:
@@ -68,9 +70,9 @@ class SerializerStream:
                 raise ValueError(f"Serializer {serial} does not support new objects")
             self._read_object(serial, obj)
             yield obj
-            self.data = next(iterator, None)
+            next_data = next(iterator, None)
 
-    def push_object(self, obj: Any, at_object: Any = None):
+    def push_object(self, obj: Any, at_object: Any = None) -> None:
         """Push object to queue"""
         self.push_to.append((obj, at_object))
 
@@ -101,11 +103,11 @@ class SerializerStream:
         self.push_to = self.push_to + queue  # depth first order
         return True
 
-    def write_field(self, field_name: str, value: Any):
+    def write_field(self, field_name: str, value: Any) -> None:
         """Write custom field"""
         self.data[field_name] = value
 
-    def _read_object(self, serializer: 'Serializer', obj: Any):
+    def _read_object(self, serializer: 'Serializer', obj: Any) -> None:
         """Read object"""
         for field in serializer.config.simple_fields:
             setattr(obj, field, self.data[field])
@@ -130,7 +132,7 @@ class SerializerStream:
         ref = self.data[field_name]
         return self.context.object_map.get(ref)
 
-    def write_object_id(self, field_name: str, obj: Any, optional=False):
+    def write_object_id(self, field_name: str, obj: Any, optional: bool=False) -> None:
         """Write object id"""
         if obj is None or (optional and obj not in self.context.identifier_map):
             return  # nothing written
@@ -151,28 +153,28 @@ class SerializerStream:
 
 class SerializerConfiguration:
     """Serializer configuration"""
-    def __init__(self, class_type: Type) -> None:
+    def __init__(self, class_type: Type[Any]) -> None:
         self.class_type = class_type
         self.abstract = False
         self.type_name = ""
         self.explicit_id: Optional[Callable[[Any], str]] = None
         self.simple_fields: List[str] = []
         self.decorators: List[Serializer] = []
-        self.class_map: Dict[Type, Serializer] = {}
+        self.class_map: Dict[Type[Any], Serializer] = {}
         self.name_map: Dict[str, Serializer] = {}
 
-    def map_simple_fields(self, *fields: str):
+    def map_simple_fields(self, *fields: str) -> None:
         """Map simple fields"""
         self.simple_fields.extend(fields)
 
-    def map_new_class(self, type_name: str, serializer: 'Serializer'):
+    def map_new_class(self, type_name: str, serializer: 'Serializer') -> None:
         """Map class"""
         self.name_map[type_name] = serializer
         serializer.config.type_name = type_name
         if serializer.config.class_type:
             self.class_map[serializer.config.class_type] = serializer
 
-    def add_decorator(self, decorator: 'Serializer', sub_type: Optional[Type] = None):
+    def add_decorator(self, decorator: 'Serializer', sub_type: Optional[Type[Any]] = None) -> None:
         """Add decorator"""
         if not sub_type:
             # add on this level
@@ -184,7 +186,7 @@ class SerializerConfiguration:
             for s in self.class_map.values():
                 s.config.add_decorator(decorator, sub_type=sub_type)
 
-    def find_serializer(self, for_type: Type) -> 'Serializer':
+    def find_serializer(self, for_type: Type[Any]) -> 'Serializer':
         """Find serializer for type"""
         ser = self.class_map.get(for_type)
         if ser:
@@ -211,21 +213,21 @@ class SerializerConfiguration:
 
 class Serializer:
     """Class serializer base class"""
-    def __init__(self, class_type: Type) -> None:
+    def __init__(self, class_type: Type[Any]) -> None:
         self.config = SerializerConfiguration(class_type)
         self.initialize()
 
-    def initialize(self):
+    def initialize(self) -> None:
         """Initialize after construction"""
 
-    def write(self, obj: Any, stream: SerializerStream):
+    def write(self, obj: Any, stream: SerializerStream) -> None:
         """Custom write definitions"""
 
     def new(self, stream: SerializerStream) -> Any:
         """Create new object"""
         return self.config.class_type(stream)
 
-    def read(self, obj: Any, stream: SerializerStream):
+    def read(self, obj: Any, stream: SerializerStream) -> None:
         """Custom read definitions"""
 
     def __repr__(self) -> str:

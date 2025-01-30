@@ -1086,7 +1086,7 @@ class SystemBackendRunner(SystemBackend):
             logging, args.log_level or 'INFO'))
         return args
 
-    def run(self, custom_arguments: Optional[List[str]] = None) -> LoadedData:
+    def run(self, custom_arguments: Optional[List[str]] = None) -> Optional[LoadedData]:
         """Model is ready, run the checks, return data for programmatic caller"""
         args = self._parse_arguments(custom_arguments)
         if args.dhcp:
@@ -1123,7 +1123,7 @@ class SystemBackendRunner(SystemBackend):
             for label, sl in sorted(batch_import.evidence.items()):
                 sl_s = ", ".join(sorted(set(s.name for s in sl)))
                 print(f"{label:<20} {sl_s}")
-            return
+            return None
 
         # load explicit loaders (if any)
         for ln in self.loaders:

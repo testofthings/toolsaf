@@ -5,15 +5,14 @@ import json
 import logging
 import pathlib
 from io import BufferedReader
-from typing import Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 from toolsaf.common.address import Addresses, AnyAddress
 from toolsaf.common.basics import ExternalActivity
-from toolsaf.common.verdict import Verdict
 from toolsaf.core.event_interface import EventInterface
 from toolsaf.core.model import Addressable, EvidenceNetworkSource, IoTSystem, NetworkNode
 from toolsaf.adapters.tool_finder import ToolDepiction, ToolFinder
-from toolsaf.common.traffic import Evidence, EvidenceSource
+from toolsaf.common.traffic import EvidenceSource
 
 
 class BatchImporter:
@@ -34,7 +33,7 @@ class BatchImporter:
 
     def import_batch(self, file: pathlib.Path) -> None:
         """Import a batch of files from a directory or zip file recursively."""
-        if file.is_dir:
+        if file.is_dir():
             bd = BatchData(FileMetaInfo())
             self._import_batch(file, bd)
             if not self.meta_file_count:
@@ -43,7 +42,7 @@ class BatchImporter:
         else:
             raise ValueError(f"Expected directory, got {file.as_posix()}")
 
-    def _import_batch(self, file: pathlib.Path, parent: 'BatchData'):
+    def _import_batch(self, file: pathlib.Path, parent: 'BatchData') -> None:
         """Import a batch of files from a directory or zip file recursively."""
         parent_info = parent.meta_info
         self.logger.info("scanning %s", file.as_posix())
@@ -229,7 +228,7 @@ class BatchData:
         return cls.parse_from_json(json.load(stream), directory_name, system, parent_meta)
 
     @classmethod
-    def parse_from_json(cls, json_data: Dict, directory_name: str, system: IoTSystem,
+    def parse_from_json(cls, json_data: Dict[str, Any], directory_name: str, system: IoTSystem,
                           parent_meta: Optional['FileMetaInfo'] = None) -> 'BatchData':
         """Parse from JSON"""
         label = str(json_data.get("label", directory_name))
@@ -249,7 +248,7 @@ class BatchData:
             address = Addresses.parse_address(add)
             ent = Addresses.parse_address(ent_s)
             entity = system.find_endpoint(ent)
-            if not entity:
+            if not isinstance(entity, Addressable):
                 raise ValueError(f"Unknown entity {ent_s}")
             data.address_map[address] = entity
             info.source.address_map[address] = entity
@@ -258,7 +257,7 @@ class BatchData:
         for ent_s, policy_n in json_data.get("external_activity", {}).items():
             ent = Addresses.parse_address(ent_s)
             node = system.find_endpoint(ent)
-            if not node:
+            if not isinstance(node, NetworkNode):
                 raise ValueError(f"Unknown entity '{ent_s}'")
             policy = ExternalActivity[policy_n]
             data.activity_map[node] = policy
