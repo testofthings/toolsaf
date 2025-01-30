@@ -25,7 +25,6 @@ class SerializerContext:
             raise ValueError(f"Object {obj} not found in context")
         return i
 
-
 class SerializerStream:
     """JSON serialization stream"""
     def __init__(self, serializer: 'Serializer', context: Optional[SerializerContext] = None) -> None:

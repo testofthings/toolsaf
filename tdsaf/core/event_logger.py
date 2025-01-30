@@ -246,3 +246,16 @@ class EventLogger(EventInterface, ModelListener):
             r_source = r.setdefault(ev.evidence.source, {})
             r_source[ev.evidence] = ver
         return r
+
+    def collect_entity_verdicts(self) ->  Dict[EvidenceSource, Dict[Entity, Verdict]]:
+        """Collect entity verdicts"""
+        r = {}
+        for lo in self.logs:
+            if not lo.entity:
+                continue
+            ver = lo.resolve_verdict()
+            if ver == Verdict.INCON:
+                continue
+            ev_dict = r.setdefault(lo.event.evidence.source, {})
+            ev_dict[lo.entity] = Verdict.aggregate(ver, ev_dict.get(lo.entity))
+        return r

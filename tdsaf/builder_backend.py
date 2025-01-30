@@ -958,8 +958,9 @@ class OSBackend(OSBuilder):
 
 class LoadedData:
     """Loaded data for programmatic invoker"""
-    def __init__(self, system: IoTSystem, batches: List[BatchData]):
+    def __init__(self, system: IoTSystem, log_access: EventLogger, batches: List[BatchData]):
         self.system = system
+        self.log_access = log_access
         self.batches = batches
 
     def harvest_batch_evidence(self, logger: EventLogger):
@@ -1060,7 +1061,7 @@ class SystemBackendRunner(SystemBackend):
             for sub in ln.subs:
                 sub.load(registry, label_filter=label_filter)
 
-        load_data = LoadedData(self.system, batch_import.batch_data)
+        load_data = LoadedData(self.system, registry.logging, batch_import.batch_data)
         load_data.harvest_batch_evidence(registry.logging)
 
         if custom_arguments is not None:
