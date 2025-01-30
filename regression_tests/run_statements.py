@@ -1,21 +1,23 @@
+"""Regression test that check if security statements run without error"""
+
 import os
 import sys
 import json
 import subprocess
 from pathlib import Path
-from typing import Dict, Union, List
+from typing import Dict, Union, List, cast
 
 
 FILE_PATH = Path(__file__)
 STATEMENTS_PATH = FILE_PATH.parent / "statements"
-GITHUB_SUMMARY = os.environ.get('GITHUB_STEP_SUMMARY', None)
+GITHUB_SUMMARY = os.environ.get('GITHUB_STEP_SUMMARY', "")
 
 
 def read_setup(setup_file_path: Path) -> List[Dict[str, Union[str, List[str]]]]:
     """Read test setup json"""
     with setup_file_path.open("rb") as file:
-        setup = json.load(file)
-    return setup["statements"]
+        setup = cast(Dict[str, List[Dict[str, Union[str, List[str]]]]], json.load(file))
+        return setup.get("statements", [])
 
 
 def create_statements_dir() -> None:
@@ -67,6 +69,7 @@ def run_statement(url: str, product: str) -> None:
 
 
 def summarize_passed(statement: str) -> None:
+    """Create summary for passed statement"""
     add_to_summary(
         f"### {statement}",
         "Status: **Passed**"
@@ -74,6 +77,7 @@ def summarize_passed(statement: str) -> None:
 
 
 def summarize_failed(statement: str, error: str) -> None:
+    """Create summary for failed statement run"""
     add_to_summary(
         f"### {statement}",
         "Status: **Failed**",
@@ -83,13 +87,15 @@ def summarize_failed(statement: str, error: str) -> None:
 
 
 def add_to_summary(*text: str) -> None:
-    with open(GITHUB_SUMMARY, 'a') as f:
+    """Add given text to summary"""
+    with open(GITHUB_SUMMARY, 'a', encoding="utf-8") as f:
         for line in text:
             print(line, file=f)
 
 
 def process_entry(entry: Dict[str, Union[str, List[str]]]) -> None:
     """Process a single entry from the setup"""
+    assert isinstance(entry["url"], str) and isinstance(entry["product"], str)
     pull_or_clone_repository(entry["url"])
     run_statement(entry["url"], entry["product"])
 
