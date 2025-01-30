@@ -1,0 +1,141 @@
+"""Serializing IoT system and related class"""
+
+from typing import Type
+
+from toolsaf.common.address import Addresses, EntityTag
+from toolsaf.core.model import Addressable, Connection, Host, IoTSystem, NetworkNode, NodeComponent, Service
+from toolsaf.core.components import Software
+from toolsaf.common.serializer.serializer import Serializer, SerializerStream
+
+
+class NetworkNodeSerializer(Serializer):
+    """Base class for serializing network nodes"""
+    def __init__(self, class_type: Type, root: 'IoTSystemSerializer'):
+        super().__init__(class_type)
+        self.root = root
+        self.config.map_simple_fields("name")
+
+    def write(self, obj: NetworkNode, stream: SerializerStream):
+        if not self.root.miniature:
+            stream.write_field("long_name", obj.long_name())
+        if self.root.verdicts:
+            expected = obj.get_expected_verdict(None)
+            if expected:
+                stream.write_field("expected", expected.value)  # fail or pass
+            stream.write_field("verdict", obj.get_verdict(self.root.verdict_cache).value)
+        for c in obj.children:
+            if not self.root.unexpected and not c.is_expected():
+                continue
+            stream.push_object(c, at_object=obj)
+        for c in obj.components:
+            stream.push_object(c, at_object=obj)
+
+
+class IoTSystemSerializer(NetworkNodeSerializer):
+    """Serializer for IoT system"""
+    def __init__(self, system: IoTSystem,  miniature=False, unexpected=True, verdicts=False):
+        super().__init__(IoTSystem, self)
+        self.miniature = miniature
+        self.unexpected = unexpected
+        self.verdicts = verdicts
+        self.verdict_cache = {}
+        self.config.type_name = "system"
+        self.config.map_new_class("host", HostSerializer(self))
+        self.config.map_new_class("service", ServiceSerializer(self))
+        self.config.map_new_class("connection", ConnectionSerializer(self))
+        self.config.map_new_class("component", NodeComponentSerializer(self))
+        self.config.map_new_class("sw", SoftwareSerializer(self))
+        self.system = system
+
+    def write(self, obj: IoTSystem, stream: SerializerStream):
+        super().write(obj, stream)
+        if not self.miniature:
+            stream.write_field("tag", "_")  # NOTE: A 'tag' for UI
+        for c in obj.get_connections():
+            stream.push_object(c, at_object=obj)
+
+class AddressableSerializer(NetworkNodeSerializer):
+    """Base class for serializing addressable entities"""
+    def write(self, obj: Addressable, stream: SerializerStream):
+        super().write(obj, stream)
+        if not self.root.miniature and obj.get_tag():
+            # (unexpected entities do not have tags)
+            stream.write_field("tag", obj.get_tag().get_parseable_value())
+        if not self.root.miniature and obj.addresses:
+            stream.write_field("addresses", [a.get_parseable_value() for a in obj.addresses if not a.is_tag()])
+
+    def read(self, obj: Addressable, stream: SerializerStream):
+        obj.parent = stream.resolve("at")
+        obj.parent.children.append(obj)
+        tag = stream.get("tag")
+        if tag:
+            obj.addresses.add(EntityTag.new(tag))
+        ads = stream.get("addresses") or []
+        for a in ads:
+            obj.addresses.add(Addresses.parse_address(a))
+
+
+class HostSerializer(AddressableSerializer):
+    """Serializer for Host"""
+    def __init__(self, root: IoTSystemSerializer):
+        super().__init__(Host, root)
+
+    def new(self, stream: SerializerStream) -> Host:
+        return Host(stream.resolve("at"), stream["name"])
+
+
+class ServiceSerializer(AddressableSerializer):
+    """Serializer for Service"""
+    def __init__(self, root: IoTSystemSerializer):
+        super().__init__(Service, root)
+        self.config.map_simple_fields("name")
+
+    def new(self, stream: SerializerStream) -> Service:
+        return Service(stream["name"], stream.resolve("at"))
+
+
+class ConnectionSerializer(Serializer):
+    """Serializer for Connection"""
+    def __init__(self, root: IoTSystemSerializer):
+        super().__init__(Connection)
+        self.root = root
+
+    def new(self, stream: SerializerStream) -> Connection:
+        return Connection(stream.resolve("source"), stream.resolve("target"))
+
+    def write(self, obj: Connection, stream: SerializerStream):
+        stream.write_field("source", stream.id_for(obj.source))
+        stream.write_field("target", stream.id_for(obj.target))
+        if not self.root.miniature:
+            stream.write_field("source_long_name", obj.source.long_name())
+            stream.write_field("target_long_name", obj.target.long_name())
+
+            s_tag, d_tag = obj.source.get_tag(), obj.target.get_tag()
+            if s_tag and d_tag:
+                # front-end can use this to identify connection
+                stream.write_field("tag", f"{s_tag}--{d_tag}")
+            stream.write_field("name", obj.target.name)
+            stream.write_field("long_name", obj.long_name())
+
+
+class NodeComponentSerializer(Serializer):
+    """Serializer for NodeComponent"""
+    def __init__(self, root: IoTSystemSerializer, class_type=NodeComponent):
+        super().__init__(class_type)
+        self.root = root
+        self.config.abstract = True  # do not create instances of this class
+        self.config.map_simple_fields("name")
+
+    def write(self, obj: NetworkNode, stream: SerializerStream):
+        if not self.root.miniature:
+            stream.write_field("long_name", obj.long_name())
+
+
+class SoftwareSerializer(NodeComponentSerializer):
+    """Serializer for Software"""
+    def __init__(self, root: IoTSystemSerializer):
+        super().__init__(root, class_type=Software)
+        self.config.abstract = False
+
+    def new(self, stream: SerializerStream) -> Software:
+        return Software(stream.resolve("at"), stream["name"])
