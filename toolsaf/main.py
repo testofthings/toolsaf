@@ -68,6 +68,10 @@ class SystemBuilder:
         """Load built-in evidence"""
         raise NotImplementedError()
 
+    def ignore(self, file_type: str) -> 'IgnoreRulesBuilder':
+        """Create a new ignore rule for given file type"""
+        raise NotImplementedError()
+
 
 class NodeBuilder:
     """Node builder base class"""
@@ -261,6 +265,21 @@ class DiagramVisualizer:
 
     def create_diagram(self) -> None:
         """Create a diagram based on the security statement"""
+        raise NotImplementedError()
+
+
+class IgnoreRulesBuilder:
+    """Collection of ignore rules"""
+    def properties(self, *results: Tuple[str, ...]) -> Self:
+        """Set properties that this rule applies to. Leave empty for all properties"""
+        raise NotImplementedError()
+
+    def at(self, *locations: Union[SystemBuilder, NodeBuilder, ConnectionBuilder]) -> Self:
+        """Set specific locations to which this rule is applied to"""
+        raise NotImplementedError()
+
+    def because(self, explanation: str) -> Self:
+        """Set reason for the ignore"""
         raise NotImplementedError()
 
 

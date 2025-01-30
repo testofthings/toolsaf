@@ -20,7 +20,7 @@ from toolsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP,
                         CookieBuilder, HostBuilder, NetworkBuilder, NodeBuilder, NodeVisualBuilder,
                         ConfigurationException, OSBuilder, Proprietary, ProtocolConfigurer, ProtocolType,
                         SensitiveDataBuilder, ServiceBuilder, ServiceGroupBuilder, ServiceOrGroup,
-                        SoftwareBuilder, SystemBuilder)
+                        SoftwareBuilder, SystemBuilder, IgnoreRulesBuilder)
 from toolsaf.core.main_tools import EvidenceLoader, NodeManipulator
 from toolsaf.core.model import Addressable, Connection, Host, IoTSystem, SensitiveData, Service
 from toolsaf.common.property import Properties, PropertyKey
@@ -35,6 +35,7 @@ from toolsaf.common.verdict import Verdict
 from toolsaf.common.android import MobilePermissions
 from toolsaf.adapters.spdx_reader import SPDXJson
 from toolsaf.diagram_visualizer import DiagramVisualizer
+from toolsaf.core.ignore_rules import IgnoreRules
 
 
 class SystemBackend(SystemBuilder):
@@ -48,6 +49,7 @@ class SystemBackend(SystemBuilder):
         self.diagram = DiagramVisualizer(self)
         self.loaders: List[EvidenceLoader] = []
         self.protocols: Dict[Any, 'ProtocolBackend'] = {}
+        self.ignore_backend = IgnoreRulesBackend()
 
     def network(self, subnet: str="", ip_mask: Optional[str] = None) -> 'NetworkBuilder':
         if subnet:
@@ -136,6 +138,10 @@ class SystemBackend(SystemBuilder):
         el = EvidenceLoader(self)
         self.loaders.append(el)
         return el
+
+    def ignore(self, file_type: str) -> 'IgnoreRulesBackend':
+        self.ignore_backend.new_rule(file_type)
+        return self.ignore_backend
 
     # Backend methods
 
@@ -994,6 +1000,43 @@ class OSBackend(OSBuilder):
         return self
 
 
+class IgnoreRulesBackend(IgnoreRulesBuilder):
+    """Collection of ignore rules"""
+    def __init__(self) -> None:
+        self.ignore_rules = IgnoreRules()
+
+    def new_rule(self, file_type: str) -> Self:
+        """Create a new rule"""
+        self.ignore_rules.new_rule(file_type)
+        return self
+
+    def properties(self, *properties: Tuple[str, ...]) -> Self:
+        self.ignore_rules.properties(*properties)
+        return self
+
+    def at(self, *locations: Union[SystemBuilder, NodeBuilder, ConnectionBuilder]) -> Self:
+        for location in locations:
+            if isinstance(location, SystemBackend):
+                self.ignore_rules.at(location.system)
+            elif isinstance(location, NodeBackend):
+                self.ignore_rules.at(location.entity)
+            elif isinstance(location, SoftwareBackend):
+                self.ignore_rules.at(location.sw)
+            elif isinstance(location, ConnectionBackend):
+                self.ignore_rules.at(location.connection)
+            else:
+                raise ConfigurationException(f"Unsupported value given ({location})")
+        return self
+
+    def because(self, explanation: str) -> Self:
+        self.ignore_rules.because(explanation)
+        return self
+
+    def get_rules(self) -> IgnoreRules:
+        """Get the ignore rules"""
+        return self.ignore_rules
+
+
 class SystemBackendRunner(SystemBackend):
     """Backend for system builder"""
 
@@ -1044,7 +1087,7 @@ class SystemBackendRunner(SystemBackend):
 
         self.finish_()
 
-        registry = Registry(Inspector(self.system))
+        registry = Registry(Inspector(self.system, self.ignore_backend.get_rules()))
 
         log_events = args.log_events
         if log_events:

@@ -33,7 +33,7 @@ class SSHAuditScan(EndpointTool):
         evidence = Evidence(source)
 
         # NOTE: There would be CVEs to collect, if someone listens for them!
-        issues = {}
+        issues: Dict[PropertyKey, str] = {}
 
         def make_issue(op: str, kind: str, item: Dict[str, str]) -> None:
             op_s = "Change" if op == "chg" else "Delete"
