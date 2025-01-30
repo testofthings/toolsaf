@@ -17,7 +17,8 @@ class NetworkNodeSerializer(Serializer):
         self.root = root
         self.config.map_simple_fields("name")
 
-    def write(self, obj: NetworkNode, stream: SerializerStream) -> None:
+    def write(self, obj: Any, stream: SerializerStream) -> None:
+        assert isinstance(obj, NetworkNode)
         if not self.root.miniature:
             stream.write_field("long_name", obj.long_name())
         if self.root.verdicts:
@@ -50,7 +51,8 @@ class IoTSystemSerializer(NetworkNodeSerializer):
         self.config.map_new_class("sw", SoftwareSerializer(self))
         self.system = system
 
-    def write(self, obj: IoTSystem, stream: SerializerStream) -> None:
+    def write(self, obj: Any, stream: SerializerStream) -> None:
+        assert isinstance(obj, IoTSystem)
         super().write(obj, stream)
         if not self.miniature:
             stream.write_field("tag", "_")  # NOTE: A 'tag' for UI
@@ -59,7 +61,9 @@ class IoTSystemSerializer(NetworkNodeSerializer):
 
 class AddressableSerializer(NetworkNodeSerializer):
     """Base class for serializing addressable entities"""
-    def write(self, obj: Addressable, stream: SerializerStream):
+
+    def write(self, obj: Any, stream: SerializerStream) -> None:
+        isinstance(obj, Addressable)
         super().write(obj, stream)
         tag = obj.get_tag()
         if not self.root.miniature and tag:
@@ -107,7 +111,8 @@ class ConnectionSerializer(Serializer):
     def new(self, stream: SerializerStream) -> Connection:
         return Connection(stream.resolve("source"), stream.resolve("target"))
 
-    def write(self, obj: Connection, stream: SerializerStream) -> None:
+    def write(self, obj: Any, stream: SerializerStream) -> None:
+        assert isinstance(obj, Connection)
         stream.write_field("source", stream.id_for(obj.source))
         stream.write_field("target", stream.id_for(obj.target))
         if not self.root.miniature:
@@ -130,7 +135,8 @@ class NodeComponentSerializer(Serializer):
         self.config.abstract = True  # do not create instances of this class
         self.config.map_simple_fields("name")
 
-    def write(self, obj: NetworkNode, stream: SerializerStream) -> None:
+    def write(self, obj: Any, stream: SerializerStream) -> None:
+        assert isinstance(obj, NodeComponent)
         if not self.root.miniature:
             stream.write_field("long_name", obj.long_name())
 
