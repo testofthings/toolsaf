@@ -137,6 +137,10 @@ class SerializerStream:
         ref = self.context.id_for(obj)
         self.data[field_name] = ref
 
+    def __contains__(self, obj: Any) -> bool:
+        """Is object in context"""
+        return obj in self.context.identifier_map
+
     def id_for(self, obj: Any) -> str:
         """Get existing object id"""
         return self.context.id_for(obj)
