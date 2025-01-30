@@ -1,6 +1,12 @@
-name: Pylint_and_pytest
+name: Automatic code checks
 
-on: [push]
+on:
+  push:
+    paths:
+      - toolsaf/**
+      - tests/**
+    branches-ignore:
+      - '*no-test*'
 
 jobs:
   build:
@@ -17,12 +23,14 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pylint
-        pip install pytest
+        pip install pylint mypy pytest
         pip install -r requirements.txt
-    - name: Analysing the code with pylint
+    - name: Analyze the code with pylint
       run: |
         pylint toolsaf
-    - name: Run unit tests by pytest
+    - name: Perform static type checks with mypy
+      run: |
+        mypy toolsaf
+    - name: Run unit tests with pytest
       run: |
         pytest tests
