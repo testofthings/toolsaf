@@ -245,7 +245,7 @@ class EventLogger(EventInterface, ModelListener):
             if ver == Verdict.INCON:
                 continue
             ev = lo.event
-            r[ev.evidence] = ver
+            r[ev.evidence] = Verdict.aggregate(ver, r.get(ev.evidence))
         return r
 
     def collect_entity_verdicts(self, source: EvidenceSource) -> Dict[Entity, Verdict]:
