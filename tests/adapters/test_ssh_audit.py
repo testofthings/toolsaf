@@ -56,10 +56,12 @@ def test_process_endpoint():
 
         assert len(ssh_props) == 11
 
-        assert ssh_props[PropertyKey("ssh-audit", "cve-123")].verdict == Verdict.FAIL
-        assert ssh_props[PropertyKey("ssh-audit", "cve-123")].explanation == "example description"
-        assert ssh_props[PropertyKey("ssh-audit", "cve-456")].verdict == Verdict.FAIL
-        assert ssh_props[PropertyKey("ssh-audit", "cve-456")].explanation == "test"
+        key1 = PropertyKey("ssh-audit", "cve-123")
+        key2 = PropertyKey("ssh-audit", "cve-456")
+        assert ssh_props[key1].verdict == Verdict.FAIL
+        assert ssh_props[key1].explanation == "CVSSv2: 7.0, example description"
+        assert ssh_props[key2].verdict == Verdict.FAIL
+        assert ssh_props[key2].explanation == "CVSSv2: 1.0, test"
 
         assert ssh_props[_del_key("kex", "name1")].verdict == Verdict.FAIL
         assert ssh_props[_del_key("key", "name2")].verdict == Verdict.FAIL
