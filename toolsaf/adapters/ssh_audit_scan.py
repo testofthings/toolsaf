@@ -34,7 +34,7 @@ class SSHAuditScan(EndpointTool):
 
         for cve in raw.get("cves", []):
             key = PropertyKey(self.tool_label, cve["name"].lower())
-            explanation = f"CVSSv2: {cve["cvssv2"]}, {cve["description"]}"
+            explanation = f"CVSSv2: {cve['cvssv2']}, {cve['description']}"
             interface.property_address_update(
                 PropertyAddressEvent(evidence, endpoint, key.verdict(Verdict.FAIL, explanation=explanation))
             )
