@@ -54,7 +54,13 @@ def test_process_endpoint():
         assert len(device.entity.children) == 1
         ssh_props = device.entity.children[0].properties
 
-        assert len(ssh_props) == 9
+        assert len(ssh_props) == 11
+
+        assert ssh_props[PropertyKey("ssh-audit", "cve-123")].verdict == Verdict.FAIL
+        assert ssh_props[PropertyKey("ssh-audit", "cve-123")].explanation == "example description"
+        assert ssh_props[PropertyKey("ssh-audit", "cve-456")].verdict == Verdict.FAIL
+        assert ssh_props[PropertyKey("ssh-audit", "cve-456")].explanation == "test"
+
         assert ssh_props[_del_key("kex", "name1")].verdict == Verdict.FAIL
         assert ssh_props[_del_key("key", "name2")].verdict == Verdict.FAIL
         assert ssh_props[_chg_key("key", "name3")].verdict == Verdict.FAIL

@@ -32,7 +32,12 @@ class SSHAuditScan(EndpointTool):
 
         evidence = Evidence(source)
 
-        # NOTE: There would be CVEs to collect, if someone listens for them!
+        for cve in raw.get("cves", []):
+            key = PropertyKey(self.tool_label, cve["name"].lower())
+            interface.property_address_update(
+                PropertyAddressEvent(evidence, endpoint, key.verdict(Verdict.FAIL, explanation=cve["description"]))
+            )
+
         issues: Dict[PropertyKey, str] = {}
 
         def make_issue(op: str, kind: str, item: Dict[str, str]) -> None:
