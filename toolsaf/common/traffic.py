@@ -82,13 +82,9 @@ class Event:
         """Get value as string"""
         return ""
 
-    def get_comment(self) -> str:
-        """Get comment or empty"""
-        return ""
-
     def get_info(self) -> str:
-        """Short event information"""
-        return self.get_value_string() or self.evidence.source.name
+        """Get short information for log"""
+        return self.get_value_string()
 
     def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict[str, Any]:
         """Get JSON representation of data"""
@@ -119,6 +115,9 @@ class ServiceScan(Event):
         self.endpoint = endpoint
         self.service_name = service_name
 
+    def get_info(self):
+        return f"Scanned {self.endpoint}"
+
     def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict[str, str]:
         r = {
             "endpoint": self.endpoint.get_parseable_value(),
@@ -144,6 +143,9 @@ class HostScan(Event):
         super().__init__(evidence)
         self.host = host
         self.endpoints = endpoints
+
+    def get_info(self):
+        return f"Scanned {self.host}"
 
     def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict[str, Any]:
         return {

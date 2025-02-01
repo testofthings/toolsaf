@@ -73,12 +73,9 @@ class PropertyEvent(Event, Verdictable):
     def get_value_string(self) -> str:
         return self.key_value[0].get_value_string(self.key_value[1])
 
-    def get_comment(self) -> str:
-        return self.key_value[0].get_explanation(self.key_value[1])
-
     def get_info(self) -> str:
-        # without entity, at least for event log
-        return self.key_value[0].get_value_string(self.key_value[1])
+        # get explanation from property
+        return f"{self.key_value[0]}: {self.key_value[0].get_explanation(self.key_value[1])}"
 
     def get_data_json(self, id_resolver: Callable[[Any], Any]) -> Dict[str, Any]:
         k, v = self.key_value
@@ -121,12 +118,8 @@ class PropertyAddressEvent(Event, Verdictable):
     def get_value_string(self) -> str:
         return self.key_value[0].get_value_string(self.key_value[1])
 
-    def get_comment(self) -> str:
-        return self.key_value[0].get_explanation(self.key_value[1])
-
     def get_info(self) -> str:
-        # without entity, at least for event log
-        return self.key_value[0].get_value_string(self.key_value[1])
+        return f"{self.key_value[0]}: {self.key_value[0].get_explanation(self.key_value[1])}"
 
     def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict[str, Any]:
         k, v = self.key_value

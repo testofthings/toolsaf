@@ -85,14 +85,12 @@ class EventLogger(EventInterface, ModelListener):
     def print_event(self, log: LoggingEvent) -> None:
         """Print event for debugging"""
         assert self.event_logger
-        e = log.event
-        s = f"{log.entity.long_name()}," if log.entity else ""
-        s = f"{s:<40}"
-        s += f"{log.get_value_string()},"
-        s = f"{s:<80}"
-        com = e.get_comment() or e.evidence.get_reference()
-        if com:
-            s += f" {com}"
+        s = f"{log.entity.long_name()}" if log.entity else ""
+        s = f"{s:<50}"
+        verdict = log.resolve_verdict()
+        s += verdict.value if verdict != Verdict.INCON else ""
+        s = f"{s:<57}"
+        s += f" {log.event.get_info()}"
         self.event_logger.info(s)
 
     def _add(self, event: Event, entity: Optional[Entity] = None,
