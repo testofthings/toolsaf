@@ -72,6 +72,16 @@ class LoggingEvent:
         return v
 
 
+class LoggedData:
+    """Logged data collected from event(s)"""
+    def __init__(self, verdict: Verdict, info: str) -> None:
+        self.verdict = verdict
+        self.info = info
+
+    def __repr__(self):
+        return f"{self.verdict.value}: {self.info}"
+
+
 class EventLogger(EventInterface, ModelListener):
     """Event logger implementation"""
     def __init__(self, inspector: Inspector) -> None:
@@ -233,27 +243,22 @@ class EventLogger(EventInterface, ModelListener):
                     r.setdefault(p, {}).setdefault(lo.event.evidence.source, []).append(lo.entity)
         return r
 
-    def collect_evidence_verdicts(self, source: EvidenceSource) -> Dict[Evidence, Verdict]:
-        """Collect batch verdicts"""
-        r: Dict[Evidence, Verdict] = {}
+    def collect_evidence_log_data(self, source: EvidenceSource) -> Dict[Evidence, List[LoggedData]]:
+        """Collect batch log data"""
+        r: Dict[Evidence, List[LoggedData]] = {}
         for lo in self.logs:
             if lo.event.evidence.source != source:
                 continue
-            ver = lo.resolve_verdict()
-            if ver == Verdict.INCON:
-                continue
-            ev = lo.event
-            r[ev.evidence] = Verdict.aggregate(ver, r.get(ev.evidence))
+            data = LoggedData(lo.resolve_verdict(), lo.event.get_info())
+            r.setdefault(lo.event.evidence, []).append(data)
         return r
 
-    def collect_entity_verdicts(self, source: EvidenceSource) -> Dict[Entity, Verdict]:
-        """Collect entity verdicts"""
-        r: Dict[Entity, Verdict] = {}
+    def collect_entity_log_data(self, source: EvidenceSource) -> Dict[Entity, List[LoggedData]]:
+        """Collect entity log data"""
+        r: Dict[Entity, List[LoggedData]] = {}
         for lo in self.logs:
             if lo.event.evidence.source != source or not lo.entity:
                 continue
-            ver = lo.resolve_verdict()
-            if ver == Verdict.INCON:
-                continue
-            r[lo.entity] = Verdict.aggregate(ver, r.get(lo.entity))
+            data = LoggedData(lo.resolve_verdict(), lo.event.get_info())
+            r.setdefault(lo.entity, []).append(data)
         return r
