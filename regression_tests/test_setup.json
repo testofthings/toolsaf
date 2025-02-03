@@ -1,0 +1,19 @@
+{
+    "statements": [
+        {
+            "url": "https://github.com/testofthings/statement-ruuvi",
+            "product": "ruuvi",
+            "data": []
+        },
+        {
+            "url": "https://github.com/testofthings/statement-deltaco-smart-outdoor-plug",
+            "product": "smart-outdoor-plug",
+            "data": []
+        },
+        {
+            "url": "https://github.com/testofthings/statement-IPC360",
+            "product": "ipc360",
+            "data": []
+        }
+    ]
+}

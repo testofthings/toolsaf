@@ -92,8 +92,8 @@ def test_add_http_status(protocol, entry, exp_status_code, exp_verdict):
 @pytest.mark.parametrize(
     "vulnerabilities, exp_verdict",
     [
-        ({"CVE-2021-12345": {"summary": "test"}}, Verdict.FAIL),
-        ({"CVE-2021-12345": {"summary": "test"}, "CVE-2021-67890": {"summary": "test"}}, Verdict.FAIL),
+        ({"CVE-2021-12345": {"summary": "test", "cvss": 5.1}}, Verdict.FAIL),
+        ({"CVE-2021-12345": {"summary": "test", "cvss": 5.1}, "CVE-2021-67890": {"summary": "test", "cvss": 5.1}}, Verdict.FAIL),
     ]
 )
 def test_add_vulnerabilities(vulnerabilities, exp_verdict):
@@ -102,7 +102,7 @@ def test_add_vulnerabilities(vulnerabilities, exp_verdict):
     scan.add_vulnerabilities(vulnerabilities, service)
     for vulnerability in vulnerabilities:
         assert service.properties[PropertyKey(scan.tool_label, vulnerability)].verdict == exp_verdict
-        assert service.properties[PropertyKey(scan.tool_label, vulnerability)].explanation == "test"
+        assert service.properties[PropertyKey(scan.tool_label, vulnerability)].explanation == "CVSS: 5.1, test"
 
 
 @pytest.mark.parametrize(
@@ -163,7 +163,7 @@ def test_process_file():
             {
                 "_shodan": {"module": "http-simple"},
                 "port": 80, "transport": "tcp", "http": {"status": 200},
-                "vulns": {"CVE-2021-12345": {}},
+                "vulns": {"CVE-2021-12345": {"cvss": 1.0, "summary": "test"}},
                 "opts": {"heartbleed": "2025/01/01 00:00:00 - SAFE\n"},
                 "cpe23": ["cpe:2.3:a:example:software:1.0"]
             }

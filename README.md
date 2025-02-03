@@ -111,6 +111,10 @@ Security statements for **real devices** are available in their own repositories
 - [Deltaco Smart Outdoor Plug](https://github.com/testofthings/statement-deltaco-smart-outdoor-plug)
 - [IPC360](https://github.com/testofthings/statement-IPC360)
 
+## Contact
+
+Contact Toolsaf team by mail <code>&#116;&#111;&#111;&#108;&#115;&#97;&#102;&#32;&#97;&#116;&#32;&#116;&#101;&#115;&#116;&#111;&#102;&#116;&#104;&#105;&#110;&#103;&#115;&#46;&#99;&#111;&#109;</code>
+
 ## License and Contributions
 
 The project is published with [MIT license](LICENSE).

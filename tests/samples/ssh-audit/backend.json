@@ -1,4 +1,16 @@
 {
+    "cves": [
+        {
+            "cvssv2": 7.0,
+            "description": "example description",
+            "name": "CVE-123"
+        },
+        {
+            "cvssv2": 1.0,
+            "description": "test",
+            "name": "CVE-456"
+        }
+    ],
     "recommendations": {
         "critical": {
             "del": {
