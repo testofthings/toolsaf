@@ -76,6 +76,11 @@ class SerializerStream:
         """Push object to queue"""
         self.push_to.append((obj, at_object))
 
+    def push_all(self, iterator: Iterable[Any], at_object: Any = None) -> None:
+        """Push all objects to queue"""
+        for obj in iterator:
+            self.push_to.append((obj, at_object))
+
     def _write_object(self, obj: Any, at_object: Any, serializer: 'Serializer') -> bool:
         """Write object"""
         obj_type = type(obj)
