@@ -63,7 +63,7 @@ class ShodanScan(SystemWideTool):
             if (key := PropertyKey(self.tool_label, vulnerability)) not in self._key_set:
                 self._key_set.add(key)
                 veridct = Verdict.FAIL
-                comment = info["summary"] if "summary" in info else ""
+                comment = f"CVSS: {info['cvss']}, {info['summary']}"
                 prop_event = PropertyEvent(self._evidence, service, key.verdict(veridct, comment))
                 self._interface.property_update(prop_event)
 

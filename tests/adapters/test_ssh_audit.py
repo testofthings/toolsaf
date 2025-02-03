@@ -54,7 +54,15 @@ def test_process_endpoint():
         assert len(device.entity.children) == 1
         ssh_props = device.entity.children[0].properties
 
-        assert len(ssh_props) == 9
+        assert len(ssh_props) == 11
+
+        key1 = PropertyKey("ssh-audit", "cve-123")
+        key2 = PropertyKey("ssh-audit", "cve-456")
+        assert ssh_props[key1].verdict == Verdict.FAIL
+        assert ssh_props[key1].explanation == "CVSSv2: 7.0, example description"
+        assert ssh_props[key2].verdict == Verdict.FAIL
+        assert ssh_props[key2].explanation == "CVSSv2: 1.0, test"
+
         assert ssh_props[_del_key("kex", "name1")].verdict == Verdict.FAIL
         assert ssh_props[_del_key("key", "name2")].verdict == Verdict.FAIL
         assert ssh_props[_chg_key("key", "name3")].verdict == Verdict.FAIL
