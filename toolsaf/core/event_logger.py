@@ -78,7 +78,7 @@ class LoggedData:
         self.verdict = verdict
         self.info = info
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.verdict.value}: {self.info}"
 
 

@@ -115,7 +115,7 @@ class ServiceScan(Event):
         self.endpoint = endpoint
         self.service_name = service_name
 
-    def get_info(self):
+    def get_info(self) -> str:
         return f"Scanned {self.endpoint}"
 
     def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict[str, str]:
@@ -144,7 +144,7 @@ class HostScan(Event):
         self.host = host
         self.endpoints = endpoints
 
-    def get_info(self):
+    def get_info(self) -> str:
         return f"Scanned {self.host}"
 
     def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict[str, Any]:
@@ -301,7 +301,7 @@ class EthernetFlow(Flow):
         self.source = HWAddress.new(source)
         return self
 
-    def get_info(self):
+    def get_info(self) -> str:
         s = self.source
         t = self.target
         pt = f" 0x{self.payload:04x}" if self.payload >= 0 else ""
@@ -433,7 +433,7 @@ class IPFlow(Flow):
         self.source = HWAddress.new(source[0]), IPAddress.new(source[1]), source[2]
         return self
 
-    def get_info(self):
+    def get_info(self) -> str:
         s = self.source
         t = self.target
         return f"IP {s[0]} {s[1]}:{s[2]} >> {t[0]} {t[1]}:{t[2]} {self.protocol.value.upper()}"
@@ -516,7 +516,7 @@ class BLEAdvertisementFlow(Flow):
             r = r.reverse()
         return r
 
-    def get_info(self):
+    def get_info(self) -> str:
         return f"{self.source} >> 0x{self.event_type:02x} {self.protocol.value.upper()}"
 
     def __repr__(self) -> str:
