@@ -301,11 +301,14 @@ class EthernetFlow(Flow):
         self.source = HWAddress.new(source)
         return self
 
-    def __repr__(self) -> str:
+    def get_info(self):
         s = self.source
         t = self.target
         pt = f" 0x{self.payload:04x}" if self.payload >= 0 else ""
-        return f"{s} >> {t}{pt} {self.protocol.value.upper()}"
+        return f"Ethernet {s} >> {t}{pt} {self.protocol.value.upper()}"
+
+    def __repr__(self) -> str:
+        return self.get_info()
 
     def __hash__(self) -> int:
         return self.source.__hash__() ^ self.target.__hash__() ^ self.payload ^ self.protocol.__hash__() \
@@ -430,10 +433,13 @@ class IPFlow(Flow):
         self.source = HWAddress.new(source[0]), IPAddress.new(source[1]), source[2]
         return self
 
-    def __repr__(self) -> str:
+    def get_info(self):
         s = self.source
         t = self.target
-        return f"{s[0]} {s[1]}:{s[2]} >> {t[0]} {t[1]}:{t[2]} {self.protocol.value.upper()}"
+        return f"IP {s[0]} {s[1]}:{s[2]} >> {t[0]} {t[1]}:{t[2]} {self.protocol.value.upper()}"
+
+    def __repr__(self) -> str:
+        return self.get_info()
 
     def __hash__(self) -> int:
         return self.source.__hash__() ^ self.target.__hash__() ^ self.protocol.__hash__() ^ hash(self.network)
@@ -510,8 +516,11 @@ class BLEAdvertisementFlow(Flow):
             r = r.reverse()
         return r
 
-    def __repr__(self) -> str:
+    def get_info(self):
         return f"{self.source} >> 0x{self.event_type:02x} {self.protocol.value.upper()}"
+
+    def __repr__(self) -> str:
+        return self.get_info()
 
     def __hash__(self) -> int:
         return self.source.__hash__() ^ self.event_type ^ self.protocol.__hash__() ^ hash(self.network)
