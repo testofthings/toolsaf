@@ -132,8 +132,8 @@ class SerializerStream:
         """Get attribute by field name or null"""
         return self.data.get(field_name)
 
-    def resolve(self, field_name: str) -> Any:
-        """Resolve object pointed by field"""
+    def resolve(self, field_name: str = "at") -> Any:
+        """Resolve object pointed by field, default to 'at' parent pointer"""
         ref = self.data[field_name]
         return self.context.object_map.get(ref)
 
