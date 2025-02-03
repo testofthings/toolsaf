@@ -19,13 +19,11 @@ class NetworkNodeSerializer(Serializer):
 
     def write(self, obj: Any, stream: SerializerStream) -> None:
         assert isinstance(obj, NetworkNode)
-        if not self.root.miniature:
-            stream.write_field("long_name", obj.long_name())
-        if self.root.verdicts:
-            expected = obj.get_expected_verdict(None)
-            if expected:
-                stream.write_field("expected", expected.value)  # fail or pass
-            stream.write_field("verdict", obj.get_verdict(self.root.verdict_cache).value)
+        stream.write_field("long_name", obj.long_name())
+        expected = obj.get_expected_verdict(None)
+        if expected:
+            stream.write_field("expected", expected.value)  # fail or pass
+        stream.write_field("verdict", obj.get_verdict(self.root.verdict_cache).value)
         for c in obj.children:
             if not self.root.unexpected and not c.is_expected():
                 continue
@@ -36,12 +34,9 @@ class NetworkNodeSerializer(Serializer):
 
 class IoTSystemSerializer(NetworkNodeSerializer):
     """Serializer for IoT system"""
-    def __init__(self, system: IoTSystem, miniature: bool = False, unexpected: bool = True,
-                 verdicts: bool = False) -> None:
+    def __init__(self, system: IoTSystem, unexpected: bool = True) -> None:
         super().__init__(IoTSystem, self)
-        self.miniature = miniature
         self.unexpected = unexpected
-        self.verdicts = verdicts
         self.verdict_cache: Dict[Entity, Verdict] = {}
         self.config.type_name = "system"
         self.config.map_new_class("host", HostSerializer(self))
@@ -54,10 +49,10 @@ class IoTSystemSerializer(NetworkNodeSerializer):
     def write(self, obj: Any, stream: SerializerStream) -> None:
         assert isinstance(obj, IoTSystem)
         super().write(obj, stream)
-        if not self.miniature:
-            stream.write_field("tag", "_")  # NOTE: A 'tag' for UI
+        stream.write_field("tag", "_")  # NOTE: A 'tag' for UI
         for c in obj.get_connections():
             stream.push_object(c, at_object=obj)
+
 
 class AddressableSerializer(NetworkNodeSerializer):
     """Base class for serializing addressable entities"""
@@ -66,10 +61,10 @@ class AddressableSerializer(NetworkNodeSerializer):
         isinstance(obj, Addressable)
         super().write(obj, stream)
         tag = obj.get_tag()
-        if not self.root.miniature and tag:
+        if tag:
             # (unexpected entities do not have tags)
             stream.write_field("tag", tag.get_parseable_value())
-        if not self.root.miniature and obj.addresses:
+        if obj.addresses:
             stream.write_field("addresses", [a.get_parseable_value() for a in obj.addresses if not a.is_tag()])
 
     def read(self, obj: Addressable, stream: SerializerStream) -> None:
@@ -115,16 +110,15 @@ class ConnectionSerializer(Serializer):
         assert isinstance(obj, Connection)
         stream.write_field("source", stream.id_for(obj.source))
         stream.write_field("target", stream.id_for(obj.target))
-        if not self.root.miniature:
-            stream.write_field("source_long_name", obj.source.long_name())
-            stream.write_field("target_long_name", obj.target.long_name())
+        stream.write_field("source_long_name", obj.source.long_name())
+        stream.write_field("target_long_name", obj.target.long_name())
 
-            s_tag, d_tag = obj.source.get_tag(), obj.target.get_tag()
-            if s_tag and d_tag:
-                # front-end can use this to identify connection
-                stream.write_field("tag", f"{s_tag}--{d_tag}")
-            stream.write_field("name", obj.target.name)
-            stream.write_field("long_name", obj.long_name())
+        s_tag, d_tag = obj.source.get_tag(), obj.target.get_tag()
+        if s_tag and d_tag:
+            # front-end can use this to identify connection
+            stream.write_field("tag", f"{s_tag}--{d_tag}")
+        stream.write_field("name", obj.target.name)
+        stream.write_field("long_name", obj.long_name())
 
 
 class NodeComponentSerializer(Serializer):
@@ -137,8 +131,7 @@ class NodeComponentSerializer(Serializer):
 
     def write(self, obj: Any, stream: SerializerStream) -> None:
         assert isinstance(obj, NodeComponent)
-        if not self.root.miniature:
-            stream.write_field("long_name", obj.long_name())
+        stream.write_field("long_name", obj.long_name())
 
 
 class SoftwareSerializer(NodeComponentSerializer):
