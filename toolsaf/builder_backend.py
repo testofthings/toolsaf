@@ -19,6 +19,7 @@ from toolsaf.core.components import CookieData, Cookies, DataReference, StoredDa
 from toolsaf.common.release_info import ReleaseInfo
 from toolsaf.common.property import PropertyVerdictValue
 from toolsaf.core.event_logger import EventLogger
+from toolsaf.core.serializer.event_serializers import EvidenceSourceSerializer
 from toolsaf.core.serializer.model_serializers import IoTSystemSerializer
 from toolsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP, IP, TLS, MQTT, FTP,
                         BLEAdvertisement, ConnectionBuilder,
@@ -1143,6 +1144,13 @@ class SystemBackendRunner(SystemBackend):
             stream = SerializerStream(ser)
             for js in stream.write(self.system):
                 print(json.dumps(js, indent=4))
+            # dump events, if any
+            if registry.logging.logs:
+                log_ser = EvidenceSourceSerializer()
+                stream = SerializerStream(log_ser, context=stream.context)
+                for log in registry.logging.logs:
+                    for js in log_ser.write_event(log.event, stream):
+                        print(json.dumps(js, indent=4))
         else:
             with_files = bool(args.with_files)
             report = Report(registry)
