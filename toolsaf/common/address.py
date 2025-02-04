@@ -566,7 +566,7 @@ class AddressAtNetwork:
         return f"{self.address}@{self.network}"
 
 
-class AddressSegment(AnyAddress):
+class AddressSegment:
     """Address segments in an AddressSequence"""
     def __init__(self, address: AnyAddress, segment_type: Optional[str]=None) -> None:
         self.segment_type = segment_type
