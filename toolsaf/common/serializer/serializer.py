@@ -1,7 +1,7 @@
 """Serializer module, to serialize and deserialize objects to JSON"""
 
 import json
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, Callable
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, Callable, TypeVar
 
 class SerializerContext:
     """Serializer context"""

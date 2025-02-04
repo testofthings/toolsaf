@@ -3,7 +3,7 @@
 from typing import Any, Dict, Iterable, Type
 
 from toolsaf.common.address import Addresses
-from toolsaf.common.traffic import Event, Evidence, EvidenceSource, ServiceScan
+from toolsaf.common.traffic import Event, Evidence, EvidenceSource, HostScan, ServiceScan
 from toolsaf.common.serializer.serializer import Serializer, SerializerStream
 
 
@@ -37,6 +37,7 @@ class EvidenceSourceSerializer(Serializer):
         # must map classes to have type information in the JSON
         self.config.map_new_class("source", self)
         self.config.map_new_class("service-scan", ServiceScanSerializer())
+        self.config.map_new_class("host-scan", HostScanSerializer())
         # Fallback for event, for not-implemented serializers
         self.config.map_new_class("event", EventSerializer(class_type=Event))
 
@@ -67,3 +68,19 @@ class ServiceScanSerializer(EventSerializer):
     def new(self, stream: SerializerStream) -> Any:
         ev = self.read_evidence(stream)
         return ServiceScan(ev, endpoint=Addresses.parse_endpoint(stream["address"]))
+
+class HostScanSerializer(EventSerializer):
+    """Service scan serializer"""
+    def __init__(self) -> None:
+        super().__init__(HostScan)
+
+    def write(self, obj: Any, stream: SerializerStream) -> None:
+        super().write(obj, stream)
+        assert isinstance(obj, HostScan)
+        stream.write_field("host", obj.host.get_parseable_value())
+        stream.write_field("endpoints", [e.get_parseable_value() for e in obj.endpoints])
+
+    def new(self, stream: SerializerStream) -> Any:
+        ev = self.read_evidence(stream)
+        eps = [Addresses.parse_endpoint(a) for a in stream["endpoints"]]
+        return HostScan(ev, host=Addresses.parse_endpoint(stream["host"]), endpoints=set(eps))
