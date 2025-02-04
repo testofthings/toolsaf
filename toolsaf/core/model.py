@@ -77,10 +77,11 @@ class Connection(Entity):
         return f"{self.source.long_name()} => {self.target.long_name()}"
 
     def get_system_address(self) -> AddressSequence:
-        return AddressSequence.connection(
+        ad = AddressSequence.connection(
             self.source.get_system_address(),
             self.target.get_system_address()
         )
+        return ad
 
 T = TypeVar("T")
 
@@ -551,10 +552,11 @@ class Service(Addressable):
         return self.parent.get_parent_host()
 
     def get_system_address(self) -> AddressSequence:
-        return AddressSequence.service(
+        ad = AddressSequence.service(
             parent=self.parent.get_system_address(),
             service=list(self.addresses)[0]
         )
+        return ad
 
     def __repr__(self) -> str:
         return f"{self.status_string()} {self.parent.long_name()} {self.name}"

@@ -123,13 +123,6 @@ def test_address_sequence():
     assert seq.segments == [_segment(addr1), _segment(addr2)]
 
 
-def test_address_sequence_parse_segment():
-    seq = AddressSequence.new()
-    assert seq._parse_segment("Test") == "Test"
-    # assert seq._parse_segment("Test 1") == "Test_1"  # No spaces in addresses
-    assert seq._parse_segment("*/tcp:80") == "tcp:80"
-
-
 def test_address_sequence_get_parseable_value():
     addr1 = _segment(EntityTag.new("Test1"))
     addr2 = _segment(EndpointAddress(EntityTag("Test2"), Protocol.TCP, 80))
@@ -263,3 +256,35 @@ def test_parse_system_address():
         _segment(EntityTag("VM"), "software"),
         _segment(EndpointAddress(EntityTag("VirtualEnv"), Protocol.UDP, 123))
     ])
+
+
+def test_system_endpoint_address():
+    # Endpoint address with host
+    ep = AddressSequence.new(EndpointAddress(EntityTag("Device"), Protocol.TCP, 1234))
+    # Endpoint address ANY host, as it is used in services
+    ep_any = AddressSequence.new(EntityTag("Device"), EndpointAddress(Addresses.ANY, Protocol.TCP, 1234))
+    # Explicit endpoint address for a service
+    ep_exp = AddressSequence.new(EntityTag("Device"), EndpointAddress(IPAddresses.BROADCAST, Protocol.TCP, 1234))
+
+    ep_s = ep.get_parseable_value()
+    ep_any_s = ep_any.get_parseable_value()
+    ep_exp_s = ep_exp.get_parseable_value()
+    assert ep_s == "Device/tcp:1234"
+    assert ep_any_s == "Device/tcp:1234"
+    assert ep_exp_s == "Device&255.255.255.255/tcp:1234"
+
+    ep2 = Addresses.parse_system_address(ep_s)
+    ep_any2 = Addresses.parse_system_address(ep_any_s)
+    ep_exp2 = Addresses.parse_system_address(ep_exp_s)
+    assert ep2 == ep
+    assert ep_any2 == ep  # Parses into same as ep!
+    assert ep_exp2 == ep_exp2
+
+
+def test_system_endpoint_address_no_protocol():
+    ep = AddressSequence.new(EntityTag("Device"), EndpointAddress(Addresses.ANY, Protocol.ETHERNET))
+    ep_str = ep.get_parseable_value()
+    assert ep_str == "Device/eth"
+    # parsed into one entity tag
+    ep2 = Addresses.parse_system_address(ep_str)
+    assert [s.address for s in ep2.segments] == [EndpointAddress(EntityTag("Device"), Protocol.ETHERNET)]

@@ -573,6 +573,7 @@ class AddressSegment:
         self.address = address
 
     def get_parseable_value(self) -> str:
+        """Get parseable value, append segment type when required"""
         if self.segment_type:
             return f"{self.segment_type}={self.address.get_parseable_value()}"
         return self.address.get_parseable_value()
@@ -633,12 +634,16 @@ class AddressSequence(AnyAddress):
         """Returns new AddressSequence with first segment removed"""
         return AddressSequence(self.segments[1:])
 
-    def _parse_segment(self, segment: str) -> str:
-        """Parse given segment"""
-        return segment.replace("*/", "")
-
     def get_parseable_value(self) -> str:
-        return "&".join([self._parse_segment(segment.get_parseable_value()) for segment in self.segments])
+        segs = []
+        for segment in self.segments:
+            seg_str = segment.get_parseable_value()
+            if segs and seg_str.startswith("*"):
+                # segment is a wildcard endpoint address -> merge with previous without '*'
+                segs[-1] += seg_str[1:]
+                continue
+            segs.append(seg_str)
+        return "&".join(segs)
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, AddressSequence):
