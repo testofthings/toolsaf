@@ -616,11 +616,6 @@ class AddressSequence(AnyAddress):
         return AddressSequence(new_segments_source + new_segments_target)
 
     @classmethod
-    def iot_system(cls, name: str, segment_type: str) -> 'AddressSequence':
-        """Create IoT system sequence"""
-        return AddressSequence([AddressSegment(EntityTag(name), segment_type=segment_type)])
-
-    @classmethod
     def new(cls, *segments: AnyAddress) -> 'AddressSequence':
         """Create new AddressSequence"""
         return AddressSequence(

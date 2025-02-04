@@ -143,10 +143,8 @@ def test_get_system_address():
     system.system.name = "Test System"
     device = system.device("D")
 
-    # IoTSystem
-    assert system.system.get_system_address() == AddressSequence([
-        _segment(EntityTag("Test System"), segment_type="system")
-    ])
+    # IoTSystem - empty sequence
+    assert system.system.get_system_address() == AddressSequence([])
 
     # Host
     assert device.entity.get_system_address() == AddressSequence.new(

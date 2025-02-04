@@ -845,7 +845,7 @@ class IoTSystem(NetworkNode):
         return se, path
 
     def get_system_address(self) -> AddressSequence:
-        return AddressSequence.iot_system(self.name, segment_type=self.concept_name)
+        return AddressSequence([])  # empty sequence
 
     def __repr__(self) -> str:
         s = [self.long_name()]
