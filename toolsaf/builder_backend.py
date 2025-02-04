@@ -6,16 +6,20 @@ import logging
 import pathlib
 import sys
 import inspect
+import json
+
 from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union, cast, Set
 
 from toolsaf.common.address import (AddressAtNetwork, Addresses, AnyAddress, DNSName, EndpointAddress, EntityTag,
                                   HWAddress, HWAddresses, IPAddress, IPAddresses, Network, Protocol, PseudoAddress)
 from toolsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status
 from toolsaf.adapters.batch_import import BatchData, BatchImporter, LabelFilter
+from toolsaf.common.serializer.serializer import SerializerStream
 from toolsaf.core.components import CookieData, Cookies, DataReference, StoredData, OperatingSystem, Software
 from toolsaf.common.release_info import ReleaseInfo
 from toolsaf.common.property import PropertyVerdictValue
 from toolsaf.core.event_logger import EventLogger
+from toolsaf.core.serializer.model_serializers import IoTSystemSerializer
 from toolsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP, IP, TLS, MQTT, FTP,
                         BLEAdvertisement, ConnectionBuilder,
                         CookieBuilder, HostBuilder, NetworkBuilder, NodeBuilder, NodeVisualBuilder,
@@ -1077,6 +1081,7 @@ class SystemBackendRunner(SystemBackend):
                             help="Add default DNS server handling")
         parser.add_argument("-l", "--log", dest="log_level", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                             help="Set the logging level", default=None)
+        parser.add_argument("--statement-json", action="store_true", help="Dump security statement JSON to stdout")
         parser.add_argument("--db", type=str, help="Connect to SQL database")
         parser.add_argument(
             "--log-events", action="store_true", help="Log events")
@@ -1132,17 +1137,24 @@ class SystemBackendRunner(SystemBackend):
 
         load_data = LoadedData(self.system, registry.logging, batch_import.batch_data)
 
+        if args.statement_json:
+            # dump security statement JSON
+            ser = IoTSystemSerializer(self.system)
+            stream = SerializerStream(ser)
+            for js in stream.write(self.system):
+                print(json.dumps(js, indent=4))
+        else:
+            with_files = bool(args.with_files)
+            report = Report(registry)
+            report.source_count = 3 if with_files else 0
+            report.show = args.show
+            report.no_truncate = bool(args.no_truncate)
+            report.use_color_flag = bool(args.color)
+            report.print_report(sys.stdout)
+
         if custom_arguments is not None:
             # custom arguments, return without 'running' anything
             return load_data
-
-        with_files = bool(args.with_files)
-        report = Report(registry)
-        report.source_count = 3 if with_files else 0
-        report.show = args.show
-        report.no_truncate = bool(args.no_truncate)
-        report.use_color_flag = bool(args.color)
-        report.print_report(sys.stdout)
 
         if args.create_diagram is not None or args.show_diagram is not None:
             self.diagram.set_outformat(args.create_diagram, args.show_diagram)

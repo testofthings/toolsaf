@@ -3,6 +3,7 @@
 from typing import Any, Dict, Type
 
 from toolsaf.common.address import Addresses, EntityTag
+from toolsaf.common.basics import HostType
 from toolsaf.common.entity import Entity
 from toolsaf.common.verdict import Verdict
 from toolsaf.core.model import Addressable, Connection, Host, IoTSystem, NetworkNode, NodeComponent, Service
@@ -19,11 +20,17 @@ class NetworkNodeSerializer(Serializer):
 
     def write(self, obj: Any, stream: SerializerStream) -> None:
         assert isinstance(obj, NetworkNode)
+        stream.write_field("address", obj.get_system_address().get_parseable_value())
         stream.write_field("long_name", obj.long_name())
+        stream.write_field("host_type", obj.host_type.value)
         expected = obj.get_expected_verdict(None)
         if expected:
             stream.write_field("expected", expected.value)  # fail or pass
-        stream.write_field("verdict", obj.get_verdict(self.root.verdict_cache).value)
+        verdict = obj.get_verdict(self.root.verdict_cache)
+        if verdict != Verdict.INCON:
+            stream.write_field("verdict", verdict.value)
+        if obj.external_activity:
+            stream.write_field("external_activity", obj.external_activity.value)
         for c in obj.children:
             if not self.root.unexpected and not c.is_expected():
                 continue
@@ -31,6 +38,9 @@ class NetworkNodeSerializer(Serializer):
         for co in obj.components:
             stream.push_object(co, at_object=obj)
 
+    def read(self, obj: Any, stream: SerializerStream) -> None:
+        assert isinstance(obj, NetworkNode)
+        obj.host_type = HostType(stream["host_type"])
 
 class IoTSystemSerializer(NetworkNodeSerializer):
     """Serializer for IoT system"""
@@ -66,6 +76,8 @@ class AddressableSerializer(NetworkNodeSerializer):
             stream.write_field("tag", tag.get_parseable_value())
         if obj.addresses:
             stream.write_field("addresses", [a.get_parseable_value() for a in obj.addresses if not a.is_tag()])
+        if obj.any_host:
+            stream.write_field("any_host", True)  # only write when True
 
     def read(self, obj: Addressable, stream: SerializerStream) -> None:
         obj.parent = stream.resolve("at")
@@ -108,6 +120,7 @@ class ConnectionSerializer(Serializer):
 
     def write(self, obj: Any, stream: SerializerStream) -> None:
         assert isinstance(obj, Connection)
+        stream.write_field("address", obj.get_system_address().get_parseable_value())
         stream.write_field("source", stream.id_for(obj.source))
         stream.write_field("target", stream.id_for(obj.target))
         stream.write_field("source_long_name", obj.source.long_name())

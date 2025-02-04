@@ -15,18 +15,19 @@ def test_simple_model():
     assert len(js) == 7
     assert js[0].items() >= {'id': 'id1', 'type': 'system', 'name': 'Test'}.items()
     assert js[1] == {
+        'address': 'Device',
         'addresses': ['10:00:00:00:00:01|hw'],
+        'host_type': 'Device',
         'at': 'id1',
         'id': 'id2',
         'long_name': 'Device 1',
         'name': 'Device 1',
         'tag': 'Device',
         'type': 'host',
-        'verdict': 'Incon',
     }
     assert js[3].items() >= {'id': 'id4', 'at': 'id2', 'type': 'sw', 'name': 'Device 1 SW'}.items()
-    # check last item to detail
     assert js[6] == {
+        'address': 'source=Device_2&target=Device&tcp:22',
         'id': 'id7',
         'at': 'id1',
         'long_name': 'some.local => Device 1 SSH:22',
