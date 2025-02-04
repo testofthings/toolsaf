@@ -144,6 +144,7 @@ class NodeComponentSerializer(Serializer):
 
     def write(self, obj: Any, stream: SerializerStream) -> None:
         assert isinstance(obj, NodeComponent)
+        stream.write_field("address", obj.get_system_address().get_parseable_value())
         stream.write_field("long_name", obj.long_name())
 
 
