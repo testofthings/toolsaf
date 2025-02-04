@@ -90,8 +90,9 @@ class SerializerStream:
             serial = serializer.config.find_serializer(obj_type)
         if serial.config.abstract:
             return False
-        ref = serial.config.resolve_id(obj, self.context)
-        self.data["id"] = ref
+        if serial.config.with_id:
+            ref = serial.config.resolve_id(obj, self.context)
+            self.data["id"] = ref
         if at_object:
             self.data["at"] = self.context.id_for(at_object)
         if serial.config.type_name:
@@ -162,6 +163,7 @@ class SerializerConfiguration:
         self.class_type = class_type
         self.abstract = False
         self.type_name = ""
+        self.with_id = True
         self.explicit_id: Optional[Callable[[Any], str]] = None
         self.simple_fields: List[str] = []
         self.decorators: List[Serializer] = []
@@ -174,6 +176,7 @@ class SerializerConfiguration:
 
     def map_new_class(self, type_name: str, serializer: 'Serializer') -> None:
         """Map class"""
+        assert isinstance(type_name, str) and isinstance(serializer, Serializer)
         self.name_map[type_name] = serializer
         serializer.config.type_name = type_name
         if serializer.config.class_type:
