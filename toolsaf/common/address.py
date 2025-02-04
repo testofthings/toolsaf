@@ -636,7 +636,7 @@ class AddressSequence(AnyAddress):
 
     def _parse_segment(self, segment: str) -> str:
         """Parse given segment"""
-        return segment.replace(" ", "_").replace("*/", "")
+        return segment.replace("*/", "")
 
     def get_parseable_value(self) -> str:
         return "&".join([self._parse_segment(segment.get_parseable_value()) for segment in self.segments])
