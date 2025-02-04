@@ -566,13 +566,14 @@ class AddressAtNetwork:
         return f"{self.address}@{self.network}"
 
 
-class AddressSegment(AnyAddress):
+class AddressSegment:
     """Address segments in an AddressSequence"""
     def __init__(self, address: AnyAddress, segment_type: Optional[str]=None) -> None:
         self.segment_type = segment_type
         self.address = address
 
     def get_parseable_value(self) -> str:
+        """Get parseable value, append segment type when required"""
         if self.segment_type:
             return f"{self.segment_type}={self.address.get_parseable_value()}"
         return self.address.get_parseable_value()
@@ -615,11 +616,6 @@ class AddressSequence(AnyAddress):
         return AddressSequence(new_segments_source + new_segments_target)
 
     @classmethod
-    def iot_system(cls, name: str, segment_type: str) -> 'AddressSequence':
-        """Create IoT system sequence"""
-        return AddressSequence([AddressSegment(EntityTag(name), segment_type=segment_type)])
-
-    @classmethod
     def new(cls, *segments: AnyAddress) -> 'AddressSequence':
         """Create new AddressSequence"""
         return AddressSequence(
@@ -628,18 +624,21 @@ class AddressSequence(AnyAddress):
 
     def __init__(self, segments: List[AddressSegment]) -> None:
         self.segments = segments
-        self.value = self.get_parseable_value()
 
     def tail(self) -> 'AddressSequence':
         """Returns new AddressSequence with first segment removed"""
         return AddressSequence(self.segments[1:])
 
-    def _parse_segment(self, segment: str) -> str:
-        """Parse given segment"""
-        return segment.replace(" ", "_").replace("*/", "")
-
     def get_parseable_value(self) -> str:
-        return "&".join([self._parse_segment(segment.get_parseable_value()) for segment in self.segments])
+        segs: List[str] = []
+        for segment in self.segments:
+            seg_str = segment.get_parseable_value()
+            if segs and seg_str.startswith("*"):
+                # segment is a wildcard endpoint address -> merge with previous without '*'
+                segs[-1] += seg_str[1:]
+                continue
+            segs.append(seg_str)
+        return "&".join(segs)
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, AddressSequence):
@@ -647,4 +646,4 @@ class AddressSequence(AnyAddress):
         return self.segments == other.segments
 
     def __repr__(self) -> str:
-        return self.value
+        return self.get_parseable_value()
