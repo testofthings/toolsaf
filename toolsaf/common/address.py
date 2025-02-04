@@ -630,7 +630,7 @@ class AddressSequence(AnyAddress):
         return AddressSequence(self.segments[1:])
 
     def get_parseable_value(self) -> str:
-        segs = []
+        segs: List[str] = []
         for segment in self.segments:
             seg_str = segment.get_parseable_value()
             if segs and seg_str.startswith("*"):
