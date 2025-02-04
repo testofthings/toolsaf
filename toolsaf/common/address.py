@@ -628,7 +628,6 @@ class AddressSequence(AnyAddress):
 
     def __init__(self, segments: List[AddressSegment]) -> None:
         self.segments = segments
-        self.value = self.get_parseable_value()
 
     def tail(self) -> 'AddressSequence':
         """Returns new AddressSequence with first segment removed"""
@@ -647,4 +646,4 @@ class AddressSequence(AnyAddress):
         return self.segments == other.segments
 
     def __repr__(self) -> str:
-        return self.value
+        return self.get_parseable_value()
