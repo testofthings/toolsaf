@@ -14,14 +14,14 @@ Propietary custom serialization is used for following reasons:
 
 Serializer code is located to [serializer.py](../../toolsaf/common/serializer/serializer.py):
 
-  - class `Serializer` which is base class for serializer classes.
+  - Generics class `Serializer` which is base class for serializer classes.
     A serializer can write and/or read instances of a specified class.
 
-  - class `SerializerContext` maintains mapping between serialized objects and their _ids_.
+  - Class `SerializerContext` maintains mapping between serialized objects and their _ids_.
 
-  - class `SerializerStream` writes and reads objects with help of serializer and context.
+  - Class `SerializerStream` writes and reads objects with help of serializer and context.
 
-  - class `SerializerConfiguration` stores configuration per serializer.
+  - Class `SerializerConfiguration` stores configuration per serializer.
     Each serializer has the configuration in field `config`.
 
 Basic premise is that the serialized classes do not need to have any changes for reading or writing.
@@ -67,10 +67,10 @@ class AClass:
         self.a_string = a_string
         self.a_int = a_int
 
-class AClassSerializer(Serializer):
+class AClassSerializer(Serializer[AClass]):
     """Serializer for A class"""
     def __init__(self):
-        super().__init__(class_type=AClass)
+        super().__init__(AClass)
         self.config.map_simple_fields("a_string", "a_int")
 ```
 
@@ -83,7 +83,7 @@ for proper serialization. E.g. consider the following serializer.
 ```python
 class NetworkNodeSerializer(Serializer):
     """Base class for serializing network nodes"""
-    def __init__(self, class_type: Type[Any], root: 'IoTSystemSerializer') -> None:
+    def __init__(self, root: 'IoTSystemSerializer') -> None:
         super().__init__(class_type)
         self.root = root
 ```
@@ -92,23 +92,23 @@ methods explained below.
 
 ### Custom writer and reader
 
-A serializer class can implement a custom writer in following manner:
+A serializer class can implement a custom writer in following manner by `+=`operator (there is also method `write_field` if this looks too scary).
 ```python
-    def write(self, obj: Any, stream: SerializerStream) -> None:
-        assert isinstanceof(obj, AClass)
-        # Write custom JSON
-        stream.write_field("custom-value", "...")
+    def write(self, obj: AClass, stream: SerializerStream) -> None:
+        stream += "custom-value", "..."
 ```
 
 It is custom to assert the proper class for the writen data.
-Reading is quite similar, the JSON fields can accessed through stream.
+Reading is done by "subtracting" from stream with `-` , like this (method `get` works similar fashion).
 
 ```python
     def read(self, obj: Any, stream: SerializerStream) -> None:
         assert isinstanceof(obj, AClass)
         # Read from custom JSON
-        custom_value = stream["custom-value"]  # get string value from JSON field
+        custom_value = stream - "custom-value"  # get string value from JSON
 ```
+
+Above code returns `None` when "custom-value" is not present. Getter `stream["custom-value"]` would throw an exception.
 
 ### Creating new instances on read
 
@@ -117,7 +117,7 @@ If other constructors should be used, then serializer can implement
 method `new`.
 
 ```python
-    def new(self, stream: SerializerStream) -> Any:
+    def new(self, stream: SerializerStream) -> AClass:
         # Return new instance of the proper class
 ```
 
@@ -125,32 +125,35 @@ method `new`.
 
 Consider the follwing class which holds list of objects of type `AClass`,
 and its serializer class.
-Note how the `write` and `read` methods explicitly serialize sub-objects, which
+Note how the `write`  method explicitly serialize sub-objects, which
 are pushed and read from the stream.
+We must also update `AClass` serializer to add the read objects properly.
 
 ```python
+class AClassSerializer(Serializer[AClass]):
+    """Serializer for A class"""
+    def __init__(self):
+        super().__init__(AClass)
+        self.config.map_simple_fields("a_string", "a_int")
+
+    def read(self, obj: AClass, stream: SerializerStream) -> None:
+        parent = stream.resolve(of_type=BClass)
+        parent.sub_instances.append(obj)
+
 class BClass:
     """Test class B for serializer"""
     def __init__(self):
         self.sub_instances: List[AClass] = []
 
-class BClassSerializer(Serializer):
+class BClassSerializer(Serializer[BClass]):
     """Serializer for B class"""
     def __init__(self):
-        super().__init__(class_type=BClass)
-        self.config.map_new_class("a-type", AClassSerializer())
+        super().__init__(BClass)
+        self.config.map_class("a-type", AClassSerializer())
 
-    def write(self, obj: Any, stream: SerializerStream) -> None:
-        assert isinstance(obj, BClass)
+    def write(self, obj: BClass, stream: SerializerStream) -> None:
         stream.push_all(obj.sub_instances, at_object=obj)
 
-    def read(self, obj: Any, stream: SerializerStream) -> None:
-        if isinstance(obj, AClass):
-            parent = stream.resolve()
-            assert isinstance(parent, BClass)
-            parent.sub_instances.append(obj)
-        else:
-            raise ValueError("Unexpected", obj)
 ```
 
 The JSON stream may look like this:
