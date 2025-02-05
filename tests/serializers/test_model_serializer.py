@@ -42,7 +42,7 @@ def test_simple_model():
 
     ser = IoTSystemSerializer(IoTSystem())
     stream = SerializerStream(ser)
-    r = list(stream.read(ser.system, js))
+    r = list(stream.read(js))
     assert len(r) == 7
     assert isinstance(r[0], IoTSystem)
     assert r[0].name == "Test"

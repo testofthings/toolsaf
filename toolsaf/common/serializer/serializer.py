@@ -48,25 +48,16 @@ class SerializerStream:
                 yield self.data
             queue = self.push_to + queue[1:] # depth first order
 
-    def read(self, start: Any, data: Iterable[Dict[str, Any]]) -> Iterable[Any]:
-        """Read from stream"""
-        obj = start
+    def read(self, data: Iterable[Dict[str, Any]]) -> Iterable[Any]:
+        """Read objects from stream"""
         iterator = iter(data)
-        next_data = next(iterator, None)
-        if next_data is None:
-            return
-        self.data = next_data
-        self._read_object(self.serializer, obj)
-        yield obj
-
-        # read the rest...
         next_data = next(iterator, None)
         while next_data is not None:
             self.data = next_data
-            type_name = self.data.get("type", "")
-            serial = self.serializer.config.name_map.get(type_name)
+            type_name = self.data.get("type")
+            serial = self.serializer if type_name is None else self.serializer.config.name_map.get(type_name)
             if not serial:
-                raise ValueError(f"Serializer not found for {type_name}")
+                raise ValueError(f"Serializer not found for type '{type_name}'")
             obj = serial.new(self)
             if obj is None:
                 raise ValueError(f"Serializer {serial} does not support new objects")
@@ -259,9 +250,9 @@ class SerializerBase:
     def write(self, obj: Any, stream: SerializerStream) -> None:
         """Custom write definitions"""
 
-    def new(self, stream: SerializerStream) -> Any:
+    def new(self, _stream: SerializerStream) -> Any:
         """Create new object"""
-        return self.config.class_type(stream)
+        return self.config.class_type()
 
     def read(self, obj: Any, stream: SerializerStream) -> None:
         """Custom read definitions"""
@@ -277,9 +268,9 @@ class Serializer(SerializerBase, Generic[T]):
     def write(self, obj: T, stream: SerializerStream) -> None:
         """Custom write definitions"""
 
-    def new(self, stream: SerializerStream) -> T:
+    def new(self, _stream: SerializerStream) -> T:
         """Create new object"""
-        obj = self.config.class_type(stream)
+        obj = self.config.class_type()
         return cast(T, obj)
 
     def read(self, obj: T, stream: SerializerStream) -> None:

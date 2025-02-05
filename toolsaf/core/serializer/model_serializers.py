@@ -17,7 +17,7 @@ class IoTSystemSerializer(Serializer[IoTSystem]):
         super().__init__(IoTSystem)
         self.unexpected = unexpected
         self.verdict_cache: Dict[Entity, Verdict] = {}
-        self.config.type_name = "system"
+        self.config.map_class("system", self)
         self.config.map_class("network-node", NetworkNodeSerializer(self))
         self.config.map_class("addressable", AddressableSerializer())
         self.config.map_class("host", HostSerializer())
