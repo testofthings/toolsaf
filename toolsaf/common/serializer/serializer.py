@@ -209,7 +209,7 @@ class SerializerConfiguration:
             for s in self.class_map.values():
                 s.config.add_decorator(decorator, sub_type=sub_type)
 
-    def find_serializers(self, serializer: 'Serializer', for_type: Type[Any]) -> List['SerializerBase']:
+    def find_serializers(self, serializer: 'SerializerBase', for_type: Type[Any]) -> List['SerializerBase']:
         """Find serializers for type"""
         s_list = []
         ser = self.class_map.get(for_type)

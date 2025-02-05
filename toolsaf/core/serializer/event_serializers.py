@@ -12,6 +12,18 @@ class EventSerializer(Serializer[Event]):
     def __init__(self) -> None:
         super().__init__(Event)
         self.config.with_id = False  # not all events are hashable, which is fine, we do not refer events
+        # must map classes to have type information in the JSON
+        self.config.map_class("event", self)
+        self.config.map_class("service-scan", ServiceScanSerializer())
+        self.config.map_class("host-scan", HostScanSerializer())
+        self.config.map_class("source", EvidenceSourceSerializer())
+
+    def write_event(self, event: Event, stream: SerializerStream) -> Iterable[Dict[str, Any]]:
+        """Write event, prefix with sources as required"""
+        source = event.evidence.source
+        if source not in stream:
+            yield from stream.write(source)  # write source first
+        yield from stream.write(event)
 
     def write(self, obj: Event, stream: SerializerStream) -> None:
         # merge evidence data here
@@ -33,22 +45,10 @@ class EvidenceSourceSerializer(Serializer[EvidenceSource]):
     def __init__(self) -> None:
         super().__init__(EvidenceSource)
         self.config.map_simple_fields("name", "label", "target", "base_ref")
-        # must map classes to have type information in the JSON
-        self.config.map_class("source", self)
-        self.config.map_class("event", EventSerializer())
-        self.config.map_class("service-scan", ServiceScanSerializer())
-        self.config.map_class("host-scan", HostScanSerializer())
 
     def write(self, obj: EvidenceSource, stream: SerializerStream) -> None:
         if obj.timestamp:
             stream += "timestamp", obj.timestamp.isoformat()
-
-    def write_event(self, event: Event, stream: SerializerStream) -> Iterable[Dict[str, Any]]:
-        """Write event, prefix with sources as required"""
-        source = event.evidence.source
-        if source not in stream:
-            yield from stream.write(source)  # write source first
-        yield from stream.write(event)
 
 
 class ServiceScanSerializer(Serializer[ServiceScan]):
