@@ -202,7 +202,7 @@ class PropertyKey:
 PropertyDict = Dict[PropertyKey, Any]
 
 
-@dataclass
+@dataclass(frozen=True)
 class PropertyVerdictValue(Verdictable):
     """Verdict as property value, explanation optional"""
     verdict: Verdict
@@ -216,7 +216,7 @@ class PropertyVerdictValue(Verdictable):
         return f"[{self.verdict.value}]{s}"
 
 
-@dataclass
+@dataclass(frozen=True)
 class PropertySetValue:
     """Set of keys as property value, explanation optional"""
     sub_keys: Set[PropertyKey]

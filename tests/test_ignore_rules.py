@@ -76,33 +76,33 @@ def test_update_based_on_rules():
     system.ignore("test-type")
     key = PropertyKey("abc", "efg")
     pvv = PropertyVerdictValue(Verdict.FAIL, "Failed")
-    system.ignore_backend.get_rules().update_based_on_rules("test-type", key, pvv, entity)
-    assert pvv.verdict == Verdict.IGNORE
-    assert pvv.explanation == "Failed"
+    new_pvv = system.ignore_backend.get_rules().update_based_on_rules("test-type", key, pvv, entity)
+    assert new_pvv.verdict == Verdict.IGNORE
+    assert new_pvv.explanation == "Failed"
 
     # Ignore key "abc" only
     system.ignore("test-type2").properties("abc").because("test")
     pvv = PropertyVerdictValue(Verdict.FAIL, "Failed")
-    system.ignore_backend.get_rules().update_based_on_rules("test-type2", key, pvv, entity)
-    assert pvv.verdict == Verdict.FAIL
-    assert pvv.explanation == "Failed"
+    new_pvv = system.ignore_backend.get_rules().update_based_on_rules("test-type2", key, pvv, entity)
+    assert new_pvv.verdict == Verdict.FAIL
+    assert new_pvv.explanation == "Failed"
 
     # Reason added
     system.ignore("test-type2").properties("abc:efg").because("test")
-    system.ignore_backend.get_rules().update_based_on_rules("test-type2", key, pvv, entity)
-    assert pvv.verdict == Verdict.IGNORE
-    assert pvv.explanation == "test"
+    new_pvv = system.ignore_backend.get_rules().update_based_on_rules("test-type2", key, pvv, entity)
+    assert new_pvv.verdict == Verdict.IGNORE
+    assert new_pvv.explanation == "test"
 
     # With different at
     system.ignore("test-type3").properties("abc:efg").at(device / TCP(1))
     pvv = PropertyVerdictValue(Verdict.FAIL, "Failed")
-    system.ignore_backend.get_rules().update_based_on_rules("test-type3", key, pvv, entity)
-    assert pvv.verdict == Verdict.FAIL
-    assert pvv.explanation == "Failed"
+    new_pvv = system.ignore_backend.get_rules().update_based_on_rules("test-type3", key, pvv, entity)
+    assert new_pvv.verdict == Verdict.FAIL
+    assert new_pvv.explanation == "Failed"
 
     # With same at
     system.ignore("test-type3").properties("abc:efg").at(device / SSH)
     pvv = PropertyVerdictValue(Verdict.FAIL, "Failed")
-    system.ignore_backend.get_rules().update_based_on_rules("test-type3", key, pvv, entity)
-    assert pvv.verdict == Verdict.IGNORE
-    assert pvv.explanation == "Failed"
+    new_pvv = system.ignore_backend.get_rules().update_based_on_rules("test-type3", key, pvv, entity)
+    assert new_pvv.verdict == Verdict.IGNORE
+    assert new_pvv.explanation == "Failed"
