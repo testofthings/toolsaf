@@ -60,9 +60,10 @@ class SerializerStream:
                 serial = self.serializer
             else:
                 type_name = self.data.get("type")
-                serial = self.serializer if type_name is None else self.serializer.config.name_map.get(type_name)
-                if not serial:
+                rs = self.serializer if type_name is None else self.serializer.config.name_map.get(type_name)
+                if not rs:
                     raise ValueError(f"Serializer not found for type '{type_name}'")
+                serial = rs
                 obj = serial.new(self)
                 if obj is None:
                     raise ValueError(f"Serializer {serial} does not support new objects")

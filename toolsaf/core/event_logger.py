@@ -10,7 +10,7 @@ from toolsaf.common.entity import Entity
 from toolsaf.core.event_interface import EventInterface, PropertyEvent, PropertyAddressEvent
 from toolsaf.core.inspector import Inspector
 from toolsaf.core.model import IoTSystem, Connection, Host, ModelListener, Service
-from toolsaf.common.property import Properties, PropertyKey
+from toolsaf.common.property import Properties, PropertyKey, PropertySetValue
 from toolsaf.core.services import NameEvent
 from toolsaf.common.traffic import Evidence, EvidenceSource, HostScan, ServiceScan, Flow, Event
 
@@ -50,6 +50,8 @@ class LoggingEvent:
             value = self.property_value[1]
             if isinstance(value, Verdictable):
                 return value.get_verdict()
+            if isinstance(value, PropertySetValue) and self.entity:
+                return value.get_overall_verdict(self.entity.properties)
         return Verdict.INCON
 
     def get_properties(self) -> Set[PropertyKey]:
@@ -123,11 +125,8 @@ class EventLogger(EventInterface, ModelListener):
         if self.current is None:
             self.logger.warning("Property change without event to assign it: %s", value[0])
             return
-        # assign all property changes during an event
-        ev = LoggingEvent(self.current.event, entity=entity, property_value=value)
-        self.logs.append(ev)
-        if self.event_logger:
-            self.print_event(ev)
+        # make sure the final property value logged
+        self.current.property_value = value
 
     def connection(self, flow: Flow) -> Optional[Connection]:
         lo = self._add(flow)
