@@ -4,10 +4,10 @@ from typing import Any, Dict, Iterable
 
 from toolsaf.common.address import Addresses, EndpointAddress
 from toolsaf.common.traffic import Event, Evidence, EvidenceSource, HostScan, ServiceScan
-from toolsaf.common.serializer.serializer import GenericSerializer, SerializerStream
+from toolsaf.common.serializer.serializer import Serializer, SerializerStream
 
 
-class EventSerializer(GenericSerializer[Event]):
+class EventSerializer(Serializer[Event]):
     """Base class for event serializers"""
     def __init__(self) -> None:
         super().__init__(Event)
@@ -28,7 +28,7 @@ class EventSerializer(GenericSerializer[Event]):
         return Evidence(source, tail_ref)
 
 
-class EvidenceSourceSerializer(GenericSerializer[EvidenceSource]):
+class EvidenceSourceSerializer(Serializer[EvidenceSource]):
     """Serialize evidence source"""
     def __init__(self) -> None:
         super().__init__(EvidenceSource)
@@ -51,7 +51,7 @@ class EvidenceSourceSerializer(GenericSerializer[EvidenceSource]):
         yield from stream.write(event)
 
 
-class ServiceScanSerializer(GenericSerializer[ServiceScan]):
+class ServiceScanSerializer(Serializer[ServiceScan]):
     """Service scan serializer"""
     def __init__(self) -> None:
         super().__init__(ServiceScan)
@@ -66,7 +66,7 @@ class ServiceScanSerializer(GenericSerializer[ServiceScan]):
         return ServiceScan(ev, endpoint=Addresses.parse_endpoint(stream["address"]))
 
 
-class HostScanSerializer(GenericSerializer[HostScan]):
+class HostScanSerializer(Serializer[HostScan]):
     """Service scan serializer"""
     def __init__(self) -> None:
         super().__init__(HostScan)

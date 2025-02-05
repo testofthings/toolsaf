@@ -1,5 +1,5 @@
 from typing import Any, List
-from toolsaf.common.serializer.serializer import Serializer, SerializerStream
+from toolsaf.common.serializer.serializer import SerializerBase, SerializerStream
 
 
 def test_a_class():
@@ -36,7 +36,7 @@ class AClass:
         self.a_string = a_string
         self.a_int = a_int
 
-class AClassSerializer(Serializer):
+class AClassSerializer(SerializerBase):
     """Serializer for A class"""
     def __init__(self):
         super().__init__(class_type=AClass)
@@ -47,7 +47,7 @@ class BClass:
     def __init__(self):
         self.sub_instances: List[AClass] = []
 
-class BClassSerializer(Serializer):
+class BClassSerializer(SerializerBase):
     """Serializer for B class"""
     def __init__(self):
         super().__init__(class_type=BClass)

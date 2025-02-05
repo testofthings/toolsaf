@@ -29,7 +29,7 @@ class SerializerContext:
 
 class SerializerStream:
     """JSON serialization stream"""
-    def __init__(self, serializer: 'Serializer', context: Optional[SerializerContext] = None) -> None:
+    def __init__(self, serializer: 'SerializerBase', context: Optional[SerializerContext] = None) -> None:
         self.serializer = serializer
         self.context: SerializerContext = SerializerContext() if context is None else context
         self.push_to: List[Tuple[Any, Any]] = []
@@ -83,7 +83,7 @@ class SerializerStream:
         for obj in iterator:
             self.push_to.append((obj, at_object))
 
-    def _write_object(self, obj: Any, at_object: Any, serializer: 'Serializer') -> bool:
+    def _write_object(self, obj: Any, at_object: Any, serializer: 'SerializerBase') -> bool:
         """Write object"""
         obj_type = type(obj)
         if issubclass(obj_type, serializer.config.class_type):
@@ -118,7 +118,7 @@ class SerializerStream:
         """Write custom field"""
         self.data[field_name] = value
 
-    def _read_object(self, serializer: 'Serializer', obj: Any) -> None:
+    def _read_object(self, serializer: 'SerializerBase', obj: Any) -> None:
         """Read object"""
         # class mapping assumed to be in 'stream context'
         series = self.serializer.config.list_applied(serializer)
@@ -175,23 +175,23 @@ class SerializerConfiguration:
         self.with_id = True
         self.explicit_id: Optional[Callable[[Any], str]] = None
         self.simple_fields: List[str] = []
-        self.decorators: List[Serializer] = []
-        self.class_map: Dict[Type[Any], Serializer] = {}
-        self.name_map: Dict[str, Serializer] = {}
+        self.decorators: List[SerializerBase] = []
+        self.class_map: Dict[Type[Any], SerializerBase] = {}
+        self.name_map: Dict[str, SerializerBase] = {}
 
     def map_simple_fields(self, *fields: str) -> None:
         """Map simple fields"""
         self.simple_fields.extend(fields)
 
-    def map_new_class(self, type_name: str, serializer: 'Serializer') -> None:
+    def map_new_class(self, type_name: str, serializer: 'SerializerBase') -> None:
         """Map class"""
-        assert isinstance(type_name, str) and isinstance(serializer, Serializer)
+        assert isinstance(type_name, str) and isinstance(serializer, SerializerBase)
         self.name_map[type_name] = serializer
         serializer.config.type_name = type_name
         if serializer.config.class_type:
             self.class_map[serializer.config.class_type] = serializer
 
-    def add_decorator(self, decorator: 'Serializer', sub_type: Optional[Type[Any]] = None) -> None:
+    def add_decorator(self, decorator: 'SerializerBase', sub_type: Optional[Type[Any]] = None) -> None:
         """Add decorator"""
         if not sub_type:
             # add on this level
@@ -203,7 +203,7 @@ class SerializerConfiguration:
             for s in self.class_map.values():
                 s.config.add_decorator(decorator, sub_type=sub_type)
 
-    def find_serializers(self, for_type: Type[Any]) -> List['Serializer']:
+    def find_serializers(self, for_type: Type[Any]) -> List['SerializerBase']:
         """Find serializers for type"""
         s_list = []
         ser = self.class_map.get(for_type)
@@ -217,7 +217,7 @@ class SerializerConfiguration:
             raise ValueError(f"Serializer not found for {for_type}")
         return s_list
 
-    def list_applied(self, for_serializer: 'Serializer') -> List['Serializer']:
+    def list_applied(self, for_serializer: 'SerializerBase') -> List['SerializerBase']:
         """List applied serializers for a serializer, which will be last"""
         s_list = [for_serializer]
         for sc in for_serializer.config.class_type.__mro__:
@@ -240,7 +240,7 @@ class SerializerConfiguration:
         return self.class_type.__name__
 
 
-class Serializer:
+class SerializerBase:
     """Class serializer base class"""
     def __init__(self, class_type: Type[Any]) -> None:
         self.config = SerializerConfiguration(class_type)
@@ -262,10 +262,10 @@ class Serializer:
     def __repr__(self) -> str:
         return str(self.config)
 
-class GenericSerializer(Serializer, Generic[T]):
+class Serializer(SerializerBase, Generic[T]):
     """Class serializer with generics"""
     def __init__(self, class_type: Type[T]) -> None:
-        Serializer.__init__(self, class_type)
+        SerializerBase.__init__(self, class_type)
 
     def write(self, obj: T, stream: SerializerStream) -> None:
         """Custom write definitions"""
