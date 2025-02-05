@@ -86,10 +86,7 @@ class SerializerStream:
     def _write_object(self, obj: Any, at_object: Any, serializer: 'SerializerBase') -> bool:
         """Write object"""
         obj_type = type(obj)
-        if issubclass(obj_type, serializer.config.class_type):
-            series = serializer.config.list_applied(serializer)
-        else:
-            series = serializer.config.find_serializers(obj_type)
+        series = self.serializer.config.find_serializers(serializer, obj_type)
         config = series[0].config
         if config.abstract:
             return False
@@ -212,16 +209,17 @@ class SerializerConfiguration:
             for s in self.class_map.values():
                 s.config.add_decorator(decorator, sub_type=sub_type)
 
-    def find_serializers(self, for_type: Type[Any]) -> List['SerializerBase']:
+    def find_serializers(self, serializer: 'Serializer', for_type: Type[Any]) -> List['SerializerBase']:
         """Find serializers for type"""
         s_list = []
         ser = self.class_map.get(for_type)
-        if ser:
-            s_list.append(ser)
         for sc in for_type.__mro__:
             ser = self.class_map.get(sc)
             if ser:
                 s_list.append(ser)
+        if issubclass(for_type, serializer.config.class_type) and serializer not in s_list:
+            # given serializer not mapped, use it still
+            s_list.insert(0, serializer)
         if not s_list:
             raise ValueError(f"Serializer not found for {for_type}")
         return s_list
