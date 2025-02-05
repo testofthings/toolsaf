@@ -18,7 +18,7 @@ class EventSerializer(Serializer[Event]):
         ev = obj.evidence
         stream.write_object_id("source-id", ev.source)
         if ev.tail_ref:
-            stream.write_field("ref", ev.tail_ref)
+            stream += "ref", ev.tail_ref
 
     @classmethod
     def read_evidence(cls, stream: SerializerStream) -> Evidence:
@@ -34,14 +34,14 @@ class EvidenceSourceSerializer(Serializer[EvidenceSource]):
         super().__init__(EvidenceSource)
         self.config.map_simple_fields("name", "label", "target", "base_ref")
         # must map classes to have type information in the JSON
-        self.config.map_new_class("source", self)
-        self.config.map_new_class("event", EventSerializer())
-        self.config.map_new_class("service-scan", ServiceScanSerializer())
-        self.config.map_new_class("host-scan", HostScanSerializer())
+        self.config.map_class("source", self)
+        self.config.map_class("event", EventSerializer())
+        self.config.map_class("service-scan", ServiceScanSerializer())
+        self.config.map_class("host-scan", HostScanSerializer())
 
     def write(self, obj: EvidenceSource, stream: SerializerStream) -> None:
         if obj.timestamp:
-            stream.write_field("timestamp", obj.timestamp.isoformat())
+            stream += "timestamp", obj.timestamp.isoformat()
 
     def write_event(self, event: Event, stream: SerializerStream) -> Iterable[Dict[str, Any]]:
         """Write event, prefix with sources as required"""
@@ -59,7 +59,7 @@ class ServiceScanSerializer(Serializer[ServiceScan]):
         self.config.map_simple_fields("service_name")
 
     def write(self, obj: ServiceScan, stream: SerializerStream) -> None:
-        stream.write_field("address", obj.endpoint.get_parseable_value())
+        stream += "address", obj.endpoint.get_parseable_value()
 
     def new(self, stream: SerializerStream) -> Any:
         ev = EventSerializer.read_evidence(stream)
@@ -73,8 +73,8 @@ class HostScanSerializer(Serializer[HostScan]):
         self.config.with_id = False
 
     def write(self, obj: Any, stream: SerializerStream) -> None:
-        stream.write_field("host", obj.host.get_parseable_value())
-        stream.write_field("endpoints", [e.get_parseable_value() for e in obj.endpoints])
+        stream += "host", obj.host.get_parseable_value()
+        stream += "endpoints", [e.get_parseable_value() for e in obj.endpoints]
 
     def new(self, stream: SerializerStream) -> Any:
         ev = EventSerializer.read_evidence(stream)

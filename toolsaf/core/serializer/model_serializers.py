@@ -18,17 +18,17 @@ class IoTSystemSerializer(Serializer[IoTSystem]):
         self.unexpected = unexpected
         self.verdict_cache: Dict[Entity, Verdict] = {}
         self.config.type_name = "system"
-        self.config.map_new_class("network-node", NetworkNodeSerializer(self))
-        self.config.map_new_class("addressable", AddressableSerializer())
-        self.config.map_new_class("host", HostSerializer())
-        self.config.map_new_class("service", ServiceSerializer())
-        self.config.map_new_class("connection", ConnectionSerializer())
-        self.config.map_new_class("component", NodeComponentSerializer())
-        self.config.map_new_class("sw", SoftwareSerializer())
+        self.config.map_class("network-node", NetworkNodeSerializer(self))
+        self.config.map_class("addressable", AddressableSerializer())
+        self.config.map_class("host", HostSerializer())
+        self.config.map_class("service", ServiceSerializer())
+        self.config.map_class("connection", ConnectionSerializer())
+        self.config.map_class("component", NodeComponentSerializer())
+        self.config.map_class("sw", SoftwareSerializer())
         self.system = system
 
     def write(self, obj: IoTSystem, stream: SerializerStream) -> None:
-        stream.write_field("tag", "_")  # NOTE: A 'tag' for UI
+        stream += "tag", "_"  # NOTE: A 'tag' for UI
         for c in obj.get_connections():
             stream.push_object(c, at_object=obj)
 
@@ -42,17 +42,17 @@ class NetworkNodeSerializer(Serializer[NetworkNode]):
         self.config.map_simple_fields("name")
 
     def write(self, obj: NetworkNode, stream: SerializerStream) -> None:
-        stream.write_field("address", obj.get_system_address().get_parseable_value())
-        stream.write_field("long_name", obj.long_name())
-        stream.write_field("host_type", obj.host_type.value)
+        stream += "address", obj.get_system_address().get_parseable_value()
+        stream += "long_name", obj.long_name()
+        stream += "host_type", obj.host_type.value
         expected = obj.get_expected_verdict(None)
         if expected:
-            stream.write_field("expected", expected.value)  # fail or pass
+            stream += "expected", expected.value  # fail or pass
         verdict = obj.get_verdict(self.root.verdict_cache)
         if verdict != Verdict.INCON:
-            stream.write_field("verdict", verdict.value)
+            stream += "verdict", verdict.value
         if obj.external_activity:
-            stream.write_field("external_activity", obj.external_activity.value)
+            stream += "external_activity", obj.external_activity.value
         for c in obj.children:
             if not self.root.unexpected and not c.is_expected():
                 continue
@@ -74,16 +74,16 @@ class AddressableSerializer(Serializer[Addressable]):
         tag = obj.get_tag()
         if tag:
             # (unexpected entities do not have tags)
-            stream.write_field("tag", tag.get_parseable_value())
+            stream += "tag", tag.get_parseable_value()
         if obj.addresses:
-            stream.write_field("addresses", [a.get_parseable_value() for a in obj.addresses if not a.is_tag()])
+            stream += "addresses", [a.get_parseable_value() for a in obj.addresses if not a.is_tag()]
         if obj.any_host:
-            stream.write_field("any_host", True)  # only write when True
+            stream += "any_host", True  # only write when True
 
     def read(self, obj: Addressable, stream: SerializerStream) -> None:
         obj.parent = stream.resolve("at", of_type=Addressable)
         obj.parent.children.append(obj)
-        tag = stream.get("tag")
+        tag = stream - "tag"
         if tag:
             obj.addresses.add(EntityTag.new(tag))
         ads = stream.get("addresses") or []
@@ -116,18 +116,18 @@ class ConnectionSerializer(Serializer[Connection]):
         super().__init__(Connection)
 
     def write(self, obj: Connection, stream: SerializerStream) -> None:
-        stream.write_field("address", obj.get_system_address().get_parseable_value())
-        stream.write_field("source", stream.id_for(obj.source))
-        stream.write_field("target", stream.id_for(obj.target))
-        stream.write_field("source_long_name", obj.source.long_name())
-        stream.write_field("target_long_name", obj.target.long_name())
+        stream += "address", obj.get_system_address().get_parseable_value()
+        stream += "source", stream.id_for(obj.source)
+        stream += "target", stream.id_for(obj.target)
+        stream += "source_long_name", obj.source.long_name()
+        stream += "target_long_name", obj.target.long_name()
 
         s_tag, d_tag = obj.source.get_tag(), obj.target.get_tag()
         if s_tag and d_tag:
             # front-end can use this to identify connection
-            stream.write_field("tag", f"{s_tag}--{d_tag}")
-        stream.write_field("name", obj.target.name)
-        stream.write_field("long_name", obj.long_name())
+            stream += "tag", f"{s_tag}--{d_tag}"
+        stream += "name", obj.target.name
+        stream += "long_name", obj.long_name()
 
     def new(self, stream: SerializerStream) -> Connection:
         return Connection(stream.resolve("source", of_type=Addressable),
@@ -142,8 +142,8 @@ class NodeComponentSerializer(Serializer[NodeComponent]):
         self.config.map_simple_fields("name")
 
     def write(self, obj: NodeComponent, stream: SerializerStream) -> None:
-        stream.write_field("address", obj.get_system_address().get_parseable_value())
-        stream.write_field("long_name", obj.long_name())
+        stream += "address", obj.get_system_address().get_parseable_value()
+        stream += "long_name", obj.long_name()
 
 
 class SoftwareSerializer(SerializerBase):

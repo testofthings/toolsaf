@@ -51,7 +51,7 @@ class BClassSerializer(SerializerBase):
     """Serializer for B class"""
     def __init__(self):
         super().__init__(class_type=BClass)
-        self.config.map_new_class("a-type", AClassSerializer())
+        self.config.map_class("a-type", AClassSerializer())
 
     def write(self, obj: Any, stream: SerializerStream) -> None:
         assert isinstance(obj, BClass)

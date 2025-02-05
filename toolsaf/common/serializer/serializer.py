@@ -1,7 +1,7 @@
 """Serializer module, to serialize and deserialize objects to JSON"""
 
 import json
-from typing import Any, Dict, Generic, Iterable, List, Optional, Tuple, Type, Callable, TypeVar, cast
+from typing import Any, Dict, Generic, Iterable, List, Optional, Self, Tuple, Type, Callable, TypeVar, cast
 
 T = TypeVar("T")
 
@@ -114,6 +114,11 @@ class SerializerStream:
         self.push_to = self.push_to + queue  # depth first order
         return True
 
+    def __iadd__(self, field_value: Tuple[str, Any]) -> Self:
+        """Write custom field"""
+        self.data[field_value[0]] = field_value[1]
+        return self
+
     def write_field(self, field_name: str, value: Any) -> None:
         """Write custom field"""
         self.data[field_name] = value
@@ -134,8 +139,12 @@ class SerializerStream:
             dec.read(obj, self)
 
     def __getitem__(self, field_name: str) -> Any:
-        """Get attribute by field name"""
+        """Get attribute by field name, which must exist"""
         return self.data[field_name]
+
+    def __sub__(self, field_name: str) -> Optional[Any]:
+        """Get attribute by field name or null"""
+        return self.data.get(field_name)
 
     def get(self, field_name: str) -> Optional[Any]:
         """Get attribute by field name or null"""
@@ -183,7 +192,7 @@ class SerializerConfiguration:
         """Map simple fields"""
         self.simple_fields.extend(fields)
 
-    def map_new_class(self, type_name: str, serializer: 'SerializerBase') -> None:
+    def map_class(self, type_name: str, serializer: 'SerializerBase') -> None:
         """Map class"""
         assert isinstance(type_name, str) and isinstance(serializer, SerializerBase)
         self.name_map[type_name] = serializer
