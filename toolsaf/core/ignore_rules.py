@@ -49,12 +49,12 @@ class IgnoreRules:
         self._current_rule.explanation = explanation
 
     def update_based_on_rules(self, file_type: str, key: PropertyKey,
-            prop_verd_value: PropertyVerdictValue, at: Entity) -> PropertyVerdictValue:
+            verdict_value: PropertyVerdictValue, at: Entity) -> PropertyVerdictValue:
         """Update given propertys verdict and explanation at given location"""
         for rule in self.rules.get(file_type, []):
             if (key in rule.properties or not rule.properties) and (not rule.at or at in rule.at):
                 new_pvv = PropertyVerdictValue(
-                    Verdict.IGNORE, explanation=rule.explanation if rule.explanation else prop_verd_value.explanation
+                    Verdict.IGNORE, explanation=rule.explanation if rule.explanation else verdict_value.explanation
                 )
                 return new_pvv
-        return prop_verd_value
+        return verdict_value
