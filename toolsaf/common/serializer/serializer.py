@@ -142,7 +142,21 @@ class SerializerStream:
         """Resolve object pointed by field, default to 'at' parent pointer"""
         ref = self.data[field_name]
         obj = self.context.object_map.get(ref)
+        if obj is None:
+            raise ValueError(f"Object '{ref}' is not known")
+        if of_type:
+            assert isinstance(obj, of_type), f"Unexpected type: {type(obj)}"
+            return obj
         return cast(T, obj)
+
+    def resolve_optional(self, field_name: str = "at", of_type: Optional[Type[T]] = None) -> Optional[T]:
+        """Resolve object pointed by field or None, default to 'at' parent pointer"""
+        ref = self.data.get(field_name)
+        if ref is None:
+            return None
+        obj = self.context.object_map.get(ref)
+        assert obj is None or of_type is None or isinstance(obj, of_type)
+        return obj
 
     def write_object_id(self, field_name: str, obj: Any, optional: bool=False) -> None:
         """Write object id"""

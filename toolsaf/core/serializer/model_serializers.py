@@ -81,7 +81,7 @@ class AddressableSerializer(Serializer[Addressable]):
             stream += "any_host", True  # only write when True
 
     def read(self, obj: Addressable, stream: SerializerStream) -> None:
-        obj.parent = stream.resolve("at", of_type=Addressable)
+        obj.parent = stream.resolve("at", of_type=NetworkNode)
         obj.parent.children.append(obj)
         tag = stream - "tag"
         if tag:
