@@ -1,6 +1,6 @@
 """Event interface to consume model events"""
 
-from typing import Dict, Optional, Type, Callable, Any, Tuple
+from typing import Dict, List, Optional, Type, Callable, Any, Tuple
 
 from toolsaf.common.address import Addresses, AnyAddress
 from toolsaf.common.verdict import Verdict
@@ -70,12 +70,14 @@ class PropertyEvent(Event, Verdictable):
         v = self.key_value[1]
         return v.get_verdict() if isinstance(v, Verdictable) else Verdict.INCON
 
-    def get_value_string(self) -> str:
-        return self.key_value[0].get_value_string(self.key_value[1])
-
     def get_info(self) -> str:
-        # get explanation from property
-        return f"{self.key_value[0]}: {self.key_value[0].get_explanation(self.key_value[1])}"
+        return self.key_value[0].get_explanation(self.key_value[1])
+
+    def get_value_string(self) -> str:
+        return f"{self.key_value[0]}: {self.get_info()}"
+
+    def get_properties(self) -> List[PropertyKey]:
+        return [self.key_value[0]]
 
     def get_data_json(self, id_resolver: Callable[[Any], Any]) -> Dict[str, Any]:
         k, v = self.key_value
@@ -115,11 +117,14 @@ class PropertyAddressEvent(Event, Verdictable):
         v = self.key_value[1]
         return v.get_verdict() if isinstance(v, Verdictable) else Verdict.INCON
 
-    def get_value_string(self) -> str:
-        return self.key_value[0].get_value_string(self.key_value[1])
-
     def get_info(self) -> str:
-        return f"{self.key_value[0]}: {self.key_value[0].get_explanation(self.key_value[1])}"
+        return self.key_value[0].get_explanation(self.key_value[1])
+
+    def get_value_string(self) -> str:
+        return f"{self.key_value[0]}: {self.get_info()}"
+
+    def get_properties(self) -> List[PropertyKey]:
+        return [self.key_value[0]]
 
     def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict[str, Any]:
         k, v = self.key_value

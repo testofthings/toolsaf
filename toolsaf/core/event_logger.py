@@ -30,18 +30,6 @@ class LoggingEvent:
             self.entity = entity
             self.verdict = Properties.EXPECTED.get_verdict(entity.properties) or Verdict.INCON
 
-    def get_value_string(self) -> str:
-        """Get value as string"""
-        v = self.event.get_value_string()
-        if self.property_value is None:
-            if self.entity:
-                st = f"{self.entity.status.value}/{self.verdict.value}" if self.verdict != Verdict.INCON  \
-                    else self.entity.status.value
-                v += f" [{st}]" if v else st
-        else:
-            v += (" " if v else "") + self.property_value[0].get_value_string(self.property_value[1])
-        return v
-
     def resolve_verdict(self) -> Verdict:
         """Resolve verdict"""
         if self.verdict != Verdict.INCON:
@@ -67,10 +55,9 @@ class LoggingEvent:
         return r
 
     def __repr__(self) -> str:
-        v = ""
+        v = self.event.get_value_string()
         if self.entity:
-            v += f"{self.entity.long_name()}"
-        v += f" {self.get_value_string()}"
+            v = f"{self.entity.long_name()} {v}"
         return v
 
 
@@ -79,6 +66,7 @@ class LoggedData:
     def __init__(self, verdict: Verdict, info: str) -> None:
         self.verdict = verdict
         self.info = info
+        self.properties: List[PropertyKey] = []
 
     def __repr__(self) -> str:
         return f"{self.verdict.value}: {self.info}"
@@ -102,7 +90,7 @@ class EventLogger(EventInterface, ModelListener):
         verdict = log.resolve_verdict()
         s += verdict.value if verdict != Verdict.INCON else ""
         s = f"{s:<57}"
-        s += f" {log.event.get_info()}"
+        s += f" {log.event.get_value_string()}"
         self.event_logger.info(s)
 
     def _add(self, event: Event, entity: Optional[Entity] = None,
@@ -249,6 +237,7 @@ class EventLogger(EventInterface, ModelListener):
             if lo.event.evidence.source != source:
                 continue
             data = LoggedData(lo.resolve_verdict(), lo.event.get_info())
+            data.properties = sorted(lo.get_properties())
             r.setdefault(lo.event.evidence, []).append(data)
         return r
 
@@ -259,5 +248,6 @@ class EventLogger(EventInterface, ModelListener):
             if lo.event.evidence.source != source or not lo.entity:
                 continue
             data = LoggedData(lo.resolve_verdict(), lo.event.get_info())
+            data.properties = sorted(lo.get_properties())
             r.setdefault(lo.entity, []).append(data)
         return r

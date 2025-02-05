@@ -91,6 +91,3 @@ class NameEvent(Event):
 
     def __hash__(self) -> int:
         return hash(self.name) ^ hash(self.tag) ^ hash(self.address)
-
-    def __repr__(self) -> str:
-        return self.get_value_string()
