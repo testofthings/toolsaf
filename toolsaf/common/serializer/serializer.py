@@ -1,7 +1,9 @@
 """Serializer module, to serialize and deserialize objects to JSON"""
 
 import json
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, Callable, TypeVar
+from typing import Any, Dict, Generic, Iterable, List, Optional, Tuple, Type, Callable, TypeVar, cast
+
+T = TypeVar("T")
 
 class SerializerContext:
     """Serializer context"""
@@ -85,27 +87,30 @@ class SerializerStream:
         """Write object"""
         obj_type = type(obj)
         if issubclass(obj_type, serializer.config.class_type):
-            serial = serializer
+            series = serializer.config.list_applied(serializer)
         else:
-            serial = serializer.config.find_serializer(obj_type)
-        if serial.config.abstract:
+            series = serializer.config.find_serializers(obj_type)
+        config = series[0].config
+        if config.abstract:
             return False
-        if serial.config.with_id:
-            ref = serial.config.resolve_id(obj, self.context)
+        if config.with_id:
+            ref = config.resolve_id(obj, self.context)
             self.data["id"] = ref
         if at_object:
             self.data["at"] = self.context.id_for(at_object)
-        if serial.config.type_name:
-            self.data["type"] = serial.config.type_name
+        if config.type_name:
+            self.data["type"] = config.type_name
         # write simple fields
-        for field in serial.config.simple_fields:
-            self.write_field(field, getattr(obj, field))
+        for ser in reversed(series):
+            for field in ser.config.simple_fields:
+                self.write_field(field, getattr(obj, field))
         # class specific write
         queue = self.push_to
         self.push_to = []
-        serial.write(obj, self)
-        for dec in serial.config.decorators:
-            dec.write(obj, self)
+        for ser in reversed(series):
+            ser.write(obj, self)
+            for dec in ser.config.decorators:
+                dec.write(obj, self)
         self.push_to = self.push_to + queue  # depth first order
         return True
 
@@ -115,9 +120,12 @@ class SerializerStream:
 
     def _read_object(self, serializer: 'Serializer', obj: Any) -> None:
         """Read object"""
-        for field in serializer.config.simple_fields:
-            setattr(obj, field, self.data[field])
-        serializer.read(obj, self)
+        # class mapping assumed to be in 'stream context'
+        series = self.serializer.config.list_applied(serializer)
+        for ser in reversed(series):
+            for field in ser.config.simple_fields:
+                setattr(obj, field, self.data[field])
+            ser.read(obj, self)
         id_s = self.data.get("id")
         if id_s:
             self.context.object_map[id_s] = obj
@@ -133,10 +141,11 @@ class SerializerStream:
         """Get attribute by field name or null"""
         return self.data.get(field_name)
 
-    def resolve(self, field_name: str = "at") -> Any:
+    def resolve(self, field_name: str = "at", of_type: Optional[Type[T]] = None) -> T:
         """Resolve object pointed by field, default to 'at' parent pointer"""
         ref = self.data[field_name]
-        return self.context.object_map.get(ref)
+        obj = self.context.object_map.get(ref)
+        return cast(T, obj)
 
     def write_object_id(self, field_name: str, obj: Any, optional: bool=False) -> None:
         """Write object id"""
@@ -194,16 +203,28 @@ class SerializerConfiguration:
             for s in self.class_map.values():
                 s.config.add_decorator(decorator, sub_type=sub_type)
 
-    def find_serializer(self, for_type: Type[Any]) -> 'Serializer':
-        """Find serializer for type"""
+    def find_serializers(self, for_type: Type[Any]) -> List['Serializer']:
+        """Find serializers for type"""
+        s_list = []
         ser = self.class_map.get(for_type)
         if ser:
-            return ser
+            s_list.append(ser)
         for sc in for_type.__mro__:
             ser = self.class_map.get(sc)
             if ser:
-                return ser
-        raise ValueError(f"Serializer not found for {for_type}")
+                s_list.append(ser)
+        if not s_list:
+            raise ValueError(f"Serializer not found for {for_type}")
+        return s_list
+
+    def list_applied(self, for_serializer: 'Serializer') -> List['Serializer']:
+        """List applied serializers for a serializer, which will be last"""
+        s_list = [for_serializer]
+        for sc in for_serializer.config.class_type.__mro__:
+            ser = self.class_map.get(sc)
+            if ser and ser != for_serializer:
+                s_list.append(ser)
+        return s_list
 
     def resolve_id(self, obj: Any, context: SerializerContext) -> str:
         """Resolve object id"""
@@ -240,3 +261,19 @@ class Serializer:
 
     def __repr__(self) -> str:
         return str(self.config)
+
+class GenericSerializer(Serializer, Generic[T]):
+    """Class serializer with generics"""
+    def __init__(self, class_type: Type[T]) -> None:
+        Serializer.__init__(self, class_type)
+
+    def write(self, obj: T, stream: SerializerStream) -> None:
+        """Custom write definitions"""
+
+    def new(self, stream: SerializerStream) -> T:
+        """Create new object"""
+        obj = self.config.class_type(stream)
+        return cast(T, obj)
+
+    def read(self, obj: T, stream: SerializerStream) -> None:
+        """Custom read definitions"""

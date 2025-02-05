@@ -12,7 +12,7 @@ def test_simple_model():
     ser = IoTSystemSerializer(su.system.system)
     stream = SerializerStream(ser)
     js = list(stream.write(ser.system))
-    assert len(js) == 7
+    assert [j["type"] for j in js] == ["system", "host", "service", "sw", "host", "sw", "connection"]
     assert js[0].items() >= {'id': 'id1', 'type': 'system', 'name': 'Test'}.items()
     assert js[1] == {
         'address': 'Device',
@@ -27,7 +27,7 @@ def test_simple_model():
     }
     assert js[3].items() >= {'id': 'id4', 'at': 'id2', 'type': 'sw', 'name': 'Device 1 SW'}.items()
     assert js[6] == {
-        'address': 'source=Device_2&target=Device&tcp:22',
+        'address': 'source=Device_2&target=Device/tcp:22',
         'id': 'id7',
         'at': 'id1',
         'long_name': 'some.local => Device 1 SSH:22',
