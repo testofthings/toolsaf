@@ -48,19 +48,24 @@ class SerializerStream:
                 yield self.data
             queue = self.push_to + queue[1:] # depth first order
 
-    def read(self, data: Iterable[Dict[str, Any]]) -> Iterable[Any]:
+    def read(self, data: Iterable[Dict[str, Any]], first: Optional[Any] = None) -> Iterable[Any]:
         """Read objects from stream"""
         iterator = iter(data)
         next_data = next(iterator, None)
         while next_data is not None:
             self.data = next_data
-            type_name = self.data.get("type")
-            serial = self.serializer if type_name is None else self.serializer.config.name_map.get(type_name)
-            if not serial:
-                raise ValueError(f"Serializer not found for type '{type_name}'")
-            obj = serial.new(self)
-            if obj is None:
-                raise ValueError(f"Serializer {serial} does not support new objects")
+            if first is not None:
+                obj = first  # use given object as first
+                first = None
+                serial = self.serializer
+            else:
+                type_name = self.data.get("type")
+                serial = self.serializer if type_name is None else self.serializer.config.name_map.get(type_name)
+                if not serial:
+                    raise ValueError(f"Serializer not found for type '{type_name}'")
+                obj = serial.new(self)
+                if obj is None:
+                    raise ValueError(f"Serializer {serial} does not support new objects")
             self._read_object(serial, obj)
             yield obj
             next_data = next(iterator, None)
@@ -212,7 +217,8 @@ class SerializerConfiguration:
             if issubclass(self.class_type, sub_type):
                 self.decorators.append(decorator)
             for s in self.class_map.values():
-                s.config.add_decorator(decorator, sub_type=sub_type)
+                if s.config != self:
+                    s.config.add_decorator(decorator, sub_type=sub_type)
 
     def find_serializers(self, serializer: 'SerializerBase', for_type: Type[Any]) -> List['SerializerBase']:
         """Find serializers for type"""
