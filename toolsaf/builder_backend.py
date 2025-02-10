@@ -42,6 +42,7 @@ from toolsaf.common.android import MobilePermissions
 from toolsaf.adapters.spdx_reader import SPDXJson
 from toolsaf.diagram_visualizer import DiagramVisualizer
 from toolsaf.core.ignore_rules import IgnoreRules
+from toolsaf.core.uploader import Uploader
 
 
 class SystemBackend(SystemBuilder):
@@ -1171,5 +1172,25 @@ class SystemBackendRunner(SystemBackend):
             self.diagram.set_file_name(args.diagram_name)
             self.diagram.show = bool(args.show_diagram)
             self.diagram.create_diagram()
+
+        if args.upload:
+            uploader = Uploader(args.upload, statement_name=self.system.name)
+            uploader.read_api_key()
+            uploader.upload_statement(self.system.name)
+
+            ser = IoTSystemSerializer(self.system)
+            system_stream = SerializerStream(ser)
+            uploader.upload_system(system_stream.write(self.system))
+
+            event_stream: Optional[SerializerStream] = None
+            # dump events, if any
+            if registry.logging.logs:
+                log_ser = EventSerializer()
+                event_stream = SerializerStream(log_ser, context=system_stream.context)
+                for log in registry.logging.logs:
+                    for js in log_ser.write_event(log.event, event_stream):
+                        uploader.upload_events(js)
+                        break
+                # Add event serialization handling
 
         return load_data
