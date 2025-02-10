@@ -1083,6 +1083,8 @@ class SystemBackendRunner(SystemBackend):
         parser.add_argument("-l", "--log", dest="log_level", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                             help="Set the logging level", default=None)
         parser.add_argument("--statement-json", action="store_true", help="Dump security statement JSON to stdout")
+        parser.add_argument("-u", "--upload", nargs="?", const=True,
+                            help="Upload statement. You can provide the path to your API key file with this flag.")
         parser.add_argument("--db", type=str, help="Connect to SQL database")
         parser.add_argument(
             "--log-events", action="store_true", help="Log events")
