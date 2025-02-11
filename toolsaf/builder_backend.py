@@ -1180,17 +1180,15 @@ class SystemBackendRunner(SystemBackend):
 
             ser = IoTSystemSerializer(self.system)
             system_stream = SerializerStream(ser)
-            uploader.upload_system(system_stream.write(self.system))
+            uploader.upload_system(list(system_stream.write(self.system)))
 
-            event_stream: Optional[SerializerStream] = None
-            # dump events, if any
             if registry.logging.logs:
                 log_ser = EventSerializer()
                 event_stream = SerializerStream(log_ser, context=system_stream.context)
+                events = []
                 for log in registry.logging.logs:
-                    for js in log_ser.write_event(log.event, event_stream):
-                        uploader.upload_events(js)
-                        break
-                # Add event serialization handling
+                    events += list(log_ser.write_event(log.event, event_stream))
+                uploader.upload_logs(events)
+
 
         return load_data

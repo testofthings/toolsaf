@@ -1,5 +1,5 @@
 """JSON serialized statement uploader"""
-from typing import Union, Literal, Iterable, Dict, Any
+from typing import Union, Literal, Dict, List, Any
 from pathlib import Path
 import requests
 from toolsaf.main import ConfigurationException
@@ -46,45 +46,39 @@ class Uploader:
         except ConnectionError as e:
             raise ConnectionError("Data upload failed!") from e
 
+    def _handle_response(self, response: requests.Response) -> None:
+        print(response.json())
+
     def upload_statement(self, statement_name: str) -> None:
         """Upload statement info to API"""
         url = f"{self._api_url}/statement"
         response = self._post(url, {"name": statement_name})
-        response_json = response.json()
-        print(response_json)
+        self._handle_response(response)
 
-    def upload_system(self, system_stream: Iterable[Dict[str, Any]]) -> None:
+    def upload_system(self, entities: List[Dict[str, Any]]) -> None:
         """Upload entities to the API"""
-        for entry in system_stream:
-            self._upload_entity(entry)
+        url = f"{self._api_url}/statement/{self.statement_name}/entities"
+        response = self._post(url, entities)
+        self._handle_response(response)
 
-    def _upload_entity(self, entity: Dict[str, Any]) -> None:
-        """Upload single entity to the API"""
-        url = f"{self._api_url}/statement/{self.statement_name}/entity"
-        response = self._post(url, entity)
-        response_json = response.json()
-        print(response_json)
+    def _upload_evidence_sources(self, sources: List[Dict[str, Any]]) -> None:
+        """Batch upload EvidenceSource to the API"""
+        url = f"{self._api_url}/statement/{self.statement_name}/evidence_sources"
+        response = self._post(url, sources)
+        self._handle_response(response)
 
-    def _upload_evidence_source(self, source: Dict[str, Any]) -> None:
-        """Upload single evidence source to the API"""
-        url = f"{self._api_url}/statement/{self.statement_name}/evidence_source"
-        response = self._post(url, source)
-        response_json = response.json()
-        print(response_json)
+    def _upload_events(self, events: List[Dict[str, Any]]) -> None:
+        """Batch upload events to the API"""
+        url = f"{self._api_url}/statement/{self.statement_name}/events"
+        response = self._post(url, events)
+        self._handle_response(response)
 
-    def _upload_event(self, event: Dict[str, Any]) -> None:
-        """Upload single event to the API"""
-        url = f"{self._api_url}/statement/{self.statement_name}/source/{event['source-id']}/event"
-        response = self._post(url, event)
-        response_json = response.json()
-        print(response_json)
-
-    def upload_events(self, event: Dict[str, Any]) -> None:
+    def upload_logs(self, entries: Dict[str, Any]) -> None:
         """Upload events to the API"""
-        if event["type"] == "source":
-            self._upload_evidence_source(event)
-        elif event["type"] in ["service-scan", "host-scan"]:
-            self._upload_event(event)
-        else:
-            # Unimplemented event types
-            pass
+        # Split given entries into events and sources
+        sources, events = [], []
+        for entry in entries:
+            (sources if entry["type"] == "source" else events).append(entry)
+        self._upload_evidence_sources(sources)
+        events = [event for event in events if event["type"] != "event"]
+        self._upload_events(events)
