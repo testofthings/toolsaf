@@ -38,7 +38,7 @@ class Uploader:
             "Content-Type": "application/json"
         }
 
-    def _post(self, url: str, data: Dict[str, Any]) -> requests.Response:
+    def _post(self, url: str, data: Union[Dict[str, Any], List[Dict[str, Any]]]) -> requests.Response:
         """POST given data to url"""
         try:
             # Remove verify=False
@@ -73,10 +73,11 @@ class Uploader:
         response = self._post(url, events)
         self._handle_response(response)
 
-    def upload_logs(self, entries: Dict[str, Any]) -> None:
+    def upload_logs(self, entries: List[Dict[str, Any]]) -> None:
         """Upload events to the API"""
         # Split given entries into events and sources
-        sources, events = [], []
+        sources: List[Dict[str, Any]] = []
+        events: List[Dict[str, Any]] = []
         for entry in entries:
             (sources if entry["type"] == "source" else events).append(entry)
         self._upload_evidence_sources(sources)
