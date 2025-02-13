@@ -61,20 +61,8 @@ class Uploader:
         response = self._post(url, entities)
         self._handle_response(response)
 
-    def _upload_evidence_sources(self, sources: List[Dict[str, Any]]) -> None:
-        """Batch upload EvidenceSource to the API"""
-        url = f"{self._api_url}/statement/{self.statement_name}/evidence_sources"
-        response = self._post(url, sources)
-        self._handle_response(response)
-
-    def _upload_events(self, events: List[Dict[str, Any]]) -> None:
-        """Batch upload events to the API"""
-        url = f"{self._api_url}/statement/{self.statement_name}/events"
-        response = self._post(url, events)
-        self._handle_response(response)
-
     def upload_logs(self, entries: List[Dict[str, Any]]) -> None:
-        """Upload events to the API"""
+        """Upload sources and events to the API"""
         url = f"{self._api_url}/statement/{self.statement_name}/logs"
         new_structure = []
         current_entries = 0
