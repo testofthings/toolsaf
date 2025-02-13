@@ -75,11 +75,24 @@ class Uploader:
 
     def upload_logs(self, entries: List[Dict[str, Any]]) -> None:
         """Upload events to the API"""
-        # Split given entries into events and sources
-        sources: List[Dict[str, Any]] = []
-        events: List[Dict[str, Any]] = []
+        url = f"{self._api_url}/statement/{self.statement_name}/logs"
+        new_structure = []
+        current_entries = 0
+
         for entry in entries:
-            (sources if entry["type"] == "source" else events).append(entry)
-        self._upload_evidence_sources(sources)
-        events = [event for event in events if event["type"] != "event"]
-        self._upload_events(events)
+            if entry["type"] == "source":
+                if current_entries >= 3000:
+                    response = self._post(url, new_structure)
+                    self._handle_response(response)
+                    new_structure = []
+                    current_entries = 0
+
+                entry["events"] = []
+                new_structure += [entry]
+            else:
+                new_structure[-1]["events"] += [entry]
+            current_entries += 1
+
+        if new_structure:
+            response = self._post(url, new_structure)
+            self._handle_response(response)
