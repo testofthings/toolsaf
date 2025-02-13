@@ -64,7 +64,7 @@ class Uploader:
     def upload_logs(self, entries: List[Dict[str, Any]]) -> None:
         """Upload sources and events to the API"""
         url = f"{self._api_url}/statement/{self.statement_name}/logs"
-        new_structure = []
+        new_structure: List[Dict[str, Any]] = []
         current_entries = 0
 
         for entry in entries:
