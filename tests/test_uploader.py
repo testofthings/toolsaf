@@ -32,19 +32,6 @@ def test_add_toolsaf_directory_to_home():
     uploader._create_directory.assert_called_once_with(Path("test"))
 
 
-@pytest.mark.parametrize(
-    "dir_exists",
-    [True, False]
-)
-def test_add_directory_for_current_statement(dir_exists):
-    with patch.object(sys, "path", ["home/directories/statement"]):
-        uploader = Uploader("")
-        uploader._toolsaf_home_dir = Path("test")
-        uploader._create_directory = MagicMock()
-        uploader._add_directory_for_current_statement()
-        uploader._create_directory.assert_called_once_with(Path("test/statement"))
-
-
 def test_get_key_file_path_based_on_argument():
     with patch.object(Path, "home") as mock_home:
         mock_home.return_value = Path("/home")

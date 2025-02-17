@@ -1,6 +1,5 @@
 """JSON serialized statement uploader"""
 import os
-import sys
 from typing import Union, Literal, Dict, List, Any
 from pathlib import Path
 import requests
@@ -22,7 +21,6 @@ class Uploader:
     def do_pre_procedures(self, key_file_argument: Union[Literal[True], str]) -> None:
         """Get everything ready for uploading"""
         self._add_toolsaf_directory_to_home()
-        self._add_directory_for_current_statement()
         key_file_path = self._get_key_file_path_based_on_argument(key_file_argument)
         self._read_api_key(key_file_path)
 
@@ -34,11 +32,6 @@ class Uploader:
     def _add_toolsaf_directory_to_home(self) -> None:
         """Adds .toolsaf to user's home directory"""
         self._create_directory(self._toolsaf_home_dir)
-
-    def _add_directory_for_current_statement(self) -> None:
-        """Create a subdirectory for current statement in .toolsaf/"""
-        called_from = sys.path[0].rsplit('/', maxsplit=1)[-1]
-        self._create_directory(self._toolsaf_home_dir / called_from)
 
     def _get_key_file_path_based_on_argument(self, key_file_argument: Union[Literal[True], str]) -> Path:
         """Get path to API key file based on user given command line argument"""
