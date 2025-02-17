@@ -1174,8 +1174,8 @@ class SystemBackendRunner(SystemBackend):
             self.diagram.create_diagram()
 
         if args.upload:
-            uploader = Uploader(args.upload, statement_name=self.system.name)
-            uploader.read_api_key()
+            uploader = Uploader(statement_name=self.system.name)
+            uploader.do_pre_procedures(args.upload)
             uploader.upload_statement()
 
             ser = IoTSystemSerializer(self.system)
@@ -1189,6 +1189,5 @@ class SystemBackendRunner(SystemBackend):
                 for log in registry.logging.logs:
                     events += list(log_ser.write_event(log.event, event_stream))
                 uploader.upload_logs(events)
-
 
         return load_data
