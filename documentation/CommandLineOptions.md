@@ -93,6 +93,22 @@ python product/statement.py --create-diagram --diagram-name my_diagram
 python product/statement.py --show-diagram -N my_diagram
 ```
 
+## Upload Data to the API
+If you have a valid API key, you can upload statements and tool outputs to our API with `-u` or `--upload`.
+```shell
+python product/statement.py -u -r ../sample-data
+```
+By default the API key is expected to be found in `<your home directory>/.toolsaf/.api_key`. However, when using `-u`, you can also provide a custom path for the file:
+```shell
+python product/statement.py -u ../apikey.txt -r ../sample-data
+```
+
+## Allow Insecure Connections When Uploading
+When debugging, you can use the `--insecure` flag to allow insecure API connections.
+```shell
+python product/statement.py -u ../apikey.txt --insecure -r ../sample-data
+```
+
 ## Set Log Level
 You can set the log level with `-l` or `--log-level`. Values can be `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`.
 ```shell
