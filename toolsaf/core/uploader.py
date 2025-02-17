@@ -14,6 +14,7 @@ class Uploader:
                  statement_name: str) -> None:
         self._key_file_arg = key_file_argument
         self.statement_name = statement_name
+        self.statement_name_url = self.statement_name.replace(" ", "-")
         self._api_key = ""
 
     def _get_key_file_path_based_on_argument(self) -> Path:
@@ -49,21 +50,21 @@ class Uploader:
     def _handle_response(self, response: requests.Response) -> None:
         print(response.json())
 
-    def upload_statement(self, statement_name: str) -> None:
+    def upload_statement(self) -> None:
         """Upload statement info to API"""
         url = f"{self._api_url}/statement"
-        response = self._post(url, {"name": statement_name})
+        response = self._post(url, {"name": self.statement_name, "url": self.statement_name_url})
         self._handle_response(response)
 
     def upload_system(self, entities: List[Dict[str, Any]]) -> None:
         """Upload entities to the API"""
-        url = f"{self._api_url}/statement/{self.statement_name}/entities"
+        url = f"{self._api_url}/statement/{self.statement_name_url}/entities"
         response = self._post(url, entities)
         self._handle_response(response)
 
     def upload_logs(self, entries: List[Dict[str, Any]]) -> None:
         """Upload sources and events to the API"""
-        url = f"{self._api_url}/statement/{self.statement_name}/logs"
+        url = f"{self._api_url}/statement/{self.statement_name_url}/logs"
         new_structure: List[Dict[str, Any]] = []
         current_entries = 0
 

@@ -1176,7 +1176,7 @@ class SystemBackendRunner(SystemBackend):
         if args.upload:
             uploader = Uploader(args.upload, statement_name=self.system.name)
             uploader.read_api_key()
-            uploader.upload_statement(self.system.name)
+            uploader.upload_statement()
 
             ser = IoTSystemSerializer(self.system)
             system_stream = SerializerStream(ser)
