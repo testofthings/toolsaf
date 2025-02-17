@@ -13,9 +13,10 @@ class Uploader:
     _toolsaf_home_dir = Path.home() / ".toolsaf"
     _api_url = "https://127.0.0.1/api"
 
-    def __init__(self, statement_name: str) -> None:
+    def __init__(self, statement_name: str, allow_insecure: bool=False) -> None:
         self.statement_name = statement_name
         self.statement_name_url = self.statement_name.replace(" ", "-")
+        self.allow_insecure = allow_insecure
         self._api_key = ""
 
     def do_pre_procedures(self, key_file_argument: Union[Literal[True], str]) -> None:
@@ -67,8 +68,9 @@ class Uploader:
     def _post(self, url: str, data: Union[Dict[str, Any], List[Dict[str, Any]]]) -> requests.Response:
         """POST given data to url"""
         try:
-            # Remove verify=False
-            return requests.post(url, json=data, headers=self._headers, verify=False, timeout=60)
+            # Turn verification off if insecure connection are allowed
+            verify = not self.allow_insecure
+            return requests.post(url, json=data, headers=self._headers, verify=verify, timeout=60)
         except ConnectionError as e:
             raise ConnectionError("Data upload failed!") from e
 

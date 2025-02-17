@@ -93,9 +93,13 @@ def test_post_success():
         mock_response.json.return_value = {"test": "test"}
 
         response = uploader._post(url, data)
-        mock_post.assert_called_once_with(url, json=data, headers=uploader._headers, verify=False, timeout=60)
+        mock_post.assert_called_once_with(url, json=data, headers=uploader._headers, verify=True, timeout=60)
         assert response.status_code == 200
         assert response.json() == {"test": "test"}
+
+        uploader.allow_insecure = True
+        response = uploader._post(url, data)
+        mock_post.assert_called_with(url, json=data, headers=uploader._headers, verify=False, timeout=60)
 
 
 def test_post_failure():
@@ -109,4 +113,4 @@ def test_post_failure():
 
         with pytest.raises(ConnectionError, match="Data upload failed!"):
             uploader._post(url, data)
-        mock_post.assert_called_once_with(url, json=data, headers=uploader._headers, verify=False, timeout=60)
+        mock_post.assert_called_once_with(url, json=data, headers=uploader._headers, verify=True, timeout=60)
