@@ -61,9 +61,12 @@ class ServiceScanSerializer(Serializer[ServiceScan]):
     def write(self, obj: ServiceScan, stream: SerializerStream) -> None:
         stream += "address", obj.endpoint.get_parseable_value()
 
-    def new(self, stream: SerializerStream) -> Any:
+    def new(self, stream: SerializerStream) -> ServiceScan:
         ev = EventSerializer.read_evidence(stream)
-        return ServiceScan(ev, endpoint=Addresses.parse_endpoint(stream["address"]))
+        return ServiceScan(
+            ev, endpoint=Addresses.parse_endpoint(stream["address"]),
+            service_name=stream.get("service_name") or ""
+        )
 
 
 class HostScanSerializer(Serializer[HostScan]):
@@ -76,7 +79,7 @@ class HostScanSerializer(Serializer[HostScan]):
         stream += "host", obj.host.get_parseable_value()
         stream += "endpoints", [e.get_parseable_value() for e in obj.endpoints]
 
-    def new(self, stream: SerializerStream) -> Any:
+    def new(self, stream: SerializerStream) -> HostScan:
         ev = EventSerializer.read_evidence(stream)
         eps = []
         for  a in stream["endpoints"]:
