@@ -1,11 +1,13 @@
 """Serializing events"""
 
-from typing import Any, Dict, Iterable
+from typing import Any, Dict, Iterable, Union, Tuple
 
 from toolsaf.common.address import Addresses, EndpointAddress
 from toolsaf.common.traffic import Event, Evidence, EvidenceSource, HostScan, ServiceScan
 from toolsaf.common.serializer.serializer import Serializer, SerializerStream
-
+from toolsaf.common.property import PropertyKey, PropertyVerdictValue, PropertySetValue
+from toolsaf.common.verdict import Verdict
+from toolsaf.core.event_interface import PropertyAddressEvent
 
 class EventSerializer(Serializer[Event]):
     """Base class for event serializers"""
@@ -16,6 +18,7 @@ class EventSerializer(Serializer[Event]):
         self.config.map_class("event", self)
         self.config.map_class("service-scan", ServiceScanSerializer())
         self.config.map_class("host-scan", HostScanSerializer())
+        self.config.map_class("property-address-event", PropertyAddresssEventSerializer())
         self.config.map_class("source", EvidenceSourceSerializer())
 
     def write_event(self, event: Event, stream: SerializerStream) -> Iterable[Dict[str, Any]]:
@@ -87,3 +90,34 @@ class HostScanSerializer(Serializer[HostScan]):
             assert isinstance(addr, EndpointAddress)
             eps.append(addr)
         return HostScan(ev, host=Addresses.parse_endpoint(stream["host"]), endpoints=set(eps))
+
+
+class PropertyAddresssEventSerializer(Serializer[PropertyAddressEvent]):
+    """PropertyAddressEvent serializer"""
+    def __init__(self) -> None:
+        super().__init__(PropertyAddressEvent)
+        self.config.with_id = False
+
+    def write(self, obj: PropertyAddressEvent, stream: SerializerStream) -> None:
+        stream += "address", obj.address.get_parseable_value()
+        stream += "key", obj.key_value[0].get_name()
+        if isinstance(obj.key_value[1], PropertyVerdictValue):
+            stream += "verdict", obj.key_value[1].verdict.value
+        else: # PropertySetValue
+            sub_keys= [key.get_name() for key in obj.key_value[1].sub_keys]
+            stream += "sub-keys", sub_keys
+        stream += "explanation", obj.key_value[1].explanation
+
+    def new(self, stream: SerializerStream) -> PropertyAddressEvent:
+        ev = EventSerializer.read_evidence(stream)
+        #key_value: Union[Tuple[PropertyKey, PropertyVerdictValue], Tuple[PropertyKey, PropertySetValue]]
+        key_value: Tuple[PropertyKey, Union[PropertyVerdictValue, PropertySetValue]]
+        if (verdict := stream.get("verdict")):
+            key_value = PropertyKey(stream["key"]), PropertyVerdictValue(Verdict(verdict), stream["explanation"])
+        else:
+            sub_keys = {PropertyKey(key) for key in stream["sub-keys"]}
+            key_value = PropertyKey(stream["key"]), PropertySetValue(sub_keys, stream["explanation"])
+        return PropertyAddressEvent(
+            ev, address=Addresses.parse_endpoint(stream["address"]),
+            key_value=key_value
+        )

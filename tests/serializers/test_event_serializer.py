@@ -3,9 +3,12 @@ from toolsaf.common.address import EndpointAddress, IPAddress, Protocol
 from toolsaf.common.serializer.serializer import SerializerStream
 from toolsaf.core.serializer.event_serializers import EventSerializer
 from toolsaf.core.serializer.event_serializers import (
-    ServiceScanSerializer, HostScanSerializer
+    ServiceScanSerializer, HostScanSerializer, PropertyAddresssEventSerializer
 )
 from toolsaf.common.traffic import Evidence, EvidenceSource, HostScan, ServiceScan
+from toolsaf.core.event_interface import PropertyAddressEvent
+from toolsaf.common.property import PropertyKey
+from toolsaf.common.verdict import Verdict
 
 
 def test_serialize_event_source():
@@ -108,3 +111,64 @@ def test_new_host_scan_from_serialized():
     assert endpoints[1] in new_host_scan.endpoints
     assert new_host_scan.evidence.source.name == "Test"
     assert new_host_scan.evidence.source.base_ref == "../test.json"
+
+
+def test_serialize_property_address_event():
+    source = EvidenceSource(name="Test")
+    property_address_event = PropertyAddressEvent(
+        Evidence(source), IPAddress.new("1.1.1.1"),
+        PropertyKey("test-key").verdict(Verdict.PASS, "test explanation")
+    )
+
+    # PropertyVerdictValue
+    assert _get_serialized_event(property_address_event) == {
+        "type": "property-address-event",
+        "source-id": "id1",
+        "address": "1.1.1.1",
+        "key": "test-key",
+        "verdict": "Pass",
+        "explanation": "test explanation"
+    }
+
+    # PropertySetValue
+    property_address_event = PropertyAddressEvent(
+        Evidence(source), IPAddress.new("1.1.1.1"),
+        PropertyKey("test-key").value_set({PropertyKey("value-key"), PropertyKey("key-value")})
+    )
+    serialized_event = _get_serialized_event(property_address_event)
+    assert "value-key" in serialized_event["sub-keys"]
+    assert "key-value" in serialized_event["sub-keys"]
+    serialized_event.pop("sub-keys")
+
+    assert serialized_event== {
+        "type": "property-address-event",
+        "source-id": "id1",
+        "address": "1.1.1.1",
+        "key": "test-key",
+        "explanation": ""
+    }
+
+
+def test_new_property_address_event_from_serialized():
+    source = EvidenceSource(name="Test")
+    address = IPAddress.new("1.1.1.1")
+    property_address_event = PropertyAddressEvent(
+        Evidence(source), address,
+        PropertyKey("test-key").verdict(Verdict.PASS, "test explanation")
+    )
+    stream = _get_stream(property_address_event)
+
+    new_property_address_event = PropertyAddresssEventSerializer().new(stream)
+    assert new_property_address_event.address == address
+    assert new_property_address_event.key_value == PropertyKey("test-key").verdict(Verdict.PASS, "test explanation")
+    assert new_property_address_event.evidence.source.name == "Test"
+
+    property_address_event = PropertyAddressEvent(
+        Evidence(source), address,
+        PropertyKey("test-key").value_set({PropertyKey("value-key"), PropertyKey("key-value")})
+    )
+    stream = _get_stream(property_address_event)
+
+    new_property_address_event = PropertyAddresssEventSerializer().new(stream)
+    assert new_property_address_event.address == address
+    assert new_property_address_event.key_value == PropertyKey("test-key").value_set({PropertyKey("value-key"), PropertyKey("key-value")})
