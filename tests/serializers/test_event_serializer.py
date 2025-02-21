@@ -51,11 +51,15 @@ def _get_stream(event):
     return stream
 
 
+SOURCE = EvidenceSource(name="Test", base_ref="../test.json")
+HWADDRESS = HWAddress.new("00:00:00:00:00:00")
+IPADDRESS = IPAddress.new("1.1.1.1")
+
+
 def test_ip_flow_serializer():
-    source = EvidenceSource(name="Test")
-    ip_flow = IPFlow(Evidence(source),
-        source=(HWAddress("00:00:00:00:00:00"), IPAddress("1.1.1.1"), 10),
-        target=(HWAddress("00:00:00:00:00:00"), IPAddress("1.1.1.1"), 10),
+    ip_flow = IPFlow(Evidence(SOURCE),
+        source=(HWADDRESS, IPADDRESS, 10),
+        target=(HWADDRESS, IPADDRESS, 10),
         protocol=Protocol.TCP
     )
     ip_flow.timestamp = datetime(2025, 1, 1, 0, 0, 0)
@@ -71,27 +75,25 @@ def test_ip_flow_serializer():
 
 
 def test_new_ip_flow_from_serialized():
-    source = EvidenceSource(name="Test", base_ref="../test.json")
-    ip_flow = IPFlow(Evidence(source),
-        source=(HWAddress("00:00:00:00:00:00"), IPAddress("1.1.1.1"), 10),
-        target=(HWAddress("00:00:00:00:00:00"), IPAddress("1.1.1.1"), 10),
+    ip_flow = IPFlow(Evidence(SOURCE),
+        source=(HWADDRESS, IPADDRESS, 10),
+        target=(HWADDRESS, IPADDRESS, 10),
         protocol=Protocol.TCP
     )
     ip_flow.timestamp = datetime(2025, 1, 1, 0, 0, 0)
     stream = _get_stream(ip_flow)
 
     new_ip_flow = IPFlowSerializer().new(stream)
-    assert new_ip_flow.source == (HWAddress("00:00:00:00:00:00"), IPAddress.new("1.1.1.1"), 10)
-    assert new_ip_flow.target == (HWAddress("00:00:00:00:00:00"), IPAddress.new("1.1.1.1"), 10)
+    assert new_ip_flow.source == (HWADDRESS, IPADDRESS, 10)
+    assert new_ip_flow.target == (HWADDRESS, IPADDRESS, 10)
     assert new_ip_flow.protocol == Protocol.TCP
     assert new_ip_flow.timestamp == datetime(2025, 1, 1, 0, 0, 0)
     assert new_ip_flow.evidence.source.name == "Test"
 
 
 def test_ble_advertisement_flow_serializer():
-    source = EvidenceSource(name="Test")
-    ble_flow = BLEAdvertisementFlow(Evidence(source),
-        source=HWAddress("00:00:00:00:00:00"),
+    ble_flow = BLEAdvertisementFlow(Evidence(SOURCE),
+        source=HWADDRESS,
         event_type=0x03
     )
 
@@ -108,16 +110,15 @@ def test_ble_advertisement_flow_serializer():
 
 
 def test_new_ble_advertisement_flow_from_serialized():
-    source = EvidenceSource(name="Test", base_ref="../test.json")
-    ble_flow = BLEAdvertisementFlow(Evidence(source),
-        source=HWAddress("00:00:00:00:00:00"),
+    ble_flow = BLEAdvertisementFlow(Evidence(SOURCE),
+        source=HWADDRESS,
         event_type=0x03
     )
     ble_flow.timestamp = datetime(2025, 1, 1, 0, 0, 0)
     stream = _get_stream(ble_flow)
 
     new_ble_flow = BLEAdvertisementFlowSerializer().new(stream)
-    assert new_ble_flow.source == HWAddress("00:00:00:00:00:00")
+    assert new_ble_flow.source == HWADDRESS
     assert new_ble_flow.event_type == 0x03
     assert new_ble_flow.timestamp == datetime(2025, 1, 1, 0, 0, 0)
     assert new_ble_flow.evidence.source.name == "Test"
@@ -125,9 +126,8 @@ def test_new_ble_advertisement_flow_from_serialized():
 
 
 def test_serialize_service_scan():
-    source = EvidenceSource(name="Test")
-    service_scan = ServiceScan(
-        Evidence(source), EndpointAddress.ip("127.0.0.1", Protocol.TCP, 8000), service_name="test-name"
+    service_scan = ServiceScan(Evidence(SOURCE),
+        EndpointAddress.ip("127.0.0.1", Protocol.TCP, 8000), service_name="test-name"
     )
 
     assert _get_serialized_event(service_scan) == {
@@ -139,9 +139,8 @@ def test_serialize_service_scan():
 
 
 def test_new_service_scan_from_serialized():
-    source = EvidenceSource(name="Test", base_ref="../test.json")
     service_scan = ServiceScan(
-        Evidence(source), EndpointAddress.ip("127.0.0.1", Protocol.TCP, 8000), service_name="test-name"
+        Evidence(SOURCE), EndpointAddress.ip("127.0.0.1", Protocol.TCP, 8000), service_name="test-name"
     )
     stream = _get_stream(service_scan)
 
@@ -153,9 +152,8 @@ def test_new_service_scan_from_serialized():
 
 
 def test_serialize_host_scan():
-    source = EvidenceSource(name="Test")
     host_scan = HostScan(
-        Evidence(source), IPAddress.new("1.1.1.1"), endpoints=[
+        Evidence(SOURCE), IPADDRESS, endpoints=[
             EndpointAddress.ip("1.1.1.2", Protocol.TCP, 8000),
             EndpointAddress.ip("1.1.1.2", Protocol.TCP, 8002),
         ]
@@ -170,20 +168,17 @@ def test_serialize_host_scan():
 
 
 def test_new_host_scan_from_serialized():
-    source = EvidenceSource(name="Test", base_ref="../test.json")
-    address = IPAddress.new("1.1.1.1")
     endpoints = [
         EndpointAddress.ip("1.1.1.2", Protocol.TCP, 8000),
         EndpointAddress.ip("1.1.1.2", Protocol.TCP, 8002),
     ]
     host_scan = HostScan(
-        Evidence(source), address, endpoints=endpoints
+        Evidence(SOURCE), IPADDRESS, endpoints=endpoints
     )
-
     stream = _get_stream(host_scan)
 
     new_host_scan = HostScanSerializer().new(stream)
-    assert new_host_scan.host == address
+    assert new_host_scan.host == IPADDRESS
     assert endpoints[0] in new_host_scan.endpoints
     assert endpoints[1] in new_host_scan.endpoints
     assert new_host_scan.evidence.source.name == "Test"
@@ -191,9 +186,8 @@ def test_new_host_scan_from_serialized():
 
 
 def test_serialize_property_address_event():
-    source = EvidenceSource(name="Test")
     property_address_event = PropertyAddressEvent(
-        Evidence(source), IPAddress.new("1.1.1.1"),
+        Evidence(SOURCE), IPADDRESS,
         PropertyKey("test-key").verdict(Verdict.PASS, "test explanation")
     )
 
@@ -209,7 +203,7 @@ def test_serialize_property_address_event():
 
     # PropertySetValue
     property_address_event = PropertyAddressEvent(
-        Evidence(source), IPAddress.new("1.1.1.1"),
+        Evidence(SOURCE), IPADDRESS,
         PropertyKey("test-key").value_set({PropertyKey("value-key"), PropertyKey("key-value")})
     )
     serialized_event = _get_serialized_event(property_address_event)
@@ -227,25 +221,23 @@ def test_serialize_property_address_event():
 
 
 def test_new_property_address_event_from_serialized():
-    source = EvidenceSource(name="Test")
-    address = IPAddress.new("1.1.1.1")
     property_address_event = PropertyAddressEvent(
-        Evidence(source), address,
+        Evidence(SOURCE), IPADDRESS,
         PropertyKey("test-key").verdict(Verdict.PASS, "test explanation")
     )
     stream = _get_stream(property_address_event)
 
     new_property_address_event = PropertyAddresssEventSerializer().new(stream)
-    assert new_property_address_event.address == address
+    assert new_property_address_event.address == IPADDRESS
     assert new_property_address_event.key_value == PropertyKey("test-key").verdict(Verdict.PASS, "test explanation")
     assert new_property_address_event.evidence.source.name == "Test"
 
     property_address_event = PropertyAddressEvent(
-        Evidence(source), address,
+        Evidence(SOURCE), IPADDRESS,
         PropertyKey("test-key").value_set({PropertyKey("value-key"), PropertyKey("key-value")})
     )
     stream = _get_stream(property_address_event)
 
     new_property_address_event = PropertyAddresssEventSerializer().new(stream)
-    assert new_property_address_event.address == address
+    assert new_property_address_event.address == IPADDRESS
     assert new_property_address_event.key_value == PropertyKey("test-key").value_set({PropertyKey("value-key"), PropertyKey("key-value")})
