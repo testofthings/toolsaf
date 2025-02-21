@@ -3,12 +3,12 @@ from toolsaf.common.address import EndpointAddress, IPAddress, Protocol
 from toolsaf.common.serializer.serializer import SerializerStream
 from toolsaf.core.serializer.event_serializers import EventSerializer
 from toolsaf.core.serializer.event_serializers import (
-    IPFlowSerializer,
+    IPFlowSerializer, BLEAdvertisementFlowSerializer,
     ServiceScanSerializer, HostScanSerializer, PropertyAddresssEventSerializer
 )
 from toolsaf.common.traffic import (
-    Evidence, EvidenceSource, IPFlow, HostScan, ServiceScan,
-    HWAddress, IPAddress
+    Evidence, EvidenceSource, IPFlow, BLEAdvertisementFlow,
+    HostScan, ServiceScan, HWAddress, IPAddress
 )
 from toolsaf.core.event_interface import PropertyAddressEvent
 from toolsaf.common.property import PropertyKey
@@ -86,6 +86,42 @@ def test_new_ip_flow_from_serialized():
     assert new_ip_flow.protocol == Protocol.TCP
     assert new_ip_flow.timestamp == datetime(2025, 1, 1, 0, 0, 0)
     assert new_ip_flow.evidence.source.name == "Test"
+
+
+def test_ble_advertisement_flow_serializer():
+    source = EvidenceSource(name="Test")
+    ble_flow = BLEAdvertisementFlow(Evidence(source),
+        source=HWAddress("00:00:00:00:00:00"),
+        event_type=0x03
+    )
+
+    assert _get_serialized_event(ble_flow) == {
+        "type": "ble-advertisement-flow",
+        "source-id": "id1",
+        "source": "00:00:00:00:00:00|hw",
+        "event_type": 3,
+        "timestamp": ""
+    }
+
+    ble_flow.timestamp = datetime(2025, 1, 1, 0, 0, 0)
+    assert _get_serialized_event(ble_flow)["timestamp"] == "2025-01-01T00:00:00"
+
+
+def test_new_ble_advertisement_flow_from_serialized():
+    source = EvidenceSource(name="Test", base_ref="../test.json")
+    ble_flow = BLEAdvertisementFlow(Evidence(source),
+        source=HWAddress("00:00:00:00:00:00"),
+        event_type=0x03
+    )
+    ble_flow.timestamp = datetime(2025, 1, 1, 0, 0, 0)
+    stream = _get_stream(ble_flow)
+
+    new_ble_flow = BLEAdvertisementFlowSerializer().new(stream)
+    assert new_ble_flow.source == HWAddress("00:00:00:00:00:00")
+    assert new_ble_flow.event_type == 0x03
+    assert new_ble_flow.timestamp == datetime(2025, 1, 1, 0, 0, 0)
+    assert new_ble_flow.evidence.source.name == "Test"
+
 
 
 def test_serialize_service_scan():

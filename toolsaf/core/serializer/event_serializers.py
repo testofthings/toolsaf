@@ -6,7 +6,8 @@ from toolsaf.common.address import (
     Addresses, EndpointAddress, Protocol, HWAddress, IPAddress
 )
 from toolsaf.common.traffic import (
-    Event, Evidence, EvidenceSource, IPFlow, HostScan, ServiceScan
+    Event, Evidence, EvidenceSource,
+    IPFlow, BLEAdvertisementFlow, HostScan, ServiceScan
 )
 from toolsaf.common.serializer.serializer import Serializer, SerializerStream
 from toolsaf.common.property import PropertyKey, PropertyVerdictValue, PropertySetValue
@@ -22,6 +23,7 @@ class EventSerializer(Serializer[Event]):
         self.config.map_class("event", self)
         self.config.map_class("service-scan", ServiceScanSerializer())
         self.config.map_class("ip-flow", IPFlowSerializer())
+        self.config.map_class("ble-advertisement-flow", BLEAdvertisementFlowSerializer())
         self.config.map_class("host-scan", HostScanSerializer())
         self.config.map_class("property-address-event", PropertyAddresssEventSerializer())
         self.config.map_class("source", EvidenceSourceSerializer())
@@ -61,7 +63,7 @@ class EvidenceSourceSerializer(Serializer[EvidenceSource]):
 
 class IPFlowSerializer(Serializer[IPFlow]):
     """Serialize IP flows"""
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(IPFlow)
         self.config.with_id = False
 
@@ -78,7 +80,8 @@ class IPFlowSerializer(Serializer[IPFlow]):
             target[1].get_parseable_value(),
             target[2]
         ]
-        stream += "timestamp", obj.timestamp.isoformat()
+        if obj.timestamp:
+            stream += "timestamp", obj.timestamp.isoformat()
 
     def new(self, stream: SerializerStream) -> IPFlow:
         ev = EventSerializer.read_evidence(stream)
@@ -92,6 +95,29 @@ class IPFlowSerializer(Serializer[IPFlow]):
         )
         flow.timestamp = datetime.datetime.fromisoformat(stream["timestamp"])
         return flow
+
+
+class BLEAdvertisementFlowSerializer(Serializer[BLEAdvertisementFlow]):
+    """Serialize BLE advertisement flows"""
+    def __init__(self) -> None:
+        super().__init__(BLEAdvertisementFlow)
+        self.config.with_id = False
+        self.config.map_simple_fields("event_type")
+
+    def write(self, obj: BLEAdvertisementFlow, stream: SerializerStream) -> None:
+        stream += "source", obj.source.get_parseable_value()
+        stream += "timestamp", obj.timestamp.isoformat() if obj.timestamp else ""
+
+    def new(self, stream: SerializerStream) -> BLEAdvertisementFlow:
+        ev = EventSerializer.read_evidence(stream)
+        ble_flow = BLEAdvertisementFlow(ev,
+            source=HWAddress.new(stream["source"].replace("|hw", "")),
+            event_type=stream["event_type"]
+        )
+        if stream.get("timestamp"):
+            ble_flow.timestamp = datetime.datetime.fromisoformat(stream["timestamp"])
+        return ble_flow
+
 
 class ServiceScanSerializer(Serializer[ServiceScan]):
     """Service scan serializer"""
