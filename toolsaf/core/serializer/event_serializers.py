@@ -1,9 +1,13 @@
 """Serializing events"""
 
 from typing import Any, Dict, Iterable, Union, Tuple
-
-from toolsaf.common.address import Addresses, EndpointAddress
-from toolsaf.common.traffic import Event, Evidence, EvidenceSource, HostScan, ServiceScan
+import datetime
+from toolsaf.common.address import (
+    Addresses, EndpointAddress, Protocol, HWAddress, IPAddress
+)
+from toolsaf.common.traffic import (
+    Event, Evidence, EvidenceSource, IPFlow, HostScan, ServiceScan
+)
 from toolsaf.common.serializer.serializer import Serializer, SerializerStream
 from toolsaf.common.property import PropertyKey, PropertyVerdictValue, PropertySetValue
 from toolsaf.common.verdict import Verdict
@@ -17,6 +21,7 @@ class EventSerializer(Serializer[Event]):
         # must map classes to have type information in the JSON
         self.config.map_class("event", self)
         self.config.map_class("service-scan", ServiceScanSerializer())
+        self.config.map_class("ip-flow", IPFlowSerializer())
         self.config.map_class("host-scan", HostScanSerializer())
         self.config.map_class("property-address-event", PropertyAddresssEventSerializer())
         self.config.map_class("source", EvidenceSourceSerializer())
@@ -53,6 +58,40 @@ class EvidenceSourceSerializer(Serializer[EvidenceSource]):
         if obj.timestamp:
             stream += "timestamp", obj.timestamp.isoformat()
 
+
+class IPFlowSerializer(Serializer[IPFlow]):
+    """Serialize IP flows"""
+    def __init__(self):
+        super().__init__(IPFlow)
+        self.config.with_id = False
+
+    def write(self, obj: IPFlow, stream: SerializerStream) -> None:
+        stream += "protocol", obj.protocol.value
+        source, target = obj.source, obj.target
+        stream += "source", [
+            source[0].get_parseable_value(),
+            source[1].get_parseable_value(),
+            source[2]
+        ]
+        stream += "target", [
+            target[0].get_parseable_value(),
+            target[1].get_parseable_value(),
+            target[2]
+        ]
+        stream += "timestamp", obj.timestamp.isoformat()
+
+    def new(self, stream: SerializerStream) -> IPFlow:
+        ev = EventSerializer.read_evidence(stream)
+        source = stream["source"]
+        target = stream["target"]
+        flow = IPFlow(
+            ev,
+            source=(HWAddress.new(source[0].replace("|hw", "")), IPAddress.new(source[1]), source[2]),
+            target=(HWAddress.new(target[0].replace("|hw", "")), IPAddress.new(target[1]), target[2]),
+            protocol=Protocol(stream["protocol"])
+        )
+        flow.timestamp = datetime.datetime.fromisoformat(stream["timestamp"])
+        return flow
 
 class ServiceScanSerializer(Serializer[ServiceScan]):
     """Service scan serializer"""

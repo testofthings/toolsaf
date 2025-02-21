@@ -3,9 +3,13 @@ from toolsaf.common.address import EndpointAddress, IPAddress, Protocol
 from toolsaf.common.serializer.serializer import SerializerStream
 from toolsaf.core.serializer.event_serializers import EventSerializer
 from toolsaf.core.serializer.event_serializers import (
+    IPFlowSerializer,
     ServiceScanSerializer, HostScanSerializer, PropertyAddresssEventSerializer
 )
-from toolsaf.common.traffic import Evidence, EvidenceSource, HostScan, ServiceScan
+from toolsaf.common.traffic import (
+    Evidence, EvidenceSource, IPFlow, HostScan, ServiceScan,
+    HWAddress, IPAddress
+)
 from toolsaf.core.event_interface import PropertyAddressEvent
 from toolsaf.common.property import PropertyKey
 from toolsaf.common.verdict import Verdict
@@ -45,6 +49,43 @@ def _get_stream(event):
     result = []
     result.extend(serializer.write_event(event, stream))
     return stream
+
+
+def test_ip_flow_serializer():
+    source = EvidenceSource(name="Test")
+    ip_flow = IPFlow(Evidence(source),
+        source=(HWAddress("00:00:00:00:00:00"), IPAddress("1.1.1.1"), 10),
+        target=(HWAddress("00:00:00:00:00:00"), IPAddress("1.1.1.1"), 10),
+        protocol=Protocol.TCP
+    )
+    ip_flow.timestamp = datetime(2025, 1, 1, 0, 0, 0)
+
+    assert _get_serialized_event(ip_flow) == {
+        "type": "ip-flow",
+        "source-id": "id1",
+        "source": ["00:00:00:00:00:00|hw", "1.1.1.1", 10],
+        "target": ["00:00:00:00:00:00|hw", "1.1.1.1", 10],
+        "protocol": "tcp",
+        "timestamp": "2025-01-01T00:00:00",
+    }
+
+
+def test_new_ip_flow_from_serialized():
+    source = EvidenceSource(name="Test", base_ref="../test.json")
+    ip_flow = IPFlow(Evidence(source),
+        source=(HWAddress("00:00:00:00:00:00"), IPAddress("1.1.1.1"), 10),
+        target=(HWAddress("00:00:00:00:00:00"), IPAddress("1.1.1.1"), 10),
+        protocol=Protocol.TCP
+    )
+    ip_flow.timestamp = datetime(2025, 1, 1, 0, 0, 0)
+    stream = _get_stream(ip_flow)
+
+    new_ip_flow = IPFlowSerializer().new(stream)
+    assert new_ip_flow.source == (HWAddress("00:00:00:00:00:00"), IPAddress.new("1.1.1.1"), 10)
+    assert new_ip_flow.target == (HWAddress("00:00:00:00:00:00"), IPAddress.new("1.1.1.1"), 10)
+    assert new_ip_flow.protocol == Protocol.TCP
+    assert new_ip_flow.timestamp == datetime(2025, 1, 1, 0, 0, 0)
+    assert new_ip_flow.evidence.source.name == "Test"
 
 
 def test_serialize_service_scan():
