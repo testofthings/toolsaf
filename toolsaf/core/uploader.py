@@ -84,7 +84,7 @@ class Uploader:
 
     def upload_sources(self, sources: List[Dict[str, Any]]) -> None:
         """Upload EvidenceSources to the API"""
-        url = f"{self._api_url}/statement/{self.statement_name_url}/evidence_sources"
+        url = f"{self._api_url}/statement/{self.statement_name_url}/evidence-sources"
         response = self._post(url, sources)
         self._handle_response(response)
 
