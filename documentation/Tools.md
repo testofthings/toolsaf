@@ -258,7 +258,10 @@ Example metafile `00meta.json`:
 }
 ```
 
-See the tool manual for how to save scanning data.
+See the tool manual for how to save scanning data. Or try this with Docker:
+```shell
+docker run --rm -v $(pwd):/output drwetter/testssl.sh --jsonfile /output/<target-url>.tcp.443.json https://<target-url>
+```
 
 ### Tshark (BLE only)
 
