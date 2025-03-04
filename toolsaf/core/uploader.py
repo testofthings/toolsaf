@@ -150,7 +150,7 @@ class Uploader:
 
         webbrowser.open(auth_url, autoraise=True)
         with self.CustomTCPServer(("localhost", 5033), self.TokenReceiver) as httpd:
-            httpd.RequestHandlerClass = not self.allow_insecure # type: ignore [assignment]
+            httpd.RequestHandlerClass.verify = not self.allow_insecure # type: ignore [assignment]
             httpd.handle_request()
             self._id_token = httpd.token
             httpd.server_close()
@@ -177,7 +177,8 @@ class Uploader:
                     self.send_response(200)
                     self.send_header("Content-Type", "text/plain")
                     self.end_headers()
-                    self.wfile.write(b"Login failed, you can close the browser")
+                    error_message = f"Error: {resp.json()['error']}. You can close the browser".encode('utf-8')
+                    self.wfile.write(error_message)
 
                 else:
                     self.server.token = resp.content # type: ignore [attr-defined]
