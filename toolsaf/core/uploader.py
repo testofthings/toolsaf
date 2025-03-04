@@ -1,22 +1,27 @@
 """JSON serialized statement uploader"""
 import os
+import http.server
+import socketserver
+import webbrowser
 from typing import Union, Literal, Dict, List, Any
 from pathlib import Path
 import requests
 from toolsaf.main import ConfigurationException
 
+API_URL = "https://127.0.0.1"
 
 class Uploader:
     """JSON serialized statement uploader"""
 
     _toolsaf_home_dir = Path.home() / ".toolsaf"
-    _api_url = "https://127.0.0.1/api"
+    _api_url = f"{API_URL}/api"
 
     def __init__(self, statement_name: str, allow_insecure: bool=False) -> None:
         self.statement_name = statement_name
         self.statement_name_url = self.statement_name.replace(" ", "-")
         self.allow_insecure = allow_insecure
         self._api_key = ""
+        self._id_token = ""
 
     def do_pre_procedures(self, key_file_argument: Union[Literal[True], str]) -> None:
         """Get everything ready for uploading"""
@@ -130,3 +135,65 @@ class Uploader:
         if new_structure:
             response = self._post(url, new_structure)
             self._handle_response(response)
+
+
+    def login(self) -> None:
+        """Login using Google's OpenID Connect"""
+        print(f"{API_URL}/login")
+        response = requests.get(f"{API_URL}/login", verify=not self.allow_insecure, timeout=60) # Changeable url
+        if response.status_code != 200:
+            raise ConnectionError("Got incorrect response from login API")
+        if not (response_json := response.json()):
+            raise ConnectionError("Got incorrect response from login API")
+        if not (auth_url := response_json.get("auth_url")):
+            raise ConnectionError("Got incorrect response from login API")
+
+        webbrowser.open(auth_url, autoraise=True)
+        with self.CustomTCPServer(("localhost", 5033), self.TokenReceiver) as httpd:
+            httpd.RequestHandlerClass = not self.allow_insecure # type: ignore [assignment]
+            httpd.handle_request()
+            self._id_token = httpd.token
+            httpd.server_close()
+
+        if not self._id_token:
+            raise ConnectionError("Getting a token failed")
+
+        print(f"Your ID token is: {self._id_token}")
+
+    class CustomTCPServer(socketserver.TCPServer):
+        """Custom TCP Server"""
+        token = ""
+        allow_reuse_address = True
+
+    class TokenReceiver(http.server.SimpleHTTPRequestHandler):
+        """Token receiver"""
+        verify = True
+
+        def do_GET(self) -> None:
+            if "/?code=" in self.path:
+                resp = requests.get(f"{API_URL}/callback" + self.path[1:], verify=self.verify, timeout=60)
+
+                if resp.status_code != 200:
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/plain")
+                    self.end_headers()
+                    self.wfile.write(b"Login failed, you can close the browser")
+
+                else:
+                    self.server.token = resp.content # type: ignore [attr-defined]
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/plain")
+                    self.end_headers()
+                    self.wfile.write(b"Logged in, you can now close the browser")
+
+        def log_message(self, format: str, *args: Any) -> None: # pylint: disable=W0622
+            return
+
+        def log_error(self, format: str, *args: Any) -> None: # pylint: disable=W0622
+            return
+
+
+if __name__ == "__main__":
+    u = Uploader("test")
+    u.allow_insecure = True
+    u.login()
