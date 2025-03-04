@@ -150,7 +150,7 @@ class Uploader:
 
         webbrowser.open(auth_url, autoraise=True)
         with self.CustomTCPServer(("localhost", 5033), self.TokenReceiver) as httpd:
-            httpd.RequestHandlerClass.verify = not self.allow_insecure # type: ignore [assignment]
+            httpd.RequestHandlerClass.verify = not self.allow_insecure # type: ignore [attr-defined]
             httpd.handle_request()
             self._id_token = httpd.token
             httpd.server_close()
