@@ -5,6 +5,7 @@ from toolsaf.adapters.android_manifest_scan import AndroidManifestScan
 from toolsaf.adapters.censys_scan import CensysScan
 from toolsaf.adapters.har_scan import HARScan
 from toolsaf.adapters.certmitm_reader import CertMITMReader
+from toolsaf.adapters.mobsf_scan import MobSFScan
 from toolsaf.adapters.nmap_scan import NMAPScan
 from toolsaf.adapters.pcap_reader import PCAPReader
 from toolsaf.adapters.ping_command import PingCommand
@@ -78,6 +79,7 @@ class ToolFinderImplementation:
         self.har = ToolDepiction("har", HARScan, extension="json")
         self.http = ToolDepiction("http", WebChecker, extension="http")
         self.certmitm = ToolDepiction("certmitm", CertMITMReader, extension="zip")
+        self.mobsf = ToolDepiction("mobsf", MobSFScan, extension="json")
         self.nmap = ToolDepiction("nmap", NMAPScan, extension="xml")
         self.github_releases = ToolDepiction("github-releases", GithubReleaseReader)
         self.ping = ToolDepiction("ping", PingCommand, extension="log")

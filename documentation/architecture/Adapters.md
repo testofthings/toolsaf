@@ -81,6 +81,11 @@ File: [har_scan.py](../../toolsaf/adapters/har_scan.py)
 
 Adapter for processing HAR files in `.json` format extracted from Browser.
 
+### MobSF
+File: [mobsf_scan.py](../../toolsaf/adapters/mobsf_scan.py)
+
+Adapter for processing MobFS's static analysis results in `.json` format.
+
 ### NMAPScan
 File: [nmap_scan.py](../../toolsaf/adapters/nmap_scan.py)
 

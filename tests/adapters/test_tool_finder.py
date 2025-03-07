@@ -7,6 +7,7 @@ from toolsaf.adapters.android_manifest_scan import AndroidManifestScan
 from toolsaf.adapters.censys_scan import CensysScan
 from toolsaf.adapters.har_scan import HARScan
 from toolsaf.adapters.certmitm_reader import CertMITMReader
+from toolsaf.adapters.mobsf_scan import MobSFScan
 from toolsaf.adapters.nmap_scan import NMAPScan
 from toolsaf.adapters.github_releases import GithubReleaseReader
 from toolsaf.adapters.ping_command import PingCommand
@@ -32,6 +33,7 @@ from tests.test_model import Setup
         ("har", HARScan),
         ("http", WebChecker),
         ("certmitm", CertMITMReader),
+        ("mobsf", MobSFScan),
         ("nmap", NMAPScan),
         ("github-releases", GithubReleaseReader),
         ("ping", PingCommand),

@@ -47,6 +47,7 @@ In the following list you can find the tools and formats Toolsaf supports. Short
 | [certmitm](Tools.md#certmitm) | .zip | Attempt to break TLS encryption by Man-In-The-Middle attacks
 | [GitHub Releases](Tools.md#github-releases) | .json | Read release history from GitHub
 | [HAR](Tools.md#har) | .json | Inspect browsing session HAR-capture, even when encrypted
+| [MobSF](Tools.md#mobsf) | .json | Static mobile application analysis
 | [nmap](Tools.md#nmap) | .xml | Scan network to detect hosts and services
 | [Wireshark / tcpdump](Tools.md#pcap) | .pcap | Detect hosts, services, and connections between them from network captures.
 | [SPDX SBOM](Tools.md#spdx) | .json | Read SBOM from standard SPDX files
@@ -167,6 +168,34 @@ Example metafile `00meta.json`:
 ```
 Chrome can save HAR-files compatible with the reader.
 The way to save HAR-file depends on the browser.
+
+### MobSF
+
+> 🌐 [MobSF](https://github.com/MobSF/Mobile-Security-Framework-MobSF)
+
+Data files are MobSF static analysis results in JSON format. Example metafile `00meta.json`:
+```json
+{
+    "file_type": "mobsf"
+}
+```
+For more details on how to use MobSF, check their [Github](https://github.com/MobSF/Mobile-Security-Framework-MobSF). Alternatively, if you have Docker installed, do the following. Run MobSF in a Docker container and copy the REST API key from its output.
+```shell
+docker run -it --rm -p 8000:8000 opensecurity/mobile-security-framework-mobsf:latest
+```
+Then, in another terminal, send an `.apk` file to its API with the following commands:
+```shell
+curl -X POST "http://localhost:8000/api/v1/upload" \
+     -H "Authorization: <your-API-key>" \
+     -F "file=@/path/to/app.apk"
+```
+Copy the `hash` from the response. Finally:
+```shell
+curl -X POST "http://localhost:8000/api/v1/scan" \
+     -H "Authorization: <your-API-key>" \
+     -d "hash=<your-hash>" \
+     | jq > Mobile_App.json
+```
 
 ### Nmap
 
