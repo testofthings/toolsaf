@@ -159,6 +159,14 @@ class Uploader:
             raise ConnectionError("Getting a session JWT failed")
         return session_jwt
 
+    def _read_session_jwt(self) -> None:
+        """Read session JWT from file"""
+        jwt_file_path = self._toolsaf_home_dir / ".jwt"
+        if not jwt_file_path.exists():
+            raise ConfigurationException(f"{jwt_file_path} was not found")
+        with jwt_file_path.open("r") as jwt_file:
+            self._jwt = jwt_file.read().strip()
+
     def _write_session_jwt_to_file(self, session_jwt: str) -> None:
         """Write received session JWT to file"""
         print(f"Saving session JWT to {self._toolsaf_home_dir / '.jwt'}")
@@ -176,6 +184,12 @@ class Uploader:
         login_url = f"{API_URL}/api/google-login"
         self._jwt = self._get_session_jwt(login_url)
         self._write_session_jwt_to_file(self._jwt)
+
+    def test_jwt(self) -> None:
+        self._read_session_jwt()
+        resp = requests.post(f"{API_URL}/api/jwt-test", headers={"Authorization": f"Bearer {self._jwt}"}, verify=not self.allow_insecure)
+        print(resp.status_code)
+        print(resp.json())
 
     class CustomTCPServer(socketserver.TCPServer):
         """Custom TCP Server"""
@@ -218,4 +232,5 @@ class Uploader:
 if __name__ == "__main__":
     u = Uploader("test")
     u.allow_insecure = True
-    u.login()
+    #u.login()
+    u.test_jwt()
