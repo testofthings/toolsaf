@@ -21,7 +21,8 @@ class Uploader:
         self.statement_name_url = self.statement_name.replace(" ", "-")
         self.allow_insecure = allow_insecure
         self._api_key = ""
-        self._id_token = ""
+        self._use_port = 5033
+        self._jwt = ""
 
     def do_pre_procedures(self, key_file_argument: Union[Literal[True], str]) -> None:
         """Get everything ready for uploading"""
@@ -136,56 +137,76 @@ class Uploader:
             response = self._post(url, new_structure)
             self._handle_response(response)
 
+    def _get_session_jwt(self, url: str) -> str:
+        """Get session JWT"""
+        response = self._post(url, data={"port": self._use_port})
+        if response.status_code != 200 \
+         or not (response_json := response.json()) \
+         or not (oauth_url := response_json.get("oauth_url")):
+            raise ConnectionError("Got incorrect response from user registration API")
+        webbrowser.open(oauth_url, autoraise=True)
+
+        session_jwt = ""
+        # Start TCP serve to catch response from OAth provider
+        with self.CustomTCPServer(("localhost", self._use_port), self.JWTReceiver) as httpd:
+            httpd.verify = not self.allow_insecure
+            httpd.use_port = self._use_port
+            httpd.handle_request()
+            session_jwt = httpd.received_jwt
+            httpd.server_close()
+
+        if not session_jwt:
+            raise ConnectionError("Getting a session JWT failed")
+        return session_jwt
+
+    def _write_session_jwt_to_file(self, session_jwt: str) -> None:
+        """Write received session JWT to file"""
+        print(f"Saving session JWT to {self._toolsaf_home_dir / '.jwt'}")
+        with (self._toolsaf_home_dir / ".jwt").open("w") as jwt_file:
+            jwt_file.write(session_jwt)
+
+    def register(self) -> None:
+        """Register to Test of Things cloud service. Currently not available for the public"""
+        registration_url = f"{API_URL}/api/google-register"
+        self._jwt = self._get_session_jwt(registration_url)
+        self._write_session_jwt_to_file(self._jwt)
 
     def login(self) -> None:
         """Login using Google's OpenID Connect"""
-        print(f"{API_URL}/login")
-        response = requests.get(f"{API_URL}/login", verify=not self.allow_insecure, timeout=60) # Changeable url
-        if response.status_code != 200:
-            raise ConnectionError("Got incorrect response from login API")
-        if not (response_json := response.json()):
-            raise ConnectionError("Got incorrect response from login API")
-        if not (auth_url := response_json.get("auth_url")):
-            raise ConnectionError("Got incorrect response from login API")
-
-        webbrowser.open(auth_url, autoraise=True)
-        with self.CustomTCPServer(("localhost", 5033), self.TokenReceiver) as httpd:
-            httpd.RequestHandlerClass.verify = not self.allow_insecure # type: ignore [attr-defined]
-            httpd.handle_request()
-            self._id_token = httpd.token
-            httpd.server_close()
-
-        if not self._id_token:
-            raise ConnectionError("Getting a token failed")
-
-        print(f"Your ID token is: {self._id_token}")
+        login_url = f"{API_URL}/api/google-login"
+        self._jwt = self._get_session_jwt(login_url)
+        self._write_session_jwt_to_file(self._jwt)
 
     class CustomTCPServer(socketserver.TCPServer):
         """Custom TCP Server"""
-        token = ""
+        use_port = 0
+        received_jwt = ""
+        verify = True
         allow_reuse_address = True
 
-    class TokenReceiver(http.server.SimpleHTTPRequestHandler):
-        """Token receiver"""
-        verify = True
+    class JWTReceiver(http.server.SimpleHTTPRequestHandler):
+        """JWT receiver"""
+        server: 'Uploader.CustomTCPServer'
 
         def do_GET(self) -> None:
             if "/?code=" in self.path:
-                resp = requests.get(f"{API_URL}/callback" + self.path[1:], verify=self.verify, timeout=60)
+                callback_url = f"{API_URL}/api/google-callback" + self.path[1:] + f"&port={self.server.use_port}"
+                resp = requests.get(callback_url, verify=self.server.verify, timeout=60)
+
+                self.send_response(resp.status_code)
+                self.send_header("Content-Type", "text/html")
+                self.end_headers()
+                response_json = resp.json()
 
                 if resp.status_code != 200:
-                    self.send_response(200)
-                    self.send_header("Content-Type", "text/plain")
-                    self.end_headers()
-                    error_message = f"Error: {resp.json()['error']}. You can close the browser".encode('utf-8')
-                    self.wfile.write(error_message)
-
+                    error = response_json.get("error")
+                    message = f"<b>Error: {error}<br>You can close the browser.</b>".encode('utf-8')
                 else:
-                    self.server.token = resp.content # type: ignore [attr-defined]
-                    self.send_response(200)
-                    self.send_header("Content-Type", "text/plain")
-                    self.end_headers()
-                    self.wfile.write(b"Logged in, you can now close the browser")
+                    self.server.received_jwt = response_json.get("jwt")
+                    api_message = response_json.get("message")
+                    message = f"<b>Logged in. {api_message}<br>You can now close the browser.</b>".encode("utf-8")
+
+                self.wfile.write(message)
 
         def log_message(self, format: str, *args: Any) -> None: # pylint: disable=W0622
             return
