@@ -5,12 +5,12 @@ from zipfile import ZipFile
 from io import BufferedReader
 from typing import Set, Tuple, Dict, Any, cast
 
-from toolsaf.common.address import HWAddresses
-from toolsaf.core.event_interface import EventInterface
+from toolsaf.common.address import HWAddresses, DNSName, Protocol
+from toolsaf.core.event_interface import EventInterface, PropertyEvent
 from toolsaf.adapters.tools import SystemWideTool
-from toolsaf.core.model import IoTSystem
+from toolsaf.core.model import IoTSystem, Host, Service
 from toolsaf.common.traffic import EvidenceSource, Evidence, IPFlow
-from toolsaf.common.property import Properties
+from toolsaf.common.property import Properties, PropertyKey
 from toolsaf.common.verdict import Verdict
 
 
@@ -26,6 +26,7 @@ class CertMITMReader(SystemWideTool):
         """Read log file"""
         evidence = Evidence(source)
         connections: Set[Tuple[str, str, str]] = set()
+        dns_names: Set[DNSName] = set()
 
         # certmitm stores found issues in JSON format to errors.txt
         with ZipFile(data) as zip_file:
@@ -46,5 +47,25 @@ class CertMITMReader(SystemWideTool):
             flow.evidence = evidence
             Properties.MITM.put_verdict(flow.properties, Verdict.FAIL)
             interface.connection(flow)
+
+        # Workaround for showing that certmitm was used
+        with ZipFile(data) as zip_file:
+            for file in zip_file.filelist:
+                if "certificates" in file.filename:
+                    dns_name = DNSName(file.filename.split("/")[-1].split("_")[0])
+                    if dns_name in dns_names:
+                        continue
+                    dns_names.add(dns_name)
+                    if (endpoint := self.system.find_endpoint(dns_name)):
+                        if not isinstance(endpoint, Host):
+                            continue
+                        for endpoint_connection in endpoint.connections:
+                            if not isinstance(endpoint_connection.target, Service):
+                                continue
+                            if endpoint_connection.target.protocol == Protocol.TLS \
+                            and Properties.MITM not in endpoint_connection.properties:
+                                key = PropertyKey(self.tool_label)
+                                ev = PropertyEvent(evidence, endpoint_connection, key.verdict(Verdict.PASS))
+                                interface.property_update(ev)
 
         return True
