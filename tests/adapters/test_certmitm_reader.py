@@ -53,5 +53,5 @@ def test_process_file():
             # No fail
             assert conn.properties[PropertyKey("certmitm")].verdict == Verdict.PASS
         else:
-            assert conn.properties[Properties.MITM].verdict == Verdict.FAIL
+            assert conn.properties[PropertyKey("certmitm")].verdict == Verdict.FAIL
 

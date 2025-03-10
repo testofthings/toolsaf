@@ -10,7 +10,7 @@ from toolsaf.core.event_interface import EventInterface, PropertyEvent
 from toolsaf.adapters.tools import SystemWideTool
 from toolsaf.core.model import IoTSystem, Host, Service
 from toolsaf.common.traffic import EvidenceSource, Evidence, IPFlow
-from toolsaf.common.property import Properties, PropertyKey
+from toolsaf.common.property import PropertyKey
 from toolsaf.common.verdict import Verdict
 
 
@@ -45,7 +45,7 @@ class CertMITMReader(SystemWideTool):
                 HWAddresses.NULL.data, connection_source, 0,
                 HWAddresses.NULL.data, target, int(port))
             flow.evidence = evidence
-            Properties.MITM.put_verdict(flow.properties, Verdict.FAIL)
+            PropertyKey("certmitm").put_verdict(flow.properties, Verdict.FAIL)
             interface.connection(flow)
 
         # Workaround for showing that certmitm was used
@@ -62,9 +62,9 @@ class CertMITMReader(SystemWideTool):
                         for endpoint_connection in endpoint.connections:
                             if not isinstance(endpoint_connection.target, Service):
                                 continue
+                            key = PropertyKey(self.tool_label)
                             if endpoint_connection.target.protocol == Protocol.TLS \
-                            and Properties.MITM not in endpoint_connection.properties:
-                                key = PropertyKey(self.tool_label)
+                            and key not in endpoint_connection.properties:
                                 ev = PropertyEvent(evidence, endpoint_connection, key.verdict(Verdict.PASS))
                                 interface.property_update(ev)
 
