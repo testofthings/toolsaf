@@ -66,3 +66,8 @@ This file provides some core classes for the Toolsaf DSL interface and implement
 ## File [`online_resources.py`](../../toolsaf/core/online_resources.py)
 
 This class stores _online resource_ data.
+
+## File [`uploader.py`](../../toolsaf/core/uploader.py)
+
+This file implements sending JSON serialized security statements to the API.
+Currently authenticates requests with an API key that the user provides. Login with Google OpenID Connect is in the works

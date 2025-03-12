@@ -42,6 +42,7 @@ from toolsaf.common.android import MobilePermissions
 from toolsaf.adapters.spdx_reader import SPDXJson
 from toolsaf.diagram_visualizer import DiagramVisualizer
 from toolsaf.core.ignore_rules import IgnoreRules
+from toolsaf.core.uploader import Uploader
 
 
 class SystemBackend(SystemBuilder):
@@ -1083,6 +1084,10 @@ class SystemBackendRunner(SystemBackend):
         parser.add_argument("-l", "--log", dest="log_level", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                             help="Set the logging level", default=None)
         parser.add_argument("--statement-json", action="store_true", help="Dump security statement JSON to stdout")
+        parser.add_argument("-u", "--upload", nargs="?", const=True,
+                            help="Upload statement. You can provide the path to your API key file with this flag.")
+        parser.add_argument("--insecure", action="store_true",
+                            help="Allow insecure server connections")
         parser.add_argument("--db", type=str, help="Connect to SQL database")
         parser.add_argument(
             "--log-events", action="store_true", help="Log events")
@@ -1169,5 +1174,22 @@ class SystemBackendRunner(SystemBackend):
             self.diagram.set_file_name(args.diagram_name)
             self.diagram.show = bool(args.show_diagram)
             self.diagram.create_diagram()
+
+        if args.upload:
+            uploader = Uploader(self.system.name, allow_insecure=args.insecure)
+            uploader.do_pre_procedures(args.upload)
+            uploader.upload_statement()
+
+            ser = IoTSystemSerializer(self.system)
+            system_stream = SerializerStream(ser)
+            uploader.upload_system(list(system_stream.write(self.system)))
+
+            if registry.logging.logs:
+                log_ser = EventSerializer()
+                event_stream = SerializerStream(log_ser, context=system_stream.context)
+                events = []
+                for log in registry.logging.logs:
+                    events += list(log_ser.write_event(log.event, event_stream))
+                uploader.upload_logs(events)
 
         return load_data
