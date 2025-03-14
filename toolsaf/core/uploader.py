@@ -8,7 +8,8 @@ from pathlib import Path
 import requests
 from toolsaf.main import ConfigurationException
 
-API_URL = "https://127.0.0.1"
+API_URL = "https://127.0.0.1:8888"
+
 
 class Uploader:
     """JSON serialized statement uploader"""
@@ -88,54 +89,24 @@ class Uploader:
         response = self._post(url, entities)
         self._handle_response(response)
 
-    def upload_sources(self, sources: List[Dict[str, Any]]) -> None:
-        """Upload EvidenceSources to the API"""
-        url = f"{self._api_url}/statement/{self.statement_name_url}/evidence-sources"
-        response = self._post(url, sources)
-        self._handle_response(response)
-
-    def upload_events(self, events: List[Dict[str, Any]]) -> None:
-        """Upload Events in batches to the API"""
+    def upload_logs(self, logs: List[Dict[str, Any]]) -> None:
+        """Upload EvidenceSources and related Events in batches to the API"""
         url = f"{self._api_url}/statement/{self.statement_name_url}/events"
-        for idx in range(0, len(events), 10000):
-            response = self._post(url, events[idx:idx+10000])
-            self._handle_response(response)
+        batch: List[Dict[str, Any]] = []
+        for entry in logs:
+            if entry["type"] == "source" and batch and batch[0] != entry:
+                self._upload_batch(batch, url)
+                batch = []
+            batch.append(entry)
 
-    def upload_logs(self, entries: List[Dict[str, Any]]) -> None:
-        """Upload sources and events to the API"""
-        sources, events = [], []
-        for entry in entries:
-            if entry["type"] == "source":
-                sources.append(entry)
-            else:
-                events.append(entry)
+        if batch:
+            self._upload_batch(batch, url)
 
-        self.upload_sources(sources)
-        self.upload_events(events)
-
-    def _upload_logs(self, entries: List[Dict[str, Any]]) -> None:
-        """Upload sources and events will probably replace this way"""
-        url = f"{self._api_url}/statement/{self.statement_name_url}/logs"
-        new_structure: List[Dict[str, Any]] = []
-        current_entries = 0
-
-        for entry in entries:
-            if entry["type"] == "source":
-                if current_entries >= 3000:
-                    response = self._post(url, new_structure)
-                    self._handle_response(response)
-                    new_structure = []
-                    current_entries = 0
-
-                entry["events"] = []
-                new_structure += [entry]
-            else:
-                new_structure[-1]["events"] += [entry]
-            current_entries += 1
-
-        if new_structure:
-            response = self._post(url, new_structure)
-            self._handle_response(response)
+    def _upload_batch(self, batch: List[Dict[str, Any]], url: str) -> None:
+        """Post a single batch containing one EvidenceSource and its Events"""
+        print(f"Uploading {batch[0]['base_ref']}")
+        response = self._post(url, batch)
+        self._handle_response(response)
 
     def _get_session_jwt(self, url: str) -> str:
         """Get session JWT"""
@@ -186,8 +157,12 @@ class Uploader:
         self._write_session_jwt_to_file(self._jwt)
 
     def test_jwt(self) -> None:
+        """Test that JWT is correct"""
         self._read_session_jwt()
-        resp = requests.post(f"{API_URL}/api/jwt-test", headers={"Authorization": f"Bearer {self._jwt}"}, verify=not self.allow_insecure)
+        resp = requests.post(
+            f"{API_URL}/api/jwt-test", headers={"Authorization": f"Bearer {self._jwt}"},
+            verify=not self.allow_insecure,
+            timeout=60)
         print(resp.status_code)
         print(resp.json())
 
