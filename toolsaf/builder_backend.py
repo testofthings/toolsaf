@@ -150,6 +150,13 @@ class SystemBackend(SystemBuilder):
         self.ignore_backend.new_rule(file_type)
         return self.ignore_backend
 
+    def set_upload_tag(self, upload_tag: str) -> None:
+        """Set a unique tag, consisting of numbers and characters, for statement uploads.
+            Has a minimum length of 3"""
+        assert upload_tag.isalnum(), f"Upload tag {upload_tag} is not alphanumeric"
+        assert len(upload_tag) >= 3, f"Upload tag {upload_tag} is shorter than the minimum length of 3 characters"
+        self.system.upload_tag = upload_tag
+
     # Backend methods
 
     def get_host_(self, name: str, description: str) -> 'HostBackend':
@@ -1176,7 +1183,7 @@ class SystemBackendRunner(SystemBackend):
             self.diagram.create_diagram()
 
         if args.upload:
-            uploader = Uploader(self.system.name, allow_insecure=args.insecure)
+            uploader = Uploader(self.system, allow_insecure=args.insecure)
             uploader.do_pre_procedures(args.upload)
             uploader.upload_statement()
 

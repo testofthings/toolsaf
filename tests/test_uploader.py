@@ -5,7 +5,12 @@ from pathlib import Path
 import tempfile
 
 from toolsaf.core.uploader import Uploader
+from toolsaf.core.model import IoTSystem
 from toolsaf.main import ConfigurationException
+
+
+SYSTEM = IoTSystem()
+SYSTEM.upload_tag = "test"
 
 
 @pytest.mark.parametrize(
@@ -17,7 +22,7 @@ def test_create_directory(dir_exists):
          patch.object(Path, "mkdir") as mock_mkdir:
 
         mock_exists.return_value = dir_exists
-        Uploader("")._create_directory(Path())
+        Uploader(SYSTEM)._create_directory(Path())
         if dir_exists:
             mock_mkdir.assert_not_called()
         else:
@@ -25,7 +30,7 @@ def test_create_directory(dir_exists):
 
 
 def test_add_toolsaf_directory_to_home():
-    uploader = Uploader("")
+    uploader = Uploader(SYSTEM)
     uploader._toolsaf_home_dir = Path("test")
     uploader._create_directory = MagicMock()
     uploader._add_toolsaf_directory_to_home()
@@ -35,15 +40,15 @@ def test_add_toolsaf_directory_to_home():
 def test_get_key_file_path_based_on_argument():
     with patch.object(Path, "home") as mock_home:
         mock_home.return_value = Path("/home")
-        uploader = Uploader("")
+        uploader = Uploader(SYSTEM)
         uploader._toolsaf_home_dir = Path.home() / ".toolsaf"
         assert uploader._get_key_file_path_based_on_argument(True) == Path("/home/.toolsaf/.apikey")
-        uploader = Uploader("/test/path/.apikey")
+        uploader = Uploader(SYSTEM)
         assert uploader._get_key_file_path_based_on_argument("/test/path/.apikey") == Path("/test/path/.apikey")
 
 
 def test_read_api_key():
-    uploader = Uploader("")
+    uploader = Uploader(SYSTEM)
     with patch.object(Path, "exists") as mock_exists:
         mock_exists.return_value = False
         with pytest.raises(ConfigurationException):
@@ -60,7 +65,7 @@ def test_read_api_key():
 
 
 def test_headers():
-    uploader = Uploader("")
+    uploader = Uploader(SYSTEM)
     uploader._api_key = "test"
     assert uploader._headers == {
         "Authorization": "test",
@@ -69,7 +74,7 @@ def test_headers():
 
 
 def test_post_success():
-    uploader = Uploader("")
+    uploader = Uploader(SYSTEM)
     uploader._api_key = "test"
     url = "https://127.0.0.1/api/test"
     data = {"key": "value"}
@@ -90,7 +95,7 @@ def test_post_success():
 
 
 def test_post_failure():
-    uploader = Uploader("")
+    uploader = Uploader(SYSTEM)
     uploader._api_key = "test"
     url = "https://127.0.0.1/api/test"
     data = {"key": "value"}

@@ -7,6 +7,7 @@ from typing import Union, Literal, Dict, List, Any
 from pathlib import Path
 import requests
 from toolsaf.main import ConfigurationException
+from toolsaf.core.model import IoTSystem
 
 API_URL = "https://127.0.0.1:8888"
 
@@ -17,9 +18,11 @@ class Uploader:
     _toolsaf_home_dir = Path.home() / ".toolsaf"
     _api_url = f"{API_URL}/api"
 
-    def __init__(self, statement_name: str, allow_insecure: bool=False) -> None:
-        self.statement_name = statement_name
-        self.statement_name_url = self.statement_name.replace(" ", "-")
+    def __init__(self, system: IoTSystem, allow_insecure: bool=False) -> None:
+        self.statement_name = system.name
+        self.statement_url = system.upload_tag
+        if not self.statement_url:
+            raise ConfigurationException("upload_tag missing. Use system.set_upload_tag() in your statement")
         self.allow_insecure = allow_insecure
         self._api_key = ""
         self._use_port = 5033
@@ -80,18 +83,18 @@ class Uploader:
     def upload_statement(self) -> None:
         """Upload statement info to API"""
         url = f"{self._api_url}/statement"
-        response = self._post(url, {"name": self.statement_name, "url": self.statement_name_url})
+        response = self._post(url, {"name": self.statement_name, "url": self.statement_url})
         self._handle_response(response)
 
     def upload_system(self, entities: List[Dict[str, Any]]) -> None:
         """Upload entities to the API"""
-        url = f"{self._api_url}/statement/{self.statement_name_url}/entities"
+        url = f"{self._api_url}/statement/{self.statement_url}/entities"
         response = self._post(url, entities)
         self._handle_response(response)
 
     def upload_logs(self, logs: List[Dict[str, Any]]) -> None:
         """Upload EvidenceSources and related Events in batches to the API"""
-        url = f"{self._api_url}/statement/{self.statement_name_url}/events"
+        url = f"{self._api_url}/statement/{self.statement_url}/events"
         batch: List[Dict[str, Any]] = []
         for entry in logs:
             if entry["type"] == "source" and batch and batch[0] != entry:
@@ -205,7 +208,7 @@ class Uploader:
 
 
 if __name__ == "__main__":
-    u = Uploader("test")
+    u = Uploader(IoTSystem())
     u.allow_insecure = True
     #u.login()
     u.test_jwt()

@@ -582,6 +582,9 @@ class IoTSystem(NetworkNode):
         # observed connections and replies
         self.connections: Dict[Tuple[AnyAddress, AnyAddress], Connection] = {}
 
+        # Tag used to identify uploaded security statements
+        self.upload_tag: Optional[str] = None
+
     # NOTE: get_children() does not return connections
 
     def get_children(self) -> Iterable['Entity']:
