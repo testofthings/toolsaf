@@ -9,14 +9,11 @@ import requests
 from toolsaf.main import ConfigurationException
 from toolsaf.core.model import IoTSystem
 
-API_URL = "https://127.0.0.1:8888"
-
 
 class Uploader:
     """JSON serialized statement uploader"""
 
     _toolsaf_home_dir = Path.home() / ".toolsaf"
-    _api_url = f"{API_URL}/api"
 
     def __init__(self, system: IoTSystem, allow_insecure: bool=False) -> None:
         self.statement_name = system.name
@@ -25,6 +22,7 @@ class Uploader:
             raise ConfigurationException("upload_tag missing. Use system.set_upload_tag() in your statement")
         self.allow_insecure = allow_insecure
         self._api_key = ""
+        self._api_url = ""
         self._use_port = 5033
         self._jwt = ""
 
@@ -33,6 +31,7 @@ class Uploader:
         self._add_toolsaf_directory_to_home()
         key_file_path = self._get_key_file_path_based_on_argument(key_file_argument)
         self._read_api_key(key_file_path)
+        self._read_api_url()
 
     def _create_directory(self, path: Path) -> None:
         """Creates directory based on given Path; if the directory does not already exist"""
@@ -60,6 +59,23 @@ class Uploader:
                 raise ConfigurationException(f"API key file {key_file_path} is empty")
             self._api_key = file_contents
 
+    def _read_api_url(self) -> None:
+        """Read API URL from file, if not found, create it and prompt user to enter it"""
+        url_file_path = self._toolsaf_home_dir / "api_url"
+        if not Path.exists(url_file_path):
+            print(f"Could not read API URL, file {url_file_path} is empty")
+            api_url = "https://"
+            api_url += input(f"Enter URL for the API, {api_url}")
+            with url_file_path.open("w", encoding="utf-8") as api_url_file:
+                api_url_file.write(api_url)
+
+        else:
+            with url_file_path.open("r", encoding="utf-8") as api_url_file:
+                api_url = api_url_file.read()
+                assert api_url, f"Could not read API URL, file {url_file_path} is empty"
+
+        self._api_url = api_url
+
     @property
     def _headers(self) -> Dict[str, str]:
         """API request headers"""
@@ -82,19 +98,19 @@ class Uploader:
 
     def upload_statement(self) -> None:
         """Upload statement info to API"""
-        url = f"{self._api_url}/statement"
+        url = f"{self._api_url}/api/statement"
         response = self._post(url, {"name": self.statement_name, "url": self.statement_url})
         self._handle_response(response)
 
     def upload_system(self, entities: List[Dict[str, Any]]) -> None:
         """Upload entities to the API"""
-        url = f"{self._api_url}/statement/{self.statement_url}/entities"
+        url = f"{self._api_url}/api/statement/{self.statement_url}/entities"
         response = self._post(url, entities)
         self._handle_response(response)
 
     def upload_logs(self, logs: List[Dict[str, Any]]) -> None:
         """Upload EvidenceSources and related Events in batches to the API"""
-        url = f"{self._api_url}/statement/{self.statement_url}/events"
+        url = f"{self._api_url}/api/statement/{self.statement_url}/events"
         batch: List[Dict[str, Any]] = []
         for entry in logs:
             if entry["type"] == "source" and batch and batch[0] != entry:
@@ -123,6 +139,7 @@ class Uploader:
         session_jwt = ""
         # Start TCP serve to catch response from OAth provider
         with self.CustomTCPServer(("localhost", self._use_port), self.JWTReceiver) as httpd:
+            httpd.api_url = self._api_url
             httpd.verify = not self.allow_insecure
             httpd.use_port = self._use_port
             httpd.handle_request()
@@ -149,13 +166,13 @@ class Uploader:
 
     def register(self) -> None:
         """Register to Test of Things cloud service. Currently not available for the public"""
-        registration_url = f"{API_URL}/api/google-register"
+        registration_url = f"{self._api_url}/api/google-register"
         self._jwt = self._get_session_jwt(registration_url)
         self._write_session_jwt_to_file(self._jwt)
 
     def login(self) -> None:
         """Login using Google's OpenID Connect"""
-        login_url = f"{API_URL}/api/google-login"
+        login_url = f"{self._api_url}/api/google-login"
         self._jwt = self._get_session_jwt(login_url)
         self._write_session_jwt_to_file(self._jwt)
 
@@ -163,7 +180,7 @@ class Uploader:
         """Test that JWT is correct"""
         self._read_session_jwt()
         resp = requests.post(
-            f"{API_URL}/api/jwt-test", headers={"Authorization": f"Bearer {self._jwt}"},
+            f"{self._api_url}/api/jwt-test", headers={"Authorization": f"Bearer {self._jwt}"},
             verify=not self.allow_insecure,
             timeout=60)
         print(resp.status_code)
@@ -171,6 +188,7 @@ class Uploader:
 
     class CustomTCPServer(socketserver.TCPServer):
         """Custom TCP Server"""
+        api_url = ""
         use_port = 0
         received_jwt = ""
         verify = True
@@ -182,7 +200,8 @@ class Uploader:
 
         def do_GET(self) -> None:
             if "/?code=" in self.path:
-                callback_url = f"{API_URL}/api/google-callback" + self.path[1:] + f"&port={self.server.use_port}"
+                callback_url = \
+                    f"{self.server.api_url}/api/google-callback" + self.path[1:] + f"&port={self.server.use_port}"
                 resp = requests.get(callback_url, verify=self.server.verify, timeout=60)
 
                 self.send_response(resp.status_code)
