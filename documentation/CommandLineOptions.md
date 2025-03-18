@@ -98,7 +98,7 @@ Before you can upload data, you need to set the `tag` for your statement. This c
 ```python
 system.tag("<tag>")
 ```
-The tag must be alphanumeric and minimum 3 characters long.
+The tag must be alphanumeric, minimum 3 characters long, as well as, unique among your security statements.
 
 If you have a valid API key, you can upload statements and tool outputs to our API with `-u` or `--upload`.
 ```shell
