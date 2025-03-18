@@ -19,7 +19,7 @@ class Uploader:
         self.statement_name = system.name
         self.statement_url = system.upload_tag
         if not self.statement_url:
-            raise ConfigurationException("upload_tag missing. Use system.set_upload_tag() in your statement")
+            raise ConfigurationException("Tag missing. Use system.tag() in your statement")
         self.allow_insecure = allow_insecure
         self._api_key = ""
         self._api_url = ""

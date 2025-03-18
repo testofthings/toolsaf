@@ -94,9 +94,9 @@ python product/statement.py --show-diagram -N my_diagram
 ```
 
 ## Upload Data to the API
-Before you can upload data, you need to set the `upload_tag` for your statement. This can be done as shown below:
+Before you can upload data, you need to set the `tag` for your statement. This can be done as shown below:
 ```python
-system.set_upload_tag("<tag>")
+system.tag("<tag>")
 ```
 The tag must be alphanumeric and minimum 3 characters long.
 

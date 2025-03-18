@@ -150,12 +150,12 @@ class SystemBackend(SystemBuilder):
         self.ignore_backend.new_rule(file_type)
         return self.ignore_backend
 
-    def set_upload_tag(self, upload_tag: str) -> None:
+    def tag(self, tag: str) -> None:
         """Set a unique tag, consisting of numbers and characters, for statement uploads.
             Has a minimum length of 3"""
-        assert upload_tag.isalnum(), f"Upload tag {upload_tag} is not alphanumeric"
-        assert len(upload_tag) >= 3, f"Upload tag {upload_tag} is shorter than the minimum length of 3 characters"
-        self.system.upload_tag = upload_tag
+        assert tag.isalnum(), f"Upload tag {tag} is not alphanumeric"
+        assert len(tag) >= 3, f"Upload tag {tag} is shorter than the minimum length of 3 characters"
+        self.system.upload_tag = tag
 
     # Backend methods
 
