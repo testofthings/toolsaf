@@ -255,10 +255,6 @@ def test_parse_system_address():
         _segment(EndpointAddress(EntityTag("VirtualEnv"), Protocol.UDP, 123))
     ))
 
-    a = {Addresses.parse_system_address(
-        "Test/tcp:80&software=VM&VirtualEnv/udp:123"
-    ): "a"}
-
 
 def test_system_endpoint_address():
     # Endpoint address with host
