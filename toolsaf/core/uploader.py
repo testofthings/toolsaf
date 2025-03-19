@@ -227,9 +227,9 @@ class Uploader:
 
 
 if __name__ == "__main__":
-    system = IoTSystem()
-    system.upload_tag = "test"
-    u = Uploader(system)
+    test_system = IoTSystem()
+    test_system.upload_tag = "test"
+    u = Uploader(test_system)
     u.do_pre_procedures(True)
     u.allow_insecure = True
     u.login()
