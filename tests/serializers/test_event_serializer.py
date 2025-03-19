@@ -3,11 +3,11 @@ from toolsaf.common.address import EndpointAddress, IPAddress, Protocol
 from toolsaf.common.serializer.serializer import SerializerStream
 from toolsaf.core.serializer.event_serializers import EventSerializer
 from toolsaf.core.serializer.event_serializers import (
-    IPFlowSerializer, BLEAdvertisementFlowSerializer,
+    EthernetFlowSerializer, IPFlowSerializer, BLEAdvertisementFlowSerializer,
     ServiceScanSerializer, HostScanSerializer, PropertyAddresssEventSerializer
 )
 from toolsaf.common.traffic import (
-    Evidence, EvidenceSource, IPFlow, BLEAdvertisementFlow,
+    Evidence, EvidenceSource, EthernetFlow, IPFlow, BLEAdvertisementFlow,
     HostScan, ServiceScan, HWAddress, IPAddress
 )
 from toolsaf.core.event_interface import PropertyAddressEvent
@@ -54,6 +54,45 @@ def _get_stream(event):
 SOURCE = EvidenceSource(name="Test", base_ref="../test.json")
 HWADDRESS = HWAddress.new("00:00:00:00:00:00")
 IPADDRESS = IPAddress.new("1.1.1.1")
+
+
+def test_ethernet_flow_serializer():
+    ethernet_flow = EthernetFlow(
+        Evidence(SOURCE),
+        source=HWADDRESS,
+        target=HWADDRESS,
+        payload=5
+    )
+    ethernet_flow.timestamp = datetime(2025, 1, 1, 0, 0, 0)
+
+    assert _get_serialized_event(ethernet_flow) == {
+        "type": "ethernet-flow",
+        "source-id": "id1",
+        "source": "00:00:00:00:00:00|hw",
+        "target": "00:00:00:00:00:00|hw",
+        "protocol": "eth",
+        "payload": 5,
+        "timestamp": "2025-01-01T00:00:00"
+    }
+
+
+def test_new_ethernet_flow_from_serialized():
+    ethernet_flow = EthernetFlow(
+        Evidence(SOURCE),
+        source=HWADDRESS,
+        target=HWADDRESS,
+        payload=5
+    )
+    ethernet_flow.timestamp = datetime(2025, 1, 1, 0, 0, 0)
+    stream = _get_stream(ethernet_flow)
+
+    new_ethernet_flow = EthernetFlowSerializer().new(stream)
+    assert new_ethernet_flow.source == HWADDRESS
+    assert new_ethernet_flow.target == HWADDRESS
+    assert new_ethernet_flow.payload == 5
+    assert new_ethernet_flow.protocol == Protocol.ETHERNET
+    assert new_ethernet_flow.timestamp == datetime(2025, 1, 1, 0, 0, 0)
+    assert new_ethernet_flow.evidence.source.name == "Test"
 
 
 def test_ip_flow_serializer():
