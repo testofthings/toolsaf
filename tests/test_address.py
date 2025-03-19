@@ -120,7 +120,7 @@ def test_address_sequence():
     addr1 = EntityTag.new("Test1")
     addr2 = EndpointAddress(EntityTag("Test2"), Protocol.TCP, 80)
     seq = AddressSequence.new(addr1, addr2)
-    assert seq.segments == [_segment(addr1), _segment(addr2)]
+    assert seq.segments == (_segment(addr1), _segment(addr2))
 
 
 def test_address_sequence_get_parseable_value():
@@ -144,7 +144,7 @@ def test_get_system_address():
     device = system.device("D")
 
     # IoTSystem - empty sequence
-    assert system.system.get_system_address() == AddressSequence([])
+    assert system.system.get_system_address() == AddressSequence((),)
 
     # Host
     assert device.entity.get_system_address() == AddressSequence.new(
@@ -159,23 +159,23 @@ def test_get_system_address():
 
     # NodeComponent
     software = device.software("SW").get_software()
-    assert software.get_system_address() == AddressSequence([
+    assert software.get_system_address() == AddressSequence((
         _segment(EntityTag("D")), _segment(EntityTag("SW"), segment_type="software")
-    ])
+    ))
 
     # Connection
     backend = system.backend("B")
     connection = (device >> backend / HTTP).connection
-    assert connection.get_system_address() == AddressSequence([
+    assert connection.get_system_address() == AddressSequence((
         _segment(EntityTag("D"), "source"),
         _segment(EntityTag("B"), "target"), _segment(EndpointAddress(Addresses.ANY, Protocol.TCP, 80)),
-    ])
+    ))
 
     connection = ((device / HTTP) >> backend / TCP(port=111)).connection
-    assert connection.get_system_address() == AddressSequence([
+    assert connection.get_system_address() == AddressSequence((
         _segment(EntityTag("D"), "source"), _segment(EndpointAddress(Addresses.ANY, Protocol.TCP, 80)),
         _segment(EntityTag("B"), "target"), _segment(EndpointAddress(Addresses.ANY, Protocol.TCP, 111)),
-    ])
+    ))
 
 
 def test_parse_system_address():
@@ -205,55 +205,59 @@ def test_parse_system_address():
 
     assert Addresses.parse_system_address(
         "Test_Device&software=Test_SW"
-    ) == AddressSequence([
+    ) == AddressSequence((
         _segment(EntityTag("Test_Device")), _segment(EntityTag("Test_SW"), "software")
-    ])
+    ))
 
     assert Addresses.parse_system_address(
         "source=Test_Device&target=Test_Device/tcp:80"
-    ) == AddressSequence([
+    ) == AddressSequence((
         _segment(EntityTag("Test_Device"), "source"), _segment(EndpointAddress(EntityTag("Test_Device"), Protocol.TCP, 80), "target")
-    ])
+    ))
 
     assert Addresses.parse_system_address(
         "source=Test_Device/udp:123&target=Test_Device"
-    ) == AddressSequence([
+    ) == AddressSequence((
         _segment(EndpointAddress(EntityTag("Test_Device"), Protocol.UDP, 123), "source"), _segment(EntityTag("Test_Device"), "target")
-    ])
+    ))
 
     assert Addresses.parse_system_address(
         "source=Test_Device/tcp:80&target=Test_Device/udp:123"
-    ) == AddressSequence([
+    ) == AddressSequence((
         _segment(EndpointAddress(EntityTag("Test_Device"), Protocol.TCP, 80), "source"),
         _segment(EndpointAddress(EntityTag("Test_Device"), Protocol.UDP, 123), "target")
-    ])
+    ))
 
     assert Addresses.parse_system_address(
         "source=1.2.3.4&target=Test_Device/tcp:80"
-    ) == AddressSequence([
+    ) == AddressSequence((
         _segment(IPAddress.new("1.2.3.4"), "source"), _segment(EndpointAddress(EntityTag("Test_Device"), Protocol.TCP, 80), "target")
-    ])
+    ))
 
     assert Addresses.parse_system_address(
         "source=1.2.3.4/tcp:80&target=01:01:01:01:01:01|hw/tcp:80"
-    ) == AddressSequence([
+    ) == AddressSequence((
         _segment(EndpointAddress(IPAddress.new("1.2.3.4"), Protocol.TCP, 80), "source"),
         _segment(EndpointAddress(HWAddress.new("01:01:01:01:01:01"), Protocol.TCP, 80), "target")
-    ])
+    ))
 
     assert Addresses.parse_system_address(
         "Test_Device/tcp:80&software=Test_SW"
-    ) == AddressSequence([
+    ) == AddressSequence((
         _segment(EndpointAddress(EntityTag("Test_Device"), Protocol.TCP, 80)), _segment(EntityTag("Test_SW"), "software")
-    ])
+    ))
 
     assert Addresses.parse_system_address(
         "Test/tcp:80&software=VM&VirtualEnv/udp:123"
-    ) == AddressSequence([
+    ) == AddressSequence((
         _segment(EndpointAddress(EntityTag("Test"), Protocol.TCP, 80)),
         _segment(EntityTag("VM"), "software"),
         _segment(EndpointAddress(EntityTag("VirtualEnv"), Protocol.UDP, 123))
-    ])
+    ))
+
+    a = {Addresses.parse_system_address(
+        "Test/tcp:80&software=VM&VirtualEnv/udp:123"
+    ): "a"}
 
 
 def test_system_endpoint_address():

@@ -269,7 +269,7 @@ class Addresses:
                 segments.append(AddressSegment(cls.parse_endpoint(segment_split[1]), segment_split[0]))
             else:
                 segments.append(AddressSegment(cls.parse_endpoint(segment)))
-        return AddressSequence(segments)
+        return AddressSequence(tuple(segments))
 
 
 class HWAddress(AnyAddress):
@@ -586,20 +586,22 @@ class AddressSegment:
     def __repr__(self) -> str:
         return (f"{self.segment_type}=" if self.segment_type else "") + str(self.address)
 
+    def __hash__(self) -> int:
+        return self.address.__hash__() ^ (self.segment_type.__hash__() if self.segment_type else 0)
 
 class AddressSequence(AnyAddress):
     """AnyAddress sequences representing system addresses"""
     @classmethod
     def service(cls, parent: 'AddressSequence', service: AnyAddress) -> 'AddressSequence':
         """Create service sequence"""
-        return AddressSequence(parent.segments + [AddressSegment(service)])
+        return AddressSequence(parent.segments + (AddressSegment(service), ))
 
     @classmethod
     def component(cls, parent: 'AddressSequence', tag: EntityTag, segment_type: str) -> 'AddressSequence':
         """Create component sequence"""
         return AddressSequence(
             parent.segments +
-            [AddressSegment(tag, segment_type=segment_type)]
+            (AddressSegment(tag, segment_type=segment_type), )
         )
 
     @classmethod
@@ -613,16 +615,16 @@ class AddressSequence(AnyAddress):
         ]
         new_segments_source[0].segment_type = "source"
         new_segments_target[0].segment_type = "target"
-        return AddressSequence(new_segments_source + new_segments_target)
+        return AddressSequence(tuple(new_segments_source) + tuple(new_segments_target))
 
     @classmethod
     def new(cls, *segments: AnyAddress) -> 'AddressSequence':
         """Create new AddressSequence"""
         return AddressSequence(
-            segments=[AddressSegment(segment) for segment in segments]
+            segments=tuple(AddressSegment(segment) for segment in segments)
         )
 
-    def __init__(self, segments: List[AddressSegment]) -> None:
+    def __init__(self, segments: Tuple[AddressSegment, ...]) -> None:
         self.segments = segments
 
     def tail(self) -> 'AddressSequence':
@@ -644,6 +646,9 @@ class AddressSequence(AnyAddress):
         if not isinstance(other, AddressSequence):
             return False
         return self.segments == other.segments
+
+    def __hash__(self) -> int:
+        return self.segments.__hash__()
 
     def __repr__(self) -> str:
         return self.get_parseable_value()
