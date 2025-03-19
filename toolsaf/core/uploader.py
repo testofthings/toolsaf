@@ -227,7 +227,10 @@ class Uploader:
 
 
 if __name__ == "__main__":
-    u = Uploader(IoTSystem())
+    system = IoTSystem()
+    system.upload_tag = "test"
+    u = Uploader(system)
+    u.do_pre_procedures(True)
     u.allow_insecure = True
-    #u.login()
+    u.login()
     u.test_jwt()
