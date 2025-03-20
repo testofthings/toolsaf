@@ -61,6 +61,13 @@ class EvidenceSourceSerializer(Serializer[EvidenceSource]):
         if obj.timestamp:
             stream += "timestamp", obj.timestamp.isoformat()
 
+    def new(self, stream: SerializerStream) -> EvidenceSource:
+        return EvidenceSource(
+            name=stream.get("name"),
+            base_ref=stream.get("base_ref"),
+            label=stream.get("label")
+        )
+
 
 class EthernetFlowSerializer(Serializer[EthernetFlow]):
     """Serialize Ethernet flows"""
