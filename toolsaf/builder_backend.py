@@ -1158,7 +1158,7 @@ class SystemBackendRunner(SystemBackend):
                 print(json.dumps(js, indent=4))
             # dump events, if any
             if registry.logging.logs:
-                log_ser = EventSerializer()
+                log_ser = EventSerializer(self.system)
                 stream = SerializerStream(log_ser, context=stream.context)
                 for log in registry.logging.logs:
                     for js in log_ser.write_event(log.event, stream):
@@ -1192,7 +1192,7 @@ class SystemBackendRunner(SystemBackend):
             uploader.upload_system(list(system_stream.write(self.system)))
 
             if registry.logging.logs:
-                log_ser = EventSerializer()
+                log_ser = EventSerializer(self.system)
                 event_stream = SerializerStream(log_ser, context=system_stream.context)
                 events = []
                 for log in registry.logging.logs:

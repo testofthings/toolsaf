@@ -3,20 +3,31 @@ from toolsaf.common.address import EndpointAddress, IPAddress, Protocol
 from toolsaf.common.serializer.serializer import SerializerStream
 from toolsaf.core.serializer.event_serializers import EventSerializer
 from toolsaf.core.serializer.event_serializers import (
+    EvidenceSourceSerializer,
     EthernetFlowSerializer, IPFlowSerializer, BLEAdvertisementFlowSerializer,
-    ServiceScanSerializer, HostScanSerializer, PropertyAddresssEventSerializer
+    ServiceScanSerializer, HostScanSerializer, PropertyAddresssEventSerializer,
+    PropertyEventSerializer
 )
 from toolsaf.common.traffic import (
     Evidence, EvidenceSource, EthernetFlow, IPFlow, BLEAdvertisementFlow,
     HostScan, ServiceScan, HWAddress, IPAddress
 )
-from toolsaf.core.event_interface import PropertyAddressEvent
+from toolsaf.core.event_interface import PropertyAddressEvent, PropertyEvent
+from toolsaf.core.model import IoTSystem
 from toolsaf.common.property import PropertyKey
 from toolsaf.common.verdict import Verdict
+from toolsaf.common.release_info import ReleaseInfo
+from tests.test_model import Setup
+
+
+SOURCE = EvidenceSource(name="Test", base_ref="../test.json")
+HWADDRESS = HWAddress.new("00:00:00:00:00:00")
+IPADDRESS = IPAddress.new("1.1.1.1")
+SYSTEM = Setup().get_system()
 
 
 def test_serialize_event_source():
-    serializer = EventSerializer()
+    serializer = EventSerializer(SYSTEM)
     stream = SerializerStream(serializer)
 
     source1 = EvidenceSource(name="TestSource1", base_ref="../test1.json", label="test-label")
@@ -36,7 +47,7 @@ def test_serialize_event_source():
 
 
 def test_new_event_source_from_serialized():
-    serializer = EventSerializer(Setup().get_system())
+    serializer = EventSerializer(SYSTEM)
     stream = SerializerStream(serializer)
 
     source = EvidenceSource(name="TestSource1", base_ref="../test1.json", label="test-label")
@@ -51,25 +62,20 @@ def test_new_event_source_from_serialized():
     assert new_source.target == source.target
 
 
-def _get_serialized_event(event):
-    serializer = EventSerializer()
+def _get_serialized_event(event, system: IoTSystem=IoTSystem()):
+    serializer = EventSerializer(system)
     stream = SerializerStream(serializer)
     result = []
     result.extend(serializer.write_event(event, stream))
     return result[1]
 
 
-def _get_stream(event):
-    serializer = EventSerializer()
+def _get_stream(event, system: IoTSystem=IoTSystem()):
+    serializer = EventSerializer(system)
     stream = SerializerStream(serializer)
     result = []
     result.extend(serializer.write_event(event, stream))
     return stream
-
-
-SOURCE = EvidenceSource(name="Test", base_ref="../test.json")
-HWADDRESS = HWAddress.new("00:00:00:00:00:00")
-IPADDRESS = IPAddress.new("1.1.1.1")
 
 
 def test_ethernet_flow_serializer():
@@ -296,3 +302,111 @@ def test_new_property_address_event_from_serialized():
     new_property_address_event = PropertyAddresssEventSerializer().new(stream)
     assert new_property_address_event.address == IPADDRESS
     assert new_property_address_event.key_value == PropertyKey("test-key").value_set({PropertyKey("value-key"), PropertyKey("key-value")})
+
+
+def test_serialize_property_event():
+    setup = Setup()
+    software = setup.system.device("Test Device").software("Test Software").sw
+
+    # PropertyVerdictValue
+    property_event = PropertyEvent(
+        Evidence(SOURCE), software,
+        PropertyKey("test-key").verdict(Verdict.PASS, "test explanation")
+    )
+    serialized_event = _get_serialized_event(property_event)
+    assert serialized_event == {
+        "type": "property-event",
+        "source-id": "id1",
+        "address": "Test_Device&software=Test_Software",
+        "key": "test-key",
+        "verdict": "Pass",
+        "explanation": "test explanation"
+    }
+
+    # PropertySetValue
+    property_event = PropertyEvent(
+        Evidence(SOURCE), software,
+        PropertyKey("test-key").value_set({PropertyKey("value-key"), PropertyKey("key-value")})
+    )
+    serialized_event = _get_serialized_event(property_event)
+    assert "value-key" in serialized_event["sub-keys"]
+    assert "key-value" in serialized_event["sub-keys"]
+    serialized_event.pop("sub-keys")
+    assert serialized_event == {
+        "type": "property-event",
+        "source-id": "id1",
+        "address": "Test_Device&software=Test_Software",
+        "key": "test-key",
+        "explanation": ""
+    }
+
+    # ReleaseInfo
+    info = ReleaseInfo("SwRelease")
+    info.first_release = datetime(2025, 1, 1, 0, 0, 0)
+    info.latest_release = datetime(2025, 1, 1, 0, 0, 0)
+    info.latest_release_name = "test-name"
+    info.interval_days = 1
+    info.sw_name = "test-name2"
+    property_event = PropertyEvent(
+        Evidence(SOURCE), software,
+        (ReleaseInfo.PROPERTY_KEY, info)
+    )
+    serialized_event = _get_serialized_event(property_event)
+    assert serialized_event == {
+        "type": "property-event",
+        "source-id": "id1",
+        "address": "Test_Device&software=Test_Software",
+        "key": ReleaseInfo.PROPERTY_KEY.get_name(),
+        "first-release": datetime(2025, 1, 1, 0, 0, 0).isoformat(),
+        "latest-release": datetime(2025, 1, 1, 0, 0, 0).isoformat(),
+        "latest-release-name": "test-name",
+        "interval-days": 1,
+        "sw-name": "test-name2"
+    }
+
+
+def test_new_property_event_from_serialized():
+    setup = Setup()
+    system = setup.get_system()
+    software = setup.system.device("Test Device").software("Test Software").sw
+
+    # PropertyVerdictValue
+    property_event = PropertyEvent(
+        Evidence(SOURCE), software,
+        PropertyKey("test-key").verdict(Verdict.PASS, "test explanation")
+    )
+    stream = _get_stream(property_event, system)
+
+    new_property_event = list(stream.read([stream.data]))[0]
+    assert property_event.entity == new_property_event.entity
+    assert property_event.key_value == new_property_event.key_value
+
+    # PropertySetValue
+    property_event = PropertyEvent(
+        Evidence(SOURCE), software,
+        PropertyKey("test-key").value_set({PropertyKey("value-key"), PropertyKey("key-value")})
+    )
+    js = _get_stream(property_event, system)
+    property_event_serializer = PropertyEventSerializer()
+    property_event_serializer.system = system
+    new_property_event = property_event_serializer.new(js)
+
+    assert property_event.entity == new_property_event.entity
+    assert property_event.key_value == new_property_event.key_value
+
+    # ReleaseInfo
+    info = ReleaseInfo("SwRelease")
+    info.first_release = datetime(2025, 1, 1, 0, 0, 0)
+    info.latest_release = datetime(2025, 1, 1, 0, 0, 0)
+    info.latest_release_name = "test-name"
+    info.interval_days = 1
+    info.sw_name = "test-name2"
+    property_event = PropertyEvent(
+        Evidence(SOURCE), software,
+        (ReleaseInfo.PROPERTY_KEY, info)
+    )
+    stream = _get_stream(property_event, system)
+
+    new_property_event = list(stream.read([stream.data]))[0]
+    assert property_event.entity == new_property_event.entity
+    assert new_property_event.key_value == new_property_event.key_value

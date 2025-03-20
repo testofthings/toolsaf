@@ -12,12 +12,15 @@ from toolsaf.common.traffic import (
 from toolsaf.common.serializer.serializer import Serializer, SerializerStream
 from toolsaf.common.property import PropertyKey, PropertyVerdictValue, PropertySetValue
 from toolsaf.common.verdict import Verdict
-from toolsaf.core.event_interface import PropertyAddressEvent
+from toolsaf.common.release_info import ReleaseInfo
+from toolsaf.core.model import IoTSystem
+from toolsaf.core.event_interface import PropertyAddressEvent, PropertyEvent
 
 class EventSerializer(Serializer[Event]):
     """Base class for event serializers"""
-    def __init__(self) -> None:
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__(Event)
+        self.system = system
         self.config.with_id = False  # not all events are hashable, which is fine, we do not refer events
         # must map classes to have type information in the JSON
         self.config.map_class("event", self)
@@ -27,6 +30,7 @@ class EventSerializer(Serializer[Event]):
         self.config.map_class("ble-advertisement-flow", BLEAdvertisementFlowSerializer())
         self.config.map_class("host-scan", HostScanSerializer())
         self.config.map_class("property-address-event", PropertyAddresssEventSerializer())
+        self.config.map_class("property-event", PropertyEventSerializer())
         self.config.map_class("source", EvidenceSourceSerializer())
 
     def write_event(self, event: Event, stream: SerializerStream) -> Iterable[Dict[str, Any]]:
@@ -62,11 +66,15 @@ class EvidenceSourceSerializer(Serializer[EvidenceSource]):
             stream += "timestamp", obj.timestamp.isoformat()
 
     def new(self, stream: SerializerStream) -> EvidenceSource:
-        return EvidenceSource(
-            name=stream.get("name"),
-            base_ref=stream.get("base_ref"),
-            label=stream.get("label")
+        source = EvidenceSource(
+            name=stream.get("name") or "",
+            base_ref=stream.get("base_ref") or "",
+            label=stream.get("label") or ""
         )
+        source.target = stream.get("target") or ""
+        if (timestamp := stream.get("timestamp")):
+            source.timestamp = datetime.datetime.fromisoformat(timestamp)
+        return source
 
 
 class EthernetFlowSerializer(Serializer[EthernetFlow]):
@@ -209,7 +217,6 @@ class PropertyAddresssEventSerializer(Serializer[PropertyAddressEvent]):
 
     def new(self, stream: SerializerStream) -> PropertyAddressEvent:
         ev = EventSerializer.read_evidence(stream)
-        #key_value: Union[Tuple[PropertyKey, PropertyVerdictValue], Tuple[PropertyKey, PropertySetValue]]
         key_value: Tuple[PropertyKey, Union[PropertyVerdictValue, PropertySetValue]]
         if (verdict := stream.get("verdict")):
             key_value = PropertyKey(stream["key"]), PropertyVerdictValue(Verdict(verdict), stream["explanation"])
@@ -219,4 +226,61 @@ class PropertyAddresssEventSerializer(Serializer[PropertyAddressEvent]):
         return PropertyAddressEvent(
             ev, address=Addresses.parse_endpoint(stream["address"]),
             key_value=key_value
+        )
+
+
+class PropertyEventSerializer(Serializer[PropertyEvent]):
+    """PropertyEvent serializer"""
+    def __init__(self) -> None:
+        super().__init__(PropertyEvent)
+        self.config.with_id = False
+
+    def write(self, obj: PropertyEvent, stream: SerializerStream) -> None:
+        stream += "address", obj.entity.get_system_address().get_parseable_value()
+        stream += "key", obj.key_value[0].get_name()
+        if isinstance(obj.key_value[1], ReleaseInfo):
+            if obj.key_value[1].first_release:
+                stream += "first-release", obj.key_value[1].first_release.isoformat()
+            stream += "interval-days", obj.key_value[1].interval_days
+            if obj.key_value[1].latest_release:
+                stream += "latest-release", obj.key_value[1].latest_release.isoformat()
+            stream += "latest-release-name", obj.key_value[1].latest_release_name
+            stream += "sw-name", obj.key_value[1].sw_name
+        else:
+            if isinstance(obj.key_value[1], PropertyVerdictValue):
+                stream += "verdict", obj.key_value[1].verdict.value
+            else:
+                sub_keys= [key.get_name() for key in obj.key_value[1].sub_keys]
+                stream += "sub-keys", sub_keys
+
+            stream += "explanation", obj.key_value[1].explanation
+
+    def new(self, stream: SerializerStream) -> PropertyEvent:
+        ev = EventSerializer.read_evidence(stream)
+        if not (address_str := stream.get("address")):
+            raise ValueError("Address is missing")
+        address = Addresses.parse_system_address(address_str)
+        key_value: Tuple[PropertyKey, Union[PropertyVerdictValue, PropertySetValue, ReleaseInfo]]
+        if (sw_name := stream.get("sw-name")): # ReleaseInfo
+            info = ReleaseInfo(sw_name)
+            if (val := stream.get("first-release")):
+                info.first_release = datetime.datetime.fromisoformat(val)
+            info.interval_days = stream.get("interval-days")
+            if (val := stream.get("latest-release")):
+                info.latest_release = datetime.datetime.fromisoformat(val)
+            info.latest_release_name = stream.get("latest-release-name") or "?"
+
+            key_value = (PropertyKey(stream["key"]), info)
+
+        elif (verdict := stream.get("verdict")): # PropertyVerdictValue
+            key_value = PropertyKey(stream["key"]), PropertyVerdictValue(Verdict(verdict), stream["explanation"])
+        else: # PropertySetValue
+            sub_keys = {PropertyKey(key) for key in stream["sub-keys"]}
+            key_value = PropertyKey(stream["key"]), PropertySetValue(sub_keys, stream["explanation"])
+
+        if not (entity := self.system.find_endpoint(address)):
+            raise ValueError(f"Entity not found for address {address}")
+
+        return PropertyEvent(
+            ev, entity=entity, key_value=key_value
         )

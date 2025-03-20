@@ -2,6 +2,7 @@
 
 import json
 from typing import Any, Dict, Generic, Iterable, List, Optional, Self, Tuple, Type, Callable, TypeVar, cast
+from toolsaf.core.model import IoTSystem
 
 T = TypeVar("T")
 
@@ -64,6 +65,7 @@ class SerializerStream:
                 if not rs:
                     raise ValueError(f"Serializer not found for type '{type_name}'")
                 serial = rs
+                serial.system = self.serializer.system
                 obj = serial.new(self)
                 if obj is None:
                     raise ValueError(f"Serializer {serial} does not support new objects")
@@ -263,6 +265,7 @@ class SerializerBase:
     """Class serializer base class"""
     def __init__(self, class_type: Type[Any]) -> None:
         self.config = SerializerConfiguration(class_type)
+        self.system = IoTSystem()
         self.initialize()
 
     def initialize(self) -> None:
