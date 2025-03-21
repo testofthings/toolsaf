@@ -1,0 +1,82 @@
+[build-system]
+requires        = ["setuptools", "wheel"]
+build-backend   = "setuptools.build_meta"
+
+[project]
+name            = "Toolsaf"
+version         = "0.0"
+requires-python = ">=3.10"
+description     = "Tool-Driven Security Assesment Framework"
+readme          = "README.md"
+license         = {text = "MIT License"}
+authors         = [
+    {name = "Rauli Kaksonen", email = "rauli.kaksonen@testofthings.com"}
+]
+dependencies = [
+    "packet-framing",
+    "censys",
+    "aiohttp",
+    "aiofiles",
+    "sqlalchemy",
+    "watchdog",
+    "colored",
+    "diagrams",
+    "shodan"
+]
+
+[pyproject.optional-dependencies]
+dev = [
+    "pytest",
+    "pylint",
+    "mypy"
+]
+
+[project.scripts]
+Toolsaf         = "toolsaf.main:main"
+
+[project.urls]
+Repository      = "https://github.com/testofthings/toolsaf.git"
+Documentation   = "https://github.com/testofthings/toolsaf/tree/main/documentation"
+Issues          = "https://github.com/testofthings/toolsaf/issues"
+
+[tool.setuptools.packages]
+find = { where = ["toolsaf"], include = ["toolsaf", "toolsaf.adapters", "toolsaf.common", "toolsaf.core"] }
+
+[tool.setuptools.package_data]
+"toolsaf.adapters"  = ["data/*.json"]
+"toolsaf"           = ["diagram_visualizer/*.png"]
+
+[tool.setuptools.include_package_data]
+include-package-data = true
+
+[tool.setuptools.classifiers]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.pylint.messages_control]
+disable = [
+    "too-few-public-methods",
+    "too-many-arguments",
+    "too-many-public-methods",
+    "too-many-locals",
+    "too-many-instance-attributes",
+    "too-many-branches",
+    "too-many-statements",
+    "too-many-lines",
+    "too-many-positional-arguments",
+    "too-many-return-statements"
+]
+
+[tool.mypy]
+show_error_codes    = true
+disable_error_code  = ["import-untyped"]
+strict              = true
+follow_imports      = "silent"
