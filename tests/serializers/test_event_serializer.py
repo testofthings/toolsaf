@@ -1,12 +1,13 @@
 from datetime import datetime
-from toolsaf.common.address import EndpointAddress, IPAddress, Protocol
+from toolsaf.main import DNS
+from toolsaf.common.address import EndpointAddress, IPAddress, Protocol, EntityTag, DNSName
 from toolsaf.common.serializer.serializer import SerializerStream
 from toolsaf.core.serializer.event_serializers import EventSerializer
 from toolsaf.core.serializer.event_serializers import (
     EvidenceSourceSerializer,
     EthernetFlowSerializer, IPFlowSerializer, BLEAdvertisementFlowSerializer,
     ServiceScanSerializer, HostScanSerializer, PropertyAddresssEventSerializer,
-    PropertyEventSerializer
+    PropertyEventSerializer, NameEventSerializer
 )
 from toolsaf.common.traffic import (
     Evidence, EvidenceSource, EthernetFlow, IPFlow, BLEAdvertisementFlow,
@@ -14,6 +15,7 @@ from toolsaf.common.traffic import (
 )
 from toolsaf.core.event_interface import PropertyAddressEvent, PropertyEvent
 from toolsaf.core.model import IoTSystem
+from toolsaf.core.services import NameEvent
 from toolsaf.common.property import PropertyKey
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.release_info import ReleaseInfo
@@ -410,3 +412,46 @@ def test_new_property_event_from_serialized():
     new_property_event = list(stream.read([stream.data]))[0]
     assert property_event.entity == new_property_event.entity
     assert new_property_event.key_value == new_property_event.key_value
+
+
+def test_serialize_name_event():
+    setup = Setup()
+    services = setup.system.any("Services")
+    device = setup.system.device("Test Device")
+    device >> services / DNS
+
+    name_event = NameEvent(
+        Evidence(SOURCE),
+        services.entity.children[0],
+        DNSName("test.com"),
+        EntityTag.new("test-tag"),
+        IPADDRESS,
+        [device.entity, services.entity.children[0]]
+    )
+    assert _get_serialized_event(name_event) == {
+        "type": "name-event",
+        "source-id": "id1",
+        "name": "test.com",
+        "peers": ["Test_Device", "Services/udp:53"],
+        "service": "Services/udp:53",
+        "tag": "test-tag",
+        "address": "1.1.1.1"
+    }
+
+
+def test_new_name_event_from_serialized():
+    setup = Setup()
+    services = setup.system.any("Services")
+    device = setup.system.device("Test Device")
+    device >> services / DNS
+    name_event = NameEvent(
+        Evidence(SOURCE),
+        services.entity.children[0],
+        DNSName("test.com"),
+        EntityTag.new("test-tag"),
+        IPADDRESS,
+        [device.entity, services.entity.children[0]]
+    )
+    stream = _get_stream(name_event, setup.get_system())
+    new_name_event = list(stream.read([stream.data]))[0]
+    assert new_name_event == name_event

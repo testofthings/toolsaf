@@ -3,7 +3,7 @@
 from typing import Any, Dict, Iterable, Union, Tuple
 import datetime
 from toolsaf.common.address import (
-    Addresses, EndpointAddress, Protocol, HWAddress, IPAddress
+    Addresses, EndpointAddress, Protocol, HWAddress, IPAddress, EntityTag, DNSName
 )
 from toolsaf.common.traffic import (
     Event, Evidence, EvidenceSource,
@@ -13,7 +13,8 @@ from toolsaf.common.serializer.serializer import Serializer, SerializerStream
 from toolsaf.common.property import PropertyKey, PropertyVerdictValue, PropertySetValue
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.release_info import ReleaseInfo
-from toolsaf.core.model import IoTSystem
+from toolsaf.core.model import IoTSystem, Addressable
+from toolsaf.core.services import NameEvent, DNSService
 from toolsaf.core.event_interface import PropertyAddressEvent, PropertyEvent
 
 class EventSerializer(Serializer[Event]):
@@ -31,6 +32,7 @@ class EventSerializer(Serializer[Event]):
         self.config.map_class("host-scan", HostScanSerializer())
         self.config.map_class("property-address-event", PropertyAddresssEventSerializer())
         self.config.map_class("property-event", PropertyEventSerializer())
+        self.config.map_class("name-event", NameEventSerializer())
         self.config.map_class("source", EvidenceSourceSerializer())
 
     def write_event(self, event: Event, stream: SerializerStream) -> Iterable[Dict[str, Any]]:
@@ -284,3 +286,45 @@ class PropertyEventSerializer(Serializer[PropertyEvent]):
         return PropertyEvent(
             ev, entity=entity, key_value=key_value
         )
+
+
+class NameEventSerializer(Serializer[NameEvent]):
+    """NameEvent serializer"""
+    def __init__(self) -> None:
+        super().__init__(NameEvent)
+        self.config.with_id = False
+
+    def write(self, obj: NameEvent, stream: SerializerStream) -> None:
+        if obj.name:
+            stream += "name", obj.name.name
+        stream += "peers", [peer.get_system_address().get_parseable_value() for peer in obj.peers]
+        if obj.service:
+            stream += "service", obj.service.get_system_address().get_parseable_value()
+        if obj.tag:
+            stream += "tag", obj.tag.tag
+        if obj.address:
+            stream += "address", obj.address.get_parseable_value()
+
+    def new(self, stream: SerializerStream) -> NameEvent:
+        ev = EventSerializer.read_evidence(stream)
+        if (v := stream.get("service")):
+            service = self.system.find_endpoint(Addresses.parse_system_address(v))
+            assert isinstance(service, DNSService)
+        else:
+            service = None
+
+        name = DNSName(v) if (v := stream.get("name")) else None
+        tag = EntityTag.new(v) if (v := stream.get("tag")) else None
+        name_event = NameEvent(ev, service, name=name, tag=tag)
+
+        if (v := stream.get("address")):
+            name_event.address = Addresses.parse_address(v)
+
+        peers = []
+        for entry in stream["peers"]:
+            peer = self.system.find_endpoint(Addresses.parse_system_address(entry))
+            assert isinstance(peer, Addressable)
+            peers.append(peer)
+        name_event.peers = peers
+
+        return name_event
