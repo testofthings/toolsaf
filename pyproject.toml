@@ -1,7 +1,8 @@
 [build-system]
-requires        = ["setuptools", "wheel"]
+requires        = ["setuptools"]
 build-backend   = "setuptools.build_meta"
 
+# Project metadata
 [project]
 name            = "Toolsaf"
 version         = "0.0"
@@ -11,6 +12,10 @@ readme          = "README.md"
 license         = {text = "MIT License"}
 authors         = [
     {name = "Rauli Kaksonen", email = "rauli.kaksonen@testofthings.com"}
+]
+classifiers     = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
 ]
 dependencies = [
     "packet-framing",
@@ -24,40 +29,43 @@ dependencies = [
     "shodan"
 ]
 
-[pyproject.optional-dependencies]
+[project.optional-dependencies]
 dev = [
     "pytest",
     "pylint",
     "mypy"
 ]
 
-[project.scripts]
-Toolsaf         = "toolsaf.main:main"
+# [project.scripts]
+# Toolsaf       = "toolsaf.main:main"
 
 [project.urls]
 Repository      = "https://github.com/testofthings/toolsaf.git"
 Documentation   = "https://github.com/testofthings/toolsaf/tree/main/documentation"
 Issues          = "https://github.com/testofthings/toolsaf/issues"
 
+# Setuptools config
 [tool.setuptools.packages]
-find = { where = ["toolsaf"], include = ["toolsaf", "toolsaf.adapters", "toolsaf.common", "toolsaf.core"] }
+find = { where = ["."], include = [
+        "toolsaf",
+        "toolsaf.adapters",
+        "toolsaf.common",
+        "toolsaf.core",
+        "tests"
+] }
 
-[tool.setuptools.package_data]
+[tool.setuptools.package-data]
 "toolsaf.adapters"  = ["data/*.json"]
 "toolsaf"           = ["diagram_visualizer/*.png"]
 
-[tool.setuptools.include_package_data]
+[tool.setuptools]
 include-package-data = true
 
-[tool.setuptools.classifiers]
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "Operating System :: OS Independent",
-]
-
+# Pytest config
 [tool.pytest.ini_options]
-pythonpath = ["."]
+pythonpath = "."
 
+# Pylint config
 [tool.pylint.format]
 max-line-length = 120
 
@@ -75,6 +83,7 @@ disable = [
     "too-many-return-statements"
 ]
 
+# Mypy config
 [tool.mypy]
 show_error_codes    = true
 disable_error_code  = ["import-untyped"]
