@@ -43,7 +43,7 @@ Issues          = "https://github.com/testofthings/toolsaf/issues"
 
 # Setuptools config
 [tool.setuptools.packages]
-find = { where = ["toolsaf"], include = [
+find = { where = ["."], include = [
         "toolsaf",
         "toolsaf.adapters",
         "toolsaf.common",
