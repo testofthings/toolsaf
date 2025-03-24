@@ -36,9 +36,6 @@ dev = [
     "mypy"
 ]
 
-# [project.scripts]
-# Toolsaf       = "toolsaf.main:main"
-
 [project.urls]
 Repository      = "https://github.com/testofthings/toolsaf.git"
 Documentation   = "https://github.com/testofthings/toolsaf/tree/main/documentation"
@@ -46,12 +43,11 @@ Issues          = "https://github.com/testofthings/toolsaf/issues"
 
 # Setuptools config
 [tool.setuptools.packages]
-find = { where = ["."], include = [
+find = { where = ["toolsaf"], include = [
         "toolsaf",
         "toolsaf.adapters",
         "toolsaf.common",
-        "toolsaf.core",
-        "tests"
+        "toolsaf.core"
 ] }
 
 [tool.setuptools.package-data]
