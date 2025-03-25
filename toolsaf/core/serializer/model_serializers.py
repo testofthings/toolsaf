@@ -116,6 +116,9 @@ class ConnectionSerializer(Serializer[Connection]):
         super().__init__(Connection)
 
     def write(self, obj: Connection, stream: SerializerStream) -> None:
+        if obj.source not in stream or obj.target not in stream:
+            # if endpoints not serialized, cannnot serialize connection
+            return
         stream += "address", obj.get_system_address().get_parseable_value()
         stream += "source", stream.id_for(obj.source)
         stream += "target", stream.id_for(obj.target)
