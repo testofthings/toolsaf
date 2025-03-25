@@ -15,6 +15,18 @@ from toolsaf.common.verdict import Verdictable
 
 class EventInterface:
     """Event interface"""
+    def __init__(self):
+        self.consume_methods: Dict[Type[Event], Callable[[Any], Any]] = {
+            IPFlow: self.connection,
+            EthernetFlow: self.connection,
+            BLEAdvertisementFlow: self.connection,
+            NameEvent: self.name,
+            PropertyEvent: self.property_update,
+            PropertyAddressEvent: self.property_address_update,
+            ServiceScan: self.service_scan,
+            HostScan: self.host_scan,
+        }
+
     def get_system(self) -> IoTSystem:
         """Access system model"""
         raise NotImplementedError()
@@ -43,20 +55,11 @@ class EventInterface:
         """The given host have these services and not other ones"""
         raise NotImplementedError()
 
-    def consume(self, event: Event) -> None:
+    def consume(self, event: Event) -> Optional[Entity]:
         """Consume event and call the proper method"""
-        methods: Dict[Type[Event], Callable[[Any], Any]] = {
-            IPFlow: self.connection,
-            EthernetFlow: self.connection,
-            BLEAdvertisementFlow: self.connection,
-            NameEvent: self.name,
-            PropertyEvent: self.property_update,
-            PropertyAddressEvent: self.property_address_update,
-            ServiceScan: self.service_scan,
-            HostScan: self.host_scan,
-        }
-        m = methods[type(event)]
-        m(event)
+        m = self.consume_methods[type(event)]
+        ent = m(event)
+        return ent
 
 
 class PropertyEvent(Event, Verdictable):

@@ -19,6 +19,7 @@ from toolsaf.common.verdict import Verdict
 class Inspector(EventInterface):
     """Inspector"""
     def __init__(self, system: IoTSystem, ignore_rules: Optional[IgnoreRules]=None) -> None:
+        super().__init__()
         self.matcher = SystemMatcher(system)
         self.system = system
         self.ignore_rules = ignore_rules if ignore_rules else IgnoreRules()

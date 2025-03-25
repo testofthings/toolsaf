@@ -75,6 +75,7 @@ class LoggedData:
 class EventLogger(EventInterface, ModelListener):
     """Event logger implementation"""
     def __init__(self, inspector: Inspector) -> None:
+        super().__init__()
         self.inspector = inspector
         self.logs: List[LoggingEvent] = []
         self.current: Optional[LoggingEvent] = None  # current event
