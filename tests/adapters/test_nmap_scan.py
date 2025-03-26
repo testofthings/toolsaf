@@ -177,7 +177,7 @@ def test_add_scans_to_address():
     assert http.properties.get(Properties.EXPECTED).verdict == Verdict.PASS
     assert ssh.properties.get(Properties.EXPECTED).verdict == Verdict.FAIL
     assert len(device.entity.properties) == 1
-    assert device.entity.properties.get(PropertyKey("nmap", "ok")) is None
+    assert device.entity.properties.get(PropertyKey("nmap")) is None
 
 
 def test_set_nothing_found():
@@ -190,7 +190,7 @@ def test_set_nothing_found():
 
     scan.set_nothing_found(ip_addr, setup.get_inspector(), MagicMock())
     assert len(device.entity.properties) == 2
-    assert device.entity.properties.get(PropertyKey("nmap", "ok")).verdict == Verdict.PASS
+    assert device.entity.properties.get(PropertyKey("nmap")).verdict == Verdict.PASS
 
 
 def test_add_scans_to_address_nothing_found():
@@ -213,7 +213,7 @@ def test_add_scans_to_address_nothing_found():
     scan.add_scans_to_address(ip_addr, host, setup.get_inspector(), MagicMock())
     assert len(device.entity.children) == 0
     assert len(device.entity.properties) == 2
-    assert device.entity.properties.get(PropertyKey("nmap", "ok")).verdict == Verdict.PASS
+    assert device.entity.properties.get(PropertyKey("nmap")).verdict == Verdict.PASS
 
 
 def test_process_file():

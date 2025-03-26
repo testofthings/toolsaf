@@ -102,7 +102,7 @@ class NMAPScan(SystemWideTool):
         """Create property showing that no open ports were found but scan was run"""
         ev = PropertyAddressEvent(
             evidence, address,
-            PropertyKey(self.tool_label, "ok").verdict(Verdict.PASS, "No open ports found")
+            PropertyKey(self.tool_label).verdict(Verdict.PASS, "No open ports found")
         )
         interface.property_address_update(ev)
 
