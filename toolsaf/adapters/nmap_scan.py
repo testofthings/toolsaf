@@ -8,10 +8,12 @@ from xml.etree.ElementTree import Element
 
 from toolsaf.main import ConfigurationException
 from toolsaf.common.address import IPAddress, HWAddress, EndpointAddress, Protocol, AnyAddress
-from toolsaf.core.event_interface import EventInterface
+from toolsaf.core.event_interface import EventInterface, PropertyAddressEvent
 from toolsaf.core.model import IoTSystem
 from toolsaf.adapters.tools import SystemWideTool
 from toolsaf.common.traffic import EvidenceSource, Evidence, ServiceScan, HostScan
+from toolsaf.common.property import PropertyKey
+from toolsaf.common.verdict import Verdict
 
 
 class NMAPScan(SystemWideTool):
@@ -91,6 +93,18 @@ class NMAPScan(SystemWideTool):
 
         scan = HostScan(evidence, address, self._host_services)
         interface.host_scan(scan)
+
+        if not self._host_services:
+            self.set_nothing_found(address, interface, evidence)
+
+    def set_nothing_found(self, address: AnyAddress, interface: EventInterface,
+                        evidence: Evidence) -> None:
+        """Create property showing that no open ports were found but scan was run"""
+        ev = PropertyAddressEvent(
+            evidence, address,
+            PropertyKey(self.tool_label, "ok").verdict(Verdict.PASS, "No open ports found")
+        )
+        interface.property_address_update(ev)
 
     def process_file(self, data: BufferedReader, file_name: str, interface: EventInterface,
                      source: EvidenceSource) -> bool:
