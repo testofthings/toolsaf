@@ -29,16 +29,23 @@ class ShodanScan(SystemWideTool):
         self._key_set: Set[PropertyKey]
         self._interface: EventInterface
         self._evidence: Evidence
+        self._protocols = [protocol for protocol in Protocol if protocol.value != "http"]
 
-    def determine_protocol(self, entry: Dict[str, Any]) -> Protocol:
-        """Determine used protocol"""
+    def determine_protocol(self, entry: Dict[str, Any]) -> Optional[Protocol]:
+        """Determine used protocol, if possible"""
+        if entry.get("ssh", {}):
+            return Protocol.SSH
+        if entry.get("http", {}):
+            if entry.get("ssl", {}):
+                return Protocol.TLS
+            return Protocol.HTTP
+
         module: List[str] = entry["_shodan"]["module"].lower().split("-")
-        if "https" in module:
-            return Protocol.TLS
-        for protocol in Protocol:
+        for protocol in self._protocols:
             if protocol.value in module:
                 return protocol
-        raise ConfigurationException(f"Could not determine protocol from Shodan module {module}")
+        self.logger.info("Could not determine protocol for port %d", entry["port"])
+        return None
 
     def get_open_port_info(self, entry: Dict[str, Any]) -> Tuple[int, Protocol, Protocol]:
         """Add open ports to endpoint"""
@@ -46,6 +53,8 @@ class ShodanScan(SystemWideTool):
         transport = Protocol.get_protocol(entry["transport"])
         assert transport, "get_protocol returned None"
         protocol = self.determine_protocol(entry)
+        if protocol is None:
+            protocol = transport
         return port, transport, protocol
 
     def add_http_status(self, protocol: Protocol, entry: Dict[str, Any], service: Service) -> None:

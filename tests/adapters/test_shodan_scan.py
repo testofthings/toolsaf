@@ -21,28 +21,25 @@ from tests.test_model import Setup
 @pytest.mark.parametrize(
     "entry, expected_protocol",
     [
-        ({"_shodan": {"module": "https-simple"}}, Protocol.TLS),
-        ({"_shodan": {"module": "http-simple"}}, Protocol.HTTP),
-        ({"_shodan": {"module": "mqtt"}}, Protocol.MQTT),
-        ({"_shodan": {"module": "ssh"}}, Protocol.SSH),
-        ({"_shodan": {"module": "unkown"}}, None),
+        ({"_shodan": {"module": "any"}, "ssh": {"test": "test"}, "port": 1}, Protocol.SSH),
+        ({"_shodan": {"module": "auto"}, "http": {"status": 200}, "ssl": {"test": "test"}, "port": 1}, Protocol.TLS),
+        ({"_shodan": {"module": "auto"}, "http": {"status": 200}, "port": 1}, Protocol.HTTP),
+        ({"_shodan": {"module": "mqtt"}, "port": 1}, Protocol.MQTT),
+        ({"_shodan": {"module": "ssh"}, "port": 1}, Protocol.SSH),
+        ({"_shodan": {"module": "unkown"}, "port": 1}, None),
     ]
 )
 def test_determine_protocol(entry, expected_protocol):
     scan = ShodanScan(Setup().get_system())
-    if not expected_protocol:
-        with pytest.raises(ConfigurationException):
-            scan.determine_protocol(entry)
-    else:
-        protocol = scan.determine_protocol(entry)
-        assert protocol == expected_protocol
+    protocol = scan.determine_protocol(entry)
+    assert protocol == expected_protocol
 
 
 @pytest.mark.parametrize(
     "entry, expected_port, expected_transport, expected_protocol",
     [
-        ({"port": 80, "transport": "tcp", "_shodan": {"module": "http-simple"}}, 80, Protocol.TCP, Protocol.HTTP),
-        ({"port": 443, "transport": "tcp", "_shodan": {"module": "https-simple"}}, 443, Protocol.TCP, Protocol.TLS),
+        ({"port": 80, "transport": "tcp", "_shodan": {"module": "http-simple"}, "http": {"status": 200}}, 80, Protocol.TCP, Protocol.HTTP),
+        ({"port": 443, "transport": "tcp", "_shodan": {"module": "https-simple"}, "http": {"status": 200}, "ssl": {"test": "test"}}, 443, Protocol.TCP, Protocol.TLS),
         ({"port": 1883, "transport": "tcp", "_shodan": {"module": "mqtt"}}, 1883, Protocol.TCP, Protocol.MQTT),
         ({"port": 22, "transport": "udp", "_shodan": {"module": "ntp"}}, 22, Protocol.UDP, Protocol.NTP),
     ]
