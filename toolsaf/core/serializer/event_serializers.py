@@ -245,10 +245,10 @@ class PropertyAddresssEventSerializer(Serializer[PropertyAddressEvent]):
         ev = EventSerializer.read_evidence(stream)
         key_value: Tuple[PropertyKey, Union[PropertyVerdictValue, PropertySetValue]]
         if (verdict := stream.get("verdict")):
-            key_value = PropertyKey(stream["key"]), PropertyVerdictValue(Verdict(verdict), stream["explanation"])
+            key_value = PropertyKey.parse(stream["key"]), PropertyVerdictValue(Verdict(verdict), stream["explanation"])
         else:
-            sub_keys = {PropertyKey(key) for key in stream["sub-keys"]}
-            key_value = PropertyKey(stream["key"]), PropertySetValue(sub_keys, stream["explanation"])
+            sub_keys = {PropertyKey.parse(key) for key in stream["sub-keys"]}
+            key_value = PropertyKey.parse(stream["key"]), PropertySetValue(sub_keys, stream["explanation"])
         return PropertyAddressEvent(
             ev, address=Addresses.parse_endpoint(stream["address"]),
             key_value=key_value
@@ -296,13 +296,13 @@ class PropertyEventSerializer(Serializer[PropertyEvent]):
                 info.latest_release = datetime.datetime.fromisoformat(val)
             info.latest_release_name = stream.get("latest-release-name") or "?"
 
-            key_value = (PropertyKey(stream["key"]), info)
+            key_value = (PropertyKey.parse(stream["key"]), info)
 
         elif (verdict := stream.get("verdict")): # PropertyVerdictValue
-            key_value = PropertyKey(stream["key"]), PropertyVerdictValue(Verdict(verdict), stream["explanation"])
+            key_value = PropertyKey.parse(stream["key"]), PropertyVerdictValue(Verdict(verdict), stream["explanation"])
         else: # PropertySetValue
-            sub_keys = {PropertyKey(key) for key in stream["sub-keys"]}
-            key_value = PropertyKey(stream["key"]), PropertySetValue(sub_keys, stream["explanation"])
+            sub_keys = {PropertyKey.parse(key) for key in stream["sub-keys"]}
+            key_value = PropertyKey.parse(stream["key"]), PropertySetValue(sub_keys, stream["explanation"])
 
         if not (entity := self.system.find_endpoint(address)):
             raise ValueError(f"Entity not found for address {address}")

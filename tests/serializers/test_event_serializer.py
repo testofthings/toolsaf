@@ -254,7 +254,7 @@ def test_new_host_scan_from_serialized():
 def test_serialize_property_address_event():
     property_address_event = PropertyAddressEvent(
         Evidence(SOURCE), IPADDRESS,
-        PropertyKey("test-key").verdict(Verdict.PASS, "test explanation")
+        PropertyKey.parse("test-key:abc").verdict(Verdict.PASS, "test explanation")
     )
 
     # PropertyVerdictValue
@@ -262,7 +262,7 @@ def test_serialize_property_address_event():
         "type": "property-address-event",
         "source-id": "id1",
         "address": "1.1.1.1",
-        "key": "test-key",
+        "key": "test-key:abc",
         "verdict": "Pass",
         "explanation": "test explanation"
     }
@@ -289,24 +289,24 @@ def test_serialize_property_address_event():
 def test_new_property_address_event_from_serialized():
     property_address_event = PropertyAddressEvent(
         Evidence(SOURCE), IPADDRESS,
-        PropertyKey("test-key").verdict(Verdict.PASS, "test explanation")
+        PropertyKey.parse("test-key:abc").verdict(Verdict.PASS, "test explanation")
     )
     stream = _get_stream(property_address_event)
 
     new_property_address_event = PropertyAddresssEventSerializer().new(stream)
     assert new_property_address_event.address == IPADDRESS
-    assert new_property_address_event.key_value == PropertyKey("test-key").verdict(Verdict.PASS, "test explanation")
+    assert new_property_address_event.key_value == PropertyKey.parse("test-key:abc").verdict(Verdict.PASS, "test explanation")
     assert new_property_address_event.evidence.source.name == "Test"
 
     property_address_event = PropertyAddressEvent(
         Evidence(SOURCE), IPADDRESS,
-        PropertyKey("test-key").value_set({PropertyKey("value-key"), PropertyKey("key-value")})
+        PropertyKey.parse("test-key:abc").value_set({PropertyKey("value-key"), PropertyKey("key-value")})
     )
     stream = _get_stream(property_address_event)
 
     new_property_address_event = PropertyAddresssEventSerializer().new(stream)
     assert new_property_address_event.address == IPADDRESS
-    assert new_property_address_event.key_value == PropertyKey("test-key").value_set({PropertyKey("value-key"), PropertyKey("key-value")})
+    assert new_property_address_event.key_value == PropertyKey.parse("test-key:abc").value_set({PropertyKey("value-key"), PropertyKey("key-value")})
 
 
 def test_serialize_property_event():
@@ -316,14 +316,14 @@ def test_serialize_property_event():
     # PropertyVerdictValue
     property_event = PropertyEvent(
         Evidence(SOURCE), software,
-        PropertyKey("test-key").verdict(Verdict.PASS, "test explanation")
+        PropertyKey("test-key:abc").verdict(Verdict.PASS, "test explanation")
     )
     serialized_event = _get_serialized_event(property_event)
     assert serialized_event == {
         "type": "property-event",
         "source-id": "id1",
         "address": "Test_Device&software=Test_Software",
-        "key": "test-key",
+        "key": "test-key:abc",
         "verdict": "Pass",
         "explanation": "test explanation"
     }
@@ -378,7 +378,7 @@ def test_new_property_event_from_serialized():
     # PropertyVerdictValue
     property_event = PropertyEvent(
         Evidence(SOURCE), software,
-        PropertyKey("test-key").verdict(Verdict.PASS, "test explanation")
+        PropertyKey.parse("test-key:abc").verdict(Verdict.PASS, "test explanation")
     )
     stream = _get_stream(property_event, system)
 
@@ -389,7 +389,7 @@ def test_new_property_event_from_serialized():
     # PropertySetValue
     property_event = PropertyEvent(
         Evidence(SOURCE), software,
-        PropertyKey("test-key").value_set({PropertyKey("value-key"), PropertyKey("key-value")})
+        PropertyKey.parse("test-key:abc").value_set({PropertyKey("value-key"), PropertyKey("key-value")})
     )
     js = _get_stream(property_event, system)
     property_event_serializer = PropertyEventSerializer()
