@@ -22,6 +22,7 @@ def test_simple_model():
         'id': 'id2',
         'long_name': 'Device 1',
         'name': 'Device 1',
+        'status': 'Expected',
         'tag': 'Device',
         'type': 'host',
     }
