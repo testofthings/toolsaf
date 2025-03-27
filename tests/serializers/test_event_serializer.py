@@ -55,8 +55,11 @@ def test_new_event_source_from_serialized():
     source = EvidenceSource(name="TestSource1", base_ref="../test1.json", label="test-label")
     source.timestamp = datetime(2025, 1, 1, 0, 0, 0)
 
-    stream = next(stream.write(source))
-    new_source = EvidenceSourceSerializer().new(stream)
+    write_list = list(stream.write(source))
+    stream = SerializerStream(serializer)  # new stream
+    read_obj = list(stream.read(write_list))
+    assert len(read_obj) == 1
+    new_source = read_obj[0]
     assert new_source.name == source.name
     assert new_source.base_ref == source.base_ref
     assert new_source.label == source.label

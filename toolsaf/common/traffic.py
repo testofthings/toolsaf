@@ -10,7 +10,7 @@ from toolsaf.common.property import PropertyKey
 
 class EvidenceSource:
     """Evidence source"""
-    def __init__(self, name: str, base_ref: str="", label: str="") -> None:
+    def __init__(self, name: str = "", base_ref: str="", label: str="") -> None:
         self.name = name
         self.target = ''
         self.base_ref = base_ref

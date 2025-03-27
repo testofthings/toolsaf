@@ -2,6 +2,8 @@
 
 from typing import Any, Dict, Iterable, Union, Tuple
 import datetime
+
+from toolsaf.core.model import EvidenceNetworkSource
 from toolsaf.common.address import (
     Addresses, EndpointAddress, Protocol, HWAddress, IPAddress, EntityTag, DNSName
 )
@@ -33,7 +35,7 @@ class EventSerializer(Serializer[Event]):
         self.config.map_class("property-address-event", PropertyAddresssEventSerializer())
         self.config.map_class("property-event", PropertyEventSerializer())
         self.config.map_class("name-event", NameEventSerializer())
-        self.config.map_class("source", EvidenceSourceSerializer())
+        self.config.map_class("source", EvidenceSourceSerializer(system))
 
     def write_event(self, event: Event, stream: SerializerStream) -> Iterable[Dict[str, Any]]:
         """Write event, prefix with sources as required"""
@@ -59,24 +61,46 @@ class EventSerializer(Serializer[Event]):
 
 class EvidenceSourceSerializer(Serializer[EvidenceSource]):
     """Serialize evidence source"""
-    def __init__(self) -> None:
+    def __init__(self, system: IoTSystem) -> None:
         super().__init__(EvidenceSource)
+        self.system = system
         self.config.map_simple_fields("name", "label", "target", "base_ref")
 
     def write(self, obj: EvidenceSource, stream: SerializerStream) -> None:
         if obj.timestamp:
             stream += "timestamp", obj.timestamp.isoformat()
+        if isinstance(obj, EvidenceNetworkSource):
+            # a shortcut, all are of this kind?
+            # map of address -> entity
+            add_map = []
+            for add, ent in obj.address_map.items():
+                tag = ent.get_tag()
+                if tag is None or add == tag:
+                    continue   # pointless to store
+                add_map.append({
+                    "address": add.get_parseable_value(),
+                    "entity": tag.get_parseable_value(),  # by system address
+                })
+            stream += "address_map", add_map
 
     def new(self, stream: SerializerStream) -> EvidenceSource:
-        source = EvidenceSource(
-            name=stream.get("name") or "",
-            base_ref=stream.get("base_ref") or "",
-            label=stream.get("label") or ""
-        )
-        source.target = stream.get("target") or ""
-        if (timestamp := stream.get("timestamp")):
-            source.timestamp = datetime.datetime.fromisoformat(timestamp)
-        return source
+        # all sources are network sources now
+        return EvidenceNetworkSource(name=stream["name"])
+
+    def read(self, obj: EvidenceSource, stream: SerializerStream) -> None:
+        ts = stream - "timestamp"
+        obj.timestamp = datetime.datetime.fromisoformat(ts) if ts else None
+        if isinstance(obj, EvidenceNetworkSource):
+            add_map = stream - "address_map"
+            if isinstance(add_map, list):
+                for add_d in add_map:
+                    address = Addresses.parse_endpoint(add_d["address"])
+                    system_address = Addresses.parse_system_address(add_d["entity"])
+                    ent = self.system.find_entity(system_address)
+                    if ent is None:
+                        raise ValueError(f"Cannot resolve entity by {system_address}")
+                    assert isinstance(ent, Addressable), "Address map contains non-addressable entity"
+                    obj.address_map[address] = ent
 
 
 class EthernetFlowSerializer(Serializer[EthernetFlow]):
