@@ -74,7 +74,7 @@ class EvidenceSourceSerializer(Serializer[EvidenceSource]):
             # map of address -> entity
             add_map = []
             for add, ent in obj.address_map.items():
-                tag = ent.get_tag()
+                tag = ent.get_system_address()
                 if tag is None or add == tag:
                     continue   # pointless to store
                 add_map.append({
