@@ -15,7 +15,7 @@ from toolsaf.common.verdict import Verdictable
 
 class EventInterface:
     """Event interface"""
-    def __init__(self):
+    def __init__(self) -> None:
         self.consume_methods: Dict[Type[Event], Callable[[Any], Any]] = {
             IPFlow: self.connection,
             EthernetFlow: self.connection,
@@ -59,6 +59,7 @@ class EventInterface:
         """Consume event and call the proper method"""
         m = self.consume_methods[type(event)]
         ent = m(event)
+        assert ent is None or isinstance(ent, Entity), "Bad return type from consumed event"
         return ent
 
 
