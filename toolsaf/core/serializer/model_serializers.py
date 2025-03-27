@@ -45,6 +45,7 @@ class NetworkNodeSerializer(Serializer[NetworkNode]):
         stream += "address", obj.get_system_address().get_parseable_value()
         stream += "long_name", obj.long_name()
         stream += "host_type", obj.host_type.value
+        stream += "status", obj.status.value
         expected = obj.get_expected_verdict(None)
         if expected:
             stream += "expected", expected.value  # fail or pass
