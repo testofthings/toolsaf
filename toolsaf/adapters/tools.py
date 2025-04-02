@@ -3,13 +3,32 @@
 from io import BufferedReader
 import json
 import logging
-from typing import Optional, Dict, Set
+from functools import wraps
+from typing import Optional, Dict, Set, Callable, Any
 
 from toolsaf.common.address import DNSName, IPAddress, AnyAddress
 from toolsaf.core.event_interface import EventInterface
 from toolsaf.core.model import NetworkNode, Addressable, IoTSystem, NodeComponent
 from toolsaf.common.traffic import Evidence, EvidenceSource, Tool, IPFlow
 from toolsaf.common.basics import Status
+
+
+class IncorrectBatchFileExcpetion(Exception):
+    """ToolAdapter failed to parse a file"""
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+
+def handle_incorrect_batch_file(f: Callable[..., Any]) -> Callable[..., Any]:
+    """Decorator for handling IncorrectBatchFileExcpetion raised by ToolAdapters"""
+    @wraps(f)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return f(*args, **kwargs)
+        except IncorrectBatchFileExcpetion as e:
+            args[0].logger.warning("Failed to parse file %s. %s", args[2], str(e))
+            return None
+    return wrapper
 
 
 class ToolAdapter:
