@@ -10,7 +10,7 @@ from shodan.client import Shodan
 from shodan.exception import APIError
 
 from toolsaf.main import ConfigurationException
-from toolsaf.adapters.tools import SystemWideTool
+from toolsaf.adapters.tools import SystemWideTool, IncorrectBatchFileExcpetion, handle_incorrect_batch_file
 from toolsaf.core.model import IoTSystem, Service
 from toolsaf.core.components import Software, SoftwareComponent
 from toolsaf.core.event_interface import EventInterface, PropertyEvent
@@ -110,19 +110,22 @@ class ShodanScan(SystemWideTool):
                     PropertyEvent(self._evidence, parent_sw, key.verdict(verdict, comment))
                 )
 
+    @handle_incorrect_batch_file
     def process_file(self, data: BufferedReader, file_name: str,
                      interface: EventInterface, source: EvidenceSource) -> bool:
         """Process file"""
         self._interface = interface
         self._evidence = Evidence(source)
-
         scan = cast(Dict[str, Any], json.load(data))
-        ip_addr = IPAddress.new(file_name.split("-")[-1].replace(self.data_file_suffix, ""))
 
         entry: Dict[str, Any]
         for entry in scan.get("data", []):
             self._key_set = set()
 
+            if not(ip_str := entry.get("ip_str")):
+                raise IncorrectBatchFileExcpetion(f'ip_str not found in {file_name} "data"')
+
+            ip_addr = IPAddress.new(ip_str)
             port, transport, protocol = self.get_open_port_info(entry)
             endpoint_addr = EndpointAddress(ip_addr, transport, port)
             service = interface.service_scan(

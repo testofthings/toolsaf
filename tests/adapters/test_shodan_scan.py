@@ -162,7 +162,8 @@ def test_process_file():
                 "port": 80, "transport": "tcp", "http": {"status": 200},
                 "vulns": {"CVE-2021-12345": {"cvss": 1.0, "summary": "test"}},
                 "opts": {"heartbleed": "2025/01/01 00:00:00 - SAFE\n"},
-                "cpe23": ["cpe:2.3:a:example:software:1.0"]
+                "cpe23": ["cpe:2.3:a:example:software:1.0"],
+                "ip_str": "1.2.3.4"
             }
         ]
     })
@@ -172,6 +173,22 @@ def test_process_file():
             scan.process_file(file, "test-1.2.3.4.json", scan._interface, MagicMock())
             service = scan.system.children[0]
             assert len(service.children[0].properties) > 2
+
+
+def test_process_file_incorrect_filename():
+    scan, _, _ = _mock_system()
+
+    scan.logger = MagicMock()
+    data = json.dumps({
+        "data": [{"tags": []}]
+    })
+    with patch("builtins.open", mock_open(read_data=data)):
+        with open("test.json", "r") as file:
+            scan.process_file(file, "test-example.com.json", scan._interface, MagicMock())
+            scan.logger.warning.assert_called_once_with(
+                'Failed to parse file %s. %s', 'test-example.com.json', 'ip_str not found in test-example.com.json "data"'
+            )
+
 
 # ShodanScanner
 
