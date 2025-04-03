@@ -12,6 +12,7 @@ from toolsaf.common.basics import ExternalActivity
 from toolsaf.core.event_interface import EventInterface
 from toolsaf.core.model import EvidenceNetworkSource, IoTSystem, Addressable
 from toolsaf.adapters.tool_finder import ToolDepiction, ToolFinder
+from toolsaf.adapters.tools import IncorrectBatchFileExcpetion
 from toolsaf.common.traffic import EvidenceSource
 
 
@@ -126,7 +127,10 @@ class BatchImporter:
                     self.logger.info("skipping (%s) %s", info.label, file_path.as_posix())
                     return
                 reader.load_baseline = info.load_baseline or self.load_baseline
-                reader.process_file(stream, file_name, self.interface, ev)
+                try:
+                    reader.process_file(stream, file_name, self.interface, ev)
+                except IncorrectBatchFileExcpetion as e:
+                    self.logger.warning("%s: Failed to parse file %s. %s", reader.tool_label, file_name, str(e))
                 return
 
         except Exception as e:
@@ -156,7 +160,11 @@ class BatchImporter:
             with fn.open("rb") as f:
                 # tool-specific code can override, if knows better
                 ev.timestamp = datetime.fromtimestamp(fn.stat().st_mtime)
-                done = reader.process_file(f, fn.name, self.interface, ev)
+                try:
+                    done = reader.process_file(f, fn.name, self.interface, ev)
+                except IncorrectBatchFileExcpetion as e:
+                    self.logger.warning("%s: Failed to parse file %s. %s", reader.tool_label, fn.name, str(e))
+                    done = True
             if done:
                 unmapped.remove(fn.name)
             else:
