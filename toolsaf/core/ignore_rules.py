@@ -1,6 +1,6 @@
 """IgnoreRules definition"""
 from dataclasses import dataclass
-from typing import List, Dict, Tuple, Optional, cast
+from typing import Set, List, Dict, Tuple, Optional, cast
 
 from toolsaf.common.entity import Entity
 from toolsaf.common.verdict import Verdict
@@ -11,8 +11,8 @@ from toolsaf.common.property import PropertyKey, PropertyVerdictValue
 class IgnoreRule:
     """Data class representing a single rule"""
     file_type: str
-    properties: List[PropertyKey]
-    at: List[Entity]
+    properties: Set[PropertyKey]
+    at: Set[Entity]
     explanation: str=""
 
     def __repr__(self) -> str:
@@ -27,21 +27,21 @@ class IgnoreRules:
 
     def new_rule(self, file_type: str) -> None:
         """Create a new rule"""
-        self._current_rule = IgnoreRule(file_type, [], [])
+        self._current_rule = IgnoreRule(file_type, set(), set())
         self.rules.setdefault(file_type, []).append(self._current_rule)
 
     def properties(self, *properties: Tuple[str, ...]) -> None:
         """Set properties that the rule applies to. Leave empty for all properties"""
         assert self._current_rule, "Call ignore() first"
         for entry in properties:
-            self._current_rule.properties.append(
+            self._current_rule.properties.add(
                 PropertyKey.parse(cast(str, entry))
             )
 
     def at(self, location: Entity) -> None:
         """Set location to which the rules apply to"""
         assert self._current_rule, "Call ignore() first"
-        self._current_rule.at.append(location)
+        self._current_rule.at.add(location)
 
     def because(self, explanation: str) -> None:
         """Give reason for the ignore rule"""
