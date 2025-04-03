@@ -10,7 +10,7 @@ from shodan.client import Shodan
 from shodan.exception import APIError
 
 from toolsaf.main import ConfigurationException
-from toolsaf.adapters.tools import SystemWideTool, IncorrectBatchFileExcpetion, handle_incorrect_batch_file
+from toolsaf.adapters.tools import SystemWideTool, IncorrectBatchFileExcpetion
 from toolsaf.core.model import IoTSystem, Service
 from toolsaf.core.components import Software, SoftwareComponent
 from toolsaf.core.event_interface import EventInterface, PropertyEvent
@@ -40,27 +40,36 @@ class ShodanScan(SystemWideTool):
                 return Protocol.TLS
             return Protocol.HTTP
 
-        module: List[str] = entry["_shodan"]["module"].lower().split("-")
+        module_str = entry.get("_shodan", {}).get("module", "")
+        if not module_str:
+            raise IncorrectBatchFileExcpetion('"_shodan/module" not found')
+
+        modules = module_str.lower().split("-")
         for protocol in self._protocols:
-            if protocol.value in module:
+            if protocol.value in modules:
                 return protocol
-        self.logger.info("Could not determine protocol for port %d", entry["port"])
         return None
 
     def get_open_port_info(self, entry: Dict[str, Any]) -> Tuple[int, Protocol, Protocol]:
         """Add open ports to endpoint"""
-        port: int = entry["port"]
-        transport = Protocol.get_protocol(entry["transport"])
+        port_str = entry.get("port")
+        transport_str = entry.get("transport")
+        if not port_str or not transport_str:
+            raise IncorrectBatchFileExcpetion("port or transport not found in entry")
+
+        transport = Protocol.get_protocol(transport_str)
         assert transport, "get_protocol returned None"
         protocol = self.determine_protocol(entry)
         if protocol is None:
+            self.logger.info("Could not determine protocol for port %d, using transport instead", entry["port"])
             protocol = transport
-        return port, transport, protocol
+        return int(port_str), transport, protocol
 
     def add_http_status(self, protocol: Protocol, entry: Dict[str, Any], service: Service) -> None:
         """Add HTTP(S) status code to a HTTP(S) service's properties"""
         if protocol in [Protocol.HTTP, Protocol.TLS]:
-            status_code = str(entry["http"]["status"])
+            if not (status_code := str(entry["http"].get("status", ""))):
+                raise IncorrectBatchFileExcpetion('"http/status" not found in entry')
             key_part = "http" if protocol == Protocol.HTTP else "https"
             key = PropertyKey(self.tool_label, key_part, "status", status_code)
             prop_event = PropertyEvent(self._evidence, service, key.verdict(Verdict.IGNORE))
@@ -72,7 +81,10 @@ class ShodanScan(SystemWideTool):
             if (key := PropertyKey(self.tool_label, vulnerability)) not in self._key_set:
                 self._key_set.add(key)
                 veridct = Verdict.FAIL
-                comment = f"CVSS: {info['cvss']}, {info['summary']}"
+                cvss, summary = info.get("cvss"), info.get("summary")
+                if not cvss or not summary:
+                    raise IncorrectBatchFileExcpetion("cvss and/or summary missing")
+                comment = f"CVSS: {cvss}, {summary}"
                 prop_event = PropertyEvent(self._evidence, service, key.verdict(veridct, comment))
                 self._interface.property_update(prop_event)
 
@@ -110,7 +122,6 @@ class ShodanScan(SystemWideTool):
                     PropertyEvent(self._evidence, parent_sw, key.verdict(verdict, comment))
                 )
 
-    @handle_incorrect_batch_file
     def process_file(self, data: BufferedReader, file_name: str,
                      interface: EventInterface, source: EvidenceSource) -> bool:
         """Process file"""
@@ -123,7 +134,7 @@ class ShodanScan(SystemWideTool):
             self._key_set = set()
 
             if not(ip_str := entry.get("ip_str")):
-                raise IncorrectBatchFileExcpetion(f'ip_str not found in {file_name} "data"')
+                raise IncorrectBatchFileExcpetion(f'"ip_str" not found in {file_name} "data"')
 
             ip_addr = IPAddress.new(ip_str)
             port, transport, protocol = self.get_open_port_info(entry)

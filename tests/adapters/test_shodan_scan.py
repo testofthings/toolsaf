@@ -12,6 +12,7 @@ from toolsaf.common.address import IPAddress, Protocol, EndpointAddress
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.property import PropertyKey
 from toolsaf.common.traffic import ServiceScan
+from toolsaf.adapters.tools import IncorrectBatchFileExcpetion
 from toolsaf.core.model import Service
 from tests.test_model import Setup
 
@@ -26,13 +27,18 @@ from tests.test_model import Setup
         ({"_shodan": {"module": "auto"}, "http": {"status": 200}, "port": 1}, Protocol.HTTP),
         ({"_shodan": {"module": "mqtt"}, "port": 1}, Protocol.MQTT),
         ({"_shodan": {"module": "ssh"}, "port": 1}, Protocol.SSH),
-        ({"_shodan": {"module": "unkown"}, "port": 1}, None),
+        ({"_shodan": {"module": "unkown"}, "port": 1}, None)
     ]
 )
 def test_determine_protocol(entry, expected_protocol):
     scan = ShodanScan(Setup().get_system())
-    protocol = scan.determine_protocol(entry)
-    assert protocol == expected_protocol
+    assert scan.determine_protocol(entry) == expected_protocol
+
+
+def test_determine_protocol_raises():
+    scan = ShodanScan(Setup().get_system())
+    with pytest.raises(IncorrectBatchFileExcpetion):
+        scan.determine_protocol({})
 
 
 @pytest.mark.parametrize(
@@ -42,6 +48,7 @@ def test_determine_protocol(entry, expected_protocol):
         ({"port": 443, "transport": "tcp", "_shodan": {"module": "https-simple"}, "http": {"status": 200}, "ssl": {"test": "test"}}, 443, Protocol.TCP, Protocol.TLS),
         ({"port": 1883, "transport": "tcp", "_shodan": {"module": "mqtt"}}, 1883, Protocol.TCP, Protocol.MQTT),
         ({"port": 22, "transport": "udp", "_shodan": {"module": "ntp"}}, 22, Protocol.UDP, Protocol.NTP),
+        ({"port": 1, "transport": "udp", "_shodan": {"module": "unknown"}}, 1, Protocol.UDP, Protocol.UDP)
     ]
 )
 def test_get_open_port_info(entry, expected_port, expected_transport, expected_protocol):
@@ -50,6 +57,14 @@ def test_get_open_port_info(entry, expected_port, expected_transport, expected_p
     assert port == expected_port
     assert transport == expected_transport
     assert protocol == expected_protocol
+
+
+def test_get_open_port_raises():
+    scan = ShodanScan(Setup().get_system())
+    with pytest.raises(IncorrectBatchFileExcpetion):
+        scan.get_open_port_info({"port": 1})
+    with pytest.raises(IncorrectBatchFileExcpetion):
+        scan.get_open_port_info({"transport": 1})
 
 
 def _mock_system(protocol: Optional[Protocol]=None) -> Tuple[ShodanScan, Service, HostBackend]:
@@ -86,6 +101,12 @@ def test_add_http_status(protocol, entry, exp_status_code, exp_verdict):
     assert service.properties[PropertyKey(scan.tool_label, key_part, "status", exp_status_code)].verdict == exp_verdict
 
 
+def test_add_http_status_raises():
+    scan, service, _ = _mock_system(Protocol.HTTP)
+    with pytest.raises(IncorrectBatchFileExcpetion):
+        scan.add_http_status(Protocol.HTTP, {"http": {}}, service)
+
+
 @pytest.mark.parametrize(
     "vulnerabilities, exp_verdict",
     [
@@ -100,6 +121,20 @@ def test_add_vulnerabilities(vulnerabilities, exp_verdict):
     for vulnerability in vulnerabilities:
         assert service.properties[PropertyKey(scan.tool_label, vulnerability)].verdict == exp_verdict
         assert service.properties[PropertyKey(scan.tool_label, vulnerability)].explanation == "CVSS: 5.1, test"
+
+
+@pytest.mark.parametrize(
+    "vulnerabilities",
+    [
+        ({"test": {}}),
+        ({"test": {"cvss": 1.0}}),
+        ({"test": {"summary": "test summary"}})
+    ]
+)
+def test_add_vulnerabilities_raises(vulnerabilities):
+    scan, service, _  = _mock_system()
+    with pytest.raises(IncorrectBatchFileExcpetion):
+        scan.add_vulnerabilities(vulnerabilities, service)
 
 
 @pytest.mark.parametrize(
@@ -177,17 +212,13 @@ def test_process_file():
 
 def test_process_file_incorrect_filename():
     scan, _, _ = _mock_system()
-
-    scan.logger = MagicMock()
     data = json.dumps({
         "data": [{"tags": []}]
     })
     with patch("builtins.open", mock_open(read_data=data)):
         with open("test.json", "r") as file:
-            scan.process_file(file, "test-example.com.json", scan._interface, MagicMock())
-            scan.logger.warning.assert_called_once_with(
-                'Failed to parse file %s. %s', 'test-example.com.json', 'ip_str not found in test-example.com.json "data"'
-            )
+            with pytest.raises(IncorrectBatchFileExcpetion):
+                scan.process_file(file, "test-example.com.json", scan._interface, MagicMock())
 
 
 # ShodanScanner
