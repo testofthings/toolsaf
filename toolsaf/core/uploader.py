@@ -3,7 +3,7 @@ import os
 import http.server
 import socketserver
 import webbrowser
-from typing import Union, Literal, Dict, List, Any
+from typing import Union, Dict, List, Any, Optional
 from pathlib import Path
 import requests
 from toolsaf.main import ConfigurationException
@@ -24,14 +24,22 @@ class Uploader:
         self._api_key = ""
         self._api_url = ""
         self._use_port = 5033
-        self._jwt = ""
+        self._key_file_path: Path
 
-    def do_pre_procedures(self, key_file_argument: Union[Literal[True], str]) -> None:
-        """Get everything ready for uploading"""
+    def _common_pre_procedures(self, key_file_argument: Optional[str]) -> None:
+        """Common pre procedures for registration and uploading"""
         self._add_toolsaf_directory_to_home()
-        key_file_path = self._get_key_file_path_based_on_argument(key_file_argument)
-        self._read_api_key(key_file_path)
+        self._key_file_path = self._get_key_file_path_based_on_argument(key_file_argument)
         self._read_api_url()
+
+    def do_register_pre_procedures(self, key_file_argument: Optional[str]) -> None:
+        """Get everything ready for registering a new user"""
+        self._common_pre_procedures(key_file_argument)
+
+    def do_upload_pre_procedures(self, key_file_argument: Optional[str]) -> None:
+        """Get everything ready for uploading"""
+        self._common_pre_procedures(key_file_argument)
+        self._read_api_key()
 
     def _create_directory(self, path: Path) -> None:
         """Creates directory based on given Path; if the directory does not already exist"""
@@ -42,22 +50,11 @@ class Uploader:
         """Adds .toolsaf to user's home directory"""
         self._create_directory(self._toolsaf_home_dir)
 
-    def _get_key_file_path_based_on_argument(self, key_file_argument: Union[Literal[True], str]) -> Path:
+    def _get_key_file_path_based_on_argument(self, key_file_argument: Optional[str]) -> Path:
         """Get path to API key file based on user given command line argument"""
-        if key_file_argument is True:
-            return self._toolsaf_home_dir / ".apikey"
+        if key_file_argument is None:
+            return self._toolsaf_home_dir / ".api_key"
         return Path(os.path.abspath(key_file_argument))
-
-    def _read_api_key(self, key_file_path: Path) -> None:
-        """Read API key from file"""
-        print(f"Reading API key from {key_file_path}")
-        if not Path.exists(key_file_path):
-            raise ConfigurationException(f"API key file not found at {key_file_path}")
-        with Path.open(key_file_path, "r", encoding="utf-8") as api_key_file:
-            file_contents = api_key_file.read().strip()
-            if not file_contents:
-                raise ConfigurationException(f"API key file {key_file_path} is empty")
-            self._api_key = file_contents
 
     def _read_api_url(self) -> None:
         """Read API URL from file, if not found, create it and prompt user to enter it"""
@@ -75,6 +72,17 @@ class Uploader:
                 assert api_url, f"Could not read API URL, file {url_file_path} is empty"
 
         self._api_url = api_url
+
+    def _read_api_key(self) -> None:
+        """Read API key from file"""
+        print(f"Reading API key from {self._key_file_path}")
+        if not Path.exists(self._key_file_path):
+            raise ConfigurationException(f"API key file not found at {self._key_file_path}")
+        with Path.open(self._key_file_path, "r", encoding="utf-8") as api_key_file:
+            file_contents = api_key_file.read().strip()
+            if not file_contents:
+                raise ConfigurationException(f"API key file {self._key_file_path} is empty")
+            self._api_key = file_contents
 
     @property
     def _headers(self) -> Dict[str, str]:
@@ -127,8 +135,8 @@ class Uploader:
         response = self._post(url, batch)
         self._handle_response(response)
 
-    def _get_session_jwt(self, url: str) -> str:
-        """Get session JWT"""
+    def _register_and_get_api_key(self, url: str) -> str:
+        """Register Toolsaf user and get an API key for a successful registration"""
         response = self._post(url, data={"port": self._use_port})
         if response.status_code != 200 \
          or not (response_json := response.json()) \
@@ -136,66 +144,45 @@ class Uploader:
             raise ConnectionError("Got incorrect response from user registration API")
         webbrowser.open(oauth_url, autoraise=True)
 
-        session_jwt = ""
-        # Start TCP serve to catch response from OAth provider
-        with self.CustomTCPServer(("localhost", self._use_port), self.JWTReceiver) as httpd:
+        api_key: Optional[str] = None
+        # Start TCP serve to catch response from the OAth provider
+        with self.CustomTCPServer(("localhost", self._use_port), self.APIKeyReceiver) as httpd:
             httpd.api_url = self._api_url
             httpd.verify = not self.allow_insecure
             httpd.use_port = self._use_port
             httpd.handle_request()
-            session_jwt = httpd.received_jwt
+            api_key = httpd.received_api_key
             httpd.server_close()
 
-        if not session_jwt:
-            raise ConnectionError("Getting a session JWT failed")
-        return session_jwt
+        if not api_key:
+            raise ConnectionError("Getting an API key failed")
+        return api_key
 
-    def _read_session_jwt(self) -> None:
-        """Read session JWT from file"""
-        jwt_file_path = self._toolsaf_home_dir / ".jwt"
-        if not jwt_file_path.exists():
-            raise ConfigurationException(f"{jwt_file_path} was not found")
-        with jwt_file_path.open("r") as jwt_file:
-            self._jwt = jwt_file.read().strip()
+    def _write_api_key_to_file(self, api_key: str) -> None:
+        """Write received API key to file"""
+        print(f"Writing your API key to {self._key_file_path}")
 
-    def _write_session_jwt_to_file(self, session_jwt: str) -> None:
-        """Write received session JWT to file"""
-        print(f"Saving session JWT to {self._toolsaf_home_dir / '.jwt'}")
-        with (self._toolsaf_home_dir / ".jwt").open("w") as jwt_file:
-            jwt_file.write(session_jwt)
+        if not self._key_file_path.parents[0].exists():
+            os.makedirs(self._key_file_path.parents[0], exist_ok=True)
+        with open(self._key_file_path, "w", encoding="utf-8") as api_key_file:
+            api_key_file.write(api_key)
 
     def register(self) -> None:
         """Register to Test of Things cloud service. Currently not available for the public"""
         registration_url = f"{self._api_url}/api/google-register"
-        self._jwt = self._get_session_jwt(registration_url)
-        self._write_session_jwt_to_file(self._jwt)
-
-    def login(self) -> None:
-        """Login using Google's OpenID Connect"""
-        login_url = f"{self._api_url}/api/google-login"
-        self._jwt = self._get_session_jwt(login_url)
-        self._write_session_jwt_to_file(self._jwt)
-
-    def test_jwt(self) -> None:
-        """Test that JWT is correct"""
-        self._read_session_jwt()
-        resp = requests.post(
-            f"{self._api_url}/api/jwt-test", headers={"Authorization": f"Bearer {self._jwt}"},
-            verify=not self.allow_insecure,
-            timeout=60)
-        print(resp.status_code)
-        print(resp.json())
+        self._api_key = self._register_and_get_api_key(registration_url)
+        self._write_api_key_to_file(self._api_key)
 
     class CustomTCPServer(socketserver.TCPServer):
         """Custom TCP Server"""
         api_url = ""
         use_port = 0
-        received_jwt = ""
+        received_api_key = ""
         verify = True
         allow_reuse_address = True
 
-    class JWTReceiver(http.server.SimpleHTTPRequestHandler):
-        """JWT receiver"""
+    class APIKeyReceiver(http.server.SimpleHTTPRequestHandler):
+        """API key receiver"""
         server: 'Uploader.CustomTCPServer'
 
         def do_GET(self) -> None:
@@ -204,19 +191,14 @@ class Uploader:
                     f"{self.server.api_url}/api/google-callback" + self.path[1:] + f"&port={self.server.use_port}"
                 resp = requests.get(callback_url, verify=self.server.verify, timeout=60)
 
+                # Read received API key from response headers
+                self.server.received_api_key = resp.headers.get("Authorization")
+
+                # Display response to user in the browser
                 self.send_response(resp.status_code)
                 self.send_header("Content-Type", "text/html")
                 self.end_headers()
-                response_json = resp.json()
-
-                if resp.status_code != 200:
-                    error = response_json.get("error")
-                    message = f"<b>Error: {error}<br>You can close the browser.</b>".encode('utf-8')
-                else:
-                    self.server.received_jwt = response_json.get("jwt")
-                    api_message = response_json.get("message")
-                    message = f"<b>Logged in. {api_message}<br>You can now close the browser.</b>".encode("utf-8")
-
+                message = resp.content
                 self.wfile.write(message)
 
         def log_message(self, format: str, *args: Any) -> None: # pylint: disable=W0622
@@ -230,7 +212,6 @@ if __name__ == "__main__":
     test_system = IoTSystem()
     test_system.upload_tag = "test"
     u = Uploader(test_system)
-    u.do_pre_procedures(True)
+    u.do_register_pre_procedures(None)
     u.allow_insecure = True
-    u.login()
-    u.test_jwt()
+    u.register()

@@ -1091,8 +1091,12 @@ class SystemBackendRunner(SystemBackend):
         parser.add_argument("-l", "--log", dest="log_level", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                             help="Set the logging level", default=None)
         parser.add_argument("--statement-json", action="store_true", help="Dump security statement JSON to stdout")
-        parser.add_argument("-u", "--upload", nargs="?", const=True,
+        parser.add_argument("-u", "--upload", action="store_true",
                             help="Upload statement. You can provide the path to your API key file with this flag.")
+        parser.add_argument("--register", action="store_true",
+                            help="Register and receive an API key (not available for the public).")
+        parser.add_argument("--key-path", type=str,
+                            help="Custom path to API key file")
         parser.add_argument("--insecure", action="store_true",
                             help="Allow insecure server connections")
         parser.add_argument("--db", type=str, help="Connect to SQL database")
@@ -1182,9 +1186,14 @@ class SystemBackendRunner(SystemBackend):
             self.diagram.show = bool(args.show_diagram)
             self.diagram.create_diagram()
 
+        if args.register:
+            uploader = Uploader(self.system, allow_insecure=args.insecure)
+            uploader.do_register_pre_procedures(args.key_path)
+            uploader.register()
+
         if args.upload:
             uploader = Uploader(self.system, allow_insecure=args.insecure)
-            uploader.do_pre_procedures(args.upload)
+            uploader.do_upload_pre_procedures(args.key_path)
             uploader.upload_statement()
 
             ser = IoTSystemSerializer(self.system)

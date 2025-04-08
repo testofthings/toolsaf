@@ -93,6 +93,13 @@ python product/statement.py --create-diagram --diagram-name my_diagram
 python product/statement.py --show-diagram -N my_diagram
 ```
 
+## Getting an API key (Not open for the public)
+To get an API key for data uploading, you can run the following command:
+```shell
+python product/statement.py --register
+```
+After this, you will be prompted to log in with Google. After a successful login, Toolsaf will store your API key to the default location `<your home directory>/.toolsaf/.api_key`. If you want to change the file, use [`--key-path`](#custom-api-key-path)
+
 ## Upload Data to the API
 Before you can upload data, you need to set the `tag` for your statement. This can be done as shown below:
 ```python
@@ -104,15 +111,20 @@ If you have a valid API key, you can upload statements and tool outputs to our A
 ```shell
 python product/statement.py -u -r ../sample-data
 ```
-By default the API key is expected to be found in `<your home directory>/.toolsaf/.api_key`. However, when using `-u`, you can also provide a custom path for the file:
+By default the API key is expected to be found in `<your home directory>/.toolsaf/.api_key`. However, a custom file path can be provided with [`--key-path`](#custom-api-key-path).
+
+## Custom API key path
+To use a custom path, pointing to your API key, use `--key-path`:
 ```shell
-python product/statement.py -u ../apikey.txt -r ../sample-data
+python product/statement.py --register --key-path ../api_key
+
+python product/statement.py --upload --key-path /home/my_stuff/api_key.txt
 ```
 
 ## Allow Insecure Connections When Uploading
 When debugging, you can use the `--insecure` flag to allow insecure API connections.
 ```shell
-python product/statement.py -u ../apikey.txt --insecure -r ../sample-data
+python product/statement.py -u ../api_key.txt --insecure -r ../sample-data
 ```
 
 ## Set Log Level

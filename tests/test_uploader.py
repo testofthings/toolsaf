@@ -42,25 +42,28 @@ def test_get_key_file_path_based_on_argument():
         mock_home.return_value = Path("/home")
         uploader = Uploader(SYSTEM)
         uploader._toolsaf_home_dir = Path.home() / ".toolsaf"
-        assert uploader._get_key_file_path_based_on_argument(True) == Path("/home/.toolsaf/.apikey")
+        assert uploader._get_key_file_path_based_on_argument(None) == Path("/home/.toolsaf/.api_key")
         uploader = Uploader(SYSTEM)
-        assert uploader._get_key_file_path_based_on_argument("/test/path/.apikey") == Path("/test/path/.apikey")
+        assert uploader._get_key_file_path_based_on_argument("/test/path/.api_key") == Path("/test/path/.api_key")
 
 
 def test_read_api_key():
     uploader = Uploader(SYSTEM)
     with patch.object(Path, "exists") as mock_exists:
         mock_exists.return_value = False
+        uploader._key_file_path = "fake/path"
         with pytest.raises(ConfigurationException):
-            uploader._read_api_key(Path())
+            uploader._read_api_key()
 
         mock_exists.return_value = True
         with tempfile.NamedTemporaryFile() as tmp:
             with pytest.raises(ConfigurationException):
-                uploader._read_api_key(Path(tmp.name))
+                uploader._key_file_path = Path(tmp.name)
+                uploader._read_api_key()
             with open(tmp.name, "w") as f:
                 f.write("test")
-            uploader._read_api_key(Path(tmp.name))
+            uploader._key_file_path = Path(tmp.name)
+            uploader._read_api_key()
             assert uploader._api_key == "test"
 
 
