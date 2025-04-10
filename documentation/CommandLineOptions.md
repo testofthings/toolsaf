@@ -94,11 +94,13 @@ python product/statement.py --show-diagram -N my_diagram
 ```
 
 ## Getting an API key (Not open for the public)
-To get an API key for data uploading, you can run the following command:
+To get an API key for data uploading, you can register using either Google or GitHub OAuth with the following commands:
 ```shell
-python product/statement.py --register
+python product/statement.py --register-google
+# OR
+python product/statement.py --register-github
 ```
-After this, you will be prompted to log in with Google. After a successful login, Toolsaf will store your API key to the default location `<your home directory>/.toolsaf/.api_key`. If you want to change the file, use [`--key-path`](#custom-api-key-path)
+After the OAuth process completion, Toolsaf will store your API key to the default location `<your home directory>/.toolsaf/.api_key`. If you want to change the file, use [`--key-path`](#custom-api-key-path)
 
 ## Upload Data to the API
 Before you can upload data, you need to set the `tag` for your statement. This can be done as shown below:
@@ -116,7 +118,7 @@ By default the API key is expected to be found in `<your home directory>/.toolsa
 ## Custom API key path
 To use a custom path, pointing to your API key, use `--key-path`:
 ```shell
-python product/statement.py --register --key-path ../api_key
+python product/statement.py --register-github --key-path ../api_key
 
 python product/statement.py --upload --key-path /home/my_stuff/api_key.txt
 ```
