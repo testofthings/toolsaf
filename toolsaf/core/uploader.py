@@ -68,7 +68,7 @@ class Uploader:
 
         else:
             with url_file_path.open("r", encoding="utf-8") as api_url_file:
-                api_url = api_url_file.read()
+                api_url = api_url_file.read().strip()
                 assert api_url, f"Could not read API URL, file {url_file_path} is empty"
 
         self._api_url = api_url
@@ -144,10 +144,13 @@ class Uploader:
             raise ConnectionError("Got incorrect response from user registration API")
         webbrowser.open(oauth_url, autoraise=True)
 
+        callback_service = "github" if "github" in url else "google"
+
         api_key: Optional[str] = None
         # Start TCP serve to catch response from the OAth provider
         with self.CustomTCPServer(("localhost", self._use_port), self.APIKeyReceiver) as httpd:
             httpd.api_url = self._api_url
+            httpd.callback_service = callback_service
             httpd.verify = not self.allow_insecure
             httpd.use_port = self._use_port
             httpd.handle_request()
@@ -167,15 +170,25 @@ class Uploader:
         with open(self._key_file_path, "w", encoding="utf-8") as api_key_file:
             api_key_file.write(api_key)
 
-    def register(self) -> None:
-        """Register to Test of Things cloud service. Currently not available for the public"""
-        registration_url = f"{self._api_url}/api/google-register"
+    def _register(self, registration_url: str) -> None:
+        """Common registration functionalities"""
         self._api_key = self._register_and_get_api_key(registration_url)
         self._write_api_key_to_file(self._api_key)
+
+    def google_register(self) -> None:
+        """Register to Test of Things cloud service using Google OAuth. Currently not available for the public"""
+        registration_url = f"{self._api_url}/api/google-register"
+        self._register(registration_url)
+
+    def github_register(self) -> None:
+        """Register to Test of Things cloud service using GitHub OAuth. Currently not available for the public"""
+        registration_url = f"{self._api_url}/api/github-register"
+        self._register(registration_url)
 
     class CustomTCPServer(socketserver.TCPServer):
         """Custom TCP Server"""
         api_url = ""
+        callback_service = ""
         use_port = 0
         received_api_key = ""
         verify = True
@@ -188,7 +201,8 @@ class Uploader:
         def do_GET(self) -> None:
             if "/?code=" in self.path:
                 callback_url = \
-                    f"{self.server.api_url}/api/google-callback" + self.path[1:] + f"&port={self.server.use_port}"
+                    f"{self.server.api_url}/api/{self.server.callback_service}-callback" \
+                        + self.path[1:] + f"&port={self.server.use_port}"
                 resp = requests.get(callback_url, verify=self.server.verify, timeout=60)
 
                 # Read received API key from response headers
@@ -214,4 +228,5 @@ if __name__ == "__main__":
     u = Uploader(test_system)
     u.do_register_pre_procedures(None)
     u.allow_insecure = True
-    u.register()
+    #u.google_register()
+    u.github_register()
