@@ -3,7 +3,7 @@ from toolsaf.core.inspector import Inspector
 from toolsaf.core.model import Host, IoTSystem
 from toolsaf.common.verdict import Verdict
 from toolsaf.builder_backend import SystemBackend
-from toolsaf.main import TCP, UDP, SSH
+from toolsaf.main import TCP, UDP, SSH, DHCP
 from toolsaf.core.matcher import SystemMatcher
 from toolsaf.common.basics import ExternalActivity
 from toolsaf.common.traffic import IPFlow
@@ -531,3 +531,7 @@ def test_find_entity():
     service.components.append(software)
     seq = Addresses.parse_system_address("Test_Device/tcp:12&software=Service_SW")
     assert system.system.find_entity(seq) == software
+
+    connection = (device >> backend / DHCP).connection
+    seq = Addresses.parse_system_address("source=Test_Device/udp:68&target=Test_Backend/udp:67")
+    assert system.system.find_entity(seq) == connection
