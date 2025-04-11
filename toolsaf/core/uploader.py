@@ -1,9 +1,6 @@
 """JSON serialized statement uploader"""
 import os
-import http.server
-import socketserver
 import webbrowser
-from urllib.parse import parse_qs
 from typing import Union, Dict, List, Any, Optional
 from pathlib import Path
 import requests
@@ -136,32 +133,12 @@ class Uploader:
         response = self._post(url, batch)
         self._handle_response(response)
 
-    def _register_and_get_api_key(self, url: str) -> str:
+    def _register_and_get_api_key(self, oauth_url: str) -> str:
         """Register Toolsaf user and get an API key for a successful registration"""
-        response = self._post(url, data={"port": self._use_port})
-        if response.status_code != 200 \
-         or not (response_json := response.json()) \
-         or not (oauth_url := response_json.get("oauth_url")):
-            raise ConnectionError("Got incorrect response from user registration API")
-        cookies = response.cookies
         webbrowser.open(oauth_url, autoraise=True)
-
-        callback_service = "github" if "github" in url else "google"
-
-        api_key: Optional[str] = None
-        # Start TCP serve to catch response from the OAth provider
-        with self.CustomTCPServer(("localhost", self._use_port), self.APIKeyReceiver) as httpd:
-            httpd.api_url = self._api_url
-            httpd.callback_service = callback_service
-            httpd.verify = not self.allow_insecure
-            httpd.use_port = self._use_port
-            httpd.cookies = cookies
-            httpd.handle_request()
-            api_key = httpd.received_api_key
-            httpd.server_close()
-
+        api_key = input("Enter your API key here: ")
         if not api_key:
-            raise ConnectionError("Getting an API key failed")
+            raise ValueError("No API key given")
         return api_key
 
     def _write_api_key_to_file(self, api_key: str) -> None:
@@ -188,48 +165,6 @@ class Uploader:
         registration_url = f"{self._api_url}/api/github-register"
         self._register(registration_url)
 
-    class CustomTCPServer(socketserver.TCPServer):
-        """Custom TCP Server"""
-        api_url = ""
-        callback_service = ""
-        use_port = 0
-        received_api_key = ""
-        verify = True
-        cookies = None
-        allow_reuse_address = True
-
-    class APIKeyReceiver(http.server.SimpleHTTPRequestHandler):
-        """API key receiver"""
-        server: 'Uploader.CustomTCPServer'
-
-        def do_GET(self) -> None:
-            if "/?code=" in self.path:
-                callback_dict = {
-                    key: value[0] for key, value in parse_qs(self.path.replace("/?", "")).items()
-                }
-                callback_url = \
-                    f"{self.server.api_url}/api/{self.server.callback_service}-callback" \
-                        + f"?code={callback_dict['code']}" \
-                        + f"&port={self.server.use_port}" \
-                        + (f"&state={callback_dict['state']}" if "state" in callback_dict else "")
-                resp = requests.get(callback_url, verify=self.server.verify, timeout=60, cookies=self.server.cookies)
-
-                # Read received API key from response headers
-                self.server.received_api_key = resp.headers.get("Authorization")
-
-                # Display response to user in the browser
-                self.send_response(resp.status_code)
-                self.send_header("Content-Type", "text/html")
-                self.end_headers()
-                message = resp.content
-                self.wfile.write(message)
-
-        def log_message(self, format: str, *args: Any) -> None: # pylint: disable=W0622
-            return
-
-        def log_error(self, format: str, *args: Any) -> None: # pylint: disable=W0622
-            return
-
 
 if __name__ == "__main__":
     test_system = IoTSystem()
@@ -237,5 +172,5 @@ if __name__ == "__main__":
     u = Uploader(test_system)
     u.do_register_pre_procedures(None)
     u.allow_insecure = True
-    u.google_register()
-    #u.github_register()
+    #u.google_register()
+    u.github_register()

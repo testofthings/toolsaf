@@ -100,7 +100,7 @@ python product/statement.py --register-google
 # OR
 python product/statement.py --register-github
 ```
-After the OAuth process completion, Toolsaf will store your API key to the default location `<your home directory>/.toolsaf/.api_key`. If you want to change the file, use [`--key-path`](#custom-api-key-path)
+After the OAuth process completion, Toolsaf will ask you for your API key and save it to `<your home directory>/.toolsaf/.api_key`. If you want to change the file, use [`--key-path`](#custom-api-key-path)
 
 ## Upload Data to the API
 Before you can upload data, you need to set the `tag` for your statement. This can be done as shown below:
