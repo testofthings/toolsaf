@@ -69,5 +69,4 @@ This class stores _online resource_ data.
 
 ## File [`uploader.py`](../../toolsaf/core/uploader.py)
 
-This file implements sending JSON serialized security statements to the API.
-Currently authenticates requests with an API key that the user provides. Login with Google OpenID Connect is in the works
+This file implements sending JSON serializer security statements to our API. Requests are authenticated with an API key.
