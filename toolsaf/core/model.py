@@ -760,13 +760,9 @@ class IoTSystem(NetworkNode):
             if not source or not target:
                 return None
             if isinstance(source, Addressable):
-                connections = source.get_parent_host().get_connections()
-            else:
-                assert isinstance(source, NetworkNode) and isinstance(target, NetworkNode)
-                connections = source.get_connections()
-            for connection in connections:
-                if connection.target == target:
-                    return connection
+                for connection in source.get_parent_host().get_connections():
+                    if connection.target == target:
+                        return connection
         else:
             if (endpoint := self.find_endpoint(segment.address)):
                 return endpoint.find_entity(address.tail())
