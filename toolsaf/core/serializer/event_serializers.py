@@ -407,6 +407,7 @@ class NameEventSerializer(Serializer[NameEvent]):
         peers = []
         for entry in stream["peers"]:
             peer = self.system.find_endpoint(Addresses.parse_system_address(entry))
-            assert isinstance(peer, Addressable)
-            peers.append(peer)
+            if peer is not None:
+                assert isinstance(peer, Addressable)
+                peers.append(peer)
         obj.peers = peers
