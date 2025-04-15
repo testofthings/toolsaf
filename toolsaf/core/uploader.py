@@ -58,9 +58,9 @@ class Uploader:
         """Read API URL from file, if not found, create it and prompt user to enter it"""
         url_file_path = self._toolsaf_home_dir / "api_url"
         if not Path.exists(url_file_path):
-            print(f"Could not read API URL, file {url_file_path} is empty")
+            print(f"Could not read API URL, file {url_file_path} not found")
             api_url = "https://"
-            api_url += input(f"Enter URL for the API, {api_url}")
+            api_url += input(f"Enter URL for the API: {api_url}")
             with url_file_path.open("w", encoding="utf-8") as api_url_file:
                 api_url_file.write(api_url)
 
