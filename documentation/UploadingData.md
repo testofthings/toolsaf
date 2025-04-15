@@ -1,7 +1,9 @@
 # Uploading Data to the API
-🚧 **Disclaimer:** This document is under construction. 🚧
-
 This document explains how to upload security statement data to our API.
+
+## 🚧 Disclaimers 🚧
+* This document is under construction.
+* **Our upcoming cloud service is not ready, as such these features can not be used.**
 
 ## Command Line Options
 
@@ -34,3 +36,15 @@ For debugging purposes, you can allow insecure API connections using the `--inse
 ```shell
 python product/statement.py -u ../api_key.txt --insecure -r ../sample-data
 ```
+
+## Setting the API URL
+**At this time there is no URL for our API.**
+
+To upload data, the URL for our API must be set. When first using `-u`, `--register-google` or `--register-github` Toolsaf prompts you to enter the URL through the CLI. Alternatively you can add the URL into the file `$HOME/.toolsaf/api_url`.
+
+Here is what Toolsaf will show / ask:
+```
+Could not read API URL, file /home/<user>/.toolsaf/api_url not found
+Enter URL for the API: https://
+```
+Toolsaf will then write the URL to the displayed file
