@@ -117,9 +117,12 @@ If other constructors should be used, then serializer can implement
 method `new`.
 
 ```python
-    def new(self, stream: SerializerStream) -> AClass:
+    def new(self, stream: SerializerStream) -> Optional[AClass]:
         # Return new instance of the proper class
 ```
+
+Returning `None` allows to skip object and discarding the related JSON.
+This is handy if an object may becomes obsolete, and it can be omitted.
 
 ### Serializing sub-objects
 

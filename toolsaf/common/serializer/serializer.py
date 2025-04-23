@@ -68,7 +68,9 @@ class SerializerStream:
                 serial.system = self.serializer.system
                 obj = serial.new(self)
                 if obj is None:
-                    raise ValueError(f"Serializer {serial} does not support new objects")
+                    # skip reading this object
+                    next_data = next(iterator, None)
+                    continue
             self._read_object(serial, obj)
             yield obj
             next_data = next(iterator, None)
@@ -292,8 +294,8 @@ class Serializer(SerializerBase, Generic[T]):
     def write(self, obj: T, stream: SerializerStream) -> None:
         """Custom write definitions"""
 
-    def new(self, _stream: SerializerStream) -> T:
-        """Create new object"""
+    def new(self, _stream: SerializerStream) -> Optional[T]:
+        """Create new object, return none if should skip"""
         obj = self.config.class_type()
         return cast(T, obj)
 
