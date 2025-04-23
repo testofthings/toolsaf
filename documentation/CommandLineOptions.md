@@ -93,6 +93,9 @@ python product/statement.py --create-diagram --diagram-name my_diagram
 python product/statement.py --show-diagram -N my_diagram
 ```
 
+## Uploading Data
+For information on uploading data to the API, refer to the [Uploading Data](UploadingData.md) document.
+
 ## Set Log Level
 You can set the log level with `-l` or `--log-level`. Values can be `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`.
 ```shell

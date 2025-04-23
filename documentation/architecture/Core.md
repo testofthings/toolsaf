@@ -66,3 +66,7 @@ This file provides some core classes for the Toolsaf DSL interface and implement
 ## File [`online_resources.py`](../../toolsaf/core/online_resources.py)
 
 This class stores _online resource_ data.
+
+## File [`uploader.py`](../../toolsaf/core/uploader.py)
+
+This file implements sending JSON serializer security statements to our API. Requests are authenticated with an API key.

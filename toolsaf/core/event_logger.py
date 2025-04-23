@@ -4,15 +4,15 @@ from logging import Logger
 import logging
 from typing import Any, List, Set, Tuple, Dict, Optional, cast
 from toolsaf.common.address import AnyAddress
-from toolsaf.common.verdict import Verdict
+from toolsaf.common.verdict import Verdict, Verdictable
 
 from toolsaf.common.entity import Entity
 from toolsaf.core.event_interface import EventInterface, PropertyEvent, PropertyAddressEvent
 from toolsaf.core.inspector import Inspector
 from toolsaf.core.model import IoTSystem, Connection, Host, ModelListener, Service
-from toolsaf.common.property import Properties, PropertyKey
+from toolsaf.common.property import Properties, PropertyKey, PropertySetValue
 from toolsaf.core.services import NameEvent
-from toolsaf.common.traffic import EvidenceSource, HostScan, ServiceScan, Flow, Event
+from toolsaf.common.traffic import Evidence, EvidenceSource, HostScan, ServiceScan, Flow, Event
 
 
 class LoggingEvent:
@@ -30,17 +30,17 @@ class LoggingEvent:
             self.entity = entity
             self.verdict = Properties.EXPECTED.get_verdict(entity.properties) or Verdict.INCON
 
-    def get_value_string(self) -> str:
-        """Get value as string"""
-        v = self.event.get_value_string()
-        if self.property_value is None:
-            if self.entity:
-                st = f"{self.entity.status.value}/{self.verdict.value}" if self.verdict != Verdict.INCON  \
-                    else self.entity.status.value
-                v += f" [{st}]" if v else st
-        else:
-            v += (" " if v else "") + self.property_value[0].get_value_string(self.property_value[1])
-        return v
+    def resolve_verdict(self) -> Verdict:
+        """Resolve verdict"""
+        if self.verdict != Verdict.INCON:
+            return self.verdict
+        if self.property_value:
+            value = self.property_value[1]
+            if isinstance(value, Verdictable):
+                return value.get_verdict()
+            if isinstance(value, PropertySetValue) and self.entity:
+                return value.get_overall_verdict(self.entity.properties)
+        return Verdict.INCON
 
     def get_properties(self) -> Set[PropertyKey]:
         """Get implicit and explicit properties"""
@@ -55,16 +55,27 @@ class LoggingEvent:
         return r
 
     def __repr__(self) -> str:
-        v = ""
+        v = self.event.get_value_string()
         if self.entity:
-            v += f"{self.entity.long_name()}"
-        v += f" {self.get_value_string()}"
+            v = f"{self.entity.long_name()} {v}"
         return v
+
+
+class LoggedData:
+    """Logged data collected from event(s)"""
+    def __init__(self, verdict: Verdict, info: str) -> None:
+        self.verdict = verdict
+        self.info = info
+        self.properties: List[PropertyKey] = []
+
+    def __repr__(self) -> str:
+        return f"{self.verdict.value}: {self.info}"
 
 
 class EventLogger(EventInterface, ModelListener):
     """Event logger implementation"""
     def __init__(self, inspector: Inspector) -> None:
+        super().__init__()
         self.inspector = inspector
         self.logs: List[LoggingEvent] = []
         self.current: Optional[LoggingEvent] = None  # current event
@@ -75,14 +86,12 @@ class EventLogger(EventInterface, ModelListener):
     def print_event(self, log: LoggingEvent) -> None:
         """Print event for debugging"""
         assert self.event_logger
-        e = log.event
-        s = f"{log.entity.long_name()}," if log.entity else ""
-        s = f"{s:<40}"
-        s += f"{log.get_value_string()},"
-        s = f"{s:<80}"
-        com = e.get_comment() or e.evidence.get_reference()
-        if com:
-            s += f" {com}"
+        s = f"{log.entity.long_name()}" if log.entity else ""
+        s = f"{s:<50}"
+        verdict = log.resolve_verdict()
+        s += verdict.value if verdict != Verdict.INCON else ""
+        s = f"{s:<57}"
+        s += f" {log.event.get_value_string()}"
         self.event_logger.info(s)
 
     def _add(self, event: Event, entity: Optional[Entity] = None,
@@ -105,11 +114,8 @@ class EventLogger(EventInterface, ModelListener):
         if self.current is None:
             self.logger.warning("Property change without event to assign it: %s", value[0])
             return
-        # assign all property changes during an event
-        ev = LoggingEvent(self.current.event, entity=entity, property_value=value)
-        self.logs.append(ev)
-        if self.event_logger:
-            self.print_event(ev)
+        # make sure the final property value logged
+        self.current.property_value = value
 
     def connection(self, flow: Flow) -> Optional[Connection]:
         lo = self._add(flow)
@@ -223,4 +229,26 @@ class EventLogger(EventInterface, ModelListener):
             for p in lo.get_properties():
                 if lo.entity:
                     r.setdefault(p, {}).setdefault(lo.event.evidence.source, []).append(lo.entity)
+        return r
+
+    def collect_evidence_log_data(self, source: EvidenceSource) -> Dict[Evidence, List[LoggedData]]:
+        """Collect batch log data"""
+        r: Dict[Evidence, List[LoggedData]] = {}
+        for lo in self.logs:
+            if lo.event.evidence.source != source:
+                continue
+            data = LoggedData(lo.resolve_verdict(), lo.event.get_info())
+            data.properties = sorted(lo.get_properties())
+            r.setdefault(lo.event.evidence, []).append(data)
+        return r
+
+    def collect_entity_log_data(self, source: EvidenceSource) -> Dict[Entity, List[LoggedData]]:
+        """Collect entity log data"""
+        r: Dict[Entity, List[LoggedData]] = {}
+        for lo in self.logs:
+            if lo.event.evidence.source != source or not lo.entity:
+                continue
+            data = LoggedData(lo.resolve_verdict(), lo.event.get_info())
+            data.properties = sorted(lo.get_properties())
+            r.setdefault(lo.entity, []).append(data)
         return r

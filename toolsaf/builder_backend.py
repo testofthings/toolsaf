@@ -6,15 +6,21 @@ import logging
 import pathlib
 import sys
 import inspect
+import json
+
 from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union, cast, Set
 
 from toolsaf.common.address import (AddressAtNetwork, Addresses, AnyAddress, DNSName, EndpointAddress, EntityTag,
                                   HWAddress, HWAddresses, IPAddress, IPAddresses, Network, Protocol, PseudoAddress)
 from toolsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status
-from toolsaf.adapters.batch_import import BatchImporter, LabelFilter
+from toolsaf.adapters.batch_import import BatchData, BatchImporter, LabelFilter
+from toolsaf.common.serializer.serializer import SerializerStream
 from toolsaf.core.components import CookieData, Cookies, DataReference, StoredData, OperatingSystem, Software
 from toolsaf.common.release_info import ReleaseInfo
 from toolsaf.common.property import PropertyVerdictValue
+from toolsaf.core.event_logger import EventLogger
+from toolsaf.core.serializer.event_serializers import EventSerializer
+from toolsaf.core.serializer.model_serializers import IoTSystemSerializer
 from toolsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP, IP, TLS, MQTT, FTP,
                         BLEAdvertisement, ConnectionBuilder,
                         CookieBuilder, HostBuilder, NetworkBuilder, NodeBuilder, NodeVisualBuilder,
@@ -36,6 +42,7 @@ from toolsaf.common.android import MobilePermissions
 from toolsaf.adapters.spdx_reader import SPDXJson
 from toolsaf.diagram_visualizer import DiagramVisualizer
 from toolsaf.core.ignore_rules import IgnoreRules
+from toolsaf.core.uploader import Uploader
 
 
 class SystemBackend(SystemBuilder):
@@ -142,6 +149,13 @@ class SystemBackend(SystemBuilder):
     def ignore(self, file_type: str) -> 'IgnoreRulesBackend':
         self.ignore_backend.new_rule(file_type)
         return self.ignore_backend
+
+    def tag(self, tag: str) -> None:
+        """Set a unique tag, consisting of numbers and characters, for statement uploads.
+            Has a minimum length of 3"""
+        assert tag.isalnum(), f"Upload tag {tag} is not alphanumeric"
+        assert len(tag) >= 3, f"Upload tag {tag} is shorter than the minimum length of 3 characters"
+        self.system.upload_tag = tag
 
     # Backend methods
 
@@ -1037,6 +1051,14 @@ class IgnoreRulesBackend(IgnoreRulesBuilder):
         return self.ignore_rules
 
 
+class LoadedData:
+    """Loaded data for programmatic invoker"""
+    def __init__(self, system: IoTSystem, log_access: EventLogger, batches: List[BatchData]):
+        self.system = system
+        self.log_access = log_access
+        self.batches = batches
+
+
 class SystemBackendRunner(SystemBackend):
     """Backend for system builder"""
 
@@ -1068,6 +1090,17 @@ class SystemBackendRunner(SystemBackend):
                             help="Add default DNS server handling")
         parser.add_argument("-l", "--log", dest="log_level", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                             help="Set the logging level", default=None)
+        parser.add_argument("--statement-json", action="store_true", help="Dump security statement JSON to stdout")
+        parser.add_argument("-u", "--upload", action="store_true",
+                            help="Upload statement. You can provide the path to your API key file with this flag.")
+        parser.add_argument("--register-google", action="store_true",
+                            help="Register using Google OAuth and receive an API key (not available for the public).")
+        parser.add_argument("--register-github", action="store_true",
+                            help="Register using GitHub OAuth and receive an API key (not available for the public).")
+        parser.add_argument("--key-path", type=str,
+                            help="Custom path to API key file")
+        parser.add_argument("--insecure", action="store_true",
+                            help="Allow insecure server connections")
         parser.add_argument("--db", type=str, help="Connect to SQL database")
         parser.add_argument(
             "--log-events", action="store_true", help="Log events")
@@ -1077,8 +1110,8 @@ class SystemBackendRunner(SystemBackend):
             logging, args.log_level or 'INFO'))
         return args
 
-    def run(self, custom_arguments: Optional[List[str]] = None) -> None:
-        """Model is ready, run the checks"""
+    def run(self, custom_arguments: Optional[List[str]] = None) -> Optional[LoadedData]:
+        """Model is ready, run the checks, return data for programmatic caller"""
         args = self._parse_arguments(custom_arguments)
         if args.dhcp:
             self.any().serve(DHCP)
@@ -1114,27 +1147,70 @@ class SystemBackendRunner(SystemBackend):
             for label, sl in sorted(batch_import.evidence.items()):
                 sl_s = ", ".join(sorted(set(s.name for s in sl)))
                 print(f"{label:<20} {sl_s}")
-            return
+            return None
 
         # load explicit loaders (if any)
         for ln in self.loaders:
             for sub in ln.subs:
                 sub.load(registry, label_filter=label_filter)
 
+        load_data = LoadedData(self.system, registry.logging, batch_import.batch_data)
+
+        if args.statement_json:
+            # dump security statement JSON
+            ser = IoTSystemSerializer(self.system)
+            stream = SerializerStream(ser)
+            for js in stream.write(self.system):
+                print(json.dumps(js, indent=4))
+            # dump events, if any
+            if registry.logging.logs:
+                log_ser = EventSerializer(self.system)
+                stream = SerializerStream(log_ser, context=stream.context)
+                for log in registry.logging.logs:
+                    for js in log_ser.write_event(log.event, stream):
+                        print(json.dumps(js, indent=4))
+        else:
+            with_files = bool(args.with_files)
+            report = Report(registry)
+            report.source_count = 3 if with_files else 0
+            report.show = args.show
+            report.no_truncate = bool(args.no_truncate)
+            report.use_color_flag = bool(args.color)
+            report.print_report(sys.stdout)
+
         if custom_arguments is not None:
             # custom arguments, return without 'running' anything
-            return
-
-        with_files = bool(args.with_files)
-        report = Report(registry)
-        report.source_count = 3 if with_files else 0
-        report.show = args.show
-        report.no_truncate = bool(args.no_truncate)
-        report.use_color_flag = bool(args.color)
-        report.print_report(sys.stdout)
+            return load_data
 
         if args.create_diagram is not None or args.show_diagram is not None:
             self.diagram.set_outformat(args.create_diagram, args.show_diagram)
             self.diagram.set_file_name(args.diagram_name)
             self.diagram.show = bool(args.show_diagram)
             self.diagram.create_diagram()
+
+        if any([args.register_google, args.register_github]):
+            uploader = Uploader(self.system, allow_insecure=args.insecure)
+            uploader.do_register_pre_procedures(args.key_path)
+            if args.register_google:
+                uploader.google_register()
+            else:
+                uploader.github_register()
+
+        if args.upload:
+            uploader = Uploader(self.system, allow_insecure=args.insecure)
+            uploader.do_upload_pre_procedures(args.key_path)
+            uploader.upload_statement()
+
+            ser = IoTSystemSerializer(self.system)
+            system_stream = SerializerStream(ser)
+            uploader.upload_system(list(system_stream.write(self.system)))
+
+            if registry.logging.logs:
+                log_ser = EventSerializer(self.system)
+                event_stream = SerializerStream(log_ser, context=system_stream.context)
+                events = []
+                for log in registry.logging.logs:
+                    events += list(log_ser.write_event(log.event, event_stream))
+                uploader.upload_logs(events)
+
+        return load_data

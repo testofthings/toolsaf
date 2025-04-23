@@ -73,6 +73,10 @@ class Entity:
             cache[self] = v = v or Verdict.INCON
         return v
 
+    def is_expected(self) -> bool:
+        """Is an expected entity?"""
+        return self.status == Status.EXPECTED
+
     def is_relevant(self) -> bool:
         """Is this entity relevant, i.e. not placeholder or external?"""
         return True

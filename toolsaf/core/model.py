@@ -405,14 +405,11 @@ class Addressable(NetworkNode):
 
         if not address.segments:
             return self
+        # last resort, try components...
         segment = address.segments[0]
-        match segment.segment_type:
-            case "software":
-                for component in self.components:
-                    if component.tag == segment.address:
-                        return component.find_entity(address.tail())
-            case _:
-                raise NotImplementedError()
+        for component in self.components:
+            if component.tag == segment.address and component.concept_name == segment.segment_type:
+                return component.find_entity(address.tail())
         return None
 
 
@@ -581,6 +578,9 @@ class IoTSystem(NetworkNode):
 
         # observed connections and replies
         self.connections: Dict[Tuple[AnyAddress, AnyAddress], Connection] = {}
+
+        # Tag used to identify uploaded security statements
+        self.upload_tag: Optional[str] = None
 
     # NOTE: get_children() does not return connections
 

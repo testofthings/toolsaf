@@ -1,7 +1,7 @@
 """Traffic flow and events"""
 
 import datetime
-from typing import Any, Callable, Tuple, Set, Optional, Self, Dict
+from typing import Any, Callable, List, Tuple, Set, Optional, Self, Dict
 
 from toolsaf.common.address import HWAddress, IPAddress, HWAddresses, IPAddresses, Network, Protocol, EndpointAddress, \
     AnyAddress, Addresses
@@ -10,7 +10,7 @@ from toolsaf.common.property import PropertyKey
 
 class EvidenceSource:
     """Evidence source"""
-    def __init__(self, name: str, base_ref: str="", label: str="") -> None:
+    def __init__(self, name: str = "", base_ref: str="", label: str="") -> None:
         self.name = name
         self.target = ''
         self.base_ref = base_ref
@@ -78,17 +78,17 @@ class Event:
     def __init__(self, evidence: Evidence) -> None:
         self.evidence = evidence
 
-    def get_value_string(self) -> str:
-        """Get value as string"""
-        return ""
-
-    def get_comment(self) -> str:
-        """Get comment or empty"""
-        return ""
-
     def get_info(self) -> str:
-        """Short event information"""
-        return self.get_value_string() or self.evidence.source.name
+        """Get human-readable information"""
+        return self.get_value_string()
+
+    def get_value_string(self) -> str:
+        """Get value as string for log, e.g. property + description"""
+        return ""
+
+    def get_properties(self) -> List[PropertyKey]:
+        """Get related properties, if any"""
+        return []
 
     def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict[str, Any]:
         """Get JSON representation of data"""
@@ -100,9 +100,6 @@ class Event:
         """Placeholder for event decoding from JSON"""
         raise NotImplementedError()
 
-    def __repr__(self) -> str:
-        return self.get_value_string()
-
     def __hash__(self) -> int:
         return self.evidence.__hash__()
 
@@ -111,6 +108,8 @@ class Event:
             return False
         return self.evidence == other.evidence
 
+    def __repr__(self) -> str:
+        return self.get_value_string()
 
 class ServiceScan(Event):
     """Individual service scan result"""
@@ -118,6 +117,9 @@ class ServiceScan(Event):
         super().__init__(evidence)
         self.endpoint = endpoint
         self.service_name = service_name
+
+    def get_value_string(self) -> str:
+        return f"Scanned {self.endpoint}"
 
     def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict[str, str]:
         r = {
@@ -134,8 +136,6 @@ class ServiceScan(Event):
         name = data.get("service", "")
         return ServiceScan(evidence, endpoint, name)
 
-    def __repr__(self) -> str:
-        return f"{self.endpoint}"
 
 
 class HostScan(Event):
@@ -144,6 +144,9 @@ class HostScan(Event):
         super().__init__(evidence)
         self.host = host
         self.endpoints = endpoints
+
+    def get_value_string(self) -> str:
+        return f"Scanned {self.host}"
 
     def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict[str, Any]:
         return {
@@ -299,11 +302,11 @@ class EthernetFlow(Flow):
         self.source = HWAddress.new(source)
         return self
 
-    def __repr__(self) -> str:
+    def get_value_string(self) -> str:
         s = self.source
         t = self.target
         pt = f" 0x{self.payload:04x}" if self.payload >= 0 else ""
-        return f"{s} >> {t}{pt} {self.protocol.value.upper()}"
+        return f"Ethernet {s} >> {t}{pt} {self.protocol.value.upper()}"
 
     def __hash__(self) -> int:
         return self.source.__hash__() ^ self.target.__hash__() ^ self.payload ^ self.protocol.__hash__() \
@@ -428,10 +431,10 @@ class IPFlow(Flow):
         self.source = HWAddress.new(source[0]), IPAddress.new(source[1]), source[2]
         return self
 
-    def __repr__(self) -> str:
+    def get_value_string(self) -> str:
         s = self.source
         t = self.target
-        return f"{s[0]} {s[1]}:{s[2]} >> {t[0]} {t[1]}:{t[2]} {self.protocol.value.upper()}"
+        return f"IP {s[0]} {s[1]}:{s[2]} >> {t[0]} {t[1]}:{t[2]} {self.protocol.value.upper()}"
 
     def __hash__(self) -> int:
         return self.source.__hash__() ^ self.target.__hash__() ^ self.protocol.__hash__() ^ hash(self.network)
@@ -508,7 +511,7 @@ class BLEAdvertisementFlow(Flow):
             r = r.reverse()
         return r
 
-    def __repr__(self) -> str:
+    def get_value_string(self) -> str:
         return f"{self.source} >> 0x{self.event_type:02x} {self.protocol.value.upper()}"
 
     def __hash__(self) -> int:

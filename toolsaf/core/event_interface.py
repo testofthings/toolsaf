@@ -1,6 +1,6 @@
 """Event interface to consume model events"""
 
-from typing import Dict, Optional, Type, Callable, Any, Tuple
+from typing import Dict, List, Optional, Type, Callable, Any, Tuple
 
 from toolsaf.common.address import Addresses, AnyAddress
 from toolsaf.common.verdict import Verdict
@@ -15,6 +15,18 @@ from toolsaf.common.verdict import Verdictable
 
 class EventInterface:
     """Event interface"""
+    def __init__(self) -> None:
+        self.consume_methods: Dict[Type[Event], Callable[[Any], Any]] = {
+            IPFlow: self.connection,
+            EthernetFlow: self.connection,
+            BLEAdvertisementFlow: self.connection,
+            NameEvent: self.name,
+            PropertyEvent: self.property_update,
+            PropertyAddressEvent: self.property_address_update,
+            ServiceScan: self.service_scan,
+            HostScan: self.host_scan,
+        }
+
     def get_system(self) -> IoTSystem:
         """Access system model"""
         raise NotImplementedError()
@@ -43,20 +55,12 @@ class EventInterface:
         """The given host have these services and not other ones"""
         raise NotImplementedError()
 
-    def consume(self, event: Event) -> None:
+    def consume(self, event: Event) -> Optional[Entity]:
         """Consume event and call the proper method"""
-        methods: Dict[Type[Event], Callable[[Any], Any]] = {
-            IPFlow: self.connection,
-            EthernetFlow: self.connection,
-            BLEAdvertisementFlow: self.connection,
-            NameEvent: self.name,
-            PropertyEvent: self.property_update,
-            PropertyAddressEvent: self.property_address_update,
-            ServiceScan: self.service_scan,
-            HostScan: self.host_scan,
-        }
-        m = methods[type(event)]
-        m(event)
+        m = self.consume_methods[type(event)]
+        ent = m(event)
+        assert ent is None or isinstance(ent, Entity), "Bad return type from consumed event"
+        return ent
 
 
 class PropertyEvent(Event, Verdictable):
@@ -70,15 +74,14 @@ class PropertyEvent(Event, Verdictable):
         v = self.key_value[1]
         return v.get_verdict() if isinstance(v, Verdictable) else Verdict.INCON
 
-    def get_value_string(self) -> str:
-        return self.key_value[0].get_value_string(self.key_value[1])
-
-    def get_comment(self) -> str:
+    def get_info(self) -> str:
         return self.key_value[0].get_explanation(self.key_value[1])
 
-    def get_info(self) -> str:
-        # without entity, at least for event log
-        return self.key_value[0].get_value_string(self.key_value[1])
+    def get_value_string(self) -> str:
+        return f"{self.key_value[0]}: {self.get_info()}"
+
+    def get_properties(self) -> List[PropertyKey]:
+        return [self.key_value[0]]
 
     def get_data_json(self, id_resolver: Callable[[Any], Any]) -> Dict[str, Any]:
         k, v = self.key_value
@@ -118,15 +121,14 @@ class PropertyAddressEvent(Event, Verdictable):
         v = self.key_value[1]
         return v.get_verdict() if isinstance(v, Verdictable) else Verdict.INCON
 
-    def get_value_string(self) -> str:
-        return self.key_value[0].get_value_string(self.key_value[1])
-
-    def get_comment(self) -> str:
+    def get_info(self) -> str:
         return self.key_value[0].get_explanation(self.key_value[1])
 
-    def get_info(self) -> str:
-        # without entity, at least for event log
-        return self.key_value[0].get_value_string(self.key_value[1])
+    def get_value_string(self) -> str:
+        return f"{self.key_value[0]}: {self.get_info()}"
+
+    def get_properties(self) -> List[PropertyKey]:
+        return [self.key_value[0]]
 
     def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict[str, Any]:
         k, v = self.key_value
