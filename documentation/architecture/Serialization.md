@@ -74,7 +74,7 @@ class AClassSerializer(Serializer[AClass]):
         self.config.map_simple_fields("a_string", "a_int")
 ```
 
-As seen, the serializer must tell `Serializer` which class instances it is 
+As seen, the serializer must tell `Serializer` which class instances it is
 serializing. Then it defines the simple fields which are 1:1 mapped into JSON fields.
 This is done through field `config` of the serializer.
 
@@ -121,8 +121,8 @@ method `new`.
         # Return new instance of the proper class
 ```
 
-Returning `None` allows to skip object and discarding the related JSON.
-This is handy if an object may becomes obsolete, and it can be omitted.
+Returning `None` allows you to skip the object and discard the related JSON.
+This is handy when an object may become obsolete and can be omitted.
 
 ### Serializing sub-objects
 
