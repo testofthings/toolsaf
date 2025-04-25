@@ -52,5 +52,6 @@ Main components in the architecture diagram are the following:
 |-----------------------------------------|--------------|
 | [`toolsaf`](Main.md)                    | Main classes and Toolsaf entry point |
 | [`toolsaf/common`](Common.md)           | Common utilities used by all sub-modules |
+| [`toolsaf/common/serializer`](Serialization.md) | Serializing object to JSON and back |
 | [`toolsaf/core`](Core.md)               | Core classes of the Toolsaf architecture |
 | [`toolsaf/adapters`](Adapters.md)       | Tool adapters |

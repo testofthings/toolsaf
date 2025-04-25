@@ -16,6 +16,7 @@ from toolsaf.common.traffic import ServiceScan, HostScan, Event, EvidenceSource,
 class Registry(EventInterface):
     """Record, store, and recall events as required"""
     def __init__(self, inspector: Inspector, db: Optional[EntityDatabase] = None) -> None:
+        super().__init__()
         self.logger = logging.getLogger("registry")
         self.logging = EventLogger(inspector)
         self.system = inspector.system

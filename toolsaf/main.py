@@ -72,6 +72,11 @@ class SystemBuilder:
         """Create a new ignore rule for given file type"""
         raise NotImplementedError()
 
+    def tag(self, tag: str) -> None:
+        """Set a unique tag, consisting of numbers and characters, for statement uploads.
+            Has a minimum length of 3"""
+        raise NotImplementedError()
+
 
 class NodeBuilder:
     """Node builder base class"""

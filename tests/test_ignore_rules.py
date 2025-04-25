@@ -38,9 +38,9 @@ def test_properties():
     system = Setup().system
     system.ignore("test-type").properties("abc:efg", "123:456")
     rules = system.ignore_backend.get_rules()
-    assert rules._current_rule.properties == [
+    assert rules._current_rule.properties == {
         PropertyKey("abc", "efg"), PropertyKey("123", "456")
-    ]
+    }
 
 
 def test_at():
@@ -48,16 +48,16 @@ def test_at():
     device = system.device("Test Device")
     system.ignore("test-type").at(device / SSH, device / TCP(1))
     rules = system.ignore_backend.get_rules()
-    assert rules._current_rule.at == [
+    assert rules._current_rule.at == {
         (device / SSH).entity, (device / TCP(1)).entity
-    ]
+    }
 
     software = device.software("Test SW").sw
     system.ignore("test-type").at(device.software("Test SW"))
     rules = system.ignore_backend.get_rules()
-    assert rules._current_rule.at == [
+    assert rules._current_rule.at == {
         software
-    ]
+    }
 
 
 def test_because():

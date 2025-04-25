@@ -1,6 +1,6 @@
 import pathlib
 from toolsaf.common.address import HWAddress, IPAddress
-from toolsaf.adapters.batch_import import BatchImporter, FileMetaInfo, LabelFilter
+from toolsaf.adapters.batch_import import BatchData, BatchImporter, FileMetaInfo, LabelFilter
 from toolsaf.core.inspector import Inspector
 from tests.test_model import Setup, simple_setup_1
 
@@ -46,7 +46,8 @@ def test_parse_from_json():
     }
     sb = simple_setup_1()
     system = sb.system
-    result = FileMetaInfo.parse_from_json(json_data, "pcap-x", system)
+    data = BatchData.parse_from_json(json_data, "pcap-x", system)
+    result = data.meta_info
 
     assert result.label == "pcap-x"
     assert result.file_type == "capture"

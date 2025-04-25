@@ -83,7 +83,7 @@ def test_reset_2():
     assert c3.status == Status.EXTERNAL
     assert not c3.is_relevant(ignore_ends=True)
     flows = r.logging.collect_flows()
-    assert len(flows) == 3
+    assert len(flows) == 2
 
     r.reset().apply_all_events()
     assert c1.status == Status.EXPECTED
@@ -103,7 +103,7 @@ def test_reset_2():
     assert c3.status == Status.EXTERNAL
     assert not c3.is_relevant(ignore_ends=True)
     flows = r.logging.collect_flows()
-    assert len(flows) == 3
+    assert len(flows) == 2
 
 
 def test_reset_dhcp():
