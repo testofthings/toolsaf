@@ -47,7 +47,9 @@ find = { where = ["."], include = [
         "toolsaf",
         "toolsaf.adapters",
         "toolsaf.common",
-        "toolsaf.core"
+        "toolsaf.common.serializer",
+        "toolsaf.core",
+        "toolsaf.core.serializer"
 ] }
 
 [tool.setuptools.package-data]
