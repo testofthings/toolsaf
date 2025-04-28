@@ -1,0 +1,89 @@
+[build-system]
+requires        = ["setuptools"]
+build-backend   = "setuptools.build_meta"
+
+# Project metadata
+[project]
+name            = "Toolsaf"
+version         = "0.0"
+requires-python = ">=3.10"
+description     = "Tool-Driven Security Assesment Framework"
+readme          = "README.md"
+license         = {text = "MIT License"}
+authors         = [
+    {name = "Rauli Kaksonen", email = "rauli.kaksonen@testofthings.com"}
+]
+classifiers     = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "packet-framing",
+    "censys",
+    "aiohttp",
+    "aiofiles",
+    "sqlalchemy",
+    "watchdog",
+    "colored",
+    "diagrams",
+    "shodan"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pylint",
+    "mypy"
+]
+
+[project.urls]
+Repository      = "https://github.com/testofthings/toolsaf.git"
+Documentation   = "https://github.com/testofthings/toolsaf/tree/main/documentation"
+Issues          = "https://github.com/testofthings/toolsaf/issues"
+
+# Setuptools config
+[tool.setuptools.packages]
+find = { where = ["."], include = [
+        "toolsaf",
+        "toolsaf.adapters",
+        "toolsaf.common",
+        "toolsaf.common.serializer",
+        "toolsaf.core",
+        "toolsaf.core.serializer"
+] }
+
+[tool.setuptools.package-data]
+"toolsaf.adapters"  = ["data/*.json"]
+"toolsaf"           = ["diagram_visualizer/*.png"]
+
+[tool.setuptools]
+include-package-data = true
+
+# Pytest config
+[tool.pytest.ini_options]
+pythonpath = "."
+
+# Pylint config
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.pylint.messages_control]
+disable = [
+    "too-few-public-methods",
+    "too-many-arguments",
+    "too-many-public-methods",
+    "too-many-locals",
+    "too-many-instance-attributes",
+    "too-many-branches",
+    "too-many-statements",
+    "too-many-lines",
+    "too-many-positional-arguments",
+    "too-many-return-statements"
+]
+
+# Mypy config
+[tool.mypy]
+show_error_codes    = true
+disable_error_code  = ["import-untyped"]
+strict              = true
+follow_imports      = "silent"
