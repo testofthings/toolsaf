@@ -3,6 +3,7 @@ from toolsaf.main import Builder, TLS
 
 # System root and its name
 system = Builder.new(__doc__)
+system.tag("test1")
 
 # Define IoT device(s)
 device = system.device()

@@ -1093,8 +1093,10 @@ class SystemBackendRunner(SystemBackend):
         parser.add_argument("--statement-json", action="store_true", help="Dump security statement JSON to stdout")
         parser.add_argument("-u", "--upload", action="store_true",
                             help="Upload statement. You can provide the path to your API key file with this flag.")
-        parser.add_argument("--register", action="store_true",
-                            help="Register and receive an API key (not available for the public).")
+        parser.add_argument("--register-google", action="store_true",
+                            help="Register using Google OAuth and receive an API key (not available for the public).")
+        parser.add_argument("--register-github", action="store_true",
+                            help="Register using GitHub OAuth and receive an API key (not available for the public).")
         parser.add_argument("--key-path", type=str,
                             help="Custom path to API key file")
         parser.add_argument("--insecure", action="store_true",
@@ -1186,10 +1188,13 @@ class SystemBackendRunner(SystemBackend):
             self.diagram.show = bool(args.show_diagram)
             self.diagram.create_diagram()
 
-        if args.register:
+        if any([args.register_google, args.register_github]):
             uploader = Uploader(self.system, allow_insecure=args.insecure)
             uploader.do_register_pre_procedures(args.key_path)
-            uploader.register()
+            if args.register_google:
+                uploader.google_register()
+            else:
+                uploader.github_register()
 
         if args.upload:
             uploader = Uploader(self.system, allow_insecure=args.insecure)

@@ -10,7 +10,7 @@ from shodan.client import Shodan
 from shodan.exception import APIError
 
 from toolsaf.main import ConfigurationException
-from toolsaf.adapters.tools import SystemWideTool
+from toolsaf.adapters.tools import SystemWideTool, IncorrectBatchFileExcpetion, handle_incorrect_batch_file
 from toolsaf.core.model import IoTSystem, Service
 from toolsaf.core.components import Software, SoftwareComponent
 from toolsaf.core.event_interface import EventInterface, PropertyEvent
@@ -29,16 +29,23 @@ class ShodanScan(SystemWideTool):
         self._key_set: Set[PropertyKey]
         self._interface: EventInterface
         self._evidence: Evidence
+        self._protocols = [protocol for protocol in Protocol if protocol.value != "http"]
 
-    def determine_protocol(self, entry: Dict[str, Any]) -> Protocol:
-        """Determine used protocol"""
+    def determine_protocol(self, entry: Dict[str, Any]) -> Optional[Protocol]:
+        """Determine used protocol, if possible"""
+        if entry.get("ssh", {}):
+            return Protocol.SSH
+        if entry.get("http", {}):
+            if entry.get("ssl", {}):
+                return Protocol.TLS
+            return Protocol.HTTP
+
         module: List[str] = entry["_shodan"]["module"].lower().split("-")
-        if "https" in module:
-            return Protocol.TLS
-        for protocol in Protocol:
+        for protocol in self._protocols:
             if protocol.value in module:
                 return protocol
-        raise ConfigurationException(f"Could not determine protocol from Shodan module {module}")
+        self.logger.info("Could not determine protocol for port %d", entry["port"])
+        return None
 
     def get_open_port_info(self, entry: Dict[str, Any]) -> Tuple[int, Protocol, Protocol]:
         """Add open ports to endpoint"""
@@ -46,6 +53,8 @@ class ShodanScan(SystemWideTool):
         transport = Protocol.get_protocol(entry["transport"])
         assert transport, "get_protocol returned None"
         protocol = self.determine_protocol(entry)
+        if protocol is None:
+            protocol = transport
         return port, transport, protocol
 
     def add_http_status(self, protocol: Protocol, entry: Dict[str, Any], service: Service) -> None:
@@ -101,19 +110,22 @@ class ShodanScan(SystemWideTool):
                     PropertyEvent(self._evidence, parent_sw, key.verdict(verdict, comment))
                 )
 
+    @handle_incorrect_batch_file
     def process_file(self, data: BufferedReader, file_name: str,
                      interface: EventInterface, source: EvidenceSource) -> bool:
         """Process file"""
         self._interface = interface
         self._evidence = Evidence(source)
-
         scan = cast(Dict[str, Any], json.load(data))
-        ip_addr = IPAddress.new(file_name.split("-")[-1].replace(self.data_file_suffix, ""))
 
         entry: Dict[str, Any]
         for entry in scan.get("data", []):
             self._key_set = set()
 
+            if not(ip_str := entry.get("ip_str")):
+                raise IncorrectBatchFileExcpetion(f'ip_str not found in {file_name} "data"')
+
+            ip_addr = IPAddress.new(ip_str)
             port, transport, protocol = self.get_open_port_info(entry)
             endpoint_addr = EndpointAddress(ip_addr, transport, port)
             service = interface.service_scan(

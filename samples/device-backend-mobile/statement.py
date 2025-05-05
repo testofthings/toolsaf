@@ -3,6 +3,7 @@ from toolsaf.main import Builder, TLS, DHCP, DNS, Proprietary
 
 # System root and its name
 system = Builder.new(__doc__)
+system.tag("test1242")
 
 # Define IoT device(s) and gateway
 device = system.device()

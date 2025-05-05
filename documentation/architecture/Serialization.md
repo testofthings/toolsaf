@@ -74,7 +74,7 @@ class AClassSerializer(Serializer[AClass]):
         self.config.map_simple_fields("a_string", "a_int")
 ```
 
-As seen, the serializer must tell `Serializer` which class instances it is 
+As seen, the serializer must tell `Serializer` which class instances it is
 serializing. Then it defines the simple fields which are 1:1 mapped into JSON fields.
 This is done through field `config` of the serializer.
 
@@ -117,9 +117,12 @@ If other constructors should be used, then serializer can implement
 method `new`.
 
 ```python
-    def new(self, stream: SerializerStream) -> AClass:
+    def new(self, stream: SerializerStream) -> Optional[AClass]:
         # Return new instance of the proper class
 ```
+
+Returning `None` allows you to skip the object and discard the related JSON.
+This is handy when an object may become obsolete and can be omitted.
 
 ### Serializing sub-objects
 

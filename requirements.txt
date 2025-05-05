@@ -1,9 +1,0 @@
-packet-framing
-censys
-aiohttp
-aiofiles
-sqlalchemy
-watchdog
-colored
-diagrams
-shodan
