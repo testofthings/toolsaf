@@ -380,6 +380,11 @@ class Addressable(NetworkNode):
                     ac = a.change_host(address.get_host())
                     if ac == address:
                         return c
+                else:
+                    if a.is_multicast():
+                        ac = a.change_host(address.get_host())
+                        if ac == address:
+                            return c
         return None
 
     def new_connection(self, connection: Connection, flow: Flow, target: bool) -> None:
@@ -407,9 +412,15 @@ class Addressable(NetworkNode):
             return self
         # last resort, try components...
         segment = address.segments[0]
-        for component in self.components:
-            if component.tag == segment.address and component.concept_name == segment.segment_type:
-                return component.find_entity(address.tail())
+        match segment.segment_type:
+            case "software":
+                for component in self.components:
+                    if component.tag == segment.address:
+                        return component.find_entity(address.tail())
+            case _:
+                for child in self.children:
+                    if segment.address in child.addresses:
+                        return child.find_entity(address.tail())
         return None
 
 
