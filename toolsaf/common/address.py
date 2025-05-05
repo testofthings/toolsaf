@@ -635,7 +635,8 @@ class AddressSequence(AnyAddress):
         segs: List[str] = []
         for segment in self.segments:
             seg_str = segment.get_parseable_value()
-            if segs and isinstance(segment.address, EndpointAddress) and isinstance(segment.address.host, PseudoAddress):
+            if segs and \
+              isinstance(segment.address, EndpointAddress) and isinstance(segment.address.host, PseudoAddress):
                 # Special handling for PseudoAddresses, like wildcards, etc. Merge with previous
                 segs[-1] += "/" + seg_str.split("/")[1]
                 continue
