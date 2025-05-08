@@ -1,8 +1,9 @@
 """Serializing IoT system and related class"""
 
 from typing import Dict
+import ipaddress
 
-from toolsaf.common.address import Addresses, EntityTag
+from toolsaf.common.address import Addresses, EntityTag, Network
 from toolsaf.common.basics import HostType
 from toolsaf.common.entity import Entity
 from toolsaf.common.verdict import Verdict
@@ -21,6 +22,7 @@ class IoTSystemSerializer(Serializer[IoTSystem]):
         self.config.map_class("system", self)
         self.config.map_class("online-resource", OnlineResourceSerializer())
         self.config.map_class("network-node", NetworkNodeSerializer(self))
+        self.config.map_class("network", NetworkSerializer())
         self.config.map_class("addressable", AddressableSerializer())
         self.config.map_class("host", HostSerializer())
         self.config.map_class("service", ServiceSerializer())
@@ -84,8 +86,30 @@ class NetworkNodeSerializer(Serializer[NetworkNode]):
         for co in obj.components:
             stream.push_object(co, at_object=obj)
 
+        for network in obj.networks:
+            stream.push_object(network, at_object=obj)
+
     def read(self, obj: NetworkNode, stream: SerializerStream) -> None:
         obj.host_type = HostType(stream["host_type"])
+
+
+class NetworkSerializer(Serializer[Network]):
+    """Serializer for Network"""
+    def __init__(self) -> None:
+        super().__init__(Network)
+        self.config.map_simple_fields("name")
+
+    def write(self, obj, stream):
+        stream += "address", obj.ip_network.exploded
+
+    def new(self, stream: SerializerStream) -> Network:
+        ip_network = ipaddress.ip_network(stream["address"])
+        return Network(stream["name"], ip_network)
+
+    def read(self, obj: Network, stream: SerializerStream) -> None:
+        parent = stream.resolve("at", of_type=NetworkNode)
+        if obj not in parent.networks:
+            parent.networks.append(obj)
 
 
 class AddressableSerializer(Serializer[Addressable]):
