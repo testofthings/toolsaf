@@ -8,6 +8,7 @@ from toolsaf.common.entity import Entity
 from toolsaf.common.verdict import Verdict
 from toolsaf.core.model import Addressable, Connection, Host, IoTSystem, NetworkNode, NodeComponent, Service
 from toolsaf.core.components import Software
+from toolsaf.core.online_resources import OnlineResource
 from toolsaf.common.serializer.serializer import Serializer, SerializerBase, SerializerStream
 
 
@@ -18,6 +19,7 @@ class IoTSystemSerializer(Serializer[IoTSystem]):
         self.unexpected = unexpected
         self.verdict_cache: Dict[Entity, Verdict] = {}
         self.config.map_class("system", self)
+        self.config.map_class("online-resource", OnlineResourceSerializer())
         self.config.map_class("network-node", NetworkNodeSerializer(self))
         self.config.map_class("addressable", AddressableSerializer())
         self.config.map_class("host", HostSerializer())
@@ -28,9 +30,30 @@ class IoTSystemSerializer(Serializer[IoTSystem]):
         self.system = system
 
     def write(self, obj: IoTSystem, stream: SerializerStream) -> None:
+        # Following parameters are not serialized:
+        # concept_name, originals, message_listeners, model_listeners
         stream += "tag", "_"  # NOTE: A 'tag' for UI
+        stream += "upload_tag", obj.upload_tag if obj.upload_tag else "_"
+
         for c in obj.get_connections():
             stream.push_object(c, at_object=obj)
+
+        for online_resource in obj.online_resources:
+            stream.push_object(online_resource, at_object=obj)
+
+
+class OnlineResourceSerializer(Serializer[OnlineResource]):
+    """Serializer for online resources"""
+    def __init__(self) -> None:
+        super().__init__(OnlineResource)
+        self.config.map_simple_fields("name", "url", "keywords")
+
+    def new(self, stream: SerializerStream) -> OnlineResource:
+        return OnlineResource(stream["name"], stream["url"], stream["keywords"])
+
+    def read(self, obj: OnlineResource, stream: SerializerStream) -> None:
+        parent = stream.resolve("at", of_type=IoTSystem)
+        parent.online_resources.append(obj)
 
 
 class NetworkNodeSerializer(Serializer[NetworkNode]):
