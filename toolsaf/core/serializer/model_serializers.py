@@ -107,11 +107,15 @@ class NetworkSerializer(Serializer[Network]):
         super().__init__(Network)
         self.config.map_simple_fields("name")
 
-    def write(self, obj, stream):
-        stream += "address", obj.ip_network.exploded
+    def write(self, obj: Network, stream: SerializerStream) -> None:
+        if obj.ip_network:
+            stream += "address", obj.ip_network.exploded
 
     def new(self, stream: SerializerStream) -> Network:
-        ip_network = ipaddress.ip_network(stream["address"])
+        if "address" not in stream:
+            ip_network = ipaddress.ip_network(stream["address"])
+        else:
+            ip_network = None
         return Network(stream["name"], ip_network)
 
     def read(self, obj: Network, stream: SerializerStream) -> None:
