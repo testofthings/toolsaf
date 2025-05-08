@@ -65,12 +65,20 @@ class NetworkNodeSerializer(Serializer[NetworkNode]):
         self.root = root
         self.config.abstract = True  # abstract class
         self.config.map_simple_fields("name")
+        self.config.map_simple_fields("description")
+        self.config.map_simple_fields("match_priority")
 
     def write(self, obj: NetworkNode, stream: SerializerStream) -> None:
+        # Following parameters are not serialized:
+        # concept_name
         stream += "address", obj.get_system_address().get_parseable_value()
         stream += "long_name", obj.long_name()
         stream += "host_type", obj.host_type.value
         stream += "status", obj.status.value
+
+        # What needs to be serialized?
+            # properties
+
         expected = obj.get_expected_verdict(None)
         if expected:
             stream += "expected", expected.value  # fail or pass
