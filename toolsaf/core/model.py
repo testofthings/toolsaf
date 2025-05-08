@@ -380,11 +380,10 @@ class Addressable(NetworkNode):
                     ac = a.change_host(address.get_host())
                     if ac == address:
                         return c
-                else:
-                    if a.is_multicast():
-                        ac = a.change_host(address.get_host())
-                        if ac == address:
-                            return c
+                elif a.is_multicast():
+                    ac = a.change_host(address.get_host())
+                    if ac == address:
+                        return c
         return None
 
     def new_connection(self, connection: Connection, flow: Flow, target: bool) -> None:
