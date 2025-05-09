@@ -215,4 +215,7 @@ class SoftwareSerializer(SerializerBase):
         super().__init__(class_type=Software)
 
     def new(self, stream: SerializerStream) -> Software:
-        return Software(stream.resolve("at", of_type=NetworkNode), stream["name"])
+        parent = stream.resolve("at", of_type=NetworkNode)
+        software = Software(parent, stream["name"])
+        parent.add_component(software)
+        return software
