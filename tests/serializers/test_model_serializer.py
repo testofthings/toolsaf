@@ -102,6 +102,7 @@ def test_simple_model():
         "name": "Device 1 SW",
         "long_name": "Device 1 SW",
         "address": "Device&software=Device_1_SW",
+        "status": "Expected",
         "components": [
             {"name": "c1", "version": ""},
             {"name": "c2", "version": ""},

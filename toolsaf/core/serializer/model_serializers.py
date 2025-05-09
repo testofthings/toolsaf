@@ -230,8 +230,14 @@ class NodeComponentSerializer(Serializer[NodeComponent]):
         self.config.map_simple_fields("name")
 
     def write(self, obj: NodeComponent, stream: SerializerStream) -> None:
+        # Following parameters are not serialized:
+        # sub_components, status, tag
+        stream += "status", obj.status.value
         stream += "address", obj.get_system_address().get_parseable_value()
         stream += "long_name", obj.long_name()
+
+    def read(self, obj: NodeComponent, stream: SerializerStream) -> None:
+        obj.status = Status(stream["status"])
 
 
 class SoftwareSerializer(SerializerBase):
