@@ -104,15 +104,15 @@ class NetworkNodeSerializer(Serializer[NetworkNode]):
         }
 
     def read(self, obj: NetworkNode, stream: SerializerStream) -> None:
-        obj.name = stream - "name"
-        obj.description = stream - "description"
-        obj.match_priority = int(stream - "match_priority")
+        obj.name = stream ["name"]
+        obj.description = stream["description"]
+        obj.match_priority = int(stream["match_priority"])
         # long_name is not an actual property, but a function
         obj.host_type = HostType(stream["host_type"])
-        obj.status = Status(stream - "status")
+        obj.status = Status(stream["status"])
 
-        if stream.get("external_activity"):
-            obj.external_activity = ExternalActivity(int(stream - "external_activity"))
+        if "external_activity" in stream:
+            obj.external_activity = ExternalActivity(int(stream ["external_activity"]))
 
         # Properties
         for key, value in cast(Dict[str, Dict[str, Any]], stream["properties"]).items():
