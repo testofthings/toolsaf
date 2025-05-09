@@ -8,7 +8,7 @@ from toolsaf.common.basics import HostType
 from toolsaf.common.entity import Entity
 from toolsaf.common.verdict import Verdict
 from toolsaf.core.model import Addressable, Connection, Host, IoTSystem, NetworkNode, NodeComponent, Service
-from toolsaf.core.components import Software
+from toolsaf.core.components import Software, SoftwareComponent
 from toolsaf.core.online_resources import OnlineResource
 from toolsaf.common.serializer.serializer import Serializer, SerializerBase, SerializerStream
 
@@ -214,8 +214,24 @@ class SoftwareSerializer(SerializerBase):
     def __init__(self) -> None:
         super().__init__(class_type=Software)
 
+    def write(self, obj: Software, stream: SerializerStream) -> None:
+        components = []
+        for name, component in obj.components.items():
+            components.append({
+                "name": name,
+                "version": component.version
+            })
+        stream += "components", components
+
     def new(self, stream: SerializerStream) -> Software:
         parent = stream.resolve("at", of_type=NetworkNode)
         software = Software(parent, stream["name"])
         parent.add_component(software)
         return software
+
+    def read(self, obj: Software, stream: SerializerStream) -> None:
+        # Read software components
+        for component in stream["components"]:
+            name = component["name"]
+            version = component["version"]
+            obj.components[name] = SoftwareComponent(name, version)
