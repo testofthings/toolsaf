@@ -93,6 +93,11 @@ def test_simple_model():
         "tag": "Device/tcp:22",
         "addresses": ["*/tcp:22"],
         "properties": {},
+        "authentication": True,
+        "client_side": False,
+        "con_type": "Encrypted",
+        "protocol": "ssh",
+        "reply_from_other_address": False
     }
 
     assert js[3] == {

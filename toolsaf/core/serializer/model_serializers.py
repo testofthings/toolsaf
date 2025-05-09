@@ -3,7 +3,7 @@
 from typing import Dict, Any, cast
 import ipaddress
 
-from toolsaf.common.address import Addresses, EntityTag, Network
+from toolsaf.common.address import Addresses, EntityTag, Network, Protocol
 from toolsaf.common.basics import HostType, Status, ExternalActivity
 from toolsaf.common.entity import Entity
 from toolsaf.common.verdict import Verdict
@@ -189,10 +189,30 @@ class ServiceSerializer(Serializer[Service]):
     """Serializer for Service"""
     def __init__(self) -> None:
         super().__init__(Service)
-        self.config.map_simple_fields("name")
+        self.config.map_simple_fields("name", "authentication", "client_side", "reply_from_other_address")
+
+    def write(self, obj: Service, stream: SerializerStream) -> None:
+        # Following parameters are not serialized:
+        # concept_name
+        if obj.protocol:
+            stream += "protocol", obj.protocol.value
+        stream += "con_type", obj.con_type.value
+        if obj.multicast_source:
+            stream += "multicast_source", obj.multicast_source.get_parseable_value()
 
     def new(self, stream: SerializerStream) -> Service:
         return Service(stream["name"], stream.resolve("at", of_type=Host))
+
+    def read(self, obj: Service, stream: SerializerStream) -> None:
+        obj.authentication = stream["authentication"]
+        obj.client_side = stream["client_side"]
+        obj.reply_from_other_address = stream["reply_from_other_address"]
+        obj.con_type = stream["con_type"]
+
+        if "protocol" in stream:
+            obj.protocol = Protocol(stream["protocol"])
+        if "multicast_source" in stream:
+            obj.multicast_source = Addresses.parse_address(stream["multicast_source"])
 
 
 class ConnectionSerializer(Serializer[Connection]):
