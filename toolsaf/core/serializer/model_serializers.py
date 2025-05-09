@@ -43,6 +43,9 @@ class IoTSystemSerializer(Serializer[IoTSystem]):
         for online_resource in obj.online_resources:
             stream.push_object(online_resource, at_object=obj)
 
+    def read(self, obj: IoTSystem, stream: SerializerStream) -> None:
+        obj.upload_tag = stream - "upload_tag"
+
 
 class OnlineResourceSerializer(Serializer[OnlineResource]):
     """Serializer for online resources"""
