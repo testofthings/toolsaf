@@ -1,12 +1,13 @@
 """Serializing IoT system and related class"""
 
-from typing import Dict
+from typing import Dict, Any, cast
 import ipaddress
 
 from toolsaf.common.address import Addresses, EntityTag, Network
-from toolsaf.common.basics import HostType
+from toolsaf.common.basics import HostType, Status, ExternalActivity
 from toolsaf.common.entity import Entity
 from toolsaf.common.verdict import Verdict
+from toolsaf.common.property import PropertyKey, PropertyVerdictValue, PropertySetValue
 from toolsaf.core.model import Addressable, Connection, Host, IoTSystem, NetworkNode, NodeComponent, Service
 from toolsaf.core.components import Software, SoftwareComponent
 from toolsaf.core.online_resources import OnlineResource
@@ -79,11 +80,9 @@ class NetworkNodeSerializer(Serializer[NetworkNode]):
         stream += "host_type", obj.host_type.value
         stream += "status", obj.status.value
 
-        # What needs to be serialized?
-            # properties
-
         expected = obj.get_expected_verdict(None)
         if expected:
+            #Is this ever used? Is the actual expected just status from earlier?
             stream += "expected", expected.value  # fail or pass
         verdict = obj.get_verdict(self.root.verdict_cache)
         if verdict != Verdict.INCON:
@@ -100,8 +99,31 @@ class NetworkNodeSerializer(Serializer[NetworkNode]):
         for network in obj.networks:
             stream.push_object(network, at_object=obj)
 
+        stream += "properties", {
+            k.get_name(): k.get_value_json(v, {}) for k, v in obj.properties.items()
+        }
+
     def read(self, obj: NetworkNode, stream: SerializerStream) -> None:
+        obj.name = stream - "name"
+        obj.description = stream - "description"
+        obj.match_priority = int(stream - "match_priority")
+        # long_name is not an actual property, but a function
         obj.host_type = HostType(stream["host_type"])
+        obj.status = Status(stream - "status")
+
+        if stream.get("external_activity"):
+            obj.external_activity = ExternalActivity(int(stream - "external_activity"))
+
+        # Properties
+        for key, value in cast(Dict[str, Dict[str, Any]], stream["properties"]).items():
+            property_key = PropertyKey.parse(key)
+            explanation = value.get("exp", "")
+            if "verdict" in value:
+                verdict = Verdict.parse(value["verdict"])
+                obj.properties[property_key] = PropertyVerdictValue(verdict, explanation)
+            else:
+                sub_keys = {PropertyKey.parse(k) for k in value["set"]}
+                obj.properties[property_key] = PropertySetValue(sub_keys, explanation)
 
 
 class NetworkSerializer(Serializer[Network]):
@@ -233,7 +255,6 @@ class SoftwareSerializer(SerializerBase):
         return software
 
     def read(self, obj: Software, stream: SerializerStream) -> None:
-        # Read software components
         for component in stream["components"]:
             name = component["name"]
             version = component["version"]
