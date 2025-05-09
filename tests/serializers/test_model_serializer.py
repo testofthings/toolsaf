@@ -1,14 +1,46 @@
 from toolsaf.main import HTTP
+from toolsaf.common.verdict import Verdict
 from toolsaf.common.serializer.serializer import SerializerStream
 from toolsaf.core.components import Software
 from toolsaf.core.model import Connection, IoTSystem
 from toolsaf.core.serializer.model_serializers import IoTSystemSerializer
+from toolsaf.common.property import PropertyKey, PropertyVerdictValue, PropertySetValue
 from tests.test_model_new import Setup_1
+from tests.test_model import Setup
+
+
+def test_serialize_network_node_properties():
+    setup = Setup()
+    setup.get_system().name = "Test System"
+    device = setup.system.device("Device 1")
+
+    device.set_property("default", "sensors")
+    device.entity.properties[
+        PropertyKey.create(("verdict", "key"))
+    ] = PropertyVerdictValue(Verdict.PASS, "Test explanation")
+    device.entity.properties[
+        PropertyKey.create(("set", "key"))
+    ] = PropertySetValue(
+        {PropertyKey.create(("test", "key1")), PropertyKey.create(("test", "key2"))},
+        "Test explanation",
+    )
+
+    serializer = IoTSystemSerializer(setup.get_system())
+    stream = SerializerStream(serializer)
+    serialized = list(stream.write(serializer.system))
+
+    ser = IoTSystemSerializer(IoTSystem())
+    stream = SerializerStream(ser)
+    deserialized = list(stream.read(serialized))
+
+    assert deserialized[0].properties == setup.get_system().properties
+    assert deserialized[1].properties == device.entity.properties
 
 
 def test_simple_model():
     su = Setup_1()
     su.system.online_resource("test-policy", url="example-url", keywords=["test", "policy"])
+    su.device1.software().sbom(components=["c1", "c2"])
     su.system.finish_()  # creates SW components
     su.system.system.name = "Test"
     ser = IoTSystemSerializer(su.system.system)
@@ -28,6 +60,7 @@ def test_simple_model():
         "status": "Expected",
         "tag": "_",
         "upload_tag": "_",
+        "properties": {},
     }
 
     assert js[1] == {
@@ -43,6 +76,7 @@ def test_simple_model():
         'type': 'host',
         "description": "Internet Of Things device",
         "match_priority": 10,
+        "properties": {}
     }
 
     assert js[2] == {
@@ -58,6 +92,7 @@ def test_simple_model():
         "status": "Expected",
         "tag": "Device/tcp:22",
         "addresses": ["*/tcp:22"],
+        "properties": {},
     }
 
     assert js[3] == {
@@ -67,6 +102,10 @@ def test_simple_model():
         "name": "Device 1 SW",
         "long_name": "Device 1 SW",
         "address": "Device&software=Device_1_SW",
+        "components": [
+            {"name": "c1", "version": ""},
+            {"name": "c2", "version": ""},
+        ]
     }
 
     assert js[6] == {
@@ -113,6 +152,8 @@ def test_simple_model():
     assert r[0].name == "Test"
     assert len(r[0].children) == 2
     assert r[0].children[0].name == "Device 1"
+    assert len(r[1].components) == 1
+    assert len(r[1].components[0].components) == 2
     assert r[0].children[0] == r[1]
     assert len(r[0].children[0].children) == 1
     assert r[0].children[0].children[0].name == "SSH:22"
