@@ -41,6 +41,7 @@ def test_simple_model():
     su = Setup_1()
     su.system.online_resource("test-policy", url="example-url", keywords=["test", "policy"])
     su.device1.software().sbom(components=["c1", "c2"])
+    su.device1.ignore_name_requests("time.test.com", "time.test2.com")
     su.system.finish_()  # creates SW components
     su.system.system.name = "Test"
     ser = IoTSystemSerializer(su.system.system)
@@ -63,6 +64,8 @@ def test_simple_model():
         "properties": {},
     }
 
+    ignore_name_reqs = js[1].pop("ignore_name_requests")
+    assert "time.test.com" in ignore_name_reqs and "time.test2.com" in ignore_name_reqs
     assert js[1] == {
         'address': 'Device',
         'addresses': ['10:00:00:00:00:01|hw'],
@@ -76,8 +79,9 @@ def test_simple_model():
         'type': 'host',
         "description": "Internet Of Things device",
         "match_priority": 10,
-        "properties": {}
+        "properties": {},
     }
+    js[1]["ignore_name_requests"] = ["time.test.com", "time.test2.com"]
 
     assert js[2] == {
         "id": "id3",
@@ -160,6 +164,7 @@ def test_simple_model():
     assert r[0].children[0].name == "Device 1"
     assert len(r[1].components) == 1
     assert len(r[1].components[0].components) == 2
+    assert len(r[1].ignore_name_requests) == 2
     assert r[0].children[0] == r[1]
     assert len(r[0].children[0].children) == 1
     assert r[0].children[0].children[0].name == "SSH:22"

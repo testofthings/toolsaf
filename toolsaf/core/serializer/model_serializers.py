@@ -3,7 +3,7 @@
 from typing import Dict, Any, cast
 import ipaddress
 
-from toolsaf.common.address import Addresses, EntityTag, Network, Protocol
+from toolsaf.common.address import Addresses, EntityTag, Network, Protocol, DNSName
 from toolsaf.common.basics import HostType, Status, ExternalActivity
 from toolsaf.common.entity import Entity
 from toolsaf.common.verdict import Verdict
@@ -181,8 +181,22 @@ class HostSerializer(Serializer[Host]):
     def __init__(self) -> None:
         super().__init__(Host)
 
+    def write(self, obj: Host, stream: SerializerStream) -> None:
+        # Following parameters are not serialized:
+        # concept_name, visual
+        if obj.ignore_name_requests:
+            stream += "ignore_name_requests", [
+                name.name
+            for name in obj.ignore_name_requests]
+
     def new(self, stream: SerializerStream) -> Host:
         return Host(stream.resolve("at", of_type=IoTSystem), stream["name"])
+
+    def read(self, obj: Host, stream: SerializerStream) -> None:
+        ignore_name_reqs = stream - "ignore_name_requests"
+        if ignore_name_reqs:
+            for name in stream["ignore_name_requests"]:
+                obj.ignore_name_requests.add(DNSName(name))
 
 
 class ServiceSerializer(Serializer[Service]):
