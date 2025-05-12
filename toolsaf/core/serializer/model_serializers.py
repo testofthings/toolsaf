@@ -283,7 +283,8 @@ class SoftwareSerializer(SerializerBase):
         components = []
         for name, component in obj.components.items():
             components.append({
-                "name": name,
+                "key": name,
+                "component-name": component.name,
                 "version": component.version
             })
         stream += "components", components
@@ -296,6 +297,7 @@ class SoftwareSerializer(SerializerBase):
 
     def read(self, obj: Software, stream: SerializerStream) -> None:
         for component in stream["components"]:
-            name = component["name"]
+            key = component["key"]
+            name = component["component-name"]
             version = component["version"]
-            obj.components[name] = SoftwareComponent(name, version)
+            obj.components[key] = SoftwareComponent(name, version)
