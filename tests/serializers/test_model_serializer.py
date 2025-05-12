@@ -1,12 +1,66 @@
+from unittest.mock import patch, MagicMock
+
 from toolsaf.main import HTTP
+from toolsaf.common.basics import Status
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.serializer.serializer import SerializerStream
-from toolsaf.core.components import Software
-from toolsaf.core.model import Connection, IoTSystem
-from toolsaf.core.serializer.model_serializers import IoTSystemSerializer
+from toolsaf.core.components import Software, SoftwareComponent
+from toolsaf.core.model import Connection, IoTSystem, NodeComponent
 from toolsaf.common.property import PropertyKey, PropertyVerdictValue, PropertySetValue
+from toolsaf.core.serializer.model_serializers import (
+    IoTSystemSerializer, NodeComponentSerializer, SoftwareSerializer
+)
 from tests.test_model_new import Setup_1
 from tests.test_model import Setup
+
+
+def test_node_component_serializer():
+    serializer = NodeComponentSerializer()
+    stream = SerializerStream(serializer)
+    device = Setup().system.device("TestDevice")
+    node_component = NodeComponent(device.entity, "test-component")
+    node_component.status = Status.EXTERNAL
+
+    serializer.write(node_component, stream)
+    assert stream.data == {
+        "status": Status.EXTERNAL.value,
+        "address": "TestDevice&other=test-component",
+        "long_name": "test-component"
+    }
+
+    # FIXME: Should include read / new?
+    # new_component = serializer.read(stream)
+
+
+def test_software_serializer():
+    serializer = SoftwareSerializer()
+    stream = SerializerStream(serializer)
+    software = Software("test-software", "test-software")
+    software.components = {
+        "tc": SoftwareComponent("test-component", "1.0"),
+        "tc2": SoftwareComponent("test-component2", "2.0"),
+    }
+    serializer.write(software, stream)
+
+    assert stream.data == {
+        "components": [
+            {"key": "tc", "component-name": "test-component", "version": "1.0"},
+            {"key": "tc2", "component-name": "test-component2", "version": "2.0"},
+        ]
+    }
+
+    mock_resolve = MagicMock()
+    mock_parent = MagicMock()
+    mock_resolve.return_value = mock_parent
+    stream.resolve = mock_resolve
+
+    # Add fields that would come from other serializers
+    stream.data["name"] = "test-software"
+
+    new_software = serializer.new(stream)
+    serializer.read(new_software, stream)
+    assert new_software.name == software.name
+    assert new_software.components == software.components
 
 
 def test_serialize_network_node_properties():
@@ -113,8 +167,8 @@ def test_simple_model():
         "address": "Device&software=Device_1_SW",
         "status": "Expected",
         "components": [
-            {"name": "c1", "version": ""},
-            {"name": "c2", "version": ""},
+            {"key": "c1", "component-name": "c1", "version": ""},
+            {"key": "c2", "component-name": "c2", "version": ""},
         ]
     }
 
