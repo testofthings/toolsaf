@@ -243,6 +243,7 @@ class ConnectionSerializer(Serializer[Connection]):
         stream += "target", stream.id_for(obj.target)
         stream += "source_long_name", obj.source.long_name()
         stream += "target_long_name", obj.target.long_name()
+        stream += "status", obj.status.value
 
         s_tag, d_tag = obj.source.get_tag(), obj.target.get_tag()
         if s_tag and d_tag:
@@ -254,6 +255,9 @@ class ConnectionSerializer(Serializer[Connection]):
     def new(self, stream: SerializerStream) -> Connection:
         return Connection(stream.resolve("source", of_type=Addressable),
                           stream.resolve("target", of_type=Addressable))
+
+    def read(self, obj: Connection, stream: SerializerStream) -> None:
+        obj.status = Status(stream["status"])
 
 
 class NodeComponentSerializer(Serializer[NodeComponent]):
