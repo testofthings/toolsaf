@@ -1,6 +1,6 @@
 from unittest.mock import patch, MagicMock
 
-from toolsaf.main import HTTP
+from toolsaf.main import HTTP, BLEAdvertisement
 from toolsaf.common.basics import Status, ConnectionType
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.serializer.serializer import SerializerStream
@@ -8,10 +8,66 @@ from toolsaf.core.components import Software, SoftwareComponent
 from toolsaf.core.model import Connection, IoTSystem, NodeComponent
 from toolsaf.common.property import PropertyKey, PropertyVerdictValue, PropertySetValue
 from toolsaf.core.serializer.model_serializers import (
-    IoTSystemSerializer, ConnectionSerializer, NodeComponentSerializer, SoftwareSerializer
+    IoTSystemSerializer, ServiceSerializer, ConnectionSerializer, NodeComponentSerializer, SoftwareSerializer
 )
 from tests.test_model_new import Setup_1
 from tests.test_model import Setup
+
+
+def test_service_serializer():
+    serializer = ServiceSerializer()
+    serializer.config.map_class("service", serializer)
+    stream = SerializerStream(serializer)
+    mock_resolve = MagicMock()
+    stream.resolve = mock_resolve
+
+    device = Setup().system.device("Device 1")
+    service = device.broadcast(BLEAdvertisement(event_type=0x03)).entity
+    serialized = list(stream.write(service))[0]
+    assert serialized == {
+        "type": "service",
+        "id": "id1",
+        "name": "BLE Ad:3 multicast",
+        "authentication": False,
+        "client_side": False,
+        "reply_from_other_address": False,
+        "protocol": "ble",
+        "con_type": "",
+        "multicast_source": "BLE_Ad"
+    }
+    serialized["type"] = "service"
+
+    stream.resolve.return_value = device.entity
+
+    #with patch("toolsaf.core.serializer.model_serializers.Addresses.parse_address") as mock_parse_address:
+    #    mock_parse_address.return_value = service.parent
+    new_service = list(stream.read([serialized]))[0]
+
+    assert new_service.name == service.name
+    assert new_service.authentication == service.authentication
+    assert new_service.client_side == service.client_side
+    assert new_service.reply_from_other_address == service.reply_from_other_address
+    assert new_service.protocol == service.protocol
+    assert new_service.con_type == service.con_type
+
+    # FIXME:
+    #assert new_service.multicast_source == service.multicast_source
+
+    stream = SerializerStream(serializer)
+    service = (device / HTTP).entity
+    serialized = list(stream.write(service))[0]
+    assert serialized == {
+        "type": "service",
+        "id": "id1",
+        "name": "HTTP:80",
+        "authentication": False,
+        "client_side": False,
+        "reply_from_other_address": False,
+        "protocol": "http",
+        "con_type": "",
+    }
+
+    pass
 
 
 def test_connection_serializer():

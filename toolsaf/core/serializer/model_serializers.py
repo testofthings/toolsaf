@@ -218,15 +218,11 @@ class ServiceSerializer(Serializer[Service]):
         return Service(stream["name"], stream.resolve("at", of_type=Host))
 
     def read(self, obj: Service, stream: SerializerStream) -> None:
-        obj.authentication = stream["authentication"]
-        obj.client_side = stream["client_side"]
-        obj.reply_from_other_address = stream["reply_from_other_address"]
         obj.con_type = stream["con_type"]
-
-        if "protocol" in stream:
-            obj.protocol = Protocol(stream["protocol"])
-        if "multicast_source" in stream:
-            obj.multicast_source = Addresses.parse_address(stream["multicast_source"])
+        if (protocol := stream - "protocol"):
+            obj.protocol = Protocol(protocol)
+        if (multicast_source := stream - "multicast_source"):
+            obj.multicast_source = Addresses.parse_address(multicast_source)
 
 
 class ConnectionSerializer(Serializer[Connection]):
