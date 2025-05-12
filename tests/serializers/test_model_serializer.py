@@ -1,17 +1,51 @@
 from unittest.mock import patch, MagicMock
 
 from toolsaf.main import HTTP
-from toolsaf.common.basics import Status
+from toolsaf.common.basics import Status, ConnectionType
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.serializer.serializer import SerializerStream
 from toolsaf.core.components import Software, SoftwareComponent
 from toolsaf.core.model import Connection, IoTSystem, NodeComponent
 from toolsaf.common.property import PropertyKey, PropertyVerdictValue, PropertySetValue
 from toolsaf.core.serializer.model_serializers import (
-    IoTSystemSerializer, NodeComponentSerializer, SoftwareSerializer
+    IoTSystemSerializer, ConnectionSerializer, NodeComponentSerializer, SoftwareSerializer
 )
 from tests.test_model_new import Setup_1
 from tests.test_model import Setup
+
+
+def test_connection_serializer():
+    serializer = ConnectionSerializer()
+    stream = SerializerStream(serializer)
+
+    device1 = Setup().system.device("Device 1")
+    device2 = Setup().system.device("Device 2")
+    connection = (device1 >> device2 / HTTP).connection
+
+    stream.context.identifier_map[device1.entity] = "Device 1"
+    stream.context.identifier_map[(device2 / HTTP).entity] = "Device 2 HTTP:80"
+    stream.context.object_map["Device 1"] = device1.entity
+    stream.context.object_map["Device 2 HTTP:80"] = (device2 / HTTP).entity
+
+    serializer.write(connection, stream)
+    assert stream.data == {
+        "address": "source=Device_1&target=Device_2/tcp:80",
+        "source": "Device 1",
+        "target": "Device 2 HTTP:80",
+        "source_long_name": "Device 1",
+        "target_long_name": "Device 2 HTTP:80",
+        "tag": "Device_1--Device_2/tcp:80",
+        "name": "HTTP:80",
+        "long_name": "Device 1 => Device 2 HTTP:80",
+        "status": Status.EXPECTED.value
+    }
+
+    new_connection = serializer.new(stream)
+    serializer.read(new_connection, stream)
+
+    assert new_connection.source == connection.source
+    assert new_connection.target == connection.target
+    assert new_connection.status == connection.status
 
 
 def test_node_component_serializer():
@@ -195,6 +229,7 @@ def test_simple_model():
         'tag': 'Device_2--Device/tcp:22',
         'target': 'id3',
         'target_long_name': 'Device 1 SSH:22',
+        'status': 'Expected',
     }
 
     assert js[8] == {
