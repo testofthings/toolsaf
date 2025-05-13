@@ -53,6 +53,8 @@ def test_service_serializer():
 
     stream = SerializerStream(serializer)
     service = (device / HTTP).entity
+    stream.resolve = mock_resolve
+
     serialized = list(stream.write(service))[0]
     assert serialized == {
         "type": "service",
@@ -65,11 +67,21 @@ def test_service_serializer():
         "con_type": "",
     }
 
-    pass
+    stream.resolve.return_value = device.entity
+    new_service = list(stream.read([serialized]))[0]
+
+    assert isinstance(new_service, Service)
+    assert new_service.name == service.name
+    assert new_service.authentication == service.authentication
+    assert new_service.client_side == service.client_side
+    assert new_service.reply_from_other_address == service.reply_from_other_address
+    assert new_service.protocol == service.protocol
+    assert new_service.con_type == service.con_type
 
 
 def test_connection_serializer():
     serializer = ConnectionSerializer()
+    serializer.config.map_class("connection", serializer)
     stream = SerializerStream(serializer)
 
     device1 = Setup().system.device("Device 1")
@@ -81,8 +93,10 @@ def test_connection_serializer():
     stream.context.object_map["Device 1"] = device1.entity
     stream.context.object_map["Device 2 HTTP:80"] = (device2 / HTTP).entity
 
-    serializer.write(connection, stream)
-    assert stream.data == {
+    serialized = list(stream.write(connection))[0]
+    assert serialized == {
+        "type": "connection",
+        "id": "id3", # 3 due to earlier identifier_map modifications
         "address": "source=Device_1&target=Device_2/tcp:80",
         "source": "Device 1",
         "target": "Device 2 HTTP:80",
@@ -94,9 +108,8 @@ def test_connection_serializer():
         "status": Status.EXPECTED.value
     }
 
-    new_connection = serializer.new(stream)
-    serializer.read(new_connection, stream)
-
+    new_connection = list(stream.read([serialized]))[0]
+    assert isinstance(new_connection, Connection)
     assert new_connection.source == connection.source
     assert new_connection.target == connection.target
     assert new_connection.status == connection.status
