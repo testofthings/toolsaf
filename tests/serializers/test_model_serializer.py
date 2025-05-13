@@ -1,11 +1,12 @@
 from unittest.mock import patch, MagicMock
 
 from toolsaf.main import HTTP, BLEAdvertisement
+from toolsaf.common.address import EntityTag
 from toolsaf.common.basics import Status, ConnectionType
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.serializer.serializer import SerializerStream
 from toolsaf.core.components import Software, SoftwareComponent
-from toolsaf.core.model import Connection, IoTSystem, NodeComponent
+from toolsaf.core.model import Connection, IoTSystem, NodeComponent, Service
 from toolsaf.common.property import PropertyKey, PropertyVerdictValue, PropertySetValue
 from toolsaf.core.serializer.model_serializers import (
     IoTSystemSerializer, ServiceSerializer, ConnectionSerializer, NodeComponentSerializer, SoftwareSerializer
@@ -38,20 +39,17 @@ def test_service_serializer():
     serialized["type"] = "service"
 
     stream.resolve.return_value = device.entity
-
-    #with patch("toolsaf.core.serializer.model_serializers.Addresses.parse_address") as mock_parse_address:
-    #    mock_parse_address.return_value = service.parent
     new_service = list(stream.read([serialized]))[0]
 
+    assert isinstance(new_service, Service)
+    assert new_service.parent == device.entity
     assert new_service.name == service.name
     assert new_service.authentication == service.authentication
     assert new_service.client_side == service.client_side
     assert new_service.reply_from_other_address == service.reply_from_other_address
     assert new_service.protocol == service.protocol
     assert new_service.con_type == service.con_type
-
-    # FIXME:
-    #assert new_service.multicast_source == service.multicast_source
+    assert new_service.multicast_source == EntityTag("BLE_Ad")
 
     stream = SerializerStream(serializer)
     service = (device / HTTP).entity
