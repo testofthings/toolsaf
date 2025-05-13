@@ -137,8 +137,8 @@ class NetworkSerializer(Serializer[Network]):
             stream += "address", obj.ip_network.exploded
 
     def new(self, stream: SerializerStream) -> Network:
-        if "address" not in stream:
-            ip_network = ipaddress.ip_network(stream["address"])
+        if (address := stream - "address"):
+            ip_network = ipaddress.ip_network(address)
         else:
             ip_network = None
         return Network(stream["name"], ip_network)
@@ -174,6 +174,9 @@ class AddressableSerializer(Serializer[Addressable]):
         ads = stream.get("addresses") or []
         for a in ads:
             obj.addresses.add(Addresses.parse_address(a))
+        any_host = stream - "any_host"
+        if any_host:
+            obj.any_host = any_host
 
 
 class HostSerializer(Serializer[Host]):

@@ -1,18 +1,148 @@
 from unittest.mock import patch, MagicMock
+from ipaddress import ip_network
 
 from toolsaf.main import HTTP, BLEAdvertisement
-from toolsaf.common.address import EntityTag
-from toolsaf.common.basics import Status, ConnectionType
+from toolsaf.common.address import EntityTag, DNSName, HWAddress, Network
+from toolsaf.common.basics import Status
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.serializer.serializer import SerializerStream
 from toolsaf.core.components import Software, SoftwareComponent
-from toolsaf.core.model import Connection, IoTSystem, NodeComponent, Service
+from toolsaf.core.online_resources import OnlineResource
+from toolsaf.core.model import (
+    IoTSystem,
+    Connection, NodeComponent, Service, Host, Addressable
+)
 from toolsaf.common.property import PropertyKey, PropertyVerdictValue, PropertySetValue
 from toolsaf.core.serializer.model_serializers import (
-    IoTSystemSerializer, ServiceSerializer, ConnectionSerializer, NodeComponentSerializer, SoftwareSerializer
+    IoTSystemSerializer, OnlineResourceSerializer,
+    NetworkSerializer, AddressableSerializer, HostSerializer,
+    ServiceSerializer, ConnectionSerializer, NodeComponentSerializer, SoftwareSerializer
 )
 from tests.test_model_new import Setup_1
 from tests.test_model import Setup
+
+
+def test_online_resource_serializer():
+    serializer = OnlineResourceSerializer()
+    serializer.config.map_class("online-resource", serializer)
+    stream = SerializerStream(serializer)
+    mock_resolve = MagicMock()
+    stream.resolve = mock_resolve
+
+    mock_parent = MagicMock()
+    mock_parent.online_resources = []
+    mock_resolve.return_value = mock_parent
+
+    online_resource = OnlineResource(
+        "test-policy", url="example-url",
+        keywords=["test"]
+    )
+
+    serialized = list(stream.write(online_resource))[0]
+    assert serialized == {
+        "id": "id1",
+        "type": "online-resource",
+        "name": "test-policy",
+        "url": "example-url",
+        "keywords": ["test"]
+    }
+
+    new_online_resource = list(stream.read([serialized]))[0]
+    assert isinstance(new_online_resource, OnlineResource)
+    assert new_online_resource.name == online_resource.name
+    assert new_online_resource.url == online_resource.url
+    assert new_online_resource.keywords == online_resource.keywords
+    assert new_online_resource in mock_parent.online_resources
+
+
+def test_network_serializer():
+    serializer = NetworkSerializer()
+    serializer.config.map_class("network", serializer)
+    stream = SerializerStream(serializer)
+    mock_resolve = MagicMock()
+    stream.resolve = mock_resolve
+
+    setup = Setup()
+    device = setup.system.device("Device 1")
+    network = Network("test-network", ip_network("127.0.0.1"))
+    device.entity.networks.append(network)
+
+    serialized = list(stream.write(network))[0]
+    assert serialized == {
+        "id": "id1",
+        "type": "network",
+        "name": "test-network",
+        "address": "127.0.0.1/32"
+    }
+
+    mock_resolve.return_value = device.entity
+    new_network = list(stream.read([serialized]))[0]
+    assert isinstance(new_network, Network)
+    assert new_network.name == network.name
+    assert new_network.ip_network == network.ip_network
+    assert new_network in device.entity.networks
+
+
+def test_addressable_serializer():
+    serializer = AddressableSerializer()
+    stream = SerializerStream(serializer)
+    mock_resolve = MagicMock()
+    stream.resolve = mock_resolve
+
+    setup = Setup()
+    device = setup.system.device("Device 1")
+    addressable = device.entity
+
+    addressable.addresses.add(EntityTag("Device_1"))
+    addressable.addresses.add(HWAddress.new("10:00:00:00:00:01"))
+    addressable.any_host = True
+
+    serializer.write(addressable, stream)
+    serialized = stream.data
+
+    assert serialized == {
+        "tag": "Device_1",
+        "addresses": ["10:00:00:00:00:01|hw"],
+        "any_host": True
+    }
+
+    stream.resolve.return_value = setup.get_system()
+    new_addressable = Addressable("", MagicMock())
+    serializer.read(new_addressable, stream)
+
+    assert new_addressable.addresses == addressable.addresses
+    assert new_addressable.any_host is True
+    assert new_addressable in setup.get_system().children
+
+
+def test_host_serializer():
+    serializer = HostSerializer()
+    serializer.config.map_class("host", serializer)
+    stream = SerializerStream(serializer)
+    mock_resolve = MagicMock()
+    stream.resolve = mock_resolve
+
+    setup = Setup()
+    device = setup.system.device("Device 1")
+    host = device.entity
+    host.ignore_name_requests.add(DNSName("test.com"))
+    host.ignore_name_requests.add(DNSName("test2.com"))
+
+    serialized = list(stream.write(host))[0]
+    assert serialized["id"] == "id1"
+    assert serialized["type"] == "host"
+    assert "test.com" in serialized["ignore_name_requests"]
+    assert "test2.com" in serialized["ignore_name_requests"]
+
+    # name is not included in the serialized data, but it is needed in deserialization
+    serialized["name"] = host.name
+
+    stream.resolve.return_value = setup.get_system()
+    new_host = list(stream.read([serialized]))[0]
+
+    assert isinstance(new_host, Host)
+    assert new_host.name == host.name
+    assert new_host.ignore_name_requests == host.ignore_name_requests
 
 
 def test_service_serializer():
