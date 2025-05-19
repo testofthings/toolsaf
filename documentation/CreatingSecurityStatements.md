@@ -12,7 +12,6 @@ Below is the expected structure for a security statement project:
 repository
 ├── .venv
 └── product
-    ├── __init__.py
     └── statement.py
 ```
 Above, `repository` refers to a repository in GitHub. Inside this repository is a folder or folders named after products (here just `product`), which contain the actual statement file (`statement.py`). The `.venv` folder is the Python virtual environment for the project, into which Toolsaf is installed with the _pip_-tool.
