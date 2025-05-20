@@ -191,7 +191,7 @@ $ nmap -oX <file>.xml <target>
 Data files are PCAP (not pcap-ng) files with suffix `.pcap`. Example metafile `00meta.json`:
 ```json
 {
-    "file_type": "pcap"
+    "file_type": "capture"
 }
 ```
 
