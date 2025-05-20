@@ -320,7 +320,7 @@ The following shows how addresses can be customized per batch directory.
     "file_type": "capture",
     "addresses": {
         "192.168.4.8": "Ruuvi_app",
-        "30:c6:f7:52:db:5d|wd": "Ruuvi_Gateway",
+        "30:c6:f7:52:db:5d|hw": "Ruuvi_Gateway",
     }
 }
 ```
