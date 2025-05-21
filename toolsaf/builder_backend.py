@@ -1090,7 +1090,8 @@ class SystemBackendRunner(SystemBackend):
                             help="Add default DNS server handling")
         parser.add_argument("-l", "--log", dest="log_level", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                             help="Set the logging level", default=None)
-        parser.add_argument("--write-statement", action="store_true", help="Dump JSON serialized security statement to stdout")
+        parser.add_argument("--write-statement", action="store_true",
+                            help="Dump JSON serialized security statement to stdout")
         parser.add_argument("-u", "--upload", action="store_true",
                             help="Upload statement. You can provide the path to your API key file with this flag.")
         parser.add_argument("--register-google", action="store_true",

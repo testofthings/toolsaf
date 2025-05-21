@@ -358,6 +358,7 @@ class PropertyEventSerializer(Serializer[PropertyEvent]):
         KeyValueSerializer.write_key_value(obj, stream)
 
     def new(self, stream: SerializerStream) -> PropertyEvent:
+        entity: Optional[Union[Entity, Addressable, IoTSystem]] = None
         if stream["address"] == "":
             # Special handling for system entity
             entity = self.system
