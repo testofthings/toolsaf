@@ -1090,8 +1090,8 @@ class SystemBackendRunner(SystemBackend):
                             help="Add default DNS server handling")
         parser.add_argument("-l", "--log", dest="log_level", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                             help="Set the logging level", default=None)
-        parser.add_argument("-W", "--write-statement", action="store_true",
-                            help="Dump JSON serialized security statement to stdout")
+        parser.add_argument("-W", "--write-statement", type=pathlib.Path,
+                            help="Dump JSON serialized security statement to given file")
         parser.add_argument("-R", "--read-statement", type=pathlib.Path,
                             help="Read JSON serialized security statement from file. Use only with Toolsaf main.py")
         parser.add_argument("-u", "--upload", action="store_true",
@@ -1174,7 +1174,8 @@ class SystemBackendRunner(SystemBackend):
                 for log in registry.logging.logs:
                     for js in log_ser.write_event(log.event, stream):
                         json_dump[serializer_version].append(js)
-            print(json.dumps(json_dump, indent=4))
+            json.dump(json_dump, args.write_statement.open("w"), indent=4)
+            print(f"Security statement written to {args.write_statement}")
         elif args.read_statement:
             # Ensure the system is empty
             assert len(self.system.get_hosts()) == 0, "System is not empty"
@@ -1184,8 +1185,9 @@ class SystemBackendRunner(SystemBackend):
             json_path = cast(pathlib.Path, args.read_statement)
             assert json_path.exists(), f"File {json_path} does not exist"
             assert json_path.is_file(), f"File {json_path} is not a file"
-            json_data = json.loads(json_path.read_text())
 
+            print(f"Reading security statement from {json_path}")
+            json_data = json.loads(json_path.read_text())
             serializer_version = list(json_data.keys())[0]
 
             # Deserialize the security statement
