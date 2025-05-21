@@ -1121,6 +1121,29 @@ class SystemBackendRunner(SystemBackend):
         if args.dns:
             self.any().serve(DNS)
 
+        if args.read_statement:
+            # Ensure the system is empty
+            assert len(self.system.get_hosts()) == 0, "System is not empty"
+            assert len(self.system.children) == 0, "System is not empty"
+
+            # Read serialized security statement
+            json_path = cast(pathlib.Path, args.read_statement)
+            assert json_path.exists(), f"File {json_path} does not exist"
+            assert json_path.is_file(), f"File {json_path} is not a file"
+
+            print(f"Reading security statement from {json_path}")
+            json_data = json.loads(json_path.read_text())
+            serializer_version = list(json_data.keys())[0]
+
+            # FIXME: Remove events / sources from data before serialization
+
+            # Deserialize the security statement
+            serializer = IoTSystemSerializer(self.system)
+            stream = SerializerStream(serializer)
+            deserialized_system = list(stream.read(json_data[serializer_version]))[0]
+            assert isinstance(deserialized_system, IoTSystem), "Deserialized system is not an IoTSystem"
+            self.system = deserialized_system
+
         self.finish_()
 
         registry = Registry(Inspector(self.system, self.ignore_backend.get_rules()))
@@ -1176,27 +1199,8 @@ class SystemBackendRunner(SystemBackend):
                         json_dump[serializer_version].append(js)
             json.dump(json_dump, args.write_statement.open("w"), indent=4)
             print(f"Security statement written to {args.write_statement}")
-        elif args.read_statement:
-            # Ensure the system is empty
-            assert len(self.system.get_hosts()) == 0, "System is not empty"
-            assert len(self.system.children) == 0, "System is not empty"
 
-            # Read serialized security statement
-            json_path = cast(pathlib.Path, args.read_statement)
-            assert json_path.exists(), f"File {json_path} does not exist"
-            assert json_path.is_file(), f"File {json_path} is not a file"
-
-            print(f"Reading security statement from {json_path}")
-            json_data = json.loads(json_path.read_text())
-            serializer_version = list(json_data.keys())[0]
-
-            # Deserialize the security statement
-            serializer = IoTSystemSerializer(self.system)
-            stream = SerializerStream(serializer)
-            deserialized_system = list(stream.read(json_data[serializer_version]))[0]
-            assert isinstance(deserialized_system, IoTSystem), "Deserialized system is not an IoTSystem"
-            self.system = deserialized_system
-        else:
+        if not args.write_statement:
             with_files = bool(args.with_files)
             report = Report(registry)
             report.source_count = 3 if with_files else 0
