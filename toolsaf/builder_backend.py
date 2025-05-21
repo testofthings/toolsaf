@@ -1090,7 +1090,7 @@ class SystemBackendRunner(SystemBackend):
                             help="Add default DNS server handling")
         parser.add_argument("-l", "--log", dest="log_level", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                             help="Set the logging level", default=None)
-        parser.add_argument("--write-statement", action="store_true",
+        parser.add_argument("-W", "--write-statement", action="store_true",
                             help="Dump JSON serialized security statement to stdout")
         parser.add_argument("-R", "--read-statement", type=pathlib.Path,
                             help="Read JSON serialized security statement from file. Use only with Toolsaf main.py")
