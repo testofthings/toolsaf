@@ -124,6 +124,9 @@ class NetworkNodeSerializer(Serializer[NetworkNode]):
                 sub_keys = {PropertyKey.parse(k) for k in value["set"]}
                 obj.properties[property_key] = PropertySetValue(sub_keys, explanation)
 
+        if not isinstance(obj, IoTSystem):
+            obj.get_system().originals.add(obj)
+
 
 class NetworkSerializer(Serializer[Network]):
     """Serializer for Network"""
@@ -264,7 +267,7 @@ class ConnectionSerializer(Serializer[Connection]):
 
     def read(self, obj: Connection, stream: SerializerStream) -> None:
         obj.status = Status(stream["status"])
-
+        obj.source.get_system().originals.add(obj)
 
 
 class NodeComponentSerializer(Serializer[NodeComponent]):
