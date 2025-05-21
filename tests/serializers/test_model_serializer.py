@@ -459,3 +459,5 @@ def test_simple_model():
     assert r[7].source == r[4]
     assert r[7].target == r[2]
     assert isinstance(r[3], Software)
+    assert r[7] in r[1].connections
+    assert r[7] in r[4].connections

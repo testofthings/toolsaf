@@ -252,11 +252,17 @@ class ConnectionSerializer(Serializer[Connection]):
         stream += "long_name", obj.long_name()
 
     def new(self, stream: SerializerStream) -> Connection:
-        return Connection(stream.resolve("source", of_type=Addressable),
-                          stream.resolve("target", of_type=Addressable))
+        connection = Connection(
+            stream.resolve("source", of_type=Addressable),
+            stream.resolve("target", of_type=Addressable)
+        )
+        connection.source.get_parent_host().connections.append(connection)
+        connection.target.get_parent_host().connections.append(connection)
+        return connection
 
     def read(self, obj: Connection, stream: SerializerStream) -> None:
         obj.status = Status(stream["status"])
+
 
 
 class NodeComponentSerializer(Serializer[NodeComponent]):
