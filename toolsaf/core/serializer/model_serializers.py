@@ -35,7 +35,6 @@ class IoTSystemSerializer(Serializer[IoTSystem]):
     def write(self, obj: IoTSystem, stream: SerializerStream) -> None:
         # Following parameters are not serialized:
         # concept_name, originals, message_listeners, model_listeners
-        stream += "tag", "_"  # NOTE: A 'tag' for UI
         stream += "upload_tag", obj.upload_tag if obj.upload_tag else "_"
 
         for c in obj.get_connections():
@@ -111,8 +110,8 @@ class NetworkNodeSerializer(Serializer[NetworkNode]):
         obj.host_type = HostType(stream["host_type"])
         obj.status = Status(stream["status"])
 
-        if "external_activity" in stream:
-            obj.external_activity = ExternalActivity(int(stream ["external_activity"]))
+        if (external_activity := stream - "external_activity"):
+            obj.external_activity = ExternalActivity(external_activity)
 
         # Properties
         for key, value in cast(Dict[str, Dict[str, Any]], stream["properties"]).items():
@@ -156,12 +155,15 @@ class AddressableSerializer(Serializer[Addressable]):
         self.config.abstract = True  # abstract class
 
     def write(self, obj: Addressable, stream: SerializerStream) -> None:
+        addresses = []
         tag = obj.get_tag()
-        if tag:
+
+        if tag and not isinstance(obj, Service):
             # (unexpected entities do not have tags)
-            stream += "tag", tag.get_parseable_value()
+            addresses.append(tag.get_parseable_value())
         if obj.addresses:
-            stream += "addresses", [a.get_parseable_value() for a in obj.addresses if not a.is_tag()]
+            addresses += [a.get_parseable_value() for a in obj.addresses if not a.is_tag()]
+        stream += "addresses", addresses
         if obj.any_host:
             stream += "any_host", True  # only write when True
 
@@ -169,7 +171,7 @@ class AddressableSerializer(Serializer[Addressable]):
         obj.parent = stream.resolve("at", of_type=NetworkNode)
         obj.parent.children.append(obj)
         tag = stream - "tag"
-        if tag:
+        if tag and not isinstance(obj, Service):
             obj.addresses.add(EntityTag.new(tag))
         ads = stream.get("addresses") or []
         for a in ads:
