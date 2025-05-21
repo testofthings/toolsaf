@@ -1158,18 +1158,21 @@ class SystemBackendRunner(SystemBackend):
         load_data = LoadedData(self.system, registry.logging, batch_import.batch_data)
 
         if args.write_statement:
+            serializer_version = "1.0"
+            json_dump: Dict[str, List[Any]] = {serializer_version: []}
             # dump security statement JSON
             ser = IoTSystemSerializer(self.system)
             stream = SerializerStream(ser)
             for js in stream.write(self.system):
-                print(json.dumps(js, indent=4))
+                json_dump[serializer_version].append(js)
             # dump events, if any
             if registry.logging.logs:
                 log_ser = EventSerializer(self.system)
                 stream = SerializerStream(log_ser, context=stream.context)
                 for log in registry.logging.logs:
                     for js in log_ser.write_event(log.event, stream):
-                        print(json.dumps(js, indent=4))
+                        json_dump[serializer_version].append(js)
+            print(json.dumps(json_dump, indent=4))
         else:
             with_files = bool(args.with_files)
             report = Report(registry)
