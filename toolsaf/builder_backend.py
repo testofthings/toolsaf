@@ -1092,6 +1092,8 @@ class SystemBackendRunner(SystemBackend):
                             help="Set the logging level", default=None)
         parser.add_argument("--write-statement", action="store_true",
                             help="Dump JSON serialized security statement to stdout")
+        parser.add_argument("-R", "--read-statement", type=pathlib.Path,
+                            help="Read JSON serialized security statement from file. Use only with Toolsaf main.py")
         parser.add_argument("-u", "--upload", action="store_true",
                             help="Upload statement. You can provide the path to your API key file with this flag.")
         parser.add_argument("--register-google", action="store_true",
@@ -1173,6 +1175,25 @@ class SystemBackendRunner(SystemBackend):
                     for js in log_ser.write_event(log.event, stream):
                         json_dump[serializer_version].append(js)
             print(json.dumps(json_dump, indent=4))
+        elif args.read_statement:
+            # Ensure the system is empty
+            assert len(self.system.get_hosts()) == 0, "System is not empty"
+            assert len(self.system.children) == 0, "System is not empty"
+
+            # Read serialized security statement
+            json_path = cast(pathlib.Path, args.read_statement)
+            assert json_path.exists(), f"File {json_path} does not exist"
+            assert json_path.is_file(), f"File {json_path} is not a file"
+            json_data = json.loads(json_path.read_text())
+
+            serializer_version = list(json_data.keys())[0]
+
+            # Deserialize the security statement
+            serializer = IoTSystemSerializer(self.system)
+            stream = SerializerStream(serializer)
+            deserialized_system = list(stream.read(json_data[serializer_version]))[0]
+            assert isinstance(deserialized_system, IoTSystem), "Deserialized system is not an IoTSystem"
+            self.system = deserialized_system
         else:
             with_files = bool(args.with_files)
             report = Report(registry)
