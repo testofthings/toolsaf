@@ -227,6 +227,16 @@ def test_get_args(argv, exp):
         assert scanner.addresses == exp[2]
 
 
+def test_setup_base_dir(tmp_path):
+    from toolsaf.adapters.shodan_scan import ShodanScanner
+    scanner = ShodanScanner("api_key")
+    scanner.base_dir = tmp_path / "newdir"
+    assert not scanner.base_dir.exists()
+    scanner._setup_base_dir()
+    assert scanner.base_dir.exists()
+    assert scanner.base_dir.is_dir()
+
+
 def test_perform_command():
     scanner = ShodanScanner("api_key")
     scanner.ip_lookup = MagicMock()
