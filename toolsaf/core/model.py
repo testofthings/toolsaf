@@ -380,6 +380,10 @@ class Addressable(NetworkNode):
                     ac = a.change_host(address.get_host())
                     if ac == address:
                         return c
+                elif a.is_multicast():
+                    ac = a.change_host(address.get_host())
+                    if ac == address:
+                        return c
         return None
 
     def new_connection(self, connection: Connection, flow: Flow, target: bool) -> None:
@@ -756,10 +760,10 @@ class IoTSystem(NetworkNode):
             target = self.find_endpoint(address.tail().segments[0].address)
             if not source or not target:
                 return None
-            assert isinstance(source, NetworkNode) and isinstance(target, NetworkNode)
-            for connection in source.get_connections():
-                if connection.target == target:
-                    return connection
+            if isinstance(source, Addressable):
+                for connection in source.get_parent_host().get_connections():
+                    if connection.target == target:
+                        return connection
         else:
             if (endpoint := self.find_endpoint(segment.address)):
                 return endpoint.find_entity(address.tail())

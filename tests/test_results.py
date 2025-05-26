@@ -199,15 +199,15 @@ def test_print_text():
     report._crop_text = MagicMock(return_value="Test")
     report._print_text("Test", "Pass", "│  ", writer, use_bold=True)
     assert writer.output[0] == \
-        "G[Pass]           R│  GBTestR\n"
+        "G[Pass]              R│  GBTestR\n"
 
     report._print_text("Test", "Pass", "│  ", writer)
     assert writer.output[1] == \
-        "G[Pass]           R│  GTestR\n"
+        "G[Pass]              R│  GTestR\n"
 
     report._print_text("Test", None, "│  ", writer)
     assert writer.output[2] == \
-        "                 │  Test\n"
+        "                    │  Test\n"
 
 
 def test_get_sub_structure():
@@ -292,21 +292,21 @@ def test_print_host_structure():
     report._print_host_structure(0, structure, writer, "│  ", False)
 
     assert ''.join(writer.output) == \
-        "[Expected/Pass]  ├──Mobile App\n"                + \
-        "                 │  │  Addresses: Mobile_App\n"  + \
-        "[Pass]           │  ├──check:mitm\n"             + \
-        "[Expected]       │  └──Test [Component]\n"       + \
-        "                 │     │  @1\n"                  + \
-        "                 │     │  @2\n"                  + \
-        "[Fail]           │     └──check:fuzz\n"          + \
-        "[Expected]       └──Device\n"                    + \
-        "                    │  @1\n"                     + \
-        "                    │  @2\n"                     + \
-        "                    │  Addresses: Device\n"      + \
-        "[Expected]          ├──HTTP:80\n"                + \
-        "                    │     @1\n"                  + \
-        "                    │     @2\n"                  + \
-        "                    └──TLS:443\n"
+        "[Expected/Pass]     ├──Mobile App\n"                + \
+        "                    │  │  Addresses: Mobile_App\n"  + \
+        "[Pass]              │  ├──check:mitm\n"             + \
+        "[Expected]          │  └──Test [Component]\n"       + \
+        "                    │     │  @1\n"                  + \
+        "                    │     │  @2\n"                  + \
+        "[Fail]              │     └──check:fuzz\n"          + \
+        "[Expected]          └──Device\n"                    + \
+        "                       │  @1\n"                     + \
+        "                       │  @2\n"                     + \
+        "                       │  Addresses: Device\n"      + \
+        "[Expected]             ├──HTTP:80\n"                + \
+        "                       │     @1\n"                  + \
+        "                       │     @2\n"                  + \
+        "                       └──TLS:443\n"
 
 
 @pytest.mark.parametrize(
@@ -389,10 +389,10 @@ def test_print_connection_structure():
         report._print_connection_structure(connection, writer)
 
     assert ''.join(writer.output) == \
-        "[Expected/Pass]  Mobile App                       Device HTTP:80\n" + \
-        "                 │  @1\n"                                           + \
-        "[Pass]           └──check:mitm\n"                                   + \
-        "[Expected/Pass]  Mobile App                       Device TLS:443\n" + \
-        "[Pass]           └──check:mitm\n"                                   + \
-        "                       @1\n"                                        + \
-        "                       @2\n"
+        "[Expected/Pass]     Mobile App                       Device HTTP:80\n" + \
+        "                    │  @1\n"                                           + \
+        "[Pass]              └──check:mitm\n"                                   + \
+        "[Expected/Pass]     Mobile App                       Device TLS:443\n" + \
+        "[Pass]              └──check:mitm\n"                                   + \
+        "                          @1\n"                                        + \
+        "                          @2\n"

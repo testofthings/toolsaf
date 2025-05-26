@@ -1,11 +1,11 @@
 from typing import Optional
 from ipaddress import IPv4Network
 from toolsaf.common.address import (
-    Addresses, DNSName, EndpointAddress, EntityTag, HWAddress, HWAddresses,
+    Addresses, DNSName, EndpointAddress, EntityTag, HWAddress, HWAddresses, PseudoAddress,
     IPAddress, IPAddresses, Network, Protocol, AddressSequence, AddressSegment, AnyAddress
 )
 from toolsaf.common.traffic import Protocol
-from toolsaf.main import HTTP, TCP
+from toolsaf.main import HTTP, TCP, BLEAdvertisement
 from tests.test_model import Setup
 
 
@@ -177,6 +177,17 @@ def test_get_system_address():
         _segment(EntityTag("B"), "target"), _segment(EndpointAddress(Addresses.ANY, Protocol.TCP, 111)),
     ))
 
+    ble_ad = device.broadcast(BLEAdvertisement(event_type=0x03))
+    assert ble_ad.entity.get_system_address() == AddressSequence.new(
+        EntityTag("D"), EndpointAddress(Addresses.ANY, Protocol.BLE, 3)
+    )
+
+    connection = (backend << ble_ad).connection
+    assert connection.get_system_address() == AddressSequence((
+        _segment(EntityTag("D"), "source"),
+        _segment(EntityTag("B"), "target"), _segment(EndpointAddress(PseudoAddress("BLE_Ad"), Protocol.BLE, 3)),
+    ))
+
 
 def test_parse_system_address():
     assert Addresses.parse_system_address(
@@ -253,6 +264,19 @@ def test_parse_system_address():
         _segment(EndpointAddress(EntityTag("Test"), Protocol.TCP, 80)),
         _segment(EntityTag("VM"), "software"),
         _segment(EndpointAddress(EntityTag("VirtualEnv"), Protocol.UDP, 123))
+    ))
+
+    assert Addresses.parse_system_address(
+        "Test/ble:3"
+    ) == AddressSequence((
+        _segment(EndpointAddress(EntityTag("Test"), Protocol.BLE, 3)),
+    ))
+
+    assert Addresses.parse_system_address(
+        'source=Test1&target=Test2/ble:3'
+    ) == AddressSequence((
+        _segment(EntityTag("Test1"), "source"),
+        _segment(EndpointAddress(EntityTag("Test2"), Protocol.BLE, 3), "target")
     ))
 
 

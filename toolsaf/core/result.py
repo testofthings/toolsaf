@@ -174,7 +174,7 @@ class Report:
         return text
 
     def _print_text(self, text: str, verdict: str, lead: str, writer: TextIO,
-                    indent: int=17, use_bold: bool=False) -> None:
+                    indent: int=20, use_bold: bool=False) -> None:
         """Prints a cropped version of given text. Adds color if verdict is given"""
         text = self._crop_text(text, lead, indent)
         if verdict:
@@ -333,22 +333,22 @@ class Report:
 
         # System level
         system_verdict = self.get_system_verdict(cache)
-        self.print_title(f"{self.bold}{'Verdict:':<17}System:{self.reset}", writer, "=", "-")
+        self.print_title(f"{self.bold}{'Verdict:':<20}System:{self.reset}", writer, "=", "-")
         self._print_text(self.system.long_name(), system_verdict.value, "", writer, use_bold=True)
         system_properties = self._get_properties(self.system)
         if system_properties:
             self._print_host_structure(0, system_properties, writer, lead="│  ")
 
         # Hosts and services
-        self.print_title(f"{self.bold}{'Verdict:':<17}Hosts and Services:{self.reset}", writer, "=", "-")
+        self.print_title(f"{self.bold}{'Verdict:':<20}Hosts and Services:{self.reset}", writer, "=", "-")
         host_structure = self.build_host_structure(hosts)
         self._print_host_structure(-1, host_structure, writer, "", False)
 
         # Connections
         self.print_title(
-            f"{self.bold}Connections\n{'Verdict:':<17}{'Source:':<33}Target:{self.reset}", writer, "=", "-"
+            f"{self.bold}Connections\n{'Verdict:':<20}{'Source:':<33}Target:{self.reset}", writer, "=", "-"
         )
 
         connection_structure = self.build_connection_structure(connections, cache)
         for structure in connection_structure["connections"]:
-            self._print_connection_structure(structure, writer)
+            self._print_connection_structure(structure, writer, lead="")

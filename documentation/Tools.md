@@ -191,7 +191,7 @@ $ nmap -oX <file>.xml <target>
 Data files are PCAP (not pcap-ng) files with suffix `.pcap`. Example metafile `00meta.json`:
 ```json
 {
-    "file_type": "pcap"
+    "file_type": "capture"
 }
 ```
 
@@ -320,7 +320,7 @@ The following shows how addresses can be customized per batch directory.
     "file_type": "capture",
     "addresses": {
         "192.168.4.8": "Ruuvi_app",
-        "30:c6:f7:52:db:5d|wd": "Ruuvi_Gateway",
+        "30:c6:f7:52:db:5d|hw": "Ruuvi_Gateway",
     }
 }
 ```
