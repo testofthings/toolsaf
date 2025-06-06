@@ -235,7 +235,7 @@ class Addresses:
         if address.startswith("*/"): # wildcard address
             address = address.replace("*/", "")
             if ":" not in address:
-                protocol, port = address, -1
+                protocol, port = address, "-1"
             else:
                 protocol, port = address.split(":")
             return EndpointAddress(
