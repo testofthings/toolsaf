@@ -13,6 +13,7 @@ from toolsaf.core.components import Software, SoftwareComponent, Cookies, Cookie
 from toolsaf.core.online_resources import OnlineResource
 from toolsaf.core.ignore_rules import IgnoreRules, IgnoreRule
 from toolsaf.common.serializer.serializer import Serializer, SerializerBase, SerializerStream
+from toolsaf.core.services import DHCPService, DNSService
 
 
 class IoTSystemSerializer(Serializer[IoTSystem]):
@@ -28,6 +29,8 @@ class IoTSystemSerializer(Serializer[IoTSystem]):
         self.config.map_class("network", NetworkSerializer())
         self.config.map_class("addressable", AddressableSerializer())
         self.config.map_class("host", HostSerializer())
+        self.config.map_class("dhcp-service", DHCPServiceSerializer())
+        self.config.map_class("dns-service", DNSServiceSerializer())
         self.config.map_class("service", ServiceSerializer())
         self.config.map_class("connection", ConnectionSerializer())
         self.config.map_class("component", NodeComponentSerializer())
@@ -273,6 +276,24 @@ class ServiceSerializer(Serializer[Service]):
             obj.protocol = Protocol(protocol)
         if (multicast_source := stream - "multicast_source"):
             obj.multicast_source = Addresses.parse_address(multicast_source)
+
+
+class DHCPServiceSerializer(Serializer[DHCPService]):
+    """Serializer for DHCP service"""
+    def __init__(self) -> None:
+        super().__init__(DHCPService)
+
+    def new(self, stream: SerializerStream) -> DHCPService:
+        return DHCPService(stream.resolve("at", of_type=Host), stream["name"])
+
+
+class DNSServiceSerializer(Serializer[DNSService]):
+    """Serializer for DNS service"""
+    def __init__(self) -> None:
+        super().__init__(DNSService)
+
+    def new(self, stream: SerializerStream) -> DNSService:
+        return DNSService(stream.resolve("at", of_type=Host), stream["name"])
 
 
 class ConnectionSerializer(Serializer[Connection]):
