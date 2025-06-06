@@ -101,8 +101,7 @@ def test_addressable_serializer():
     serialized = stream.data
 
     assert serialized == {
-        "tag": "Device_1",
-        "addresses": ["10:00:00:00:00:01|hw"],
+        "addresses": ["Device_1", "10:00:00:00:00:01|hw"],
         "any_host": True
     }
 
@@ -344,7 +343,6 @@ def test_simple_model():
         "address": "",
         "host_type": "",
         "status": "Expected",
-        "tag": "_",
         "upload_tag": "_",
         "properties": {},
     }
@@ -353,14 +351,13 @@ def test_simple_model():
     assert "time.test.com" in ignore_name_reqs and "time.test2.com" in ignore_name_reqs
     assert js[1] == {
         'address': 'Device',
-        'addresses': ['10:00:00:00:00:01|hw'],
+        'addresses': ['Device', '10:00:00:00:00:01|hw'],
         'host_type': 'Device',
         'at': 'id1',
         'id': 'id2',
         'long_name': 'Device 1',
         'name': 'Device 1',
         'status': 'Expected',
-        'tag': 'Device',
         'type': 'host',
         "description": "Internet Of Things device",
         "match_priority": 10,
@@ -379,7 +376,6 @@ def test_simple_model():
         "address": "Device/tcp:22",
         "host_type": "",
         "status": "Expected",
-        "tag": "Device/tcp:22",
         "addresses": ["*/tcp:22"],
         "properties": {},
         "authentication": True,
@@ -408,10 +404,7 @@ def test_simple_model():
         "at": "id1",
         "type": "network",
         "name": "local",
-        #"type": "IPv4",
         "address": "192.168.0.0/16",
-        #"hostmask": "0.0.255.255",
-        #"is_multicast": False,
     }
 
     assert js[7] == {
