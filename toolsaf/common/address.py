@@ -263,7 +263,14 @@ class Addresses:
     def parse_endpoint(cls, value: str) -> AnyAddress:
         """Parse address or endpoint"""
         a, _, p = value.partition("/")
-        addr = cls.parse_address(a)
+        addr: AnyAddress
+        match a:
+            case "*":
+                addr = Addresses.ANY
+            case "BLE_Ad" if p.startswith("ble:"):  # a bit ugly match
+                addr = Addresses.BLE_Ad
+            case _:
+                addr = cls.parse_address(a)
         if p == "":
             return addr
         prot, _, port = p.partition(":")
