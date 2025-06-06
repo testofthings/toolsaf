@@ -483,6 +483,8 @@ class HostBackend(NodeBackend, HostBuilder):
         sw = self.get_software()
         for permission in permissions:
             sw.permissions.add(permission.value)
+            key = PropertyKey.create(("permission", permission.value))
+            sw.properties[key] = PropertyVerdictValue(Verdict.INCON)
         return self
 
 
