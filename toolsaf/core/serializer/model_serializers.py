@@ -179,7 +179,7 @@ class AddressableSerializer(Serializer[Addressable]):
             obj.addresses.add(EntityTag.new(tag))
         ads = stream.get("addresses") or []
         for a in ads:
-            obj.addresses.add(Addresses.parse_address(a))
+            obj.addresses.add(Addresses.parse_endpoint(a))
         any_host = stream - "any_host"
         if any_host:
             obj.any_host = any_host
