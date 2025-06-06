@@ -1135,8 +1135,6 @@ class SystemBackendRunner(SystemBackend):
             json_data = json.loads(json_path.read_text())
             serializer_version = list(json_data.keys())[0]
 
-            # FIXME: Remove events / sources from data before serialization
-
             # Deserialize the security statement
             serializer = IoTSystemSerializer(self.system)
             stream = SerializerStream(serializer)
