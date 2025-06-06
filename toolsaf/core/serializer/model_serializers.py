@@ -9,7 +9,7 @@ from toolsaf.common.entity import Entity
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.property import PropertyKey, PropertyVerdictValue, PropertySetValue
 from toolsaf.core.model import Addressable, Connection, Host, IoTSystem, NetworkNode, NodeComponent, Service
-from toolsaf.core.components import Software, SoftwareComponent
+from toolsaf.core.components import Software, SoftwareComponent, Cookies, CookieData
 from toolsaf.core.online_resources import OnlineResource
 from toolsaf.common.serializer.serializer import Serializer, SerializerBase, SerializerStream
 
@@ -29,6 +29,7 @@ class IoTSystemSerializer(Serializer[IoTSystem]):
         self.config.map_class("service", ServiceSerializer())
         self.config.map_class("connection", ConnectionSerializer())
         self.config.map_class("component", NodeComponentSerializer())
+        self.config.map_class("cookies", CookiesSerializer())
         self.config.map_class("sw", SoftwareSerializer())
         self.system = system
 
@@ -286,6 +287,36 @@ class NodeComponentSerializer(Serializer[NodeComponent]):
 
     def read(self, obj: NodeComponent, stream: SerializerStream) -> None:
         obj.status = Status(stream["status"])
+
+
+class CookiesSerializer(Serializer[Cookies]):
+    """Serializer for Cookies"""
+    def __init__(self) -> None:
+        super().__init__(Cookies)
+
+    def write(self, obj: Cookies, stream: SerializerStream) -> None:
+        cookies = {}
+        for name, cookie in obj.cookies.items():
+            cookies[name] = {
+                "domain": cookie.domain,
+                "path": cookie.path,
+                "explanation": cookie.explanation
+            }
+        stream += "cookies", cookies
+
+    def new(self, stream: SerializerStream) -> Cookies:
+        parent = stream.resolve("at", of_type=NetworkNode)
+        cookies = Cookies(parent, stream["name"])
+        parent.add_component(cookies)
+        return cookies
+
+    def read(self, obj: Cookies, stream: SerializerStream) -> None:
+        for name, cookie in stream["cookies"].items():
+            obj.cookies[name] = CookieData(
+                domain=cookie["domain"],
+                path=cookie["path"],
+                explanation=cookie["explanation"]
+            )
 
 
 class SoftwareSerializer(SerializerBase):
