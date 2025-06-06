@@ -1129,8 +1129,6 @@ class SystemBackendRunner(SystemBackend):
 
             # Read serialized security statement
             json_path = cast(pathlib.Path, args.read_statement)
-            assert json_path.exists(), f"File {json_path} does not exist"
-            assert json_path.is_file(), f"File {json_path} is not a file"
 
             print(f"Reading security statement from {json_path}")
             json_data = json.loads(json_path.read_text())
