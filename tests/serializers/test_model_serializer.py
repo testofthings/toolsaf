@@ -331,7 +331,7 @@ def test_simple_model():
     ser = IoTSystemSerializer(su.system.system)
     stream = SerializerStream(ser)
     js = list(stream.write(ser.system))
-    assert [j["type"] for j in js] == ["system", "host", "service", "sw", "host", "sw", "network", "connection", "online-resource"]
+    assert [j["type"] for j in js] == ["system", "host", "service", "sw", "host", "sw", "network", "connection", "online-resource", "ignore-rules"]
 
     assert js[0] == {
         "id": "id1",
@@ -434,7 +434,7 @@ def test_simple_model():
     ser = IoTSystemSerializer(IoTSystem())
     stream = SerializerStream(ser)
     r = list(stream.read(js))
-    assert len(r) == 9
+    assert len(r) == 10
     assert isinstance(r[0], IoTSystem)
     assert len(r[0].online_resources) == 1
     assert len(r[0].networks) == 1

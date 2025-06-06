@@ -1121,6 +1121,7 @@ class SystemBackendRunner(SystemBackend):
         if args.dns:
             self.any().serve(DNS)
 
+        self.system.ignore_rules = self.ignore_backend.get_rules()
         if args.read_statement:
             # Ensure the system is empty
             assert len(self.system.get_hosts()) == 0, "System is not empty"
@@ -1144,7 +1145,7 @@ class SystemBackendRunner(SystemBackend):
 
         self.finish_()
 
-        registry = Registry(Inspector(self.system, self.ignore_backend.get_rules()))
+        registry = Registry(Inspector(self.system, self.system.ignore_rules))
 
         log_events = args.log_events
         if log_events:

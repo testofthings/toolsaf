@@ -1,6 +1,6 @@
 """Serializing IoT system and related class"""
 
-from typing import Dict, Any, cast
+from typing import Dict, List, Any, cast
 import ipaddress
 
 from toolsaf.common.address import Addresses, EntityTag, Network, Protocol, DNSName
@@ -11,6 +11,7 @@ from toolsaf.common.property import PropertyKey, PropertyVerdictValue, PropertyS
 from toolsaf.core.model import Addressable, Connection, Host, IoTSystem, NetworkNode, NodeComponent, Service
 from toolsaf.core.components import Software, SoftwareComponent, Cookies, CookieData
 from toolsaf.core.online_resources import OnlineResource
+from toolsaf.core.ignore_rules import IgnoreRules, IgnoreRule
 from toolsaf.common.serializer.serializer import Serializer, SerializerBase, SerializerStream
 
 
@@ -21,6 +22,7 @@ class IoTSystemSerializer(Serializer[IoTSystem]):
         self.unexpected = unexpected
         self.verdict_cache: Dict[Entity, Verdict] = {}
         self.config.map_class("system", self)
+        self.config.map_class("ignore-rules", IgnoreRulesSerializer())
         self.config.map_class("online-resource", OnlineResourceSerializer())
         self.config.map_class("network-node", NetworkNodeSerializer(self))
         self.config.map_class("network", NetworkSerializer())
@@ -44,8 +46,47 @@ class IoTSystemSerializer(Serializer[IoTSystem]):
         for online_resource in obj.online_resources:
             stream.push_object(online_resource, at_object=obj)
 
+        stream.push_object(obj.ignore_rules, at_object=obj)
+
     def read(self, obj: IoTSystem, stream: SerializerStream) -> None:
         obj.upload_tag = stream - "upload_tag"
+
+
+class IgnoreRulesSerializer(Serializer[IgnoreRules]):
+    """Serializer for ignore rules"""
+    def __init__(self) -> None:
+        super().__init__(IgnoreRules)
+
+    def write(self, obj: IgnoreRules, stream: SerializerStream) -> None:
+        rules: Dict[str, List[Dict[str, Any]]] = {}
+        for file_type in obj.rules:
+            rules[file_type] = []
+            for rule in obj.rules[file_type]:
+                rules[file_type].append(
+                    {
+                        "properties": [p.get_name() for p in rule.properties],
+                        "at": [entity.get_system_address().get_parseable_value() for entity in rule.at],
+                        "explanation": rule.explanation
+                    }
+                )
+        stream += "rules", rules
+
+    def new(self, stream: SerializerStream) -> IgnoreRules:
+        parent = stream.resolve("at", of_type=IoTSystem)
+        ignore_rules = IgnoreRules()
+        parent.ignore_rules = ignore_rules
+        return ignore_rules
+
+    def read(self, obj: IgnoreRules, stream: SerializerStream) -> None:
+        for file_type, rules in stream["rules"].items():
+            obj.rules[file_type] = []
+            for rule in rules:
+                obj.rules[file_type] += [IgnoreRule(
+                    file_type=file_type,
+                    properties={PropertyKey.parse(p) for p in rule["properties"]},
+                    at={Addresses.parse_system_address(at) for at in rule["at"]}, # type: ignore[misc]
+                    explanation=rule["explanation"]
+                )]
 
 
 class OnlineResourceSerializer(Serializer[OnlineResource]):
