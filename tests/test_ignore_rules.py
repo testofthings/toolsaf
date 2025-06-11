@@ -49,14 +49,15 @@ def test_at():
     system.ignore("test-type").at(device / SSH, device / TCP(1))
     rules = system.ignore_backend.get_rules()
     assert rules._current_rule.at == {
-        (device / SSH).entity, (device / TCP(1)).entity
+        (device / SSH).entity.get_system_address().get_parseable_value(),
+        (device / TCP(1)).entity.get_system_address().get_parseable_value()
     }
 
     software = device.software("Test SW").sw
     system.ignore("test-type").at(device.software("Test SW"))
     rules = system.ignore_backend.get_rules()
     assert rules._current_rule.at == {
-        software
+        software.get_system_address().get_parseable_value()
     }
 
 

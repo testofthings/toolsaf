@@ -68,7 +68,7 @@ class IgnoreRulesSerializer(Serializer[IgnoreRules]):
                 rules[file_type].append(
                     {
                         "properties": [p.get_name() for p in rule.properties],
-                        "at": [entity.get_system_address().get_parseable_value() for entity in rule.at],
+                        "at": list(rule.at),
                         "explanation": rule.explanation
                     }
                 )
@@ -87,7 +87,7 @@ class IgnoreRulesSerializer(Serializer[IgnoreRules]):
                 obj.rules[file_type] += [IgnoreRule(
                     file_type=file_type,
                     properties={PropertyKey.parse(p) for p in rule["properties"]},
-                    at={Addresses.parse_system_address(at) for at in rule["at"]}, # type: ignore[misc]
+                    at=set(rule["at"]),
                     explanation=rule["explanation"]
                 )]
 
