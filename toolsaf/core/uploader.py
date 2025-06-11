@@ -1,6 +1,5 @@
 """JSON serialized statement uploader"""
 import os
-import webbrowser
 from typing import Union, Dict, List, Any, Optional
 from pathlib import Path
 import requests
@@ -21,22 +20,13 @@ class Uploader:
         self.allow_insecure = allow_insecure
         self._api_key = ""
         self._api_url = ""
-        self._use_port = 5033
         self._key_file_path: Path
-
-    def _common_pre_procedures(self, key_file_argument: Optional[str]) -> None:
-        """Common pre procedures for registration and uploading"""
-        self._add_toolsaf_directory_to_home()
-        self._key_file_path = self._get_key_file_path_based_on_argument(key_file_argument)
-        self._read_api_url()
-
-    def do_register_pre_procedures(self, key_file_argument: Optional[str]) -> None:
-        """Get everything ready for registering a new user"""
-        self._common_pre_procedures(key_file_argument)
 
     def do_upload_pre_procedures(self, key_file_argument: Optional[str]) -> None:
         """Get everything ready for uploading"""
-        self._common_pre_procedures(key_file_argument)
+        self._add_toolsaf_directory_to_home()
+        self._key_file_path = self._get_key_file_path_based_on_argument(key_file_argument)
+        self._read_api_url()
         self._read_api_key()
 
     def _create_directory(self, path: Path) -> None:
@@ -133,44 +123,9 @@ class Uploader:
         response = self._post(url, batch)
         self._handle_response(response)
 
-    def _register_and_get_api_key(self, oauth_url: str) -> str:
-        """Register Toolsaf user and get an API key for a successful registration"""
-        webbrowser.open(oauth_url, autoraise=True)
-        api_key = input("Enter your API key here: ")
-        if not api_key:
-            raise ValueError("No API key given")
-        return api_key
-
-    def _write_api_key_to_file(self, api_key: str) -> None:
-        """Write received API key to file"""
-        print(f"Writing your API key to {self._key_file_path}")
-
-        if not self._key_file_path.parents[0].exists():
-            os.makedirs(self._key_file_path.parents[0], exist_ok=True)
-        with open(self._key_file_path, "w", encoding="utf-8") as api_key_file:
-            api_key_file.write(api_key)
-
-    def _register(self, registration_url: str) -> None:
-        """Common registration functionalities"""
-        self._api_key = self._register_and_get_api_key(registration_url)
-        self._write_api_key_to_file(self._api_key)
-
-    def google_register(self) -> None:
-        """Register to Test of Things cloud service using Google OAuth. Currently not available for the public"""
-        registration_url = f"{self._api_url}/api/google-register"
-        self._register(registration_url)
-
-    def github_register(self) -> None:
-        """Register to Test of Things cloud service using GitHub OAuth. Currently not available for the public"""
-        registration_url = f"{self._api_url}/api/github-register"
-        self._register(registration_url)
-
 
 if __name__ == "__main__":
     test_system = IoTSystem()
     test_system.upload_tag = "test"
     u = Uploader(test_system)
-    u.do_register_pre_procedures(None)
     u.allow_insecure = True
-    #u.google_register()
-    u.github_register()

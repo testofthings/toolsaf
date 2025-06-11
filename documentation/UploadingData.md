@@ -3,48 +3,48 @@ This document explains how to upload security statement data to our API.
 
 ## 🚧 Disclaimers 🚧
 * This document is under construction.
-* **Our upcoming cloud service is not ready, as such these features can not be used.**
+* **Our upcoming cloud service is not ready; as such, these features cannot be used.**
 
 ## Command Line Options
 
 ### Getting an API Key
-To upload data, you need an API key. You can register using either Google or GitHub OAuth with the following commands:
+Uploading data requires having an API key. However, at this moment you **cannot** get one.
+
+However, if you are a Test of Things insider, you can store your API key in the default directory `<your home directory>/.toolsaf/.api_key`. This can be done from the command line with:
 ```shell
-python product/statement.py --register-google
-# OR
-python product/statement.py --register-github
+echo "<api-key>" > ~/.toolsaf/.api_key
 ```
-After completing the OAuth process, Toolsaf will prompt you for your API key and save it to `<your home directory>/.toolsaf/.api_key`. To use a custom file path, refer to the [Custom API Key Path](#custom-api-key-path) section.
+Alternatively, you can use a custom file path for the API key file. Refer to the [Custom API Key Path](#custom-api-key-path) section.
+
+### Setting the API URL
+**AT THIS TIME THERE IS NO URL FOR THE API**
+
+Toolsaf looks for the API URL in `<your home directory>/.toolsaf/api_url`. You can store the API URL there with:
+```shell
+echo "https://<api-url>:<api-port>" > ~/.toolsaf/api_url
+```
+If the URL is not set, Toolsaf will ask you to provide it before you are able to upload data.
+```
+$ python product/statement.py -u -r ../sample-data
+Could not read API URL, file $HOME/.toolsaf/api_url not found
+Enter URL for the API: https://
+```
 
 ### Uploading Data
-Once you have a valid API key, you can upload statements and tool outputs to the API using `-u` or `--upload`.
+Security statements and tool output can be uploaded to the API using the `-u` or `--upload` arguments:
 ```shell
 python product/statement.py -u -r ../sample-data
 ```
-By default, the API key is expected to be located in `<your home directory>/.toolsaf/.api_key`. To specify a custom file path, see the [Custom API Key Path](#custom-api-key-path) section.
+Remember to replace `product` with the correct directory name and `../sample-data` with the correct location of the tool data.
 
 ### Custom API Key Path
-To use a custom path for your API key, use the `--key-path` option:
+To use a custom path for your API key, use the `--key-path` argument:
 ```shell
-python product/statement.py --register-github --key-path ../api_key
-
-python product/statement.py --upload --key-path /home/my_stuff/api_key.txt
+python product/statement.py -u --key-path ../my-api-key
 ```
 
 ### Allow Insecure Connections
-For debugging purposes, you can allow insecure API connections using the `--insecure` flag.
+For **debugging purposes**, you can allow insecure API connections using the `--insecure` flag.
 ```shell
-python product/statement.py -u ../api_key.txt --insecure -r ../sample-data
+python product/statement.py -u --insecure -r ../sample-data
 ```
-
-## Setting the API URL
-**At this time there is no URL for our API.**
-
-To upload data, the URL for our API must be set. When first using `-u`, `--register-google` or `--register-github` Toolsaf prompts you to enter the URL through the CLI. Alternatively you can add the URL into the file `$HOME/.toolsaf/api_url`.
-
-Here is what Toolsaf will show / ask:
-```
-Could not read API URL, file /home/<user>/.toolsaf/api_url not found
-Enter URL for the API: https://
-```
-Toolsaf will then write the URL to the displayed file
