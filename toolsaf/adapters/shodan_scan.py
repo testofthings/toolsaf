@@ -157,16 +157,23 @@ class ShodanScanner:
     def get_args(self) -> None:
         """Parse command line arguments"""
         arg_parser = argparse.ArgumentParser()
-        arg_parser.add_argument("--base-dir", default="shodan", help="Base dir to create files into")
+        arg_parser.add_argument("--base-dir", type=Path,
+                                default=Path("shodan"), help="Base dir to create files into")
         arg_parser.add_argument("command", choices=["iplookup", "dnslookup", "credits"],
                                 help="Command to use. iplookup = Host IP lookup, " +
                                 "dnslookup = IP lookup based on DNS info, credits = Show remaining credits")
         arg_parser.add_argument("address", nargs="*", help="IP Address to scan using Shodan")
         args = arg_parser.parse_args()
 
-        self.base_dir = Path(args.base_dir)
+        self.base_dir = args.base_dir
         self.command = args.command
         self.addresses = args.address
+
+    def _setup_base_dir(self) -> None:
+        """Create base directory for output files if it does not already exist"""
+        if not self.base_dir.exists():
+            self.base_dir.mkdir(parents=True, exist_ok=True)
+        print("Results will be saved to directory:", self.base_dir)
 
     def perform_command(self) -> None:
         """Perform action based on selected command"""
@@ -182,11 +189,13 @@ class ShodanScanner:
 
     def ip_lookup(self) -> None:
         """Perform host lookup on given IP addresses"""
+        self._setup_base_dir()
         for address in self.addresses:
             self._get_info_on_ip(address, file_prefix="ip")
 
     def dns_lookup(self) -> None:
         """Perform DNS lookup on given domain names"""
+        self._setup_base_dir()
         for domain in self.addresses:
             domain_info = cast(Dict[str, Any], self.api.dns.domain_info(domain))
             domain_file = self.base_dir / f"domain-{domain}.json"

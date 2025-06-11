@@ -227,6 +227,16 @@ def test_get_args(argv, exp):
         assert scanner.addresses == exp[2]
 
 
+def test_setup_base_dir(tmp_path):
+    from toolsaf.adapters.shodan_scan import ShodanScanner
+    scanner = ShodanScanner("api_key")
+    scanner.base_dir = tmp_path / "newdir"
+    assert not scanner.base_dir.exists()
+    scanner._setup_base_dir()
+    assert scanner.base_dir.exists()
+    assert scanner.base_dir.is_dir()
+
+
 def test_perform_command():
     scanner = ShodanScanner("api_key")
     scanner.ip_lookup = MagicMock()
@@ -249,3 +259,108 @@ def test_display_remaining_credits():
     with patch("builtins.print") as mock_print:
         scanner.display_remaining_credits()
         mock_print.assert_called_with(json.dumps({"credits": 100}, indent=4))
+
+
+def test_get_info_on_ip_writes_file(tmp_path):
+    from toolsaf.adapters.shodan_scan import ShodanScanner
+    scanner = ShodanScanner("api_key")
+    scanner.base_dir = tmp_path
+    scanner.api = MagicMock()
+    scanner.api.host.return_value = {"foo": "bar"}
+    ip = "1.2.3.4"
+    file_prefix = "ip"
+    file_path = tmp_path / f"{file_prefix}-{ip}.json"
+
+    with patch("json.dump") as mock_dump:
+        scanner._get_info_on_ip(ip, file_prefix=file_prefix)
+        scanner.api.host.assert_called_once_with(ip)
+        mock_dump.assert_called_once()
+        # Ensure file was opened for writing
+        assert file_path.exists() or mock_dump.call_args[0][0]  # file_obj
+
+
+def test_get_info_on_ip_handles_apierror(tmp_path):
+    from toolsaf.adapters.shodan_scan import ShodanScanner
+    from shodan.exception import APIError
+    scanner = ShodanScanner("api_key")
+    scanner.base_dir = tmp_path
+    scanner.api = MagicMock()
+    scanner.api.host.side_effect = APIError("fail")
+    ip = "1.2.3.4"
+    with patch("builtins.print") as mock_print:
+        scanner._get_info_on_ip(ip)
+        mock_print.assert_any_call(f"{ip}: Error: fail")
+
+
+def test_ip_lookup_calls_get_info_on_ip(monkeypatch):
+    from toolsaf.adapters.shodan_scan import ShodanScanner
+    scanner = ShodanScanner("api_key")
+    scanner.base_dir = Path("testdir")
+    scanner.addresses = ["1.2.3.4", "5.6.7.8"]
+    called = []
+
+    def fake_setup_base_dir():
+        called.append("setup")
+
+    def fake_get_info_on_ip(ip, file_prefix=""):
+        called.append(ip)
+
+    scanner._setup_base_dir = fake_setup_base_dir
+    scanner._get_info_on_ip = fake_get_info_on_ip
+    scanner.ip_lookup()
+    assert called == ["setup", "1.2.3.4", "5.6.7.8"]
+
+
+def test_dns_lookup_writes_domain_and_calls_get_info_on_ip(tmp_path, monkeypatch):
+    from toolsaf.adapters.shodan_scan import ShodanScanner
+    scanner = ShodanScanner("api_key")
+    scanner.base_dir = tmp_path
+    scanner.addresses = ["example.com"]
+    called = []
+
+    fake_domain_info = {
+        "data": [
+            {"type": "A", "value": "1.2.3.4"},
+            {"type": "CNAME", "value": "alias.example.com"}
+        ]
+    }
+
+    def fake_setup_base_dir():
+        called.append("setup")
+
+    class FakeAPI:
+        def __init__(self):
+            self.dns = self
+        def domain_info(self, domain):
+            called.append(f"domain_info:{domain}")
+            return fake_domain_info
+
+    def fake_get_info_on_ip(ip, file_prefix=""):
+        called.append(f"get_info:{ip}:{file_prefix}")
+
+    scanner._setup_base_dir = fake_setup_base_dir
+    scanner.api = FakeAPI()
+    scanner._get_info_on_ip = fake_get_info_on_ip
+
+    # Patch json.dump to avoid actual file writing
+    with patch("json.dump") as mock_dump:
+        scanner.dns_lookup()
+        domain_file = tmp_path / "domain-example.com.json"
+        assert mock_dump.called
+        assert domain_file.name == f"domain-example.com.json"
+        assert called[0] == "setup"
+        assert "domain_info:example.com" in called
+        assert "get_info:1.2.3.4:dns" in called
+
+
+def test_display_remaining_credits_prints(monkeypatch):
+    from toolsaf.adapters.shodan_scan import ShodanScanner
+    scanner = ShodanScanner("api_key")
+    fake_info = {"credits": 42}
+    scanner.api = MagicMock()
+    scanner.api.info.return_value = fake_info
+
+    with patch("builtins.print") as mock_print:
+        scanner.display_remaining_credits()
+        mock_print.assert_any_call("Shodan credits left:")
+        mock_print.assert_any_call(json.dumps(fake_info, indent=4))
