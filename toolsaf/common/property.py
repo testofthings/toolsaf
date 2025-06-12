@@ -190,7 +190,7 @@ class PropertyKey:
         if isinstance(old, PropertySetValue):
             v = old.sub_keys.copy()
             v.update(value.sub_keys)
-            properties[self] = v
+            properties[self] = PropertySetValue(v, explanation=value.explanation)
         elif isinstance(old, PropertyVerdictValue) and old.verdict == Verdict.IGNORE:
             # ignore is sticky
             return
