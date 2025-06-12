@@ -166,6 +166,7 @@ class MatchEngine:
         self.source = source if isinstance(source, EvidenceNetworkSource) else None
         for h in system.system.get_hosts():
             self._add_host(h)
+        no_match_any_address: Dict[AddressAtNetwork, Set[MatchEndpoint]] = {}
         if self.source:
             # load source-specific stuff
             for ad, ent in self.source.address_map.items():
@@ -179,9 +180,19 @@ class MatchEngine:
                             break
                     else:
                         # no other addresses, but source-specific one
-                        ex_ent.append(self._add_host(ent).add_address(ad))
+                        m_ep = self._add_or_update_host(ent).add_address(ad)
+                        ex_ent.append(m_ep)
+                        any_addr = AddressAtNetwork(Addresses.ANY, nw)
+                        no_match_any_address.setdefault(any_addr, set()).add(m_ep)
+
+            # entities with got addresses no longer match any address
+            for wild_ad, ends in no_match_any_address.items():
+                old_ends = self.endpoints.get(wild_ad, [])
+                new_ends = [e for e in old_ends if e not in ends]
+                self.endpoints[wild_ad] = new_ends
+
+            # check if exteranal activity changes for some entities
             for me in itertools.chain(*self.endpoints.values()):
-                # check if exteranal activity changes for some entities
                 fs = self.source.activity_map.get(me.entity)
                 if fs is not None:
                     me.external_activity = fs
@@ -198,7 +209,16 @@ class MatchEngine:
         # add the host again
         self._add_host(host)
 
+    def _add_or_update_host(self, entity: Addressable) -> 'MatchEndpoint':
+        """Add or update host in the match engine"""
+        for ends in self.endpoints.values():
+            for end in ends:
+                if end.entity == entity:
+                    return end  # already exists
+        return self._add_host(entity)
+
     def _add_host(self, entity: Addressable) -> 'MatchEndpoint':
+        """Add new host to match engine"""
         ads: Iterable[AnyAddress]
         if entity.any_host:
             ads = []  # always match by wildcards
