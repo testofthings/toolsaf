@@ -395,6 +395,8 @@ class SoftwareSerializer(SerializerBase):
                 "version": component.version
             })
         stream += "components", components
+        if obj.permissions:
+            stream += "permissions", list(obj.permissions)
 
     def new(self, stream: SerializerStream) -> Software:
         parent = stream.resolve("at", of_type=NetworkNode)
@@ -408,3 +410,7 @@ class SoftwareSerializer(SerializerBase):
             name = component["component-name"]
             version = component["version"]
             obj.components[key] = SoftwareComponent(name, version)
+        if (permissions := stream - "permissions"):
+            for permission in permissions:
+                obj.permissions.add(permission)
+                obj.properties[PropertyKey.create(("permission", permission))] = PropertyVerdictValue(Verdict.INCON)
