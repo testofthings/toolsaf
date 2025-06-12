@@ -14,6 +14,7 @@ from toolsaf.common.property import PropertyKey
 from toolsaf.common.traffic import Flow, EvidenceSource
 from toolsaf.common.verdict import Verdict
 from toolsaf.core.online_resources import OnlineResource
+from toolsaf.core.ignore_rules import IgnoreRules
 
 
 class Connection(Entity):
@@ -585,6 +586,9 @@ class IoTSystem(NetworkNode):
 
         # Tag used to identify uploaded security statements
         self.upload_tag: Optional[str] = None
+
+        # Include IgnoreRules in the model
+        self.ignore_rules = IgnoreRules()
 
     # NOTE: get_children() does not return connections
 

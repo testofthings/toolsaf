@@ -1092,7 +1092,10 @@ class SystemBackendRunner(SystemBackend):
                             help="Add default DNS server handling")
         parser.add_argument("-l", "--log", dest="log_level", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                             help="Set the logging level", default=None)
-        parser.add_argument("--statement-json", action="store_true", help="Dump security statement JSON to stdout")
+        parser.add_argument("-W", "--write-statement", type=pathlib.Path,
+                            help="Dump JSON serialized security statement to given file")
+        parser.add_argument("-R", "--read-statement", type=pathlib.Path,
+                            help="Read JSON serialized security statement from file. Use only with Toolsaf main.py")
         parser.add_argument("-u", "--upload", action="store_true",
                             help="Upload statement.")
         parser.add_argument("--key-path", type=pathlib.Path,
@@ -1116,9 +1119,29 @@ class SystemBackendRunner(SystemBackend):
         if args.dns:
             self.any().serve(DNS)
 
+        self.system.ignore_rules = self.ignore_backend.get_rules()
+        if args.read_statement:
+            # Ensure the system is empty
+            assert len(self.system.get_hosts()) == 0, "System is not empty"
+            assert len(self.system.children) == 0, "System is not empty"
+
+            # Read serialized security statement
+            json_path = cast(pathlib.Path, args.read_statement)
+
+            print(f"Reading security statement from {json_path}")
+            json_data = json.loads(json_path.read_text())
+            serializer_version = list(json_data.keys())[0]
+
+            # Deserialize the security statement
+            serializer = IoTSystemSerializer(self.system)
+            stream = SerializerStream(serializer)
+            deserialized_system = list(stream.read(json_data[serializer_version]))[0]
+            assert isinstance(deserialized_system, IoTSystem), "Deserialized system is not an IoTSystem"
+            self.system = deserialized_system
+
         self.finish_()
 
-        registry = Registry(Inspector(self.system, self.ignore_backend.get_rules()))
+        registry = Registry(Inspector(self.system, self.system.ignore_rules))
 
         log_events = args.log_events
         if log_events:
@@ -1154,20 +1177,25 @@ class SystemBackendRunner(SystemBackend):
 
         load_data = LoadedData(self.system, registry.logging, batch_import.batch_data)
 
-        if args.statement_json:
+        if args.write_statement:
+            serializer_version = "1.0"
+            json_dump: Dict[str, List[Any]] = {serializer_version: []}
             # dump security statement JSON
             ser = IoTSystemSerializer(self.system)
             stream = SerializerStream(ser)
             for js in stream.write(self.system):
-                print(json.dumps(js, indent=4))
+                json_dump[serializer_version].append(js)
             # dump events, if any
             if registry.logging.logs:
                 log_ser = EventSerializer(self.system)
                 stream = SerializerStream(log_ser, context=stream.context)
                 for log in registry.logging.logs:
                     for js in log_ser.write_event(log.event, stream):
-                        print(json.dumps(js, indent=4))
-        else:
+                        json_dump[serializer_version].append(js)
+            json.dump(json_dump, args.write_statement.open("w"), indent=4)
+            print(f"Security statement written to {args.write_statement}")
+
+        if not args.write_statement:
             with_files = bool(args.with_files)
             report = Report(registry)
             report.source_count = 3 if with_files else 0
