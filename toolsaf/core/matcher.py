@@ -517,6 +517,12 @@ class MatchEngine:
                 if isinstance(e.parent, Addressable):
                     set_external(e.parent)
 
+        source_status = source.endpoint.entity.status
+        target_status = target.endpoint.entity.status
+        if source_status == Status.EXPECTED and target_status == Status.EXPECTED:
+            # cannot tolerate unexpected connections between expected entities
+            return c
+
         # new connection status by external activity policies and reply status
         source_act = source.endpoint.external_activity
         target_act = target.endpoint.external_activity
