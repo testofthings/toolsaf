@@ -232,6 +232,17 @@ class Addresses:
     @classmethod
     def parse_address(cls, address: str) -> AnyAddress:
         """Parse any address type from string, type given as 'address|type'"""
+        if address.startswith("*/"): # wildcard address
+            address = address.replace("*/", "")
+            if ":" not in address:
+                protocol, port = address, "-1"
+            else:
+                protocol, port = address.split(":")
+            return EndpointAddress(
+                host=PseudoAddress(name="*", wildcard=True),
+                protocol=Protocol.get_protocol(protocol),
+                port=int(port)
+            )
         v, _, t = address.rpartition("|")
         if v == "" and t:
             # no type given
@@ -252,7 +263,14 @@ class Addresses:
     def parse_endpoint(cls, value: str) -> AnyAddress:
         """Parse address or endpoint"""
         a, _, p = value.partition("/")
-        addr = cls.parse_address(a)
+        addr: AnyAddress
+        match a:
+            case "*":
+                addr = Addresses.ANY
+            case "BLE_Ad" if p.startswith("ble:"):  # a bit ugly match
+                addr = Addresses.BLE_Ad
+            case _:
+                addr = cls.parse_address(a)
         if p == "":
             return addr
         prot, _, port = p.partition(":")
