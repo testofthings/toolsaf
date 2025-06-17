@@ -358,8 +358,13 @@ class PropertyEventSerializer(Serializer[PropertyEvent]):
         KeyValueSerializer.write_key_value(obj, stream)
 
     def new(self, stream: SerializerStream) -> PropertyEvent:
-        address = Addresses.parse_system_address(stream["address"])
-        entity = self.system.find_endpoint(address)
+        entity: Optional[Union[Entity, Addressable, IoTSystem]] = None
+        if stream["address"] == "":
+            # Special handling for system entity
+            entity = self.system
+        else:
+            address = Addresses.parse_system_address(stream["address"])
+            entity = self.system.find_endpoint(address)
         assert isinstance(entity, Entity), "Did not find an entity"
         return PropertyEvent(
             EventSerializer.read_evidence(stream),
