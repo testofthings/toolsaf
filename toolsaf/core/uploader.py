@@ -89,7 +89,9 @@ class Uploader:
         except ConnectionError as e:
             raise ConnectionError("Data upload failed!") from e
 
-    def _handle_response(self, response: requests.Response) -> None:
+    def _handle_response(self, response: requests.Response, stop_on_error: bool=False) -> None:
+        if stop_on_error and not response.ok:
+            raise ConnectionError(f"Data upload failed! Server response was: {response.json().get('error')}")
         print(response.json())
 
     def upload_statement(self) -> None:
@@ -102,7 +104,7 @@ class Uploader:
         """Upload entities to the API"""
         url = f"{self._api_url}/api/statement/{self.statement_url}/entities"
         response = self._post(url, entities)
-        self._handle_response(response)
+        self._handle_response(response, stop_on_error=True)
 
     def upload_logs(self, logs: List[Dict[str, Any]]) -> None:
         """Upload EvidenceSources and related Events in batches to the API"""
@@ -121,7 +123,7 @@ class Uploader:
         """Post a single batch containing one EvidenceSource and its Events"""
         print(f"Uploading {batch[0]['base_ref']}")
         response = self._post(url, batch)
-        self._handle_response(response)
+        self._handle_response(response, stop_on_error=True)
 
 
 if __name__ == "__main__":
