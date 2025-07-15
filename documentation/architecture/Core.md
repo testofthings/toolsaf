@@ -38,7 +38,7 @@ Implementations are in the following files:
   * File [`event_logger.py`](../../toolsaf/core/event_logger.py) creates logs of events to assign them to property changes.
   * File [`inspector.py`](../../toolsaf/core/inspector.py) processes events and updates the model accordingly, including the creation of unexpected nodes and services, and verdict assignment. Takes _IgnoreRules_ into account.
 
-## Files [`entity_database.py`](../../toolsaf/core/entity_database.py) and [`sql_database.py`](../../toolsaf/core/sql_database.py)
+## Files [`entity_database.py`](../../toolsaf/core/entity_database.py)
 
 These files implement experimental DB storage of _events_.
 This code is subject to refactoring.

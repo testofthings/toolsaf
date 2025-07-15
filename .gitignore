@@ -11,9 +11,6 @@ wheels/
 *.egg
 *.log
 
-app-dbs/
-*.db
-
 .env
 .venv
 .vscode

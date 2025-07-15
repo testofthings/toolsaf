@@ -35,7 +35,6 @@ from toolsaf.core.inspector import Inspector
 from toolsaf.core.result import Report
 from toolsaf.core.components import SoftwareComponent
 from toolsaf.core.services import DHCPService, DNSService
-from toolsaf.core.sql_database import SQLDatabase
 from toolsaf.core.online_resources import OnlineResource
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.android import MobilePermissions
@@ -1078,7 +1077,6 @@ class SystemBackendRunner(SystemBackend):
                             help="Custom path to API key file")
         parser.add_argument("--insecure", action="store_true",
                             help="Allow insecure server connections")
-        parser.add_argument("--db", type=str, help="Connect to SQL database")
         parser.add_argument(
             "--log-events", action="store_true", help="Log events")
 
@@ -1124,12 +1122,6 @@ class SystemBackendRunner(SystemBackend):
             # print event log
             registry.logging.event_logger = registry.logger
 
-        db_conn = args.db
-        if db_conn:
-            # connect to SQL database
-            registry.logger.info("Connecting to database %s", db_conn)
-            registry.database = SQLDatabase(db_conn)
-        # finish loading after DB connection
         registry.finish_model_load()
 
         label_filter = LabelFilter(args.def_loads or "")

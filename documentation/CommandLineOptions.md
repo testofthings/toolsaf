@@ -108,20 +108,6 @@ By using `--log-events`, you can display all events in the tool data.
 python product/statement.py -r ../sample-data --log-events
 ```
 
-## SQL Database
-The command-line option `--db` connects to an SQL database.
-At the moment, the only tested database is [SQLite](https://www.sqlite.org/).
-For example, to read batch files and put the resulting events into a DB:
-```shell
-python statement --db sqlite:///test.db -r <batch-directory>
-```
-
-Existing events are automatically fetched from the database on startup.
-For example, you can run a statement with a DB's content:
-```shell
-python statement --db sqlite:///test.db
-```
-
 ## FIXME:
 ```shell
 --dhcp                Add default DHCP server handling

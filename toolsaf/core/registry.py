@@ -15,17 +15,14 @@ from toolsaf.common.traffic import ServiceScan, HostScan, Event, EvidenceSource,
 
 class Registry(EventInterface):
     """Record, store, and recall events as required"""
-    def __init__(self, inspector: Inspector, db: Optional[EntityDatabase] = None) -> None:
+    def __init__(self, inspector: Inspector) -> None:
         super().__init__()
         self.logger = logging.getLogger("registry")
         self.logging = EventLogger(inspector)
         self.system = inspector.system
         self.all_evidence: Set[EvidenceSource] = set()
         self.evidence_filter: Dict[str, bool] = {}  # key is label, not present == False
-        if db is None:
-            self.database: EntityDatabase = InMemoryDatabase()
-        else:
-            self.database = db
+        self.database: EntityDatabase = InMemoryDatabase()
 
     def finish_model_load(self) -> Self:
         """Finish loading model, prepare for operation"""
@@ -64,11 +61,6 @@ class Registry(EventInterface):
             self.logger.info("filter: %s", " ".join([f"{e.name}={v}" for e, v in evidence_filter.items()]))
         # must call logging reset _after_ database reset, as system events are send with logging reset
         self.logging.reset()
-        return self
-
-    def clear_database(self) -> Self:
-        """Clear the database, from the disk"""
-        self.database.clear_database()
         return self
 
     def apply_all_events(self) -> Self:
