@@ -153,7 +153,8 @@ class SystemBackend(SystemBuilder):
     def tag(self, tag: str) -> None:
         """Set a unique tag, consisting of numbers and characters, for statement uploads.
             Has a minimum length of 3"""
-        assert all(c.isalnum() or c == "-" for c in tag), f"Upload tag {tag} can only include the '-' symbol and alphanumeric characters"
+        assert all(c.isalnum() or c == "-" for c in tag), \
+            f"Upload tag {tag} can only include the '-' symbol and alphanumeric characters"
         assert len(tag) >= 3, f"Upload tag {tag} is shorter than the minimum length of 3 characters"
         self.system.upload_tag = tag
 
