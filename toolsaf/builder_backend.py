@@ -23,7 +23,7 @@ from toolsaf.core.serializer.event_serializers import EventSerializer
 from toolsaf.core.serializer.model_serializers import IoTSystemSerializer
 from toolsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP, IP, TLS, MQTT, FTP,
                         BLEAdvertisement, ConnectionBuilder,
-                        CookieBuilder, HostBuilder, NetworkBuilder, NodeBuilder, NodeVisualBuilder,
+                        CookieBuilder, HostBuilder, NetworkBuilder, NodeBuilder,
                         ConfigurationException, OSBuilder, Proprietary, ProtocolConfigurer, ProtocolType,
                         SensitiveDataBuilder, ServiceBuilder, ServiceGroupBuilder, ServiceOrGroup,
                         SoftwareBuilder, SystemBuilder, IgnoreRulesBuilder)
@@ -280,12 +280,6 @@ class NodeBackend(NodeBuilder, NodeManipulator):
             sb = SoftwareBackend(self, name)
             self.sw[name] = sb
         return sb
-
-    def visual(self) -> 'NodeVisualBackend':
-        p = self
-        while p.parent:
-            p = p.parent
-        return NodeVisualBackend(p)
 
     def __rshift__(self, target: ServiceOrGroup) -> 'ConnectionBackend':
         if isinstance(target, ServiceGroupBackend):
@@ -642,24 +636,6 @@ class CookieBackend(CookieBuilder):
     def set(self, cookies: Dict[str, Tuple[str, str, str]]) -> Self:
         for name, p in cookies.items():
             self.component.cookies[name] = CookieData(p[0], p[1], p[2])
-        return self
-
-
-class NodeVisualBackend(NodeVisualBuilder):
-    """Node visual builder backend"""
-
-    def __init__(self, entity: NodeBackend) -> None:
-        self.entity = entity
-        self.image_url: Optional[str] = None
-        self.image_scale: int = 100
-
-    def hide(self) -> Self:
-        self.entity.entity.visual = False
-        return self
-
-    def image(self, url: str, scale: int=100) -> Self:
-        self.image_url = url
-        self.image_scale = scale
         return self
 
 
