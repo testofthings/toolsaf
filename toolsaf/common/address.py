@@ -240,7 +240,7 @@ class Addresses:
                 protocol, port = address.split(":")
             return EndpointAddress(
                 host=PseudoAddress(name="*", wildcard=True),
-                protocol=Protocol.get_protocol(protocol),
+                protocol=Protocol.get_protocol(protocol) or Protocol.ANY,
                 port=int(port)
             )
         v, _, t = address.rpartition("|")
@@ -274,9 +274,10 @@ class Addresses:
         if p == "":
             return addr
         prot, _, port = p.partition(":")
+        protocol = Protocol.get_protocol(prot) or Protocol.ANY
         if port == "":
-            return EndpointAddress(addr, Protocol.get_protocol(prot), -1)
-        return EndpointAddress(addr, Protocol.get_protocol(prot), int(port))
+            return EndpointAddress(addr, protocol, -1)
+        return EndpointAddress(addr, protocol, int(port))
 
     @classmethod
     def parse_system_address(cls, value: str) -> 'AddressSequence':
@@ -459,8 +460,9 @@ class DNSName(AnyAddress):
 
 class EndpointAddress(AnyAddress):
     """Endpoint address made up from host, protocol, and port"""
-    def __init__(self, host: AnyAddress, protocol: Union[Protocol, None], port: int=-1) -> None:
+    def __init__(self, host: AnyAddress, protocol: Protocol, port: int=-1) -> None:
         assert isinstance(host, AnyAddress)
+        assert isinstance(protocol, Protocol)
         self.host = host
         self.protocol = protocol
         self.port = port
