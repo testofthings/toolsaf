@@ -34,7 +34,7 @@ Enables the creation of _IgnoreRules_ for masking false positive security tool f
 The event interface is the base class for classes that receive and process _events_.
 Implementations are in the following files:
 
-  * File [`registry.py`](../../toolsaf/core/registry.py) implements entity identities and experimental DB storage of events.
+  * File [`registry.py`](../../toolsaf/core/registry.py) implements entity identities and local storage of events.
   * File [`event_logger.py`](../../toolsaf/core/event_logger.py) creates logs of events to assign them to property changes.
   * File [`inspector.py`](../../toolsaf/core/inspector.py) processes events and updates the model accordingly, including the creation of unexpected nodes and services, and verdict assignment. Takes _IgnoreRules_ into account.
 
