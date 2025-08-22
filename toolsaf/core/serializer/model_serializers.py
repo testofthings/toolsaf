@@ -236,7 +236,7 @@ class HostSerializer(Serializer[Host]):
 
     def write(self, obj: Host, stream: SerializerStream) -> None:
         # Following parameters are not serialized:
-        # concept_name, visual
+        # concept_name
         if obj.ignore_name_requests:
             stream += "ignore_name_requests", [
                 name.name
