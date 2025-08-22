@@ -25,10 +25,9 @@ Main components in the architecture diagram are the following:
    `EventInterface` class. These consume _Events_ (see [`common`](Common.md) sub-module), process them, and
    finally update the system model.
 
-   * **Registry**: Provides long-term event storage in a database.
+   * **Registry**: Provides short-term event storage in a database.
      Allows users to reload stored events.
      Main class: `Registry`.
-     This component will be replaced or removed by something supporting uploading to cloud storage (opt-in, of course).
 
    * **Event logger**: Stores events and the properties they change
      so that the reason for property changes can be retrieved later.
@@ -45,6 +44,9 @@ Main components in the architecture diagram are the following:
 
  * **Reporter**: Reads the IoT system and its properties to output
    textual or graphical results with verdicts.
+
+ * **Uploader**: Uploads the IoT system and events into cloud storage,
+   if instructed from command line.
 
 ## Module documentation
 
