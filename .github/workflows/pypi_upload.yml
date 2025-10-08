@@ -17,7 +17,7 @@ jobs:
   release:
     name: Upload to PyPi
     runs-on: ubuntu-latest
-    work: ["Automatic code checks"]
+    needs: ["Automatic code checks"]
     if: ${{ needs.code-check.result == 'success' }}
     steps:
       - uses: actions/checkout@v3
