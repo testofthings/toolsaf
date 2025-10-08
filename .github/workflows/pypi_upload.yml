@@ -36,4 +36,4 @@ jobs:
 
       - name: Publish package to PyPI
         run: |
-          python -m twine upload --repository testpypi dist/*
+          python -m twine upload --repository testpypi dist/* --verbose
