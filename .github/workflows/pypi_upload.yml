@@ -9,14 +9,16 @@ on:
 
 
 jobs:
+  build:
+  runs-on: ubuntu-latest
+  strategy:
+    matrix:
+      python-version: ["3.11"]
   release:
     name: Upload to PyPi
     runs-on: ubuntu-latest
-    needs: [code-check]
+    work: ["Automatic code checks"]
     if: ${{ needs.code-check.result == 'success' }}
-    strategy:
-      matrix:
-        python-version: ["3.11"]
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
