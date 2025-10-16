@@ -23,7 +23,7 @@ from toolsaf.core.serializer.event_serializers import EventSerializer
 from toolsaf.core.serializer.model_serializers import IoTSystemSerializer
 from toolsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP, IP, TLS, MQTT, FTP,
                         BLEAdvertisement, ConnectionBuilder,
-                        CookieBuilder, HostBuilder, NetworkBuilder, NodeBuilder, NodeVisualBuilder,
+                        CookieBuilder, HostBuilder, NetworkBuilder, NodeBuilder,
                         ConfigurationException, OSBuilder, Proprietary, ProtocolConfigurer, ProtocolType,
                         SensitiveDataBuilder, ServiceBuilder, ServiceGroupBuilder, ServiceOrGroup,
                         SoftwareBuilder, SystemBuilder, IgnoreRulesBuilder)
@@ -35,7 +35,6 @@ from toolsaf.core.inspector import Inspector
 from toolsaf.core.result import Report
 from toolsaf.core.components import SoftwareComponent
 from toolsaf.core.services import DHCPService, DNSService
-from toolsaf.core.sql_database import SQLDatabase
 from toolsaf.core.online_resources import OnlineResource
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.android import MobilePermissions
@@ -153,7 +152,8 @@ class SystemBackend(SystemBuilder):
     def tag(self, tag: str) -> None:
         """Set a unique tag, consisting of numbers and characters, for statement uploads.
             Has a minimum length of 3"""
-        assert tag.isalnum(), f"Upload tag {tag} is not alphanumeric"
+        assert all(c.isalnum() or c == "-" for c in tag), \
+            f"Upload tag {tag} can only include the '-' symbol and alphanumeric characters"
         assert len(tag) >= 3, f"Upload tag {tag} is shorter than the minimum length of 3 characters"
         self.system.upload_tag = tag
 
@@ -280,12 +280,6 @@ class NodeBackend(NodeBuilder, NodeManipulator):
             sb = SoftwareBackend(self, name)
             self.sw[name] = sb
         return sb
-
-    def visual(self) -> 'NodeVisualBackend':
-        p = self
-        while p.parent:
-            p = p.parent
-        return NodeVisualBackend(p)
 
     def __rshift__(self, target: ServiceOrGroup) -> 'ConnectionBackend':
         if isinstance(target, ServiceGroupBackend):
@@ -642,24 +636,6 @@ class CookieBackend(CookieBuilder):
     def set(self, cookies: Dict[str, Tuple[str, str, str]]) -> Self:
         for name, p in cookies.items():
             self.component.cookies[name] = CookieData(p[0], p[1], p[2])
-        return self
-
-
-class NodeVisualBackend(NodeVisualBuilder):
-    """Node visual builder backend"""
-
-    def __init__(self, entity: NodeBackend) -> None:
-        self.entity = entity
-        self.image_url: Optional[str] = None
-        self.image_scale: int = 100
-
-    def hide(self) -> Self:
-        self.entity.entity.visual = False
-        return self
-
-    def image(self, url: str, scale: int=100) -> Self:
-        self.image_url = url
-        self.image_scale = scale
         return self
 
 
@@ -1102,7 +1078,6 @@ class SystemBackendRunner(SystemBackend):
                             help="Custom path to API key file")
         parser.add_argument("--insecure", action="store_true",
                             help="Allow insecure server connections")
-        parser.add_argument("--db", type=str, help="Connect to SQL database")
         parser.add_argument(
             "--log-events", action="store_true", help="Log events")
 
@@ -1148,12 +1123,6 @@ class SystemBackendRunner(SystemBackend):
             # print event log
             registry.logging.event_logger = registry.logger
 
-        db_conn = args.db
-        if db_conn:
-            # connect to SQL database
-            registry.logger.info("Connecting to database %s", db_conn)
-            registry.database = SQLDatabase(db_conn)
-        # finish loading after DB connection
         registry.finish_model_load()
 
         label_filter = LabelFilter(args.def_loads or "")

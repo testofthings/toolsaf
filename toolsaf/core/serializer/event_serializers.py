@@ -2,6 +2,7 @@
 
 from typing import Any, Dict, Iterable, Union, Tuple, Optional
 import datetime
+from pathlib import Path
 
 from toolsaf.core.model import EvidenceNetworkSource
 from toolsaf.common.address import (
@@ -65,9 +66,10 @@ class EvidenceSourceSerializer(Serializer[EvidenceSource]):
     def __init__(self, system: IoTSystem) -> None:
         super().__init__(EvidenceSource)
         self.system = system
-        self.config.map_simple_fields("name", "label", "target", "base_ref")
+        self.config.map_simple_fields("name", "label", "target")
 
     def write(self, obj: EvidenceSource, stream: SerializerStream) -> None:
+        stream += "base_ref", Path(obj.base_ref).name
         if obj.timestamp:
             stream += "timestamp", obj.timestamp.isoformat()
         if isinstance(obj, EvidenceNetworkSource):
@@ -90,6 +92,7 @@ class EvidenceSourceSerializer(Serializer[EvidenceSource]):
 
     def read(self, obj: EvidenceSource, stream: SerializerStream) -> None:
         ts = stream - "timestamp"
+        obj.base_ref = stream["base_ref"]
         obj.timestamp = datetime.datetime.fromisoformat(ts) if ts else None
         if isinstance(obj, EvidenceNetworkSource):
             add_map = stream - "address_map"

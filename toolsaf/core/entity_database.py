@@ -37,9 +37,6 @@ class EntityDatabase:
         """Store an event"""
         raise NotImplementedError()
 
-    def clear_database(self) -> None:
-        """Clear the database, from the disk"""
-
     def get_souces(self) -> List[EvidenceSource]:
         """Get evidence sources"""
         return []

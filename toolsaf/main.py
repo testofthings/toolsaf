@@ -107,10 +107,6 @@ class NodeBuilder:
         """Define software running here"""
         raise NotImplementedError()
 
-    def visual(self) -> 'NodeVisualBuilder':
-        """Create visual for the host"""
-        raise NotImplementedError()
-
     def __rshift__(self, target: ServiceOrGroup) -> 'ConnectionBuilder':
         raise NotImplementedError()
 
@@ -248,17 +244,6 @@ class CookieBuilder:
     """Cookies in a browser"""
     def set(self, cookies: Dict[str, Tuple[str, str, str]]) -> Self:
         """Set cookies, name: domain, path, explanation"""
-        raise NotImplementedError()
-
-
-class NodeVisualBuilder:
-    """Visual builder for a network node"""
-    def hide(self) -> Self:
-        """Hide this node from visualization"""
-        raise NotImplementedError()
-
-    def image(self, url: str, scale: int=100) -> Self:
-        """Set URL to node image"""
         raise NotImplementedError()
 
 

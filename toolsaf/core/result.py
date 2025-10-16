@@ -5,7 +5,7 @@ import sys
 import shutil
 import logging
 from functools import cached_property
-from typing import TextIO, List, Dict, Tuple, Union, Any
+from typing import TextIO, List, Dict, Tuple, Union, Any, cast
 from colored import Fore, Style
 
 from toolsaf.common.basics import ConnectionType
@@ -36,7 +36,7 @@ class Report:
     @cached_property
     def green(self) -> str:
         """Green color"""
-        return Fore.green if self.use_color else ""
+        return cast(str, Fore.green) if self.use_color else ""
 
     @cached_property
     def yellow(self) -> str:
@@ -46,7 +46,7 @@ class Report:
     @cached_property
     def red(self) -> str:
         """Red color"""
-        return Fore.red if self.use_color else ""
+        return cast(str, Fore.red) if self.use_color else ""
 
     @cached_property
     def bold(self) -> str:

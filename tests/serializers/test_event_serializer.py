@@ -37,7 +37,7 @@ def test_serialize_event_source():
         "name": "TestSource1",
         "label": "test-label",
         "target": "",
-        "base_ref": "../test1.json",
+        "base_ref": "test1.json",
         "timestamp": "2025-01-01T00:00:00"
     }
     assert next(stream.write(source2))["id"] == "id2"
@@ -56,7 +56,7 @@ def test_new_event_source_from_serialized():
     assert len(read_obj) == 1
     new_source = read_obj[0]
     assert new_source.name == source.name
-    assert new_source.base_ref == source.base_ref
+    assert new_source.base_ref == "test1.json"
     assert new_source.label == source.label
     assert new_source.timestamp == source.timestamp
     assert new_source.target == source.target
@@ -223,7 +223,7 @@ def test_new_service_scan_from_serialized():
     assert new_service_scan.endpoint == EndpointAddress.ip("127.0.0.1", Protocol.TCP, 8000)
     assert new_service_scan.service_name == "test-name"
     assert new_service_scan.evidence.source.name == "Test"
-    assert new_service_scan.evidence.source.base_ref == "../test.json"
+    assert new_service_scan.evidence.source.base_ref == "test.json"
 
 
 def test_serialize_host_scan():
@@ -256,7 +256,7 @@ def test_new_host_scan_from_serialized():
     assert endpoints[0] in new_host_scan.endpoints
     assert endpoints[1] in new_host_scan.endpoints
     assert new_host_scan.evidence.source.name == "Test"
-    assert new_host_scan.evidence.source.base_ref == "../test.json"
+    assert new_host_scan.evidence.source.base_ref == "test.json"
 
 
 def test_serialize_property_address_event():

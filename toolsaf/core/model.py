@@ -149,7 +149,6 @@ class NetworkNode(Entity):
         self.host_type = HostType.GENERIC
         self.description = ""
         self.match_priority = 0
-        self.visual = False  # show visual image?
         self.children: List[Addressable] = []
         self.components: List[NodeComponent] = []
         self.networks: List[Network] = []  # empty means 'same as parent'
@@ -427,7 +426,6 @@ class Host(Addressable):
         self.concept_name = "node"
         self.parent = parent
         self.networks = [] # follow parent
-        self.visual = True
         self.ignore_name_requests: Set[DNSName] = set()
         self.connections: List[Connection] = []  # connections terminating here
 
