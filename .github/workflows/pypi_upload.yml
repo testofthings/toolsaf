@@ -2,11 +2,10 @@ name: Upload to Test PyPI
 
 on:
   push:
-    branches:
-      - pypi-test # Only run workflow on my test branch
-
-    #tags:
-    #  - 'v*.*.*.*'
+    #branches:
+    #  - pypi-test # Only run workflow on my test branch
+    tags:
+      - 'v*.*.*'
 
 jobs:
   build:
