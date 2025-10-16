@@ -5,13 +5,6 @@ on:
   push:
     tags:
       - 'v*.*.*'
-  # Allow manual run from Actions tab.
-  # In case of failures
-  workflow_dispatch:
-    inputs:
-      RELEASE_TAG:
-        description: 'Release tag (e.g. v0.0.1)'
-        required: true
 
 jobs:
   build:
@@ -20,7 +13,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11"]
-    permissions: # Reqyured for OpenID Connect
+    permissions: # Mandatory for trusted publishing
       id-token: write
 
     steps:
@@ -28,6 +21,7 @@ jobs:
         with:
           persist-credentials: false
 
+      # Ensure CHANGELOG and pyproject.toml versions match the tag
       - name: Check tag and version matches
         run: |
           GIT_TAG=$(git describe --tags --abbrev=0)
@@ -38,18 +32,18 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      # Twine for upload, build for building the package
       - name: Install twine and build
         run: |
           python -m pip install twine build
 
-      - name: Install dependencies
+      - name: Install Toolsaf dependencies
         run: |
-          python -m pip install --upgrade pip
           pip install .
 
-      - name: Build package
+      - name: Generate source-distribution and wheel
         run: python -m build
 
-      - name: Publish package to PyPI
+      - name: Publish package to TestPyPI
         run: |
           python -m twine upload --repository testpypi dist/* --verbose
