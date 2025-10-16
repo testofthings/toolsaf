@@ -63,7 +63,7 @@ touch product/statement.py  # This is the 'security statement'!
 ```
 
 Alternatively, you may copy an existing security statement.
-In that case you must also create and activate the virtual environment and install the Toolsaf.
+In that case you must also create and activate the virtual environment and install the Toolsaf module.
 
 If you want to visualize your security statements you also need to install [Graphviz](https://graphviz.org/download/).
 
