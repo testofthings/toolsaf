@@ -1,11 +1,17 @@
 name: Upload to Test PyPI
 
 on:
+  # Trigger on version tag push
   push:
-    #branches:
-    #  - pypi-test # Only run workflow on my test branch
     tags:
       - 'v*.*.*'
+  # Allow manual run from Actions tab.
+  # In case of failures
+  workflow_dispatch:
+    inputs:
+      RELEASE_TAG:
+        description: 'Release tag (e.g. v0.0.1)'
+        required: true
 
 jobs:
   build:
@@ -36,14 +42,14 @@ jobs:
         run: |
           python -m pip install twine build
 
-      #- name: Install dependencies
-      #  run: |
-      #    python -m pip install --upgrade pip
-      #    pip install .[dev]
-
-      #- name: Build package
-      #  run: python -m build
-
-      #- name: Publish package to PyPI
-      #  run: |
-      #    python -m twine upload --repository testpypi dist/* --verbose
+#      - name: Install dependencies
+#        run: |
+#          python -m pip install --upgrade pip
+#          pip install .
+#
+#      - name: Build package
+#        run: python -m build
+#
+#      - name: Publish package to PyPI
+#        run: |
+#          python -m twine upload --repository testpypi dist/* --verbose
