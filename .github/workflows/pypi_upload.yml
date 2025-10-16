@@ -38,7 +38,7 @@ jobs:
       - name: Check tag version
         run: |
           GIT_TAG=$(git describe --tags --abbrev=0)
-          CHANGELOG_VERSION=$(grep -Po '(?<=## \[?v?)\d+\.\d+\.\d+' CHANGELOG.md | head -1)
+          CHANGELOG_VERSION=$(grep -Po '^## \[?v?\K\d+\.\d+\.\d+' CHANGELOG.md | head -1)
           if [ "$GIT_TAG" != "v$CHANGELOG_VERSION" ]; then
             echo "Version mismatch!"
             exit 1
