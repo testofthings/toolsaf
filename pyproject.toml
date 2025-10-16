@@ -5,7 +5,7 @@ build-backend   = "setuptools.build_meta"
 # Project metadata
 [project]
 name            = "toolsaf"
-version         = "0.0.6"
+version         = "0.0.8"
 requires-python = ">=3.10"
 description     = "Tool-Driven Security Assesment Framework"
 readme          = "README.md"
