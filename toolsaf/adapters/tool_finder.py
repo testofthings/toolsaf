@@ -101,4 +101,4 @@ class ToolFinderImplementation:
 
 
 # The tool finder singleton
-ToolFinder = ToolFinderImplementation()
+TOOL_FINDER = ToolFinderImplementation()

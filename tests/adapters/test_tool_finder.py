@@ -2,7 +2,7 @@ import pytest
 import warnings
 warnings.filterwarnings("ignore", category=pytest.PytestCollectionWarning)
 
-from toolsaf.adapters.tool_finder import ToolFinder
+from toolsaf.adapters.tool_finder import TOOL_FINDER
 from toolsaf.adapters.android_manifest_scan import AndroidManifestScan
 from toolsaf.adapters.censys_scan import CensysScan
 from toolsaf.adapters.har_scan import HARScan
@@ -48,7 +48,7 @@ from tests.test_model import Setup
     ]
 )
 def test_by_file_type(file_type, exp):
-    result = ToolFinder.by_file_type(file_type)
+    result = TOOL_FINDER.by_file_type(file_type)
     assert len(result.tools) == 1
     tool = result.create_tool(Setup().get_system())
     assert isinstance(tool, exp)
@@ -56,4 +56,4 @@ def test_by_file_type(file_type, exp):
 
 def test_by_file_type_exception():
     with pytest.raises(ValueError):
-        ToolFinder.by_file_type("not-found")
+        TOOL_FINDER.by_file_type("not-found")
