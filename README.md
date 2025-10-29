@@ -50,7 +50,7 @@ Create virtual environment to install Toolsaf and run it. Then install from PyPI
 ```shell
 python3 -m venv .venv
 source .venv/bin/activate   # Activate the virtual environment
-pip install Toolsaf
+pip install toolsaf
 ```
 Now that Toolsaf is installed, you have to create a directory for your first security statement.
 The commands below produce the [expected project structure](documentation/CreatingSecurityStatements.md#project-structure) for your statement.
