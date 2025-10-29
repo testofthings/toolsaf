@@ -1,4 +1,4 @@
-name: Upload to Test PyPI
+name: Upload to PyPI
 
 on:
   # Trigger on version tag push
@@ -44,6 +44,6 @@ jobs:
       - name: Generate source-distribution and wheel
         run: python -m build
 
-      - name: Publish package to TestPyPI
+      - name: Publish package to PyPI
         run: |
-          python -m twine upload --repository testpypi dist/* --verbose
+          python -m twine upload --repository pypi dist/* --verbose
