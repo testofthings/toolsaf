@@ -1,7 +1,5 @@
 # Toolsaf
 
-[Table of contents](documentation/README.md)
-
 Welcome to the early version of **Toolsaf**, a tool-driven security assessment framework.
 Toolsaf is for security assessment of _Internet of Things_ (IoT) and other systems using different security tools.
 Security assessment process using Toolsaf has two main phases:
