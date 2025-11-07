@@ -1,5 +1,6 @@
 """Testssl.sh output reading tool"""
 
+import re
 from io import BufferedReader
 import json
 from typing import Dict, Any, List
@@ -19,6 +20,7 @@ class TestSSLScan(EndpointTool):
         super().__init__("testssl", ".json", system)
         self.tool.name = "Testssl.sh"
         self.property_key = Properties.PROTOCOL.append_key("tls")
+        self.re_pattern = re.compile(r"<.+?>")
 
     def filter_node(self, node: NetworkNode) -> bool:
         return isinstance(node, Service)
@@ -43,8 +45,12 @@ class TestSSLScan(EndpointTool):
             if severity in {'INFO', 'OK', 'LOW'} or finding == '--':
                 # self.logger.debug("Ignoring %s: %s", f_id, finding)
                 continue
-            self.logger.info("Issue %s: %s", f_id, finding)
 
+            if "<" in f_id:
+                # Remove unnecessary info, such as <hostCert#X> from the id
+                f_id = re.sub(self.re_pattern, "", f_id).strip()
+
+            self.logger.info("Issue %s: %s", f_id, finding)
             exp = f"{self.tool.name} ({f_id}): {finding}"
             kv = PropertyKey(self.tool_label, f_id).verdict(Verdict.FAIL, exp)
             ev = PropertyAddressEvent(evidence, endpoint, kv)

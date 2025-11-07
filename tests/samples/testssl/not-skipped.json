@@ -14,5 +14,26 @@
         "severity": "HIGH",
         "cwe": "CWE-test",
         "finding": "offered"
+    },
+    {
+        "id" : "cert_expirationStatus <hostCert#1>",
+        "ip" : "abc.test.com/1.2.3.4",
+        "port" : "443",
+        "severity" : "MEDIUM",
+        "finding" : "expires < 60 days (59)"
+    },
+    {
+        "id" : "cert_expirationStatus <hostCert#2>",
+        "ip" : "abc.test.com/1.2.3.4",
+        "port" : "443",
+        "severity" : "MEDIUM",
+        "finding" : "expires < 60 days (59)"
+    },
+    {
+        "id" : "cert_expirationStatus <#3> <hostCert#2>",
+        "ip" : "abc.test.com/1.2.3.4",
+        "port" : "443",
+        "severity" : "MEDIUM",
+        "finding" : "expires < 60 days (59)"
     }
 ]

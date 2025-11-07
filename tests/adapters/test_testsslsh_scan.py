@@ -56,8 +56,9 @@ def test_process_endpoint():
         assert len(backend.entity.children) == 1
         service = backend.entity.children[0]
 
-        assert len(service.properties) == 7
+        assert len(service.properties) == 8
         assert service.properties[PropertyKey("testssl", "cipher_test1")].verdict == Verdict.FAIL
         assert service.properties[PropertyKey("testssl", "cipher_test2")].verdict == Verdict.FAIL
+        assert service.properties[PropertyKey("testssl", "cert_expirationStatus")].verdict == Verdict.FAIL
         assert service.properties[PropertyKey("check", "protocol", "tls")].verdict == Verdict.PASS
         assert service.properties[PropertyKey("check", "encryption")].verdict == Verdict.PASS
