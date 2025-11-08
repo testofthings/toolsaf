@@ -1,4 +1,5 @@
 """Android permisison definitions"""
+#pylint: disable=invalid-name
 
 import enum
 

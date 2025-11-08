@@ -11,7 +11,7 @@ from toolsaf.common.address import Addresses, AnyAddress
 from toolsaf.common.basics import ExternalActivity
 from toolsaf.core.event_interface import EventInterface
 from toolsaf.core.model import Addressable, EvidenceNetworkSource, IoTSystem, NetworkNode
-from toolsaf.adapters.tool_finder import ToolDepiction, ToolFinder
+from toolsaf.adapters.tool_finder import ToolDepiction, TOOL_FINDER
 from toolsaf.common.traffic import EvidenceSource
 
 
@@ -69,7 +69,7 @@ class BatchImporter:
             parent.sub_data.append(b_data)
 
             # get tool info by file type
-            tool_dep = ToolFinder.by_file_type(info.file_type)
+            tool_dep = TOOL_FINDER.by_file_type(info.file_type)
 
             # list files/directories to process, files first
             proc_list = []

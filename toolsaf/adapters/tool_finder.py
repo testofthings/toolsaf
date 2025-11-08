@@ -101,4 +101,4 @@ class ToolFinderImplementation:
 
 
 # The tool finder singleton
-ToolFinder = ToolFinderImplementation() # pylint: disable=invalid-name
+TOOL_FINDER = ToolFinderImplementation()
