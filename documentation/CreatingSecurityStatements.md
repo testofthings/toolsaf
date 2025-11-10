@@ -154,9 +154,9 @@ Once the system object is created, you can begin defining the various network _h
 
 | Factory method       | Description |
 |----------------------|-------------|
-| `system.device()`    | IoT devices, gateways, and others _things_ |
+| `system.device()`    | IoT devices, gateways, and other _things_ |
 | `system.mobile()`    | Mobile applications |
-| `system.browser()`   | Users's web browser |
+| `system.browser()`   | User's web browser |
 | `system.backend()`   | Backend services |
 | `system.network()`   | System networks |
 | `system.any()`       | Services provided by anyone from environment, e.g. network router |
