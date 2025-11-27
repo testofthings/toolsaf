@@ -7,7 +7,7 @@ build-backend   = "setuptools.build_meta"
 name            = "toolsaf"
 version         = "0.3.0"
 requires-python = ">=3.11"
-description     = "Tool-Driven Security Assesment Framework"
+description     = "Tool-Driven Security Assessment Framework"
 readme          = "Info.md"
 license         = {text = "MIT License"}
 authors         = [
