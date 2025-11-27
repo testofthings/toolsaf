@@ -3,8 +3,6 @@
 
 import enum
 
-# pylint: disable=invalid-name
-
 class MobilePermissions(enum.Enum):
     """Android manifest.xml permission categories.
        Categories based on https://m2.material.io/design/platform-guidance/android-permissions.html#usage"""
