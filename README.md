@@ -45,28 +45,21 @@ You need a recent [Python](https://www.python.org/) interpreter, such as 3.10 or
 Most Linux distributions should already come with a suitable one, the command
 name might be `python3` to separate from older Python interpreters.
 
-The installation of Toolsaf is currently done from the _GitHub_ repository, as there is no _PyPi_ package for Toolsaf, yet.
-First, clone this repository.
+Create virtual environment to install Toolsaf and run it. Then install from PyPI with 'pip'.
+
 ```shell
-git clone https://github.com/testofthings/toolsaf.git # HTTPS
-# OR
-git clone git@github.com:testofthings/toolsaf.git     # SSH
+python3 -m venv .venv
+source .venv/bin/activate   # Activate the virtual environment
+pip install toolsaf
 ```
-Now that Toolsaf is installed, you have to create a directory and a Python virtual environment for your first security statement.
+Now that Toolsaf is installed, you have to create a directory for your first security statement.
 The commands below produce the [expected project structure](documentation/CreatingSecurityStatements.md#project-structure) for your statement.
 
 ```shell
-mkdir statement-device && cd statement-device
-python3 -m venv .venv
-source .venv/bin/activate   # Activate the virtual environment
+mkdir statement-device
+cd statement-device
 mkdir product
 touch product/statement.py  # This is the 'security statement'!
-```
-
-Toolsaf must be taken into use in the statement's directory with the following command.
-(The option `--config-settings editable_mode=strict` is required by some tools to properly work with locally cloned module.)
-```shell
-pip install -e ../toolsaf/ --config-settings editable_mode=strict
 ```
 
 Alternatively, you may copy an existing security statement.

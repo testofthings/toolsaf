@@ -1,0 +1,45 @@
+name: Upload to PyPI
+
+on:
+  # Trigger on version tag push
+  push:
+    tags:
+      - '*.*.*'
+
+jobs:
+  build:
+    name: Build distribution package
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+    permissions: # Mandatory for trusted publishing
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      # Ensure CHANGELOG and pyproject.toml versions match the tag
+      - name: Check tag and version matches
+        run: |
+          GIT_TAG=$(git describe --tags --abbrev=0)
+          make check-version RELEASE_TAG=$GIT_TAG
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # Twine for upload, build for building the package
+      - name: Install twine and build
+        run: |
+          python -m pip install twine build
+
+      - name: Generate source-distribution and wheel
+        run: python -m build
+
+      - name: Publish package to PyPI
+        run: |
+          python -m twine upload --repository pypi dist/* --verbose
