@@ -47,10 +47,12 @@ Issues          = "https://github.com/testofthings/toolsaf/issues"
 find = { where = ["."], include = [
         "toolsaf",
         "toolsaf.adapters",
+        "toolsaf.adapters.data",
         "toolsaf.common",
         "toolsaf.common.serializer",
         "toolsaf.core",
-        "toolsaf.core.serializer"
+        "toolsaf.core.serializer",
+        "toolsaf.diagram_visualizer"
 ] }
 
 [tool.setuptools.package-data]
