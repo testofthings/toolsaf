@@ -893,7 +893,8 @@ class EvidenceNetworkSource(EvidenceSource):
         self.activity_map = activity_map or {}
 
     def rename(self, name: Optional[str] = None, target: Optional[str]=None, base_ref: Optional[str]=None,
-               label: Optional[str]=None) -> 'EvidenceNetworkSource':
+               label: Optional[str]=None, description: Optional[str]=None,
+               location: Optional[str]=None) -> 'EvidenceNetworkSource':
         s = EvidenceNetworkSource(
             self.name if name is None else name,
             self.base_ref if base_ref is None else base_ref,
@@ -901,6 +902,8 @@ class EvidenceNetworkSource(EvidenceSource):
             self.address_map, self.activity_map)
         s.target = self.target if target is None else target
         s.model_override = self.model_override
+        s.description = self.description if description is None else description
+        s.location = self.location if location is None else location
         return s
 
     def get_data_json(self, id_resolver: Callable[[Any], Any]) -> Dict[str, Any]:
