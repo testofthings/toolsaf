@@ -27,7 +27,10 @@ def test_serialize_event_source():
     serializer = EventSerializer(SYSTEM)
     stream = SerializerStream(serializer)
 
-    source1 = EvidenceSource(name="TestSource1", base_ref="../test1.json", label="test-label")
+    source1 = EvidenceSource(
+        name="TestSource1", base_ref="../test1.json", label="test-label",
+        description="test description", location="test location"
+    )
     source1.timestamp = datetime(2025, 1, 1, 0, 0, 0)
     source2 = EvidenceSource(name="TestSource2", base_ref="../test2.json", label="test-label")
 
@@ -35,12 +38,17 @@ def test_serialize_event_source():
         "id": "id1",
         "type": "source",
         "name": "TestSource1",
-        "label": "test-label",
+        "tool_label": "test-label",
         "target": "",
+        "description": "test description",
+        "location": "test location",
         "base_ref": "test1.json",
         "timestamp": "2025-01-01T00:00:00"
     }
-    assert next(stream.write(source2))["id"] == "id2"
+    source2_json = next(stream.write(source2))
+    assert source2_json["id"] == "id2"
+    assert source2_json["description"] == ""
+    assert source2_json["location"] == ""
 
 
 def test_new_event_source_from_serialized():

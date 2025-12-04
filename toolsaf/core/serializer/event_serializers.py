@@ -66,9 +66,10 @@ class EvidenceSourceSerializer(Serializer[EvidenceSource]):
     def __init__(self, system: IoTSystem) -> None:
         super().__init__(EvidenceSource)
         self.system = system
-        self.config.map_simple_fields("name", "label", "target")
+        self.config.map_simple_fields("name", "target", "description", "location")
 
     def write(self, obj: EvidenceSource, stream: SerializerStream) -> None:
+        stream += "tool_label", obj.label
         stream += "base_ref", Path(obj.base_ref).name
         if obj.timestamp:
             stream += "timestamp", obj.timestamp.isoformat()
@@ -92,7 +93,10 @@ class EvidenceSourceSerializer(Serializer[EvidenceSource]):
 
     def read(self, obj: EvidenceSource, stream: SerializerStream) -> None:
         ts = stream - "timestamp"
+        obj.label = stream["tool_label"]
         obj.base_ref = stream["base_ref"]
+        obj.description = stream["description"]
+        obj.location = stream["location"]
         obj.timestamp = datetime.datetime.fromisoformat(ts) if ts else None
         if isinstance(obj, EvidenceNetworkSource):
             add_map = stream - "address_map"
