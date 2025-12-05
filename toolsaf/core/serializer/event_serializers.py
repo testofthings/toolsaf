@@ -396,6 +396,8 @@ class NameEventSerializer(Serializer[NameEvent]):
             stream += "tag", obj.tag.tag
         if obj.address:
             stream += "address", obj.address.get_parseable_value()
+        if obj.timestamp:
+            stream += "timestamp", obj.timestamp.isoformat()
 
     def new(self, stream: SerializerStream) -> NameEvent:
         name = DNSName(v) if (v := stream.get("name")) else None
@@ -423,3 +425,6 @@ class NameEventSerializer(Serializer[NameEvent]):
                 assert isinstance(peer, Addressable)
                 peers.append(peer)
         obj.peers = peers
+
+        if (timestamp := stream - "timestamp"):
+            obj.timestamp = datetime.datetime.fromisoformat(timestamp)

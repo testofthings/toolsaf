@@ -181,14 +181,18 @@ class PCAPReader(SystemWideTool):
             name = dns_frames.DNSName.string(rd, dns_frames.DNSQuestion.QNAME)
             if name not in self.dns_names:
                 self.dns_names[name] = ""
-                events.append(NameEvent(evidence, service, name=DNSName(name), peers=peers))
+                events.append(NameEvent(
+                    evidence, service, name=DNSName(name), peers=peers, timestamp=self.timestamp
+                ))
 
         def learn_name(name: str, ip: IPv4Address | IPv6Address) -> None:
             old = self.dns_names.get(ip)
             if old == name:
                 return
             self.dns_names[ip] = name
-            n = NameEvent(evidence, service, name=DNSName(name), address=IPAddress(ip), peers=peers)
+            n = NameEvent(
+                evidence, service, name=DNSName(name), address=IPAddress(ip), peers=peers, timestamp=self.timestamp
+            )
             events.append(n)
 
         rd_frames = []
