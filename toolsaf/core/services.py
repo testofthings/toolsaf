@@ -1,6 +1,7 @@
 """Services with dedicated logic"""
 
 from typing import Any, Callable, Dict, List, Set, Optional, Union
+from datetime import datetime
 
 from toolsaf.common.address import AnyAddress, DNSName, EndpointAddress, EntityTag, Protocol, IPAddress
 from toolsaf.common.basics import ConnectionType, HostType
@@ -48,7 +49,7 @@ class NameEvent(Event):
     """Name or tag and address event"""
     def __init__(self, evidence: Evidence, service: Optional[DNSService], name: Optional[DNSName] = None,
                  tag: Optional[EntityTag] = None, address: Optional[AnyAddress] = None,
-                 peers: Optional[List[Addressable]] = None):
+                 peers: Optional[List[Addressable]] = None, timestamp: Optional[datetime]=None):
         super().__init__(evidence)
         assert name or tag, "Name or tag must be set"
         self.service = service
@@ -56,6 +57,7 @@ class NameEvent(Event):
         self.tag = tag
         self.address = address
         self.peers = [] if peers is None else peers  # The communicating peers
+        self.timestamp = timestamp
 
     def get_value_string(self) -> str:
         return f"{self.name or self.tag}={self.address}" if self.address else str(self.name or self.tag)
