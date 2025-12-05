@@ -51,7 +51,7 @@ class HARScan(NetworkNodeTool):
 
         raw_entries = raw_log["entries"]
         for raw in raw_entries:
-            source.timestamp = datetime.strptime(raw["startedDateTime"], "%Y-%m-%dT%H:%M:%S.%fZ")
+            source.timestamp = datetime.fromisoformat(raw["startedDateTime"].replace("Z", "+00:00"))
 
             request = raw["request"]
             req_url = request["url"]
