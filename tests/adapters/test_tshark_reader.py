@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from toolsaf.adapters.tshark_reader import TSharkReader
@@ -24,7 +24,7 @@ def test_process_file():
     with Path("tests/samples/tshark/capture.json").open("rb") as f:
         reader.process_file(f, "", setup.get_inspector(), source)
 
-        assert source.timestamp == datetime.fromtimestamp(round(float("1875944139.865893000")))
+        assert source.timestamp == datetime.fromtimestamp(round(float("1875944139.865893000")), timezone.utc)
 
         connections = list(setup.get_system().connections.values())
         assert len(connections) == 3

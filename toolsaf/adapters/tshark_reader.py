@@ -1,7 +1,7 @@
 """Tshark JSON reading tool"""
 
 import argparse
-import datetime
+from datetime import datetime, timezone
 from io import BufferedReader
 import json
 import pathlib
@@ -47,7 +47,7 @@ class TSharkReader(SystemWideTool):
             if pf:
                 ev = Evidence(self.source, f":{nr + 1}")
                 r_time = float(fl["frame"]["frame.time_epoch"])
-                self.source.timestamp = datetime.datetime.fromtimestamp(round(r_time))
+                self.source.timestamp = datetime.fromtimestamp(round(r_time), timezone.utc)
                 ad = self.parse_hvc_event(pf, interface, ev)
                 ads.add(ad)
 
