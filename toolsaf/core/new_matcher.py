@@ -7,6 +7,14 @@ from toolsaf.common.address import Addresses, EndpointAddress, EntityTag, HWAddr
 from toolsaf.common.traffic import Flow, IPFlow
 from toolsaf.core.model import Addressable, Connection, IoTSystem
 
+class Weights:
+    """Clue weights"""
+    ADDRESS = 100
+    IP_ADDRESS = 101
+    HW_ADDRESS = 102
+    WILDCARD_ADDRESS = 99
+
+    PROTOCOL_PORT = 10
 
 class MatchEngine:
     """Matching engine"""
@@ -38,18 +46,18 @@ class MatchEngine:
                 case EndpointAddress():
                     h_addr = addr.get_host()
                     if h_addr != Addresses.ANY:
-                        self.clues.add_clue(h_addr, 103, entity)
-                    self.clues.add_clue(addr.get_protocol_port(), 10, entity)
+                        self.clues.add_clue(h_addr, Weights.ADDRESS, entity)
+                    self.clues.add_clue(addr.get_protocol_port(), Weights.PROTOCOL_PORT, entity)
                 case HWAddress():
-                    self.clues.add_clue(addr, 102, entity)
+                    self.clues.add_clue(addr, Weights.HW_ADDRESS, entity)
                 case IPAddress():
-                    self.clues.add_clue(addr, 101, entity)
+                    self.clues.add_clue(addr, Weights.IP_ADDRESS, entity)
                 case _:
-                    self.clues.add_clue(addr, 100, entity)
+                    self.clues.add_clue(addr, Weights.ADDRESS, entity)
             any_address = True
         if parent == entity and not any_address:
             # give this host edge for matching with unknown addresses
-            self.clues.add_clue(Clue.WILDCARD_HOST, 20, entity)
+            self.clues.add_clue(Clue.WILDCARD_HOST, Weights.WILDCARD_ADDRESS, entity)
         if parent != entity:
             self.add_entity(parent)
             self.clues.add_clue(parent, 0, entity)
