@@ -32,10 +32,11 @@ class MatchEngine:
         parent = entity.get_parent_host()
         # if parent != entity:
         #     addresses.extend(parent.addresses)
+        any_address = False
         for addr in addresses:
             match addr:
                 case EntityTag():
-                    pass  # do not add clues for tags
+                    continue  # do not add clues for tags
                 case EndpointAddress():
                     h_addr = addr.get_host()
                     if h_addr != Addresses.ANY:
@@ -47,6 +48,10 @@ class MatchEngine:
                     self.clues.add_clue(addr, 101, entity)
                 case _:
                     self.clues.add_clue(addr, 100, entity)
+            any_address = True
+        if parent == entity and not any_address:
+            # give this host edge for matching with unknown addresses
+            self.clues.add_clue(Clue.WILDCARD_HOST, 20, entity)
         if parent != entity:
             self.add_entity(parent)
             self.clues.add_clue(parent, 0, entity)
@@ -54,12 +59,14 @@ class MatchEngine:
     def deduce_flow(self, flow: Flow) -> 'DeductionState':
         """Deduce flow facts"""
         state = DeductionState()
+        self.clues.update_state(Clue.WILDCARD_HOST, state)
         match flow:
             case IPFlow():
                 # update by source
                 self.clues.update_state(flow.source[0], state)
                 self.clues.update_state(flow.source[1], state)
                 self.clues.update_state((flow.protocol, flow.source[2]), state)
+
                 # update by target
                 self.clues.update_state(flow.target[0], state)
                 self.clues.update_state(flow.target[1], state)
@@ -81,7 +88,7 @@ class ClueMap:
         if new_clue not in clues:
             clues.append(new_clue)
 
-    def update_state(self, reference: Any, state: 'DeductionState', weight: int = 0) -> None:
+    def update_state(self, reference: Any, state: 'DeductionState', weight: int = 0) -> int:
         """Update deduction state with clues for reference"""
         clues = self.clues.get(reference, [])
         for clue in clues:
@@ -89,6 +96,7 @@ class ClueMap:
             w = start_w + weight + clue.weight
             state.state[clue.item] = w
             self.update_state(clue.item, state, weight=w - start_w) # propagate weight increase
+        return len(clues)
 
     def __repr__(self) -> str:
         r = []
@@ -115,6 +123,9 @@ class Clue:
 
     def __repr__(self) -> str:
         return f"{self.weight} | {self.item}"
+
+    # Item for wildcard host
+    WILDCARD_HOST = "*"
 
 
 T = TypeVar('T')

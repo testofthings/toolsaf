@@ -15,8 +15,6 @@ def test_connection_basics():
     dev1 = sb.device("Dev1").ip("12.0.0.2")
     dev10 = sb.device("Dev10")
     dev11 = sb.device("Dev11")
-    engine.add_entity(dev0.entity)
-    engine.add_entity(dev1.entity)
     dev0_dev1_1234 = engine.add_connection((dev0 >> dev1 / TCP(port=1234)).connection)
     dev0_dev10_1234 = engine.add_connection((dev0 >> dev10 / TCP(port=1234)).connection)
     dev0_dev1_1011 = engine.add_connection((dev0 >> dev1 / TCP(port=1011)).connection)
@@ -32,7 +30,12 @@ def test_connection_basics():
     flow = IPFlow.TCP("1:0:0:0:0:1", "12.0.0.1", 20123) >> ("1:0:0:0:1:1", "12.0.1.1", 1234)
     state = engine.deduce_flow(flow)
     conn = state.get_top_item(Connection)
-    # assert conn == dev0_dev10_1234
+    assert conn == dev0_dev10_1234
+
+    flow = IPFlow.TCP("1:0:0:0:0:1", "12.0.0.1", 8888) >> ("1:0:0:0:1:1", "12.0.0.2", 1088)
+    state = engine.deduce_flow(flow)
+    conn = state.get_top_item(Connection)
+    assert conn == dev0_8888_dev1_1088
 
     flow = IPFlow.TCP("1:0:0:0:0:1", "12.0.0.1", 8888) >> ("1:0:0:0:1:1", "12.0.1.1", 2234)
     state = engine.deduce_flow(flow)
