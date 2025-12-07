@@ -62,6 +62,13 @@ class MatchEngine:
             self.add_entity(parent)
             self.clues.add_clue(parent, 0, entity)
 
+    def add_host(self, host: Addressable) -> None:
+        """Add host and it's services to matching engine"""
+        self.add_entity(host)
+        for c in host.children:
+            if isinstance(c, Addressable):
+                self.add_entity(c)
+
 
 class ClueMap:
     """Clue map"""
@@ -195,14 +202,20 @@ class FlowMatcher:
         if conn:
             source_weight = self.sources.state.get(conn.source, 0)
             target_weight = self.targets.state.get(conn.target, 0)
-            if source_weight >= Weights.WILDCARD_ADDRESS and target_weight > Weights.WILDCARD_ADDRESS:
+            if source_weight >= Weights.WILDCARD_ADDRESS and target_weight > Weights.HW_ADDRESS:
                 return conn
             # hmm... perhaps reverse direction
             source_weight = self.sources.state.get(conn.target, 0)
             target_weight = self.targets.state.get(conn.source, 0)
-            if source_weight >= Weights.WILDCARD_ADDRESS and target_weight > Weights.WILDCARD_ADDRESS:
+            if source_weight > Weights.HW_ADDRESS and target_weight >= Weights.WILDCARD_ADDRESS:
                 return conn
-        return None, None
+        # no connection matched, return best effort endpoints
+        source = self.sources.get_top_item(Addressable)
+        source_weight = self.sources.state.get(source, 0) if source else 0
+        target = self.targets.get_top_item(Addressable)
+        target_weight = self.targets.state.get(target, 0) if target else 0
+        return (source if source_weight >= Weights.ADDRESS else None,
+                target if target_weight >= Weights.ADDRESS else None)
 
     def __repr__(self) -> str:
         return f"{self.sources}\n---\n{self.targets}"
