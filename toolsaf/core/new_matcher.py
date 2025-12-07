@@ -16,12 +16,13 @@ class MatchEngine:
         self.system = system
         self.clues = ClueMap()
 
-    def add_connection(self, connection: Connection) -> None:
+    def add_connection(self, connection: Connection) -> Connection:
         """Add connection to matching engine"""
         self.add_entity(connection.source)
         self.add_entity(connection.target)
         self.clues.add_clue(connection.source, 100, connection)
         self.clues.add_clue(connection.target, 100, connection)
+        return connection
 
     def add_entity(self, entity: Addressable) -> None:
         """Add entity to matching engine"""
