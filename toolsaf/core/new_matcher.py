@@ -1,7 +1,7 @@
 """Connection and endpoint matching"""
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Self, Type, TypeVar
+from typing import Any, Dict, List, Optional, Self, Tuple, Type, TypeVar
 
 from toolsaf.common.address import Addresses, EndpointAddress, EntityTag, HWAddress, IPAddress
 from toolsaf.common.traffic import Flow, IPFlow
@@ -78,6 +78,7 @@ class MatchEngine:
                 self.clues.update_state(flow.target[1], state)
                 self.clues.update_state((flow.protocol, flow.target[2]), state)
         return state
+
 
 class ClueMap:
     """Clue map"""
@@ -156,3 +157,13 @@ class DeductionState:
         for item, weight in self.state.items():
             r.append(f"{item}: {weight}")
         return "\n".join(r)
+
+    def get_connection(self, flow: Flow) -> Connection | Tuple[Optional[Addressable], Optional[Addressable]]:
+        """Get deduced connection for flow, return endpoints if no connection matched"""
+        conn = self.get_top_item(Connection)
+        if conn:
+            source_weight = self.state.get(conn.source, 0)
+            target_weight = self.state.get(conn.target, 0)
+            if source_weight >= Weights.WILDCARD_ADDRESS and target_weight > Weights.WILDCARD_ADDRESS:
+                return conn
+        return None, None
