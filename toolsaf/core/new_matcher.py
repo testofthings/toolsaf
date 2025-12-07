@@ -1,11 +1,9 @@
 """Connection and endpoint matching"""
 
-from collections.abc import Set
 from dataclasses import dataclass
-import heapq
-from typing import Any, Dict, Iterable, List, Optional, Self, Tuple, Type, TypeVar
+from typing import Any, Dict, List, Optional, Self, Type, TypeVar
 
-from toolsaf.common.address import AddressAtNetwork, Addresses, AnyAddress, EndpointAddress, EntityTag, HWAddress, IPAddress
+from toolsaf.common.address import Addresses, EndpointAddress, EntityTag, HWAddress, IPAddress
 from toolsaf.common.traffic import Flow, IPFlow
 from toolsaf.core.model import Addressable, Connection, IoTSystem
 
