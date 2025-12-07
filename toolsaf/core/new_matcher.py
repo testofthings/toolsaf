@@ -2,7 +2,7 @@
 
 from typing import Any, Dict, List, Optional, Self, Tuple, Type, TypeVar
 
-from toolsaf.common.address import Addresses, EndpointAddress, EntityTag, HWAddress, IPAddress
+from toolsaf.common.address import AddressAtNetwork, Addresses, EndpointAddress, EntityTag, HWAddress, IPAddress
 from toolsaf.common.traffic import Flow, IPFlow
 from toolsaf.core.model import Addressable, Connection, IoTSystem
 
@@ -35,24 +35,27 @@ class MatchEngine:
             return  # already added
         addresses = list(entity.addresses)
         parent = entity.get_parent_host()
-        # if parent != entity:
-        #     addresses.extend(parent.addresses)
         any_address = False
         for addr in addresses:
+            net = entity.get_networks_for(addr)[0]
             match addr:
                 case EntityTag():
                     continue  # do not add clues for tags
                 case EndpointAddress():
                     h_addr = addr.get_host()
                     if h_addr != Addresses.ANY:
-                        self.clues.add_clue(h_addr, Weights.ADDRESS, entity)
+                        add_net = AddressAtNetwork(h_addr, net)
+                        self.clues.add_clue(add_net, Weights.ADDRESS, entity)
                     self.clues.add_clue(addr.get_protocol_port(), Weights.PROTOCOL_PORT, entity)
                 case HWAddress():
-                    self.clues.add_clue(addr, Weights.HW_ADDRESS, entity)
+                    add_net = AddressAtNetwork(addr, net)
+                    self.clues.add_clue(add_net, Weights.HW_ADDRESS, entity)
                 case IPAddress():
-                    self.clues.add_clue(addr, Weights.IP_ADDRESS, entity)
+                    add_net = AddressAtNetwork(addr, net)
+                    self.clues.add_clue(add_net, Weights.IP_ADDRESS, entity)
                 case _:
-                    self.clues.add_clue(addr, Weights.ADDRESS, entity)
+                    add_net = AddressAtNetwork(addr, net)
+                    self.clues.add_clue(add_net, Weights.ADDRESS, entity)
             any_address = True
         if parent == entity and not any_address:
             # give this host edge for matching with unknown addresses
@@ -166,17 +169,18 @@ class FlowMatcher:
         self.targets = DeductionState()
         match flow:
             case IPFlow():
+                net = flow.network or engine.system.get_default_network()
                 # update by source
-                matches = self.clues.update_state(flow.source[0], self.sources)
-                matches += self.clues.update_state(flow.source[1], self.sources)
+                matches = self.clues.update_state(AddressAtNetwork(flow.source[0], net), self.sources)
+                matches += self.clues.update_state(AddressAtNetwork(flow.source[1], net), self.sources)
                 if not matches:
                     # no direct matches, promote wildcard hosts
                     self.clues.update_state(Clue.WILDCARD_HOST, self.sources)
                 self.clues.update_state((flow.protocol, flow.source[2]), self.sources)
 
                 # update by target
-                matches = self.clues.update_state(flow.target[0], self.targets)
-                matches += self.clues.update_state(flow.target[1], self.targets)
+                matches = self.clues.update_state(AddressAtNetwork(flow.target[0], net), self.targets)
+                matches += self.clues.update_state(AddressAtNetwork(flow.target[1], net), self.targets)
                 if not matches:
                     # no direct matches, promote wildcard hosts
                     self.clues.update_state(Clue.WILDCARD_HOST, self.targets)
