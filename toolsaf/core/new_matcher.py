@@ -62,23 +62,6 @@ class MatchEngine:
             self.add_entity(parent)
             self.clues.add_clue(parent, 0, entity)
 
-    def deduce_flow(self, flow: Flow) -> 'DeductionState':
-        """Deduce flow facts"""
-        state = DeductionState()
-        self.clues.update_state(Clue.WILDCARD_HOST, state)
-        match flow:
-            case IPFlow():
-                # update by source
-                self.clues.update_state(flow.source[0], state)
-                self.clues.update_state(flow.source[1], state)
-                self.clues.update_state((flow.protocol, flow.source[2]), state)
-
-                # update by target
-                self.clues.update_state(flow.target[0], state)
-                self.clues.update_state(flow.target[1], state)
-                self.clues.update_state((flow.protocol, flow.target[2]), state)
-        return state
-
 
 class ClueMap:
     """Clue map"""
@@ -152,18 +135,74 @@ class DeductionState:
                 best_weight = weight
         return best_item
 
+    def __add__(self, other: 'DeductionState') -> 'DeductionState':
+        new_state = DeductionState()
+        new_state.state = other.state.copy()
+        for item, weight in self.state.items():
+            n_weight = new_state.state.get(item, 0)
+            new_state.state[item] = n_weight + weight
+        return new_state
+
     def __repr__(self) -> str:
         r = []
         for item, weight in self.state.items():
             r.append(f"{item}: {weight}")
         return "\n".join(r)
 
+
+class FlowMatcher:
+    """Flow matcher"""
+    def __init__(self, engine: MatchEngine, flow: Flow) -> None:
+        self.engine = engine
+        self.clues = engine.clues
+        self.flow = flow
+        self.sources = DeductionState()
+        self.targets = DeductionState()
+        match flow:
+            case IPFlow():
+                # update by source
+                matches = self.clues.update_state(flow.source[0], self.sources)
+                matches += self.clues.update_state(flow.source[1], self.sources)
+                if not matches:
+                    # no direct matches, promote wildcard hosts
+                    self.clues.update_state(Clue.WILDCARD_HOST, self.sources)
+                self.clues.update_state((flow.protocol, flow.source[2]), self.sources)
+
+                # update by target
+                matches = self.clues.update_state(flow.target[0], self.targets)
+                matches += self.clues.update_state(flow.target[1], self.targets)
+                if not matches:
+                    # no direct matches, promote wildcard hosts
+                    self.clues.update_state(Clue.WILDCARD_HOST, self.targets)
+                self.clues.update_state((flow.protocol, flow.target[2]), self.targets)
+
+
     def get_connection(self, flow: Flow) -> Connection | Tuple[Optional[Addressable], Optional[Addressable]]:
         """Get deduced connection for flow, return endpoints if no connection matched"""
-        conn = self.get_top_item(Connection)
+
+        # find connection with largest combined weight
+        weights: Dict[Connection, int] = {}
+        conn: Optional[Connection] = None
+        best_weight = 0
+        for state in (self.sources, self.targets):
+            for item, weight in state.state.items():
+                if isinstance(item, Connection):
+                    n_weight = weights.get(item, 0) + weight
+                    weights[item] = n_weight
+                    if n_weight > best_weight:
+                        conn = item
+                        best_weight = n_weight
         if conn:
-            source_weight = self.state.get(conn.source, 0)
-            target_weight = self.state.get(conn.target, 0)
+            source_weight = self.sources.state.get(conn.source, 0)
+            target_weight = self.targets.state.get(conn.target, 0)
+            if source_weight >= Weights.WILDCARD_ADDRESS and target_weight > Weights.WILDCARD_ADDRESS:
+                return conn
+            # hmm... perhaps reverse direction
+            source_weight = self.sources.state.get(conn.target, 0)
+            target_weight = self.targets.state.get(conn.source, 0)
             if source_weight >= Weights.WILDCARD_ADDRESS and target_weight > Weights.WILDCARD_ADDRESS:
                 return conn
         return None, None
+
+    def __repr__(self) -> str:
+        return f"{self.sources}\n---\n{self.targets}"

@@ -3,7 +3,7 @@
 from toolsaf.builder_backend import SystemBackend
 from toolsaf.common.traffic import IPFlow
 from toolsaf.core.model import Connection
-from toolsaf.core.new_matcher import MatchEngine, Weights
+from toolsaf.core.new_matcher import FlowMatcher, MatchEngine, Weights
 from toolsaf.main import TCP
 
 
@@ -23,45 +23,46 @@ def test_connection_basics():
     dev10_dev11_2010 = engine.add_connection((dev10 >> dev11 / TCP(port=2010)).connection)
 
     flow = IPFlow.TCP("1:0:0:0:0:1", "12.0.0.1", 20123) >> ("1:0:0:0:0:2", "12.0.0.2", 1234)
-    state = engine.deduce_flow(flow)
-    conn = state.get_connection(flow)
+    fm = FlowMatcher(engine, flow)
+    conn = fm.get_connection(flow)
     assert conn == dev0_dev1_1234
-    assert state.state[dev0_dev1_1234.source] == Weights.IP_ADDRESS
-    assert state.state[dev0_dev1_1234.target] == Weights.IP_ADDRESS + Weights.PROTOCOL_PORT
+    assert fm.sources.state[dev0_dev1_1234.source] == Weights.IP_ADDRESS
+    assert fm.targets.state[dev0_dev1_1234.target] == Weights.IP_ADDRESS + Weights.PROTOCOL_PORT
+
+    # reverse direction
+    flow = IPFlow.TCP("1:0:0:0:0:1", "12.0.0.1", 20124) << ("1:0:0:0:0:2", "12.0.0.2", 1234)
+    fm = FlowMatcher(engine, flow)
+    conn = fm.get_connection(flow)
+    assert conn == dev0_dev1_1234
+    assert fm.sources.state[dev0_dev1_1234.target] == Weights.IP_ADDRESS + Weights.PROTOCOL_PORT
+    assert fm.targets.state[dev0_dev1_1234.source] == Weights.IP_ADDRESS
+
 
     flow = IPFlow.TCP("1:0:0:0:0:1", "12.0.0.1", 20123) >> ("1:0:0:0:1:1", "12.0.1.1", 1234)
-    state = engine.deduce_flow(flow)
-    conn = state.get_connection(flow)
+    fm = FlowMatcher(engine, flow)
+    conn = fm.get_connection(flow)
     assert conn == dev0_dev10_1234
-    assert state.state[dev0_dev10_1234.source] == Weights.IP_ADDRESS
-    assert state.state[dev0_dev10_1234.target] == Weights.WILDCARD_ADDRESS + Weights.PROTOCOL_PORT
+    assert fm.sources.state[dev0_dev10_1234.source] == Weights.IP_ADDRESS
+    assert fm.targets.state[dev0_dev10_1234.target] == Weights.WILDCARD_ADDRESS + Weights.PROTOCOL_PORT
 
     flow = IPFlow.TCP("1:0:0:0:0:1", "12.0.0.1", 8888) >> ("1:0:0:0:1:1", "12.0.0.2", 1088)
-    state = engine.deduce_flow(flow)
-    conn = state.get_connection(flow)
+    fm = FlowMatcher(engine, flow)
+    conn = fm.get_connection(flow)
     assert conn == dev0_8888_dev1_1088
-    assert state.state[dev0_8888_dev1_1088.source] == Weights.IP_ADDRESS + Weights.PROTOCOL_PORT
-    assert state.state[dev0_8888_dev1_1088.target] == Weights.IP_ADDRESS + Weights.PROTOCOL_PORT
+    assert fm.sources.state[dev0_8888_dev1_1088.source] == Weights.IP_ADDRESS + Weights.PROTOCOL_PORT
+    assert fm.targets.state[dev0_8888_dev1_1088.target] == Weights.IP_ADDRESS + Weights.PROTOCOL_PORT
 
     flow = IPFlow.TCP("1:0:0:0:0:1", "12.0.0.1", 8888) >> ("1:0:0:0:1:1", "12.0.1.1", 2234)
-    state = engine.deduce_flow(flow)
-    conn = state.get_connection(flow)
+    fm = FlowMatcher(engine, flow)
+    conn = fm.get_connection(flow)
     assert conn == (None, None)
     # assert conn == dev0_dev10_1234
     # assert state.state[dev0_dev10_1234.source] == Weights.IP_ADDRESS
     # assert state.state[dev0_dev10_1234.target] == Weights.WILDCARD_ADDRESS
 
     flow = IPFlow.TCP("1:0:0:0:2:1", "12.0.2.1", 8888) >> ("1:0:0:0:1:1", "12.0.1.1", 2010)
-    state = engine.deduce_flow(flow)
-    conn = state.get_connection(flow)
+    fm = FlowMatcher(engine, flow)
+    conn = fm.get_connection(flow)
     assert conn == dev10_dev11_2010
-    assert state.state[dev10_dev11_2010.source] == Weights.WILDCARD_ADDRESS
-    assert state.state[dev10_dev11_2010.target] == Weights.WILDCARD_ADDRESS + Weights.PROTOCOL_PORT
-
-    flow = IPFlow.TCP("1:0:0:0:0:1", "12.0.0.1", 20124) << ("1:0:0:0:0:2", "12.0.0.2", 1234)
-    state = engine.deduce_flow(flow)
-    conn = state.get_connection(flow)
-    assert conn == dev0_dev1_1234
-    assert state.state[dev0_dev1_1234.target] == Weights.IP_ADDRESS + Weights.PROTOCOL_PORT
-    assert state.state[dev0_dev1_1234.source] == Weights.IP_ADDRESS
-
+    assert fm.sources.state[dev10_dev11_2010.source] == Weights.WILDCARD_ADDRESS
+    assert fm.targets.state[dev10_dev11_2010.target] == Weights.WILDCARD_ADDRESS + Weights.PROTOCOL_PORT
