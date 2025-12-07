@@ -1,8 +1,8 @@
 """Connection and endpoint matching"""
 
-from typing import Any, Dict, List, Optional, Self, Tuple, Type, TypeVar
+from typing import Any, Dict, List, Optional, Self, Set, Tuple, Type, TypeVar
 
-from toolsaf.common.address import AddressAtNetwork, Addresses, EndpointAddress, EntityTag, HWAddress, IPAddress
+from toolsaf.common.address import AddressAtNetwork, Addresses, AnyAddress, EndpointAddress, EntityTag, HWAddress, IPAddress
 from toolsaf.common.traffic import Flow, IPFlow
 from toolsaf.core.model import Addressable, Connection, IoTSystem
 
@@ -20,6 +20,15 @@ class MatchEngine:
     def __init__(self, system: IoTSystem):
         self.system = system
         self.clues = ClueMap()
+        self.addresses: Dict[Addressable, Set[AnyAddress]] = {}
+
+    def find_endpoint(self, address: Any) -> Optional[Addressable]:
+        """Find endpoint by address"""
+        clues = self.clues.clues.get(address, [])
+        for clue in clues:
+            if isinstance(clue.item, Addressable):
+                return clue.item
+        return None
 
     def add_connection(self, connection: Connection) -> Connection:
         """Add connection to matching engine"""
@@ -31,32 +40,14 @@ class MatchEngine:
 
     def add_entity(self, entity: Addressable) -> None:
         """Add entity to matching engine"""
-        if entity in self.clues.clues:
+        if entity in self.addresses:
             return  # already added
+        self.addresses[entity] = entity.addresses.copy()
         addresses = list(entity.addresses)
         parent = entity.get_parent_host()
         any_address = False
         for addr in addresses:
-            net = entity.get_networks_for(addr)[0]
-            match addr:
-                case EntityTag():
-                    continue  # do not add clues for tags
-                case EndpointAddress():
-                    h_addr = addr.get_host()
-                    if h_addr != Addresses.ANY:
-                        add_net = AddressAtNetwork(h_addr, net)
-                        self.clues.add_clue(add_net, Weights.ADDRESS, entity)
-                    self.clues.add_clue(addr.get_protocol_port(), Weights.PROTOCOL_PORT, entity)
-                case HWAddress():
-                    add_net = AddressAtNetwork(addr, net)
-                    self.clues.add_clue(add_net, Weights.HW_ADDRESS, entity)
-                case IPAddress():
-                    add_net = AddressAtNetwork(addr, net)
-                    self.clues.add_clue(add_net, Weights.IP_ADDRESS, entity)
-                case _:
-                    add_net = AddressAtNetwork(addr, net)
-                    self.clues.add_clue(add_net, Weights.ADDRESS, entity)
-            any_address = True
+            any_address = self._add_address(addr, entity) or any_address
         if parent == entity and not any_address:
             # give this host edge for matching with unknown addresses
             self.clues.add_clue(Clue.WILDCARD_HOST, Weights.WILDCARD_ADDRESS, entity)
@@ -71,6 +62,39 @@ class MatchEngine:
             if isinstance(c, Addressable):
                 self.add_entity(c)
 
+    def address_change(self, host: Addressable) -> None:
+        """Notify engine of address change"""
+        removed = self.addresses.get(host, set()) - host.addresses
+        added = host.addresses - self.addresses.get(host, set())
+        for addr in removed:
+            net = host.get_networks_for(addr)[0]
+            add_net = AddressAtNetwork(addr, net)
+            if add_net in self.clues.clues:
+                del self.clues.clues[add_net]
+        for addr in added:
+            self._add_address(addr, host)
+
+    def _add_address(self, address: AnyAddress, entity: Addressable) -> bool:
+        """Add address clue for entity"""
+        net = entity.get_networks_for(address)[0]
+        match address:
+            case EntityTag():
+                return  False # do not add clues for tags
+            case EndpointAddress():
+                h_addr = address.get_host()
+                if h_addr != Addresses.ANY:
+                    self._add_address(h_addr, entity)
+                self.clues.add_clue(address.get_protocol_port(), Weights.PROTOCOL_PORT, entity)
+            case HWAddress():
+                add_net = AddressAtNetwork(address, net)
+                self.clues.add_clue(add_net, Weights.HW_ADDRESS, entity)
+            case IPAddress():
+                add_net = AddressAtNetwork(address, net)
+                self.clues.add_clue(add_net, Weights.IP_ADDRESS, entity)
+            case _:
+                add_net = AddressAtNetwork(address, net)
+                self.clues.add_clue(add_net, Weights.ADDRESS, entity)
+        return True
 
 class ClueMap:
     """Clue map"""
