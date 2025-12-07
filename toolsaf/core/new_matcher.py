@@ -76,7 +76,6 @@ class ClueMap:
     """Clue map"""
     def __init__(self, parent: Optional[Self] = None) -> None:
         self.clues: Dict[Any, List[Clue]] = {}
-        self.parent = parent
 
     def add_clue(self, reference: Any, weight: int, item: Any) -> None:
         """Add clue"""
