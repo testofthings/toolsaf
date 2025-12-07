@@ -1,6 +1,5 @@
 """Connection and endpoint matching"""
 
-from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Self, Tuple, Type, TypeVar
 
 from toolsaf.common.address import Addresses, EndpointAddress, EntityTag, HWAddress, IPAddress
@@ -184,7 +183,7 @@ class FlowMatcher:
                 self.clues.update_state((flow.protocol, flow.target[2]), self.targets)
 
 
-    def get_connection(self, flow: Flow) -> Connection | Tuple[Optional[Addressable], Optional[Addressable]]:
+    def get_connection(self, _flow: Flow) -> Connection | Tuple[Optional[Addressable], Optional[Addressable]]:
         """Get deduced connection for flow, return endpoints if no connection matched"""
 
         # find connection with largest combined weight
