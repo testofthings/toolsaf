@@ -125,6 +125,10 @@ class MatcherEngine:
                 self.clues.add_clue(add_net, Weights.ADDRESS, entity)
         return True
 
+    def __repr__(self) -> str:
+        return str(self.clues)
+
+
 class ClueMap:
     """Clue map"""
     def __init__(self) -> None:
