@@ -1,8 +1,9 @@
 """Connection and endpoint matching"""
 
-from typing import Any, Dict, List, Optional, Self, Set, Tuple, Type, TypeVar
+from typing import Any, Dict, List, Optional, Set, Tuple, Type, TypeVar
 
-from toolsaf.common.address import AddressAtNetwork, Addresses, AnyAddress, EndpointAddress, EntityTag, HWAddress, IPAddress
+from toolsaf.common.address import AddressAtNetwork, Addresses, AnyAddress, EndpointAddress, EntityTag, \
+    HWAddress, IPAddress
 from toolsaf.common.traffic import Flow, IPFlow
 from toolsaf.core.model import Addressable, Connection, IoTSystem
 
@@ -121,7 +122,7 @@ class MatcherEngine:
 
 class ClueMap:
     """Clue map"""
-    def __init__(self, parent: Optional[Self] = None) -> None:
+    def __init__(self) -> None:
         self.clues: Dict[Any, List[Clue]] = {}
 
     def add_clue(self, reference: Any, weight: int, item: Any) -> None:
