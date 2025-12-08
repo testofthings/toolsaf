@@ -193,7 +193,7 @@ def test_match_overlap_unknowns():
 
     assert cs11 == cs1
     assert cs12 == cs2
-    assert cs13 == cs1
+    assert cs13 != cs1
     assert cs14 != cs1
     assert cs14.target.name == "UDP:2002"
 

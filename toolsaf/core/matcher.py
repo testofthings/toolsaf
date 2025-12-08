@@ -113,7 +113,7 @@ class MatchingContext:
         if isinstance(conn, Connection):
             assert source_add is not None and target_add is not None
             match = ConnectionMatch(conn, source_add, target_add, flow_matcher.reverse)
-            if not conn.is_expected() and flow_matcher.reverse:
+            if not conn.target.is_service() and flow_matcher.reverse:
                 # Reply to unexpected connection
                 self.create_unknown_service(match)
             self.observed[flow] = match
@@ -131,6 +131,10 @@ class MatchingContext:
             match = self.new_connection((source, source_add), (target, target_add))
             self.observed[flow] = match
         connection = match.connection
+        if not match.reply:
+            self.system.system.connections[match.source, match.target] = connection
+        else:
+            self.system.system.connections[match.target, match.source] = connection
         connection.source.new_connection(connection, flow, target=match.reply)
         connection.target.new_connection(connection, flow, target=not match.reply)
         return match
@@ -239,7 +243,7 @@ class MatchingContext:
         new_obs: Dict[Flow, ConnectionMatch] = {}
         for o_flow, o_m in self.observed.items():
             if o_m.connection == conn and o_m.target != service_address:
-                # same connection, but different target address
+                # same connection, but different target service
                 if new_c is None:
                     new_source = conn.source, o_m.source
                     new_target = target_host, o_m.target
