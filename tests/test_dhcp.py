@@ -1,6 +1,5 @@
 import pathlib
 from toolsaf.common.address import EntityTag, HWAddress, IPAddress
-from toolsaf.common.verdict import Verdict
 from toolsaf.builder_backend import SystemBackend
 from toolsaf.core.event_logger import EventLogger
 from toolsaf.core.inspector import Inspector

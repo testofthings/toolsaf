@@ -102,35 +102,38 @@ class MatchingContext:
 
     def get_connection(self, flow: Flow) -> ConnectionMatch:
         """Get connection matching the given flow"""
-        c = self.observed.get(flow)
-        if c:
-            return c
+        match = self.observed.get(flow)
+        if match:
+            # old connection
+            return match
 
-        matcher = FlowMatcher(self.engine, flow)
-        conn = matcher.get_connection()
-        source_add, target_add = matcher.get_host_addresses()
+        flow_matcher = FlowMatcher(self.engine, flow)
+        conn = flow_matcher.get_connection()
+        source_add, target_add = flow_matcher.get_host_addresses()
         if isinstance(conn, Connection):
             assert source_add is not None and target_add is not None
-            c = ConnectionMatch(conn, source_add, target_add, matcher.reverse)
-            if not conn.is_expected() and matcher.reverse:
+            match = ConnectionMatch(conn, source_add, target_add, flow_matcher.reverse)
+            if not conn.is_expected() and flow_matcher.reverse:
                 # Reply to unexpected connection
-                self.create_unknown_service(c)
-            self.observed[flow] = c
-            return c
-        source, target = conn
+                self.create_unknown_service(match)
+            self.observed[flow] = match
+        else:
+            # no connection, must create new
+            source, target = conn
+            if source is None:
+                # no suitable source, make new
+                source, source_add = self.new_endpoint(flow, target=False)
+            if target is None:
+                # no suitable target, make new
+                target, target_add = self.new_endpoint(flow, target=True)
+            assert source_add is not None and target_add is not None
 
-        # no connection, must create new
-        if source is None:
-            # no suitable source, make new
-            source, source_add = self.new_endpoint(flow, target=False)
-        if target is None:
-            # no suitable target, make new
-            target, target_add = self.new_endpoint(flow, target=True)
-        assert source_add is not None and target_add is not None
-
-        c = self.new_connection((source, source_add), (target, target_add))
-        self.observed[flow] = c
-        return c
+            match = self.new_connection((source, source_add), (target, target_add))
+            self.observed[flow] = match
+        connection = match.connection
+        connection.source.new_connection(connection, flow, target=match.reply)
+        connection.target.new_connection(connection, flow, target=not match.reply)
+        return match
 
     def get_endpoint(self, address: AnyAddress) -> Addressable:
         """Get endpoint by address, create new if not found"""
@@ -228,13 +231,8 @@ class MatchingContext:
             and new_service.status == Status.UNEXPECTED:
             # host is free to provide unlisted services
             new_service.status = Status.EXTERNAL
+
         target_host.connections.append(conn)
-        # networks = target_host.get_networks_for(new_service_ep.get_host())
-        # for nw in networks:
-        #     # for each network, the host is in
-        #     for ep in self.endpoints[AddressAtNetwork(new_service_ep.get_host(), nw)]:
-        #         if ep.entity == target_host:
-        #             ep.add_service(new_service)
         conn.target = new_service
         # create new connection for connections from same the source to the same target host, but different port
         new_c = None
