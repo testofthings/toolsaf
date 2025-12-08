@@ -309,7 +309,7 @@ class FlowMatcher:
             source_weight = self.sources.get(conn.source).weight
             target_weight = self.targets.get(conn.target).weight
             target_weight_threshold = Weights.HW_ADDRESS
-            if conn.target.is_expected():
+            if conn.target.get_parent_host().is_expected():
                 # With expected target, also service must match
                 # On unexpected targets, we do not create services for them
                 target_weight_threshold += 1
