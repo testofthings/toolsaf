@@ -15,8 +15,8 @@ class Weights:
 
     PROTOCOL_PORT = 10
 
-class MatchEngine:
-    """Matching engine"""
+class SystemMatcher:
+    """System matcher for connections and endpoints"""
     def __init__(self, system: IoTSystem):
         self.system = system
         self.clues = ClueMap()
@@ -184,15 +184,16 @@ class DeductionState:
 
 class FlowMatcher:
     """Flow matcher"""
-    def __init__(self, engine: MatchEngine, flow: Flow) -> None:
-        self.engine = engine
-        self.clues = engine.clues
+    def __init__(self, system_matcher: SystemMatcher, flow: Flow) -> None:
+        self.system_matcher = system_matcher
+        self.system = system_matcher.system
+        self.clues = system_matcher.clues
         self.flow = flow
         self.sources = DeductionState()
         self.targets = DeductionState()
         match flow:
             case IPFlow():
-                net = flow.network or engine.system.get_default_network()
+                net = flow.network or self.system.get_default_network()
                 # update by source
                 matches = self.clues.update_state(AddressAtNetwork(flow.source[0], net), self.sources)
                 matches += self.clues.update_state(AddressAtNetwork(flow.source[1], net), self.sources)

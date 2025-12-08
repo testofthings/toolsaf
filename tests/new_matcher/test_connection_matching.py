@@ -2,13 +2,13 @@
 
 from toolsaf.builder_backend import SystemBackend
 from toolsaf.common.traffic import IPFlow
-from toolsaf.core.new_matcher import FlowMatcher, MatchEngine, Weights
+from toolsaf.core.new_matcher import FlowMatcher, SystemMatcher, Weights
 from toolsaf.main import TCP
 
 
 def test_connection_basics():
     sb = SystemBackend()
-    engine = MatchEngine(sb.system)
+    engine = SystemMatcher(sb.system)
 
     dev0 = sb.device("Dev0").ip("12.0.0.1")
     dev1 = sb.device("Dev1").ip("12.0.0.2")
@@ -65,7 +65,7 @@ def test_connection_basics():
 
 def test_connection_no_match():
     sb = SystemBackend()
-    engine = MatchEngine(sb.system)
+    engine = SystemMatcher(sb.system)
 
     dev0 = sb.device("Dev0").ip("12.0.0.1")
     dev1 = sb.device("Dev1").ip("12.0.0.2")
