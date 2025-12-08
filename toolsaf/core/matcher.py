@@ -169,6 +169,7 @@ class MatchingContext:
         system = self.system.system
         c = system.new_connection(source, target)
         self.set_connection_status(c, source, target)
+        self.engine.add_connection(c)
         return ConnectionMatch(c, source[1], target[1])
 
     def set_connection_status(self, connection: Connection, source: Tuple[Addressable, AnyAddress],
