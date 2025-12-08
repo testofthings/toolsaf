@@ -23,12 +23,16 @@ class MatcherEngine:
         self.clues = ClueMap()
         self.addresses: Dict[Addressable, Set[AnyAddress]] = {}
 
-    def find_endpoint(self, address: Any) -> Optional[Addressable]:
-        """Find endpoint by address"""
-        clues = self.clues.clues.get(address, [])
-        for clue in clues:
-            if isinstance(clue.item, Addressable):
-                return clue.item
+    def find_host(self, address: Any) -> Optional[Addressable]:
+        """Find host by address"""
+        host = address.get_host()
+        networks = self.system.get_networks_for(host)
+        for net in networks:
+            addr_net = AddressAtNetwork(host, net)
+            clues = self.clues.clues.get(addr_net, [])
+            for clue in clues:
+                if isinstance(clue.item, Addressable):
+                    return clue.item
         return None
 
     def add_connection(self, connection: Connection) -> Connection:

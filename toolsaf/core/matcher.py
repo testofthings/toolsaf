@@ -141,7 +141,7 @@ class MatchingContext:
 
     def get_endpoint(self, address: AnyAddress) -> Addressable:
         """Get endpoint by address, create new if not found"""
-        host = self.engine.find_endpoint(address)
+        host = self.engine.find_host(address)
         net = self.system.system.get_networks_for(address)
         if host:
             if not address.get_protocol_port():
