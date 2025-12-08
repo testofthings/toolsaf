@@ -2,7 +2,7 @@
 
 from toolsaf.builder_backend import SystemBackend
 from toolsaf.common.traffic import IPFlow
-from toolsaf.core.new_matcher import FlowMatcher, SystemMatcher, Weights
+from toolsaf.core.system_matcher import FlowMatcher, SystemMatcher, Weights
 from toolsaf.main import TCP
 
 
