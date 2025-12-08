@@ -43,7 +43,7 @@ class SystemMatcher(ModelListener):
     def endpoint(self, address: AnyAddress, source: EvidenceSource) -> Addressable:
         """Find endpoint by address"""
         ctx = self._get_context(source)
-        e = ctx.find_endpoint(address)
+        e = ctx.get_endpoint(address)
         return e
 
     def _get_context(self, source: EvidenceSource) -> 'MatchingContext':
@@ -129,8 +129,8 @@ class MatchingContext:
         self.observed[flow] = c
         return c
 
-    def find_endpoint(self, address: AnyAddress) -> Addressable:
-        """Find endpoint by address, create new if not found"""
+    def get_endpoint(self, address: AnyAddress) -> Addressable:
+        """Get endpoint by address, create new if not found"""
         host = self.engine.find_endpoint(address)
         net = self.system.system.get_networks_for(address)
         if host:

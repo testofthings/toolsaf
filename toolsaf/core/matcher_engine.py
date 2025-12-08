@@ -68,11 +68,17 @@ class MatcherEngine:
         addresses = self.addresses.get(entity, set())
         if address in addresses:
             return  # already known
+        addresses.add(address)
 
-        old_mappings = self.clues.clues.get(address)
+        nets = entity.get_networks_for(address)
+        assert len(nets) <= 1, "Unsupported multiple networks for address"
+        net = nets[0] if nets else self.system.get_default_network()
+        net_add = AddressAtNetwork(address, net)
+
+        old_mappings = self.clues.clues.get(net_add)
         if old_mappings:
             # we remove _all_ old mappings
-            del self.clues.clues[address]
+            del self.clues.clues[net_add]
 
         # make sure entity no longer in wildcard clues
         wildcard_clues = self.clues.clues.get(Clue.WILDCARD_HOST, ())
@@ -80,7 +86,6 @@ class MatcherEngine:
             wildcard_clues = [c for c in wildcard_clues if c.item != entity]
             self.clues.clues[Clue.WILDCARD_HOST] = wildcard_clues
 
-        addresses.add(address)
         self._add_address(address, entity)
 
     def update_host(self, host: Addressable) -> None:
