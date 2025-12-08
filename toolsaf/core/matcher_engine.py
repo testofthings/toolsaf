@@ -308,13 +308,18 @@ class FlowMatcher:
         if conn:
             source_weight = self.sources.get(conn.source).weight
             target_weight = self.targets.get(conn.target).weight
-            if source_weight >= Weights.WILDCARD_ADDRESS and target_weight > Weights.HW_ADDRESS:
+            target_weight_threshold = Weights.HW_ADDRESS
+            if conn.target.is_expected():
+                # With expected target, also service must match
+                # On unexpected targets, we do not create services for them
+                target_weight_threshold += 1
+            if source_weight >= Weights.WILDCARD_ADDRESS and target_weight >= target_weight_threshold:
                 self.connection = conn
                 return conn
             # hmm... perhaps reverse direction
             source_weight = self.sources.get(conn.target).weight
             target_weight = self.targets.get(conn.source).weight
-            if source_weight > Weights.HW_ADDRESS and target_weight >= Weights.WILDCARD_ADDRESS:
+            if source_weight >= target_weight_threshold and target_weight >= Weights.WILDCARD_ADDRESS:
                 self.connection = conn
                 self.reverse = True
                 return conn
