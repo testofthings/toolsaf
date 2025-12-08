@@ -25,30 +25,34 @@ def test_connection_basics():
     fm = FlowMatcher(engine, flow)
     conn = fm.get_connection()
     assert conn == dev0_dev1_1234
-    assert fm.sources.state[dev0_dev1_1234.source] == Weights.IP_ADDRESS
-    assert fm.targets.state[dev0_dev1_1234.target] == Weights.IP_ADDRESS + Weights.PROTOCOL_PORT
+    assert fm.sources.get_weight(dev0_dev1_1234.source) == Weights.IP_ADDRESS
+    assert fm.targets.get_weight(dev0_dev1_1234.target) == Weights.IP_ADDRESS + Weights.PROTOCOL_PORT
+    assert fm.get_host_addresses() == (flow.source[1], flow.target[1])
 
     # reverse direction
     flow = IPFlow.TCP("1:0:0:0:0:1", "12.0.0.1", 20124) << ("1:0:0:0:0:2", "12.0.0.2", 1234)
     fm = FlowMatcher(engine, flow)
     conn = fm.get_connection()
     assert conn == dev0_dev1_1234
-    assert fm.sources.state[dev0_dev1_1234.target] == Weights.IP_ADDRESS + Weights.PROTOCOL_PORT
-    assert fm.targets.state[dev0_dev1_1234.source] == Weights.IP_ADDRESS
+    assert fm.sources.get_weight(dev0_dev1_1234.target) == Weights.IP_ADDRESS + Weights.PROTOCOL_PORT
+    assert fm.targets.get_weight(dev0_dev1_1234.source) == Weights.IP_ADDRESS
+    assert fm.get_host_addresses() == (flow.source[1], flow.target[1])
 
     flow = IPFlow.TCP("1:0:0:0:0:1", "12.0.0.1", 20123) >> ("1:0:0:0:1:1", "12.0.1.1", 1234)
     fm = FlowMatcher(engine, flow)
     conn = fm.get_connection()
     assert conn == dev0_dev10_1234
-    assert fm.sources.state[dev0_dev10_1234.source] == Weights.IP_ADDRESS
-    assert fm.targets.state[dev0_dev10_1234.target] == Weights.WILDCARD_ADDRESS + Weights.PROTOCOL_PORT
+    assert fm.sources.get_weight(dev0_dev10_1234.source) == Weights.IP_ADDRESS
+    assert fm.targets.get_weight(dev0_dev10_1234.target) == Weights.WILDCARD_ADDRESS + Weights.PROTOCOL_PORT
+    assert fm.get_host_addresses() == (flow.source[1], flow.target[1])
 
     flow = IPFlow.TCP("1:0:0:0:0:1", "12.0.0.1", 8888) >> ("1:0:0:0:1:1", "12.0.0.2", 1088)
     fm = FlowMatcher(engine, flow)
     conn = fm.get_connection()
     assert conn == dev0_8888_dev1_1088
-    assert fm.sources.state[dev0_8888_dev1_1088.source] == Weights.IP_ADDRESS + Weights.PROTOCOL_PORT
-    assert fm.targets.state[dev0_8888_dev1_1088.target] == Weights.IP_ADDRESS + Weights.PROTOCOL_PORT
+    assert fm.sources.get_weight(dev0_8888_dev1_1088.source) == Weights.IP_ADDRESS + Weights.PROTOCOL_PORT
+    assert fm.targets.get_weight(dev0_8888_dev1_1088.target) == Weights.IP_ADDRESS + Weights.PROTOCOL_PORT
+    assert fm.get_host_addresses() == (flow.source[1], flow.target[1])
 
     flow = IPFlow.TCP("1:0:0:0:0:1", "12.0.0.1", 8888) >> ("1:0:0:0:1:1", "12.0.1.1", 2234)
     fm = FlowMatcher(engine, flow)
@@ -59,8 +63,9 @@ def test_connection_basics():
     fm = FlowMatcher(engine, flow)
     conn = fm.get_connection()
     assert conn == dev10_dev11_2010
-    assert fm.sources.state[dev10_dev11_2010.source] == Weights.WILDCARD_ADDRESS
-    assert fm.targets.state[dev10_dev11_2010.target] == Weights.WILDCARD_ADDRESS + Weights.PROTOCOL_PORT
+    assert fm.sources.get_weight(dev10_dev11_2010.source) == Weights.WILDCARD_ADDRESS
+    assert fm.targets.get_weight(dev10_dev11_2010.target) == Weights.WILDCARD_ADDRESS + Weights.PROTOCOL_PORT
+    assert fm.get_host_addresses() == (flow.source[1], flow.target[1])
 
 
 def test_connection_no_match():
@@ -80,32 +85,32 @@ def test_connection_no_match():
     fm = FlowMatcher(engine, flow)
     conn = fm.get_connection()
     assert conn == (dev0.entity, dev1.entity)
-    assert fm.sources.state[dev0.entity] == Weights.IP_ADDRESS
-    assert fm.targets.state[dev1.entity] == Weights.IP_ADDRESS
+    assert fm.sources.get_weight(dev0.entity) == Weights.IP_ADDRESS
+    assert fm.targets.get_weight(dev1.entity) == Weights.IP_ADDRESS
 
     # reverse direction
     flow = IPFlow.TCP("1:0:0:0:0:1", "12.0.0.1", 20123) << ("1:0:0:0:0:2", "12.0.0.2", 888)
     fm = FlowMatcher(engine, flow)
     conn = fm.get_connection()
     assert conn == (dev1.entity, dev0.entity)
-    assert fm.sources.state[dev1.entity] == Weights.IP_ADDRESS
-    assert fm.targets.state[dev0.entity] == Weights.IP_ADDRESS
+    assert fm.sources.get_weight(dev1.entity) == Weights.IP_ADDRESS
+    assert fm.targets.get_weight(dev0.entity) == Weights.IP_ADDRESS
 
     flow = IPFlow.TCP("1:0:0:0:0:1", "12.0.0.1", 20123) >> ("1:0:0:0:0:2", "55.44.33.22", 1234)
     fm = FlowMatcher(engine, flow)
     conn = fm.get_connection()
     assert conn == (dev0.entity, None)
-    assert fm.sources.state[dev0.entity] == Weights.IP_ADDRESS
-    assert fm.targets.state[dev10.entity] == Weights.WILDCARD_ADDRESS
-    assert fm.targets.state[dev11.entity] == Weights.WILDCARD_ADDRESS
+    assert fm.sources.get_weight(dev0.entity) == Weights.IP_ADDRESS
+    assert fm.targets.get_weight(dev10.entity) == Weights.WILDCARD_ADDRESS
+    assert fm.targets.get_weight(dev11.entity) == Weights.WILDCARD_ADDRESS
 
     flow = IPFlow.TCP("1:0:0:0:0:1", "12.0.0.1", 20123) >> ("1:0:0:0:0:2", "55.44.33.22", 2010)
     fm = FlowMatcher(engine, flow)
     conn = fm.get_connection()
     assert conn == (dev0.entity, dev11_2010.entity)
-    assert fm.sources.state[dev0.entity] == Weights.IP_ADDRESS
-    assert fm.targets.state[dev10.entity] == Weights.WILDCARD_ADDRESS
-    assert fm.targets.state[dev11_2010.entity] == Weights.WILDCARD_ADDRESS + Weights.PROTOCOL_PORT
+    assert fm.sources.get_weight(dev0.entity) == Weights.IP_ADDRESS
+    assert fm.targets.get_weight(dev10.entity) == Weights.WILDCARD_ADDRESS
+    assert fm.targets.get_weight(dev11_2010.entity) == Weights.WILDCARD_ADDRESS + Weights.PROTOCOL_PORT
 
     # reverse direction
     flow = IPFlow.TCP("1:0:0:0:0:1", "12.0.0.1", 9000) << ("1:0:0:0:0:2", "55.44.33.22", 2010)
@@ -117,5 +122,5 @@ def test_connection_no_match():
     fm = FlowMatcher(engine, flow)
     conn = fm.get_connection()
     assert conn == (None, dev11_2010.entity)
-    assert fm.targets.state[dev10.entity] == Weights.WILDCARD_ADDRESS
-    assert fm.targets.state[dev11_2010.entity] == Weights.WILDCARD_ADDRESS + Weights.PROTOCOL_PORT
+    assert fm.targets.get_weight(dev10.entity) == Weights.WILDCARD_ADDRESS
+    assert fm.targets.get_weight(dev11_2010.entity) == Weights.WILDCARD_ADDRESS + Weights.PROTOCOL_PORT

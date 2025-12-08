@@ -5,6 +5,7 @@ from typing import Self, Tuple, Dict, Optional, Set, List, Iterable
 
 from toolsaf.common.address import AddressAtNetwork, AnyAddress, EndpointAddress, IPAddress, Addresses, DNSName
 from toolsaf.common.basics import ExternalActivity, Status
+from toolsaf.core.matcher_engine import MatcherEngine
 from toolsaf.core.model import IoTSystem, Connection, Host, Addressable, Service, EvidenceNetworkSource, ModelListener
 from toolsaf.common.property import Properties
 from toolsaf.common.traffic import Flow, EvidenceSource, IPFlow
@@ -15,7 +16,7 @@ class SystemMatcher(ModelListener):
     """Match system model"""
     def __init__(self, system: IoTSystem) -> None:
         self.system = system
-        self.engines: Dict[EvidenceSource, MatchEngine] = {}
+        self.engines: Dict[EvidenceSource, MatchingContext] = {}
         self.host_addresses = {c: c.addresses.copy() for c in system.children}
         system.model_listeners.append(self)
 
@@ -52,11 +53,11 @@ class SystemMatcher(ModelListener):
         e = engine.find_endpoint(address)
         return e
 
-    def _get_engine(self, source: EvidenceSource) -> 'MatchEngine':
+    def _get_engine(self, source: EvidenceSource) -> 'MatchingContext':
         """Get engine for source"""
         engine = self.engines.get(source)
         if engine is None:
-            engine = MatchEngine(self, source)
+            engine = MatchingContext(self, source)
             self.engines[source] = engine
         return engine
 
@@ -157,115 +158,32 @@ class ConnectionFinder:
         return end
 
 
-class MatchEngine:
-    """Match engine, can have engines for different sources"""
+class MatchingContext:
+    """Matching context"""
     def __init__(self, system: SystemMatcher, source: EvidenceSource) -> None:
         self.system = system
-        self.endpoints: Dict[AddressAtNetwork, List[MatchEndpoint]] = {}
         self.observed: Dict[Flow, ConnectionMatch] = {}
-        self.source = source if isinstance(source, EvidenceNetworkSource) else None
+        self.engine = MatcherEngine(system.system)
+
+        # load system model into matching engine
+        for c in system.system.get_connections():
+            self.engine.add_connection(c)
         for h in system.system.get_hosts():
-            self._add_host(h)
-        no_match_any_address: Dict[AddressAtNetwork, Set[MatchEndpoint]] = {}
+            self.engine.add_host(h)
+
+        # load evidence source -specific address mappings
+        self.source = source if isinstance(source, EvidenceNetworkSource) else None
         if self.source:
-            # load source-specific stuff
             for ad, ent in self.source.address_map.items():
-                ad_networks = ent.get_networks_for(ad)
-                # add entity for corrent network(s)
-                for nw in ad_networks:
-                    ex_ent = self.endpoints.setdefault(AddressAtNetwork(ad, nw), [])
-                    for ex in ex_ent:
-                        if ex.entity == ent:
-                            ex.add_address(ad)  # entity has new address
-                            break
-                    else:
-                        # no other addresses, but source-specific one
-                        m_ep = self._add_or_update_host(ent).add_address(ad)
-                        ex_ent.append(m_ep)
-                        any_addr = AddressAtNetwork(Addresses.ANY, nw)
-                        no_match_any_address.setdefault(any_addr, set()).add(m_ep)
+                self.engine.add_address_mapping(ad, ent)
 
-            # entities with got addresses no longer match any address
-            for wild_ad, ends in no_match_any_address.items():
-                old_ends = self.endpoints.get(wild_ad, [])
-                new_ends = [e for e in old_ends if e not in ends]
-                self.endpoints[wild_ad] = new_ends
-
+            # FIXME: Add activity map support
+            assert not self.source.activity_map, "Activity map not supported in matcher engine"
             # check if exteranal activity changes for some entities
-            for me in itertools.chain(*self.endpoints.values()):
-                fs = self.source.activity_map.get(me.entity)
-                if fs is not None:
-                    me.external_activity = fs
-
-    def update_addresses(self, host: Host, old: Set[AnyAddress]) -> None:
-        """Update addresses for a host"""
-        # remove old mappings for the addresses
-        for ad in old:
-            ad_networks = host.get_networks_for(ad)
-            for nw in ad_networks:
-                key = AddressAtNetwork(ad, nw)
-                ends = self.endpoints.get(key, [])
-                self.endpoints[key] = [m for m in ends if m.entity != host]
-        # add the host again
-        self._add_host(host)
-
-    def _add_or_update_host(self, entity: Addressable) -> 'MatchEndpoint':
-        """Add or update host in the match engine"""
-        for ends in self.endpoints.values():
-            for end in ends:
-                if end.entity == entity:
-                    return end  # already exists
-        return self._add_host(entity)
-
-    def _add_host(self, entity: Addressable) -> 'MatchEndpoint':
-        """Add new host to match engine"""
-        ads: Iterable[AnyAddress]
-        if entity.any_host:
-            ads = []  # always match by wildcards
-        else:
-            ads = {h: None for a in entity.get_addresses() if not a.is_tag() and (h := a.get_host()) is not None}.keys()
-
-        if ads:
-            # addressed host
-            me = MatchEndpoint(entity, priority_services=True)
-            for ad in ads:
-                # match service, may fallback to host and create unexpected services
-                ad_networks = entity.get_networks_for(ad)
-                for nw in ad_networks:
-                    self.endpoints.setdefault(AddressAtNetwork(ad, nw), []).append(me)
-        else:
-            # no addresses, but services -> match any with service ports
-            # no addresses and no services -> match any flow
-            me = MatchEndpoint(entity, match_no_service=not entity.children)
-            for nw in entity.get_networks():
-                self.endpoints.setdefault(AddressAtNetwork(Addresses.ANY, nw), []).append(me)
-        return me
-
-    def get_connection(self, flow: Flow) -> ConnectionMatch:
-        """Find the connection matching the given flow, return also endpoint addresses"""
-        system = self.system.system
-        m = self.get_observed(flow)
-        if m:
-            # the flow or it's reverse already seen
-            if m.reply:
-                system.connections[m.target.address, m.source.address] = m.connection
-            target_h = m.connection.target
-            if not m.reply or not isinstance(target_h, Host):
-                return m  # ...nothing new here
-            # reply, there is an unexpected service replying -> create an unexpected service
-            self.create_unknown_service(m)
-        else:
-            # new flow, may be existing or new source and/or target
-            m = self.add_connection(flow)
-            if m.connection.status == Status.PLACEHOLDER:
-                # this is an UNEXPECTED connection found after reset
-                self.set_connection_status(m.connection, m.source, m.target)
-            self.observed[flow] = m
-        conn = m.connection
-        conn.source.new_connection(conn, flow, target=m.reply)
-        conn.target.new_connection(conn, flow, target=not m.reply)
-        system.connections[m.source.address, m.target.address] = conn
-        return m
+            # for me in itertools.chain(*self.endpoints.values()):
+            #     fs = self.source.activity_map.get(me.entity)
+            #     if fs is not None:
+            #         me.external_activity = fs
 
     def get_observed(self, flow: Flow) -> Optional[ConnectionMatch]:
         """Get cached observed connection match, if there is one"""

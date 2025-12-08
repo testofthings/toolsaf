@@ -133,14 +133,17 @@ class ClueMap:
         if new_clue not in clues:
             clues.append(new_clue)
 
-    def update_state(self, reference: Any, state: 'DeductionState', weight: int = 0) -> int:
+    def update_state(self, reference: Any, state: 'DeductionState', weight: int = 0,
+                     from_value: Optional['StateValue'] = None) -> int:
         """Update deduction state with clues for reference"""
         clues = self.clues.get(reference, [])
         for clue in clues:
-            start_w = state.state.get(clue.item, 0)
-            w = start_w + weight + clue.weight
-            state.state[clue.item] = w
-            self.update_state(clue.item, state, weight=w - start_w) # propagate weight increase
+            value = state.get(clue.item, add=True)
+            w = clue.weight + weight
+            if from_value:
+                value.references.update(from_value.references)
+            value.add_item(reference, w)
+            self.update_state(clue.item, state, weight=w, from_value=value)  # propagate weight increase
         return len(clues)
 
     def __repr__(self) -> str:
@@ -173,34 +176,70 @@ class Clue:
     WILDCARD_HOST = "*"
 
 
+class StateValue:
+    """Deduction state value"""
+    def __init__(self) -> None:
+        self.references: Set[Any] = set()
+        self.weight = 0
+
+    def add_item(self, reference: Any, weight: int) -> None:
+        """Add reference with weight"""
+        self.references.add(reference)
+        self.weight += weight
+
+    def __add__(self, other: 'StateValue') -> 'StateValue':
+        new_value = StateValue()
+        new_value.weight = self.weight + other.weight
+        new_value.references = self.references.union(other.references)
+        return new_value
+
+    def __repr__(self) -> str:
+        return f"{self.weight}: {self.references}"
+
 T = TypeVar('T')
 
 class DeductionState:
     """Deduction state"""
     def __init__(self) -> None:
-        self.state: Dict[Any, int] = {}
+        self.state: Dict[Any, StateValue] = {}
+
+    def get(self, item: Any, add: bool = False) -> StateValue:
+        """Get value for item"""
+        v = self.state.get(item)
+        if v:
+            return v
+        v = StateValue()
+        if add:
+            self.state[item] = v
+        return v
+
+    def get_weight(self, item: Any) -> int:
+        """Get weight for item"""
+        v = self.state.get(item)
+        return v.weight if v else 0
 
     def get_top_item(self, item_type: Type[T]) -> Optional[T]:
         """Get top item of given type"""
         best_item: Optional[T] = None
         best_weight = 0
-        for item, weight in self.state.items():
-            if isinstance(item, item_type) and weight > best_weight:
+        for item, value in self.state.items():
+            if isinstance(item, item_type) and value.weight > best_weight:
                 best_item = item
-                best_weight = weight
+                best_weight = value.weight
         return best_item
 
     def __add__(self, other: 'DeductionState') -> 'DeductionState':
         new_state = DeductionState()
         new_state.state = other.state.copy()
-        for item, weight in self.state.items():
-            n_weight = new_state.state.get(item, 0)
-            new_state.state[item] = n_weight + weight
+        for item, value in self.state.items():
+            n_value = new_state.state.get(item, StateValue())
+            new_state.state[item] = n_value + value
         return new_state
 
     def __repr__(self) -> str:
         r = []
-        for item, weight in self.state.items():
+        state_sorted = sorted(self.state.items(), key=lambda x: x[1].weight, reverse=True)
+        for item, weight in state_sorted:
             r.append(f"{item}: {weight}")
         return "\n".join(r)
 
@@ -208,6 +247,7 @@ class DeductionState:
 class FlowMatcher:
     """Flow matcher"""
     def __init__(self, engine: MatcherEngine, flow: Flow) -> None:
+        self.system = engine.system
         self.clues = engine.clues
         self.flow = flow
         self.sources = DeductionState()
@@ -234,7 +274,8 @@ class FlowMatcher:
                 raise NotImplementedError("Flow type not supported in matcher")
         # resolved connection
         self.connection: Optional[Connection | Tuple[Optional[Addressable], Optional[Addressable]]] = None
-
+        self.reverse: bool = False
+        self.end_addresses: Optional[Tuple[Optional[AnyAddress], Optional[AnyAddress]]] = None
 
     def get_connection(self) -> Connection | Tuple[Optional[Addressable], Optional[Addressable]]:
         """Get deduced connection for the flow, return endpoints if no connection matched"""
@@ -242,38 +283,81 @@ class FlowMatcher:
             return self.connection
 
         # find connection with largest combined weight
-        weights: Dict[Connection, int] = {}
+        weights: Dict[Connection, StateValue] = {}
         conn: Optional[Connection] = None
-        best_weight = 0
+        best: Optional[StateValue] = None
         for state in (self.sources, self.targets):
-            for item, weight in state.state.items():
+            for item, value in state.state.items():
                 if isinstance(item, Connection):
-                    n_weight = weights.get(item, 0) + weight
-                    weights[item] = n_weight
-                    if n_weight > best_weight:
+                    bv = weights.setdefault(item, StateValue())
+                    bv.weight += value.weight
+                    bv.references.update(value.references)
+                    if best is None or bv.weight > best.weight:
                         conn = item
-                        best_weight = n_weight
+                        best = bv
         if conn:
-            source_weight = self.sources.state.get(conn.source, 0)
-            target_weight = self.targets.state.get(conn.target, 0)
+            source_weight = self.sources.get(conn.source).weight
+            target_weight = self.targets.get(conn.target).weight
             if source_weight >= Weights.WILDCARD_ADDRESS and target_weight > Weights.HW_ADDRESS:
                 self.connection = conn
                 return conn
             # hmm... perhaps reverse direction
-            source_weight = self.sources.state.get(conn.target, 0)
-            target_weight = self.targets.state.get(conn.source, 0)
+            source_weight = self.sources.get(conn.target).weight
+            target_weight = self.targets.get(conn.source).weight
             if source_weight > Weights.HW_ADDRESS and target_weight >= Weights.WILDCARD_ADDRESS:
                 self.connection = conn
+                self.reverse = True
                 return conn
         # no connection matched, return best effort endpoints
         source = self.sources.get_top_item(Addressable)
-        source_weight = self.sources.state.get(source, 0) if source else 0
+        source_weight = self.sources.get(source).weight if source else 0
         target = self.targets.get_top_item(Addressable)
-        target_weight = self.targets.state.get(target, 0) if target else 0
+        target_weight = self.targets.get(target).weight if target else 0
         self.connection = \
             (source if source_weight >= Weights.ADDRESS else None,
             target if target_weight >= Weights.ADDRESS else None)
         return self.connection
+
+    def get_host_addresses(self) -> Tuple[Optional[AnyAddress], Optional[AnyAddress]]:
+        """Get connection end host addresses for the flow"""
+        conn = self.get_connection()
+        source_end: Optional[Addressable]
+        target_end: Optional[Addressable]
+        if isinstance(conn, Connection):
+            source_end = conn.source
+            target_end = conn.target
+        else:
+            source_end, target_end = conn
+
+        default_net = self.system.get_default_network()
+        result: List[Optional[AnyAddress]] = [None, None]
+
+        if not self.reverse:
+            # flow direction matches connection direction
+            source = source_end, self.sources, False
+            target = target_end, self.targets, True
+        else:
+            # flow direction is reversed compared to connection direction
+            source = target_end, self.sources, False
+            target = source_end, self.targets, True
+
+        for for_items in enumerate((source, target)):
+            index, (end, state, i_target) = for_items
+            if end is None:
+                continue
+            references = state.get(end).references
+            net = self.flow.network or default_net
+            for addr in self.flow.stack(i_target):
+                net_addr = AddressAtNetwork(addr, net)
+                if net_addr in references:
+                    result[index] = addr
+                    break
+            if result[index] is None:
+                # default is used e.g. with wildcard match
+                result[index] = self.flow.get_source_address() if not i_target else self.flow.get_target_address()
+
+        self.end_addresses = (result[0], result[1])
+        return self.end_addresses
 
     def __repr__(self) -> str:
         return f"{self.sources}\n---\n{self.targets}"
