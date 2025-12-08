@@ -230,10 +230,16 @@ class FlowMatcher:
                     # no direct matches, promote wildcard hosts
                     self.clues.update_state(Clue.WILDCARD_HOST, self.targets)
                 self.clues.update_state((flow.protocol, flow.target[2]), self.targets)
+            case _:
+                raise NotImplementedError("Flow type not supported in matcher")
+        # resolved connection
+        self.connection: Optional[Connection | Tuple[Optional[Addressable], Optional[Addressable]]] = None
 
 
     def get_connection(self) -> Connection | Tuple[Optional[Addressable], Optional[Addressable]]:
-        """Get deduced connection for flow, return endpoints if no connection matched"""
+        """Get deduced connection for the flow, return endpoints if no connection matched"""
+        if self.connection is not None:
+            return self.connection
 
         # find connection with largest combined weight
         weights: Dict[Connection, int] = {}
@@ -251,19 +257,23 @@ class FlowMatcher:
             source_weight = self.sources.state.get(conn.source, 0)
             target_weight = self.targets.state.get(conn.target, 0)
             if source_weight >= Weights.WILDCARD_ADDRESS and target_weight > Weights.HW_ADDRESS:
+                self.connection = conn
                 return conn
             # hmm... perhaps reverse direction
             source_weight = self.sources.state.get(conn.target, 0)
             target_weight = self.targets.state.get(conn.source, 0)
             if source_weight > Weights.HW_ADDRESS and target_weight >= Weights.WILDCARD_ADDRESS:
+                self.connection = conn
                 return conn
         # no connection matched, return best effort endpoints
         source = self.sources.get_top_item(Addressable)
         source_weight = self.sources.state.get(source, 0) if source else 0
         target = self.targets.get_top_item(Addressable)
         target_weight = self.targets.state.get(target, 0) if target else 0
-        return (source if source_weight >= Weights.ADDRESS else None,
-                target if target_weight >= Weights.ADDRESS else None)
+        self.connection = \
+            (source if source_weight >= Weights.ADDRESS else None,
+            target if target_weight >= Weights.ADDRESS else None)
+        return self.connection
 
     def __repr__(self) -> str:
         return f"{self.sources}\n---\n{self.targets}"
