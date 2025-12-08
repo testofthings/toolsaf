@@ -62,8 +62,28 @@ class MatcherEngine:
             if isinstance(c, Addressable):
                 self.add_entity(c)
 
-    def address_change(self, host: Addressable) -> None:
-        """Notify engine of address change"""
+    def add_address_mapping(self, address: AnyAddress, entity: Addressable) -> None:
+        """Add address mapping for entity beyond entity's own addresses"""
+        addresses = self.addresses.get(entity, set())
+        if address in addresses:
+            return  # already known
+
+        old_mappings = self.clues.clues.get(address)
+        if old_mappings:
+            # we remove _all_ old mappings
+            del self.clues.clues[address]
+
+        # make sure entity no longer in wildcard clues
+        wildcard_clues = self.clues.clues.get(Clue.WILDCARD_HOST, ())
+        if address in wildcard_clues:
+            wildcard_clues = [c for c in wildcard_clues if c.item != entity]
+            self.clues.clues[Clue.WILDCARD_HOST] = wildcard_clues
+
+        addresses.add(address)
+        self._add_address(address, entity)
+
+    def update_host(self, host: Addressable) -> None:
+        """Notify engine of address update for host"""
         removed = self.addresses.get(host, set()) - host.addresses
         added = host.addresses - self.addresses.get(host, set())
         for addr in removed:
@@ -72,11 +92,14 @@ class MatcherEngine:
             if add_net in self.clues.clues:
                 del self.clues.clues[add_net]
         for addr in added:
-            self._add_address(addr, host)
+            self.add_address_mapping(addr, host)
 
     def _add_address(self, address: AnyAddress, entity: Addressable) -> bool:
         """Add address clue for entity"""
-        net = entity.get_networks_for(address)[0]
+        add_nets = entity.get_networks_for(address)
+        # FIXME: Make it impossible to have multiple networks for one address and entity
+        assert len(add_nets) == 1, "Unsupported multiple networks for address"
+        net = add_nets[0]
         match address:
             case EntityTag():
                 return  False # do not add clues for tags
