@@ -270,16 +270,24 @@ class FlowMatcher:
             case IPFlow():
                 net = flow.network or engine.system.get_default_network()
                 # update by source
-                matches = self.clues.update_state(AddressAtNetwork(flow.source[0], net), self.sources)
-                matches += self.clues.update_state(AddressAtNetwork(flow.source[1], net), self.sources)
+                if self.system.is_external(flow.source[1]):
+                    # external IP address - HW is local router
+                    matches = self.clues.update_state(AddressAtNetwork(flow.source[1], net), self.sources)
+                else:
+                    matches = self.clues.update_state(AddressAtNetwork(flow.source[0], net), self.sources)
+                    matches += self.clues.update_state(AddressAtNetwork(flow.source[1], net), self.sources)
                 if not matches:
                     # no direct matches, promote wildcard hosts
                     self.clues.update_state(Clue.WILDCARD_HOST, self.sources)
                 self.clues.update_state((flow.protocol, flow.source[2]), self.sources)
 
                 # update by target
-                matches = self.clues.update_state(AddressAtNetwork(flow.target[0], net), self.targets)
-                matches += self.clues.update_state(AddressAtNetwork(flow.target[1], net), self.targets)
+                if self.system.is_external(flow.target[1]):
+                    # external IP address - HW is local router
+                    matches = self.clues.update_state(AddressAtNetwork(flow.target[1], net), self.targets)
+                else:
+                    matches = self.clues.update_state(AddressAtNetwork(flow.target[0], net), self.targets)
+                    matches += self.clues.update_state(AddressAtNetwork(flow.target[1], net), self.targets)
                 if not matches:
                     # no direct matches, promote wildcard hosts
                     self.clues.update_state(Clue.WILDCARD_HOST, self.targets)
