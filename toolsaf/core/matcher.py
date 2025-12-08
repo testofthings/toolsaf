@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from toolsaf.common.address import AnyAddress, EndpointAddress, IPAddress
 from toolsaf.common.basics import ExternalActivity, Status
 from toolsaf.core.matcher_engine import FlowMatcher, MatcherEngine
-from toolsaf.core.model import IoTSystem, Connection, Host, Addressable, EvidenceNetworkSource, ModelListener
+from toolsaf.core.model import IoTSystem, Connection, Host, Addressable, Service, EvidenceNetworkSource, ModelListener
 from toolsaf.common.traffic import Flow, EvidenceSource
 from toolsaf.common.verdict import Verdict
 
@@ -112,6 +112,9 @@ class MatchingContext:
         if isinstance(conn, Connection):
             assert source_add is not None and target_add is not None
             c = ConnectionMatch(conn, source_add, target_add, matcher.reverse)
+            if not conn.is_expected() and matcher.reverse:
+                # Reply to unexpected connection
+                self.create_unknown_service(c)
             self.observed[flow] = c
             return c
         source, target = conn
@@ -204,45 +207,48 @@ class MatchingContext:
                 set_external(c.target)
         return c
 
-    # def create_unknown_service(self, match: ConnectionMatch) -> None:
-    #     """Create an unknown service due observing reply from it"""
-    #     system = self.system.system
-    #     conn = match.connection
-    #     target_h = conn.target
-    #     assert isinstance(target_h, Host)
-    #     n_service_ep = match.target.address
-    #     assert conn not in target_h.connections, "Connection already added to target host"
-    #     assert isinstance(n_service_ep, EndpointAddress), "Expected endpoint address from observation cache"
+    def create_unknown_service(self, match: ConnectionMatch) -> None:
+        """Create an unknown service due observing reply from it"""
+        system = self.system.system
+        conn = match.connection
+        target_host = conn.target
+        assert isinstance(target_host, Host), "Expected target to be a host of unreplied unknown connection"
+        assert conn not in target_host.connections, "Connection already added to target host"
+        service_address = match.target
+        assert isinstance(service_address, EndpointAddress), "Expected endpoint address for service"
 
-    #     # change connection to point the new service
-    #     n_service = target_h.get_endpoint(n_service_ep)  # NOTE: Network not specified - how can there be many?
-    #     if n_service is None:
-    #         n_service = target_h.create_service(n_service_ep)
-    #     assert isinstance(n_service, Service)
+        # change connection to point the new service
+        new_service = target_host.get_endpoint(service_address)  # NOTE: Network not specified - how can there be many?
+        assert new_service is not None
+        #    new_service = target_host.create_service(new_service_ep)
+        assert isinstance(new_service, Service)
+        self.engine.add_entity(new_service)
 
-    #     if target_h.external_activity >= ExternalActivity.UNLIMITED and conn.status == Status.EXTERNAL \
-    #         and n_service.status == Status.UNEXPECTED:
-    #         # host is free to provide unlisted services
-    #         n_service.status = Status.EXTERNAL
-    #     target_h.connections.append(conn)
-    #     networks = target_h.get_networks_for(n_service_ep.get_host())
-    #     for nw in networks:
-    #         # for each network, the host is in
-    #         for ep in self.endpoints[AddressAtNetwork(n_service_ep.get_host(), nw)]:
-    #             if ep.entity == target_h:
-    #                 ep.add_service(n_service)
-    #     conn.target = n_service
-    #     # create new connection for connections from same the source to the same target host, but different port
-    #     new_c = None
-    #     new_obs: Dict[Flow, ConnectionMatch] = {}
-    #     for of, om in self.observed.items():
-    #         if om.connection == conn and om.target.address != n_service_ep:
-    #             # same connection, but different target address
-    #             if new_c is None:
-    #                 new_c = system.new_connection((conn.source, om.source.address), (target_h, om.target.address))
-    #                 self.set_connection_status(new_c, om.source, om.target)
-    #             else:
-    #                 system.connections[om.source.address, om.target.address] = new_c
-    #             new_m = ConnectionMatch(new_c, om.source, om.target, om.reply)
-    #             new_obs[of] = new_m
-    #     self.observed.update(new_obs)
+        if target_host.external_activity >= ExternalActivity.UNLIMITED and conn.status == Status.EXTERNAL \
+            and new_service.status == Status.UNEXPECTED:
+            # host is free to provide unlisted services
+            new_service.status = Status.EXTERNAL
+        target_host.connections.append(conn)
+        # networks = target_host.get_networks_for(new_service_ep.get_host())
+        # for nw in networks:
+        #     # for each network, the host is in
+        #     for ep in self.endpoints[AddressAtNetwork(new_service_ep.get_host(), nw)]:
+        #         if ep.entity == target_host:
+        #             ep.add_service(new_service)
+        conn.target = new_service
+        # create new connection for connections from same the source to the same target host, but different port
+        new_c = None
+        new_obs: Dict[Flow, ConnectionMatch] = {}
+        for o_flow, o_m in self.observed.items():
+            if o_m.connection == conn and o_m.target != service_address:
+                # same connection, but different target address
+                if new_c is None:
+                    new_source = conn.source, o_m.source
+                    new_target = target_host, o_m.target
+                    new_c = system.new_connection(new_source, new_target)
+                    self.set_connection_status(new_c, new_source, new_target)
+                else:
+                    system.connections[o_m.source, o_m.target] = new_c
+                new_m = ConnectionMatch(new_c, o_m.source, o_m.target, o_m.reply)
+                new_obs[o_flow] = new_m
+        self.observed.update(new_obs)

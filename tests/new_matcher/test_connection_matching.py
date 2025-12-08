@@ -1,6 +1,7 @@
 """Test connection matching logic"""
 
 from toolsaf.builder_backend import SystemBackend
+from toolsaf.common.address import EndpointAddress, IPAddress
 from toolsaf.common.traffic import IPFlow
 from toolsaf.core.matcher_engine import FlowMatcher, MatcherEngine, Weights
 from toolsaf.main import TCP
@@ -27,7 +28,8 @@ def test_connection_basics():
     assert conn == dev0_dev1_1234
     assert fm.sources.get_weight(dev0_dev1_1234.source) == Weights.IP_ADDRESS
     assert fm.targets.get_weight(dev0_dev1_1234.target) == Weights.IP_ADDRESS + Weights.PROTOCOL_PORT
-    assert fm.get_host_addresses() == (flow.source[1], flow.target[1])
+    assert fm.get_host_addresses() == (
+        EndpointAddress.tcp("12.0.0.1", 20123), EndpointAddress.tcp("12.0.0.2", 1234))
 
     # reverse direction
     flow = IPFlow.TCP("1:0:0:0:0:1", "12.0.0.1", 20124) << ("1:0:0:0:0:2", "12.0.0.2", 1234)
@@ -36,7 +38,8 @@ def test_connection_basics():
     assert conn == dev0_dev1_1234
     assert fm.sources.get_weight(dev0_dev1_1234.target) == Weights.IP_ADDRESS + Weights.PROTOCOL_PORT
     assert fm.targets.get_weight(dev0_dev1_1234.source) == Weights.IP_ADDRESS
-    assert fm.get_host_addresses() == (flow.source[1], flow.target[1])
+    assert fm.get_host_addresses() == (
+        EndpointAddress.tcp("12.0.0.1", 20124), EndpointAddress.tcp("12.0.0.2", 1234))
 
     flow = IPFlow.TCP("1:0:0:0:0:1", "12.0.0.1", 20123) >> ("1:0:0:0:1:1", "12.0.1.1", 1234)
     fm = FlowMatcher(engine, flow)
@@ -44,7 +47,8 @@ def test_connection_basics():
     assert conn == dev0_dev10_1234
     assert fm.sources.get_weight(dev0_dev10_1234.source) == Weights.IP_ADDRESS
     assert fm.targets.get_weight(dev0_dev10_1234.target) == Weights.WILDCARD_ADDRESS + Weights.PROTOCOL_PORT
-    assert fm.get_host_addresses() == (flow.source[1], flow.target[1])
+    assert fm.get_host_addresses() == (
+        EndpointAddress.tcp("12.0.0.1", 20123), EndpointAddress.tcp("12.0.1.1", 1234))
 
     flow = IPFlow.TCP("1:0:0:0:0:1", "12.0.0.1", 8888) >> ("1:0:0:0:1:1", "12.0.0.2", 1088)
     fm = FlowMatcher(engine, flow)
@@ -52,13 +56,15 @@ def test_connection_basics():
     assert conn == dev0_8888_dev1_1088
     assert fm.sources.get_weight(dev0_8888_dev1_1088.source) == Weights.IP_ADDRESS + Weights.PROTOCOL_PORT
     assert fm.targets.get_weight(dev0_8888_dev1_1088.target) == Weights.IP_ADDRESS + Weights.PROTOCOL_PORT
-    assert fm.get_host_addresses() == (flow.source[1], flow.target[1])
+    assert fm.get_host_addresses() == (
+        EndpointAddress.tcp("12.0.0.1", 8888), EndpointAddress.tcp("12.0.0.2", 1088))
 
     flow = IPFlow.TCP("1:0:0:0:0:1", "12.0.0.1", 8888) >> ("1:0:0:0:1:1", "12.0.1.1", 2234)
     fm = FlowMatcher(engine, flow)
     conn = fm.get_connection()
     assert conn == (dev0_8888_dev1_1088.source, None)
-    assert fm.get_host_addresses() == (flow.source[1], None)
+    assert fm.get_host_addresses() == (
+        EndpointAddress.tcp("12.0.0.1", 8888), None)
 
     flow = IPFlow.TCP("1:0:0:0:2:1", "12.0.2.1", 8888) >> ("1:0:0:0:1:1", "12.0.1.1", 2010)
     fm = FlowMatcher(engine, flow)
@@ -66,7 +72,8 @@ def test_connection_basics():
     assert conn == dev10_dev11_2010
     assert fm.sources.get_weight(dev10_dev11_2010.source) == Weights.WILDCARD_ADDRESS
     assert fm.targets.get_weight(dev10_dev11_2010.target) == Weights.WILDCARD_ADDRESS + Weights.PROTOCOL_PORT
-    assert fm.get_host_addresses() == (flow.source[1], flow.target[1])
+    assert fm.get_host_addresses() == (
+        EndpointAddress.tcp("12.0.2.1", 8888), EndpointAddress.tcp("12.0.1.1", 2010))
 
 
 def test_connection_no_match():
@@ -88,16 +95,18 @@ def test_connection_no_match():
     assert conn == (dev0.entity, dev1.entity)
     assert fm.sources.get_weight(dev0.entity) == Weights.IP_ADDRESS
     assert fm.targets.get_weight(dev1.entity) == Weights.IP_ADDRESS
-    assert fm.get_host_addresses() == (flow.source[1], flow.target[1])
+    assert fm.get_host_addresses() == (
+        EndpointAddress.tcp("12.0.0.1", 20123), EndpointAddress.tcp("12.0.0.2", 888))
 
-    # reverse direction
+    # "reverse" direction (not really reverse, as no connection matches)
     flow = IPFlow.TCP("1:0:0:0:0:1", "12.0.0.1", 20123) << ("1:0:0:0:0:2", "12.0.0.2", 888)
     fm = FlowMatcher(engine, flow)
     conn = fm.get_connection()
     assert conn == (dev1.entity, dev0.entity)
     assert fm.sources.get_weight(dev1.entity) == Weights.IP_ADDRESS
     assert fm.targets.get_weight(dev0.entity) == Weights.IP_ADDRESS
-    assert fm.get_host_addresses() == (flow.source[1], flow.target[1])
+    assert fm.get_host_addresses() == (
+        EndpointAddress.tcp("12.0.0.2", 888), EndpointAddress.tcp("12.0.0.1", 20123))
 
     flow = IPFlow.TCP("1:0:0:0:0:1", "12.0.0.1", 20123) >> ("1:0:0:0:0:2", "55.44.33.22", 1234)
     fm = FlowMatcher(engine, flow)
@@ -106,7 +115,8 @@ def test_connection_no_match():
     assert fm.sources.get_weight(dev0.entity) == Weights.IP_ADDRESS
     assert fm.targets.get_weight(dev10.entity) == Weights.WILDCARD_ADDRESS
     assert fm.targets.get_weight(dev11.entity) == Weights.WILDCARD_ADDRESS
-    assert fm.get_host_addresses() == (flow.source[1], None)
+    assert fm.get_host_addresses() == (
+        EndpointAddress.tcp("12.0.0.1", 20123), None)
 
     flow = IPFlow.TCP("1:0:0:0:0:1", "12.0.0.1", 20123) >> ("1:0:0:0:0:2", "55.44.33.22", 2010)
     fm = FlowMatcher(engine, flow)
@@ -115,14 +125,16 @@ def test_connection_no_match():
     assert fm.sources.get_weight(dev0.entity) == Weights.IP_ADDRESS
     assert fm.targets.get_weight(dev10.entity) == Weights.WILDCARD_ADDRESS
     assert fm.targets.get_weight(dev11_2010.entity) == Weights.WILDCARD_ADDRESS + Weights.PROTOCOL_PORT
-    assert fm.get_host_addresses() == (flow.source[1], flow.target[1])
+    assert fm.get_host_addresses() == (
+        EndpointAddress.tcp("12.0.0.1", 20123), EndpointAddress.tcp("55.44.33.22", 2010))
 
-    # reverse direction
+    # "reverse" direction
     flow = IPFlow.TCP("1:0:0:0:0:1", "12.0.0.1", 9000) << ("1:0:0:0:0:2", "55.44.33.22", 2010)
     fm = FlowMatcher(engine, flow)
     conn = fm.get_connection()
     assert conn == (dev11_2010.entity, dev0.entity)
-    assert fm.get_host_addresses() == (flow.source[1], flow.target[1])
+    assert fm.get_host_addresses() == (
+        EndpointAddress.tcp("55.44.33.22", 2010), EndpointAddress.tcp("12.0.0.1", 9000))
 
     flow = IPFlow.TCP("1:0:0:0:0:1", "99.0.0.1", 9000) >> ("1:0:0:0:0:2", "55.44.33.22", 2010)
     fm = FlowMatcher(engine, flow)
@@ -130,4 +142,5 @@ def test_connection_no_match():
     assert conn == (None, dev11_2010.entity)
     assert fm.targets.get_weight(dev10.entity) == Weights.WILDCARD_ADDRESS
     assert fm.targets.get_weight(dev11_2010.entity) == Weights.WILDCARD_ADDRESS + Weights.PROTOCOL_PORT
-    assert fm.get_host_addresses() == (None, flow.target[1])
+    assert fm.get_host_addresses() == (
+        None, EndpointAddress.tcp("55.44.33.22", 2010))

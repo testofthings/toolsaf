@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple, Type, TypeVar
 from toolsaf.common.address import AddressAtNetwork, Addresses, AnyAddress, EndpointAddress, EntityTag, \
     HWAddress, IPAddress
 from toolsaf.common.traffic import Flow, IPFlow
-from toolsaf.core.model import Addressable, Connection, IoTSystem
+from toolsaf.core.model import Addressable, Connection, Host, IoTSystem
 
 class Weights:
     """Clue weights"""
@@ -309,17 +309,17 @@ class FlowMatcher:
             source_weight = self.sources.get(conn.source).weight
             target_weight = self.targets.get(conn.target).weight
             target_weight_threshold = Weights.HW_ADDRESS
-            if conn.target.get_parent_host().is_expected():
-                # With expected target, also service must match
-                # On unexpected targets, we do not create services for them
-                target_weight_threshold += 1
-            if source_weight >= Weights.WILDCARD_ADDRESS and target_weight >= target_weight_threshold:
+            if isinstance(conn.target, Host) and not conn.target.is_expected():
+                # With service targets, also port match is required
+                # But, with unexpected target and no service, only address match is enough
+                target_weight_threshold -= 1
+            if source_weight >= Weights.WILDCARD_ADDRESS and target_weight > target_weight_threshold:
                 self.connection = conn
                 return conn
             # hmm... perhaps reverse direction
             source_weight = self.sources.get(conn.target).weight
             target_weight = self.targets.get(conn.source).weight
-            if source_weight >= target_weight_threshold and target_weight >= Weights.WILDCARD_ADDRESS:
+            if source_weight > target_weight_threshold and target_weight >= Weights.WILDCARD_ADDRESS:
                 self.connection = conn
                 self.reverse = True
                 return conn
@@ -353,23 +353,31 @@ class FlowMatcher:
             target = target_end, self.targets, True
         else:
             # flow direction is reversed compared to connection direction
-            source = target_end, self.sources, False
-            target = source_end, self.targets, True
+            source = source_end, self.targets, True
+            target = target_end, self.sources, False
 
         for for_items in enumerate((source, target)):
             index, (end, state, i_target) = for_items
             if end is None:
                 continue
+            # check if address is listed as reference for the connection end -> return the address
             references = state.get(end).references
             net = self.flow.network or default_net
+            ret_addr = None
             for addr in self.flow.stack(i_target):
                 net_addr = AddressAtNetwork(addr, net)
                 if net_addr in references:
-                    result[index] = addr
+                    ret_addr = addr
                     break
-            if result[index] is None:
+            if ret_addr is None:
                 # default is used e.g. with wildcard match
-                result[index] = self.flow.get_source_address() if not i_target else self.flow.get_target_address()
+                addr = self.flow.get_source_address() if not i_target else self.flow.get_target_address()
+                ret_addr = addr
+            if not ret_addr.get_protocol_port():
+                port = self.flow.port(i_target)
+                # we ensure endpoint address has protocol and port, even when matched by host address only
+                ret_addr = EndpointAddress(ret_addr, self.flow.protocol, port)
+            result[index] = ret_addr
 
         self.end_addresses = (result[0], result[1])
         return self.end_addresses

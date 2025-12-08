@@ -476,6 +476,16 @@ class EndpointAddress(AnyAddress):
         return EndpointAddress(IPAddress.new(ip_address), protocol, port)
 
     @classmethod
+    def tcp(cls, ip_address: str, port: int) -> 'EndpointAddress':
+        """Shortcut to create IP-address TCP endpoint"""
+        return EndpointAddress(IPAddress.new(ip_address), Protocol.TCP, port)
+
+    @classmethod
+    def udp(cls, ip_address: str, port: int) -> 'EndpointAddress':
+        """Shortcut to create IP-address UDP endpoint"""
+        return EndpointAddress(IPAddress.new(ip_address), Protocol.UDP, port)
+
+    @classmethod
     def hw(cls, hw_address: str, protocol: Protocol, port: int) -> 'EndpointAddress':
         """Shortcut to create HW-address endpoint"""
         return EndpointAddress(HWAddress.new(hw_address), protocol, port)
