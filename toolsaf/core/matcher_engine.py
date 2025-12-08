@@ -232,7 +232,7 @@ class FlowMatcher:
                 self.clues.update_state((flow.protocol, flow.target[2]), self.targets)
 
 
-    def get_connection(self, _flow: Flow) -> Connection | Tuple[Optional[Addressable], Optional[Addressable]]:
+    def get_connection(self) -> Connection | Tuple[Optional[Addressable], Optional[Addressable]]:
         """Get deduced connection for flow, return endpoints if no connection matched"""
 
         # find connection with largest combined weight
