@@ -21,7 +21,7 @@ class MatcherEngine:
     def __init__(self, system: IoTSystem):
         self.system = system
         self.clues = ClueMap()
-        self.addresses: Dict[Addressable, Set[AnyAddress]] = {}
+        self.addresses: Dict[Addressable, Set[AddressAtNetwork]] = {}
 
     def find_host(self, address: Any) -> Optional[Addressable]:
         """Find host by address"""
@@ -47,15 +47,9 @@ class MatcherEngine:
         """Add entity to matching engine"""
         if entity in self.addresses:
             return  # already added
-        self.addresses[entity] = entity.addresses.copy()
-        addresses = list(entity.addresses)
         parent = entity.get_parent_host()
-        any_address = False
-        for addr in addresses:
-            any_address = self._add_address(addr, entity) or any_address
-        if parent == entity and not any_address:
-            # give this host edge for matching with unknown addresses
-            self.clues.add_clue(Clue.WILDCARD_HOST, Weights.WILDCARD_ADDRESS, entity)
+        for addr in entity.addresses:
+            self._add_address(addr, entity)
         if parent != entity:
             self.add_entity(parent)
             self.clues.add_clue(parent, 0, entity)
@@ -69,15 +63,14 @@ class MatcherEngine:
 
     def add_address_mapping(self, address: AnyAddress, entity: Addressable) -> None:
         """Add address mapping for entity beyond entity's own addresses"""
-        addresses = self.addresses.get(entity, set())
-        if address in addresses:
-            return  # already known
-        addresses.add(address)
-
         nets = entity.get_networks_for(address)
         assert len(nets) <= 1, "Unsupported multiple networks for address"
         net = nets[0] if nets else self.system.get_default_network()
         net_add = AddressAtNetwork(address, net)
+
+        addresses = self.addresses.get(entity, set())
+        if net_add in addresses:
+            return  # already known
 
         old_mappings = self.clues.clues.get(net_add)
         if old_mappings:
@@ -94,15 +87,22 @@ class MatcherEngine:
 
     def update_host(self, host: Addressable) -> None:
         """Notify engine of address update for host"""
-        removed = self.addresses.get(host, set()) - host.addresses
-        added = host.addresses - self.addresses.get(host, set())
-        for addr in removed:
-            net = host.get_networks_for(addr)[0]
-            add_net = AddressAtNetwork(addr, net)
-            if add_net in self.clues.clues:
-                del self.clues.clues[add_net]
-        for addr in added:
-            self.add_address_mapping(addr, host)
+        new_net_addr: Set[AddressAtNetwork] = set()
+        for addr in host.addresses:
+            if isinstance(addr, EntityTag):
+                continue
+            nets = host.get_networks_for(addr)
+            net = nets[0] if nets else self.system.get_default_network()
+            net_add = AddressAtNetwork(addr, net)
+            new_net_addr.add(net_add)
+        removed = self.addresses.get(host, set()) - new_net_addr
+        added = new_net_addr - self.addresses.get(host, set())
+        for net_addr in removed.union(added):
+            # remove all old mappings for the address, overriding any older mappings to other hosts, too
+            if net_addr in self.clues.clues:
+                del self.clues.clues[net_addr]
+        for net_addr in added:
+            self.add_address_mapping(net_addr.address, host)
 
     def _add_address(self, address: AnyAddress, entity: Addressable) -> bool:
         """Add address clue for entity"""
@@ -110,6 +110,7 @@ class MatcherEngine:
         # FIXME: Make it impossible to have multiple networks for one address and entity
         assert len(add_nets) == 1, "Unsupported multiple networks for address"
         net = add_nets[0]
+        add_set = self.addresses.setdefault(entity, set())
         match address:
             case EntityTag():
                 return  False # do not add clues for tags
@@ -120,12 +121,15 @@ class MatcherEngine:
                 self.clues.add_clue(address.get_protocol_port(), Weights.PROTOCOL_PORT, entity)
             case HWAddress():
                 add_net = AddressAtNetwork(address, net)
+                add_set.add(add_net)
                 self.clues.add_clue(add_net, Weights.HW_ADDRESS, entity)
             case IPAddress():
                 add_net = AddressAtNetwork(address, net)
+                add_set.add(add_net)
                 self.clues.add_clue(add_net, Weights.IP_ADDRESS, entity)
             case _:
                 add_net = AddressAtNetwork(address, net)
+                add_set.add(add_net)
                 self.clues.add_clue(add_net, Weights.ADDRESS, entity)
         return True
 
