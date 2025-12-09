@@ -162,14 +162,14 @@ class ClueMap:
     def update_state(self, reference: Any, state: 'DeductionState', weight: int = 0,
                      from_value: Optional['StateValue'] = None) -> int:
         """Update deduction state with clues for reference"""
+        value = state.get(reference, add=True)
+        value.add_item(reference, weight)
+        if from_value:
+            value.references.update(from_value.references)
         clues = self.clues.get(reference, [])
         for clue in clues:
-            value = state.get(clue.item, add=True)
-            w = clue.weight + weight
-            if from_value:
-                value.references.update(from_value.references)
-            value.add_item(reference, w)
-            self.update_state(clue.item, state, weight=w, from_value=value)  # propagate weight increase
+            clue_w = clue.weight + weight
+            self.update_state(clue.item, state, weight=clue_w, from_value=value)
         return len(clues)
 
     def __repr__(self) -> str:
@@ -197,9 +197,6 @@ class Clue:
 
     def __repr__(self) -> str:
         return f"{self.weight} | {self.item}"
-
-    # Item for wildcard host
-    WILDCARD_HOST = "*"
 
 
 class StateValue:
@@ -275,8 +272,6 @@ class FlowMatcher:
     def __init__(self, engine: MatcherEngine, flow: Flow) -> None:
         self.system = engine.system
         self.clues = engine.clues
-        # reset wildcard host clues
-        self.clues.clues[Clue.WILDCARD_HOST] = [Clue(h, Weights.WILDCARD_ADDRESS) for h in engine.wildcard_hosts]
         self.flow = flow
         self.sources = DeductionState()
         self.targets = DeductionState()
@@ -292,7 +287,8 @@ class FlowMatcher:
                     matches += self.clues.update_state(AddressAtNetwork(flow.source[1], net), self.sources)
                 if not matches:
                     # no direct matches, promote wildcard hosts
-                    self.clues.update_state(Clue.WILDCARD_HOST, self.sources)
+                    for h in engine.wildcard_hosts:
+                        self.clues.update_state(h, self.sources, Weights.WILDCARD_ADDRESS)
                 self.clues.update_state((flow.protocol, flow.source[2]), self.sources)
 
                 # update by target
@@ -304,7 +300,8 @@ class FlowMatcher:
                     matches += self.clues.update_state(AddressAtNetwork(flow.target[1], net), self.targets)
                 if not matches:
                     # no direct matches, promote wildcard hosts
-                    self.clues.update_state(Clue.WILDCARD_HOST, self.targets)
+                    for h in engine.wildcard_hosts:
+                        self.clues.update_state(h, self.targets, Weights.WILDCARD_ADDRESS)
                 self.clues.update_state((flow.protocol, flow.target[2]), self.targets)
             case _:
                 raise NotImplementedError("Flow type not supported in matcher")
