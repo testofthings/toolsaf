@@ -22,6 +22,7 @@ class MatcherEngine:
         self.system = system
         self.clues = ClueMap()
         self.addresses: Dict[Addressable, Set[AddressAtNetwork]] = {}
+        self.wildcard_hosts: Set[Addressable] = set()
 
     def find_host(self, address: Any) -> Optional[Addressable]:
         """Find host by address"""
@@ -47,12 +48,13 @@ class MatcherEngine:
         """Add entity to matching engine"""
         if entity in self.addresses:
             return  # already added
-        parent = entity.get_parent_host()
         for addr in entity.addresses:
             self._add_address(addr, entity)
+        parent = entity.get_parent_host()
         if parent != entity:
             self.add_entity(parent)
             self.clues.add_clue(parent, 0, entity)
+        self._update_wildcard_hosts(entity)
 
     def add_host(self, host: Addressable) -> None:
         """Add host and it's services to matching engine"""
@@ -77,13 +79,8 @@ class MatcherEngine:
             # we remove _all_ old mappings
             del self.clues.clues[net_add]
 
-        # make sure entity no longer in wildcard clues
-        wildcard_clues = self.clues.clues.get(Clue.WILDCARD_HOST, ())
-        if address in wildcard_clues:
-            wildcard_clues = [c for c in wildcard_clues if c.item != entity]
-            self.clues.clues[Clue.WILDCARD_HOST] = wildcard_clues
-
         self._add_address(address, entity)
+        self._update_wildcard_hosts(entity)
 
     def update_host(self, host: Addressable) -> None:
         """Notify engine of address update for host"""
@@ -103,6 +100,8 @@ class MatcherEngine:
                 del self.clues.clues[net_addr]
         for net_addr in added:
             self.add_address_mapping(net_addr.address, host)
+
+        self._update_wildcard_hosts(host)
 
     def _add_address(self, address: AnyAddress, entity: Addressable) -> bool:
         """Add address clue for entity"""
@@ -132,6 +131,15 @@ class MatcherEngine:
                 add_set.add(add_net)
                 self.clues.add_clue(add_net, Weights.ADDRESS, entity)
         return True
+
+    def _update_wildcard_hosts(self, host: Addressable) -> None:
+        # update wildcard hosts
+        if not host.is_host():
+            return
+        if self.addresses.get(host):
+            self.wildcard_hosts.discard(host)
+        else:
+            self.wildcard_hosts.add(host)
 
     def __repr__(self) -> str:
         return str(self.clues)
@@ -267,6 +275,8 @@ class FlowMatcher:
     def __init__(self, engine: MatcherEngine, flow: Flow) -> None:
         self.system = engine.system
         self.clues = engine.clues
+        # reset wildcard host clues
+        self.clues.clues[Clue.WILDCARD_HOST] = [Clue(h, Weights.WILDCARD_ADDRESS) for h in engine.wildcard_hosts]
         self.flow = flow
         self.sources = DeductionState()
         self.targets = DeductionState()
