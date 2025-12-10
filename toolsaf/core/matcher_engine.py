@@ -1,11 +1,8 @@
 """Connection and endpoint matching"""
 
-from typing import Any, Dict, List, Optional, Set, Tuple, Type, TypeVar, cast
+from typing import Any, Dict, List, Optional, Tuple, cast
 
-from attr import dataclass
-
-from toolsaf.common.address import AddressAtNetwork, Addresses, AnyAddress, EndpointAddress, EntityTag, \
-    HWAddress, IPAddress, Protocol
+from toolsaf.common.address import AddressAtNetwork, Addresses, AnyAddress, EndpointAddress, EntityTag, Protocol
 from toolsaf.common.traffic import Flow, IPFlow
 from toolsaf.core.model import Addressable, Connection, Host, IoTSystem, Service
 
@@ -26,7 +23,7 @@ class MatcherEngine:
         self.addresses: Dict[AddressAtNetwork, List[AddressClue]] = {}
         self.wildcard_hosts: List[AddressClue] = []
         self.connections: Dict[Connection, ConnectionClue] = {}
-        
+
     def find_host(self, address: Any) -> Optional[Host]:
         """Find host by address"""
         host = address.get_host()
@@ -122,7 +119,7 @@ class MatcherEngine:
         if not addresses:
             # no addresses defined, add wildcard clue
             self.wildcard_hosts.append(clue)
-        
+
         # ensure services are also added
         for c in entity.children:
             if isinstance(c, Service):
@@ -148,7 +145,7 @@ class DeductionState:
         self.engine = engine
         self.values: Dict[Any, DeductionValue] = {}
 
-    def get_if(self, item: Any, add: bool = False) -> Optional['DeductionValue']:
+    def get_if(self, item: Any) -> Optional['DeductionValue']:
         """Get deduction value for item"""
         return self.values.get(item)
 
@@ -228,7 +225,7 @@ class ConnectionClue:
     def update(self, state: DeductionState, weight: int,
                source: Optional[AddressAtNetwork] = None, target: Optional[AddressAtNetwork] = None) -> None:
         """Update state observing this connection"""
-        end_key = (target != None, self.connection)
+        end_key = (target is not None, self.connection)
         value = state.get(end_key)
         if weight > value.weight:
             value.weight = weight

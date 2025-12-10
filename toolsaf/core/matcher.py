@@ -229,7 +229,7 @@ class MatchingContext:
         assert new_service is not None
         #    new_service = target_host.create_service(new_service_ep)
         assert isinstance(new_service, Service)
-        self.engine.add_entity(new_service)
+        self.engine.add_addressable(new_service)
 
         if target_host.external_activity >= ExternalActivity.UNLIMITED and conn.status == Status.EXTERNAL \
             and new_service.status == Status.UNEXPECTED:
