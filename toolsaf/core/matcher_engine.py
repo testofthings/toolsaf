@@ -76,6 +76,18 @@ class MatcherEngine:
 
         return connection
 
+    def remove_connection(self, connection: Connection) -> None:
+        """Remove connection from matching engine"""
+        clue = self.connections.pop(connection, None)
+        if not clue:
+            return  # not found
+        source_end = self.endpoints.get(connection.source)
+        if source_end:
+            source_end.source_for.remove(clue)
+        target_end = self.endpoints.get(connection.target)
+        if target_end:
+            target_end.target_for.remove(clue)
+
     def add_addressable(self, entity: Addressable) -> 'AddressClue':
         """Add addressable host or service"""
         # FIXME: Make it impossible to have multiple networks for one address and entity

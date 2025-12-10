@@ -227,7 +227,6 @@ class MatchingContext:
         # change connection to point the new service
         new_service = target_host.get_endpoint(service_address)  # NOTE: Network not specified - how can there be many?
         assert new_service is not None
-        #    new_service = target_host.create_service(new_service_ep)
         assert isinstance(new_service, Service)
         self.engine.add_addressable(new_service)
 
@@ -237,7 +236,9 @@ class MatchingContext:
             new_service.status = Status.EXTERNAL
 
         target_host.connections.append(conn)
+        self.engine.remove_connection(conn)  # remove old connection, we put it back with new target
         conn.target = new_service
+        self.engine.add_connection(conn)
         # create new connection for connections from same the source to the same target host, but different port
         new_c = None
         new_obs: Dict[Flow, ConnectionMatch] = {}
@@ -248,6 +249,7 @@ class MatchingContext:
                     new_source = conn.source, o_m.source
                     new_target = target_host, o_m.target
                     new_c = system.new_connection(new_source, new_target)
+                    self.engine.add_connection(new_c)
                     self.set_connection_status(new_c, new_source, new_target)
                 else:
                     system.connections[o_m.source, o_m.target] = new_c
