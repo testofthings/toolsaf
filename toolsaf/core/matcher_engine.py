@@ -187,20 +187,23 @@ class AddressClue:
     def update(self, state: DeductionState, address: AddressAtNetwork, protocol: Protocol, port: int,
                wildcard: bool = False) -> None:
         """Update state observing this host"""
-        w = 1 if wildcard else 2
-        value = state.get(self.entity)
-        if w > value.weight:
-            value.weight = w
-            value.reference = address
-        for conn in self.source_for:
-            conn.update(state, w, source=address)
-        for conn in self.target_for:
-            conn.update(state, w, target=address)
+        is_service = isinstance(self.entity, Service)
+        if is_service or not wildcard:
+            # connections from/to wildcard host only with port/protocol
+            w = 1 if wildcard else (3 if is_service else 2)
+            value = state.get(self.entity)
+            if w > value.weight:
+                value.weight = w
+                value.reference = address
+            for conn in self.source_for:
+                conn.update(state, w, source=address)
+            for conn in self.target_for:
+                conn.update(state, w, target=address)
         # check services
         ep_key = (protocol, port)
         service_clue = self.services.get(ep_key)
         if service_clue:
-            service_clue.update(state, address, protocol, port, wildcard)
+            service_clue.update(state, address, protocol, port)
 
     def __repr__(self) -> str:
         r = [f"{self.entity}"]
@@ -288,7 +291,7 @@ class FlowMatcher:
         best_weight = 0
         ends: Optional[Tuple[AddressAtNetwork, AddressAtNetwork]] = None
         reverse = False
-        for key, value in source_items:
+        for key, _ in source_items:
             if not isinstance(key, Connection):
                 continue
             # request direction
@@ -297,7 +300,7 @@ class FlowMatcher:
             # reverse direction
             r_sv, r_tv = self.sources.get((True, key)), self.targets.get((False, key))
             r_weight = r_sv.weight + r_tv.weight if r_sv.weight > 0 and r_tv.weight > 0 else 0
-            if max(weight, r_weight) < best_weight:
+            if max(weight, r_weight) <= best_weight:
                 continue  # not better than current best
             reverse = weight < r_weight
             if not reverse:
@@ -315,20 +318,49 @@ class FlowMatcher:
             self.end_addresses = ends[0].address, ends[1].address
             return conn
 
-        # no connection matched, return best effort endpoints
-        source: Optional[Addressable] = None
-        target: Optional[Addressable] = None
-        source_weight, target_weight = 0, 0
-        for key, value in items:
-            if isinstance(key, tuple) and isinstance(key[1], Connection):
-                is_target, connection = key
-                if not is_target and value.weight > source_weight:
-                    source_weight = value.weight
-                    source = connection.source
-                if is_target and value.weight > target_weight:
-                    target_weight = value.weight
-                    target = connection.target
-        self.connection = source, target
+        # find endpoints with largest weights
+
+        # find largest endpoint
+        first_end: Optional[Addressable] = None
+        first_addr: Optional[AddressAtNetwork] = None
+        best_weight = 0
+        for key, value in source_items + target_items:
+            if not isinstance(key, Addressable) or value.weight <= best_weight:
+                continue
+            first_end = key
+            first_addr = value.reference
+            best_weight = value.weight
+
+        if not first_end or not first_addr:
+            # no endpoints found
+            self.connection = None, None
+            return self.connection
+
+        source_set = set(list(self.flow.stack(target=False)))
+        is_first_source = first_addr.address in source_set
+
+        # find largest endpoint on opposite side
+        second_end: Optional[Addressable] = None
+        second_addr: Optional[AddressAtNetwork] = None
+        best_weight = 0
+        for key, value in source_items + target_items:
+            if not isinstance(key, Addressable) or value.weight <= best_weight:
+                continue
+            net_addr = value.reference
+            if not net_addr or not isinstance(net_addr, AddressAtNetwork):
+                continue
+            if (net_addr.address.get_host() in source_set) == is_first_source:
+                continue  # same side as first end
+            second_end = key
+            second_addr = net_addr
+            best_weight = value.weight
+
+        if is_first_source:
+            self.end_addresses = (first_addr.address, second_addr.address if second_addr else None)
+            self.connection = (first_end, second_end)
+        else:
+            self.connection = (second_end, first_end)
+            self.end_addresses = (second_addr.address if second_addr else None, first_addr.address)
         return self.connection
 
     def get_host_addresses(self) -> Tuple[Optional[AnyAddress], Optional[AnyAddress]]:
@@ -343,4 +375,4 @@ class FlowMatcher:
         return source_address, target_address
 
     def __repr__(self) -> str:
-        return f"{self.sources}\n---\n{self.targets}"
+        return f"{self.flow}\n{self.sources}\n---\n{self.targets}"
