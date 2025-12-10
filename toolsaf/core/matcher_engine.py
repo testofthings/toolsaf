@@ -188,17 +188,17 @@ class AddressClue:
                wildcard: bool = False) -> None:
         """Update state observing this host"""
         is_service = isinstance(self.entity, Service)
+        w = 1 if wildcard else (3 if is_service else 2)
         if is_service or not wildcard:
             # connections from/to wildcard host only with port/protocol
-            w = 1 if wildcard else (3 if is_service else 2)
             value = state.get(self.entity)
             if w > value.weight:
                 value.weight = w
                 value.reference = address
-            for conn in self.source_for:
-                conn.update(state, w, source=address)
-            for conn in self.target_for:
-                conn.update(state, w, target=address)
+        for conn in self.source_for:
+            conn.update(state, w, source=address)
+        for conn in self.target_for:
+            conn.update(state, w, target=address)
         # check services
         ep_key = (protocol, port)
         service_clue = self.services.get(ep_key)
