@@ -1,11 +1,13 @@
 """Connection and endpoint matching"""
 
-from typing import Any, Dict, List, Optional, Set, Tuple, Type, TypeVar
+from typing import Any, Dict, List, Optional, Set, Tuple, Type, TypeVar, cast
+
+from attr import dataclass
 
 from toolsaf.common.address import AddressAtNetwork, Addresses, AnyAddress, EndpointAddress, EntityTag, \
-    HWAddress, IPAddress
+    HWAddress, IPAddress, Protocol
 from toolsaf.common.traffic import Flow, IPFlow
-from toolsaf.core.model import Addressable, Connection, Host, IoTSystem
+from toolsaf.core.model import Addressable, Connection, Host, IoTSystem, Service
 
 class Weights:
     """Clue weights"""
@@ -20,48 +22,26 @@ class MatcherEngine:
     """Matcher engine for matching connections and endpoints"""
     def __init__(self, system: IoTSystem):
         self.system = system
-        self.clues = ClueMap()
-        self.addresses: Dict[Addressable, Set[AddressAtNetwork]] = {}
-        self.wildcard_hosts: Set[Addressable] = set()
-
-    def find_host(self, address: Any) -> Optional[Addressable]:
+        self.endpoints: Dict[Addressable, AddressClue] = {}
+        self.addresses: Dict[AddressAtNetwork, List[AddressClue]] = {}
+        self.wildcard_hosts: List[AddressClue] = []
+        self.connections: Dict[Connection, ConnectionClue] = {}
+        
+    def find_host(self, address: Any) -> Optional[Host]:
         """Find host by address"""
         host = address.get_host()
         networks = self.system.get_networks_for(host)
         for net in networks:
             addr_net = AddressAtNetwork(host, net)
-            clues = self.clues.clues.get(addr_net, [])
+            clues = self.addresses.get(addr_net, [])
             for clue in clues:
-                if isinstance(clue.item, Addressable):
-                    return clue.item
+                if isinstance(clue.entity, Host):
+                    return clue.entity
         return None
-
-    def add_connection(self, connection: Connection) -> Connection:
-        """Add connection to matching engine"""
-        self.add_entity(connection.source)
-        self.add_entity(connection.target)
-        self.clues.add_clue(connection.source, 0, connection)
-        self.clues.add_clue(connection.target, 0, connection)
-        return connection
-
-    def add_entity(self, entity: Addressable) -> None:
-        """Add entity to matching engine"""
-        if entity in self.addresses:
-            return  # already added
-        for addr in entity.addresses:
-            self._add_address(addr, entity)
-        parent = entity.get_parent_host()
-        if parent != entity:
-            self.add_entity(parent)
-            self.clues.add_clue(parent, 0, entity)
-        self._update_wildcard_hosts(entity)
 
     def add_host(self, host: Addressable) -> None:
         """Add host and it's services to matching engine"""
-        self.add_entity(host)
-        for c in host.children:
-            if isinstance(c, Addressable):
-                self.add_entity(c)
+        self.add_addressable(host.get_parent_host())
 
     def add_address_mapping(self, address: AnyAddress, entity: Addressable) -> None:
         """Add address mapping for entity beyond entity's own addresses"""
@@ -70,239 +50,216 @@ class MatcherEngine:
         net = nets[0] if nets else self.system.get_default_network()
         net_add = AddressAtNetwork(address, net)
 
-        addresses = self.addresses.get(entity, set())
-        if net_add in addresses:
-            return  # already known
-
-        old_mappings = self.clues.clues.get(net_add)
-        if old_mappings:
-            # we remove _all_ old mappings
-            del self.clues.clues[net_add]
-
-        self._add_address(address, entity)
-        self._update_wildcard_hosts(entity)
+        clue = self.add_addressable(entity)
+        # clear old mappings for the address
+        self.addresses[net_add] = [clue]
 
     def update_host(self, host: Addressable) -> None:
         """Notify engine of address update for host"""
-        new_net_addr: Set[AddressAtNetwork] = set()
-        for addr in host.addresses:
-            if isinstance(addr, EntityTag):
-                continue
-            nets = host.get_networks_for(addr)
-            net = nets[0] if nets else self.system.get_default_network()
-            net_add = AddressAtNetwork(addr, net)
-            new_net_addr.add(net_add)
-        removed = self.addresses.get(host, set()) - new_net_addr
-        added = new_net_addr - self.addresses.get(host, set())
-        for net_addr in removed.union(added):
-            # remove all old mappings for the address, overriding any older mappings to other hosts, too
-            if net_addr in self.clues.clues:
-                del self.clues.clues[net_addr]
-        for net_addr in added:
-            self.add_address_mapping(net_addr.address, host)
+        raise NotImplementedError()
 
-        self._update_wildcard_hosts(host)
+    def add_connection(self, connection: Connection) -> Connection:
+        """Add connection to matching engine"""
+        clue = self.connections.get(connection)
+        if clue:
+            return connection  # already added
+        clue = ConnectionClue(connection)
+        self.connections[connection] = clue
 
-    def _add_address(self, address: AnyAddress, entity: Addressable) -> bool:
-        """Add address clue for entity"""
-        add_nets = entity.get_networks_for(address)
+        self.add_addressable(connection.source)
+        self.add_addressable(connection.target)
+
+        source_end = self.endpoints.get(connection.source)
+        assert source_end is not None, "Endpoint clue missing for connection source"
+        source_end.source_for.append(clue)
+
+        target_end = self.endpoints.get(connection.target)
+        assert target_end is not None, "Endpoint clue missing for connection target"
+        target_end.target_for.append(clue)
+
+        return connection
+
+    def add_addressable(self, entity: Addressable) -> 'AddressClue':
+        """Add addressable host or service"""
         # FIXME: Make it impossible to have multiple networks for one address and entity
-        assert len(add_nets) == 1, "Unsupported multiple networks for address"
-        net = add_nets[0]
-        add_set = self.addresses.setdefault(entity, set())
-        match address:
-            case EntityTag():
-                return  False # do not add clues for tags
-            case EndpointAddress():
-                h_addr = address.get_host()
-                if h_addr != Addresses.ANY:
-                    self._add_address(h_addr, entity)
-                self.clues.add_clue(address.get_protocol_port(), Weights.PROTOCOL_PORT, entity)
-            case HWAddress():
-                add_net = AddressAtNetwork(address, net)
-                add_set.add(add_net)
-                self.clues.add_clue(add_net, Weights.HW_ADDRESS, entity)
-            case IPAddress():
-                add_net = AddressAtNetwork(address, net)
-                add_set.add(add_net)
-                self.clues.add_clue(add_net, Weights.IP_ADDRESS, entity)
-            case _:
-                add_net = AddressAtNetwork(address, net)
-                add_set.add(add_net)
-                self.clues.add_clue(add_net, Weights.ADDRESS, entity)
-        return True
+        clue = self.endpoints.get(entity)
+        if clue:
+            return clue
+        clue = AddressClue(entity)
+        self.endpoints[entity] = clue
 
-    def _update_wildcard_hosts(self, host: Addressable) -> None:
-        # update wildcard hosts
-        if not host.is_host():
-            return
-        if self.addresses.get(host):
-            self.wildcard_hosts.discard(host)
-        else:
-            self.wildcard_hosts.add(host)
+        parent = entity.get_parent_host()
+        if parent != entity:
+            # ensure parent host is also added
+            self.add_addressable(parent)
 
-    def __repr__(self) -> str:
-        return str(self.clues)
+        addresses = False
+        for add in entity.addresses:
+            add_nets = entity.get_networks_for(add)
+            # FIXME: Make it impossible to have multiple networks for one address and entity
+            assert len(add_nets) == 1, "Unsupported multiple networks for address"
+            net = add_nets[0]
+            match add:
+                case EntityTag():
+                    continue  # skip tags
+                case EndpointAddress():
+                    ep_key = add.get_protocol_port()
+                    assert ep_key is not None, "Endpoint address without protocol/port"
+                    h_addr = add.get_host()
+                    host = entity.get_parent_host()
+                    if h_addr == Addresses.ANY and host != entity:
+                        # add endpoint to parent host
+                        host_clue = self.add_addressable(host)
+                        host_clue.services[ep_key] = clue
+                    else:
+                        # new address for this entity
+                        add_net = AddressAtNetwork(h_addr, net)
+                        self.addresses.setdefault(add_net, []).append(clue)
+                case _:
+                    add_net = AddressAtNetwork(add, net)
+                    self.addresses.setdefault(add_net, []).append(clue)
+            addresses = True
+        if not addresses:
+            # no addresses defined, add wildcard clue
+            self.wildcard_hosts.append(clue)
+        
+        # ensure services are also added
+        for c in entity.children:
+            if isinstance(c, Service):
+                self.add_addressable(c)
 
-
-class ClueMap:
-    """Clue map"""
-    def __init__(self) -> None:
-        self.clues: Dict[Any, List[Clue]] = {}
-
-    def add_clue(self, reference: Any, weight: int, item: Any) -> None:
-        """Add clue"""
-        if reference is None or item is None:
-            return
-        clues = self.clues.setdefault(reference, [])
-        new_clue = Clue(item, weight)
-        if new_clue not in clues:
-            clues.append(new_clue)
-
-    def update_state(self, reference: Any, state: 'DeductionState', weight: int = 0,
-                     from_value: Optional['StateValue'] = None) -> int:
-        """Update deduction state with clues for reference"""
-        value = state.get(reference, add=True)
-        value.add_item(reference, weight)
-        if from_value:
-            value.references.update(from_value.references)
-        clues = self.clues.get(reference, [])
-        for clue in clues:
-            clue_w = clue.weight + weight
-            self.update_state(clue.item, state, weight=clue_w, from_value=value)
-        return len(clues)
+        return clue
 
     def __repr__(self) -> str:
         r = []
-        for key, clues in self.clues.items():
-            r.append(f"{key}:")
+        for addr, clues in self.addresses.items():
             for clue in clues:
-                r.append(f"=> {clue}")
+                r.append(f"{addr} | {clue}")
+        for clue in self.wildcard_hosts:
+            r.append(f"| {clue}")
+        # for conn in self.connections.values():
+        #     r.append(f"{conn}")
         return "\n".join(r)
 
-
-class Clue:
-    """Clue"""
-    def __init__(self, item: Any, weight: int) -> None:
-        self.item = item
-        self.weight = weight
-
-    def __hash__(self) -> int:
-        return hash((self.item, self.weight))
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Clue):
-            return False
-        return self.item == other.item and self.weight == other.weight
-
-    def __repr__(self) -> str:
-        return f"{self.weight} | {self.item}"
-
-
-class StateValue:
-    """Deduction state value"""
-    def __init__(self) -> None:
-        self.references: Set[Any] = set()
-        self.weight = 0
-
-    def add_item(self, reference: Any, weight: int) -> None:
-        """Add reference with weight"""
-        self.references.add(reference)
-        self.weight += weight
-
-    def __add__(self, other: 'StateValue') -> 'StateValue':
-        new_value = StateValue()
-        new_value.weight = self.weight + other.weight
-        new_value.references = self.references.union(other.references)
-        return new_value
-
-    def __repr__(self) -> str:
-        return f"{self.weight}: {self.references}"
-
-T = TypeVar('T')
 
 class DeductionState:
-    """Deduction state"""
-    def __init__(self) -> None:
-        self.state: Dict[Any, StateValue] = {}
+    """Clue state"""
+    def __init__(self, engine: MatcherEngine) -> None:
+        self.engine = engine
+        self.values: Dict[Any, DeductionValue] = {}
 
-    def get(self, item: Any, add: bool = False) -> StateValue:
-        """Get value for item"""
-        v = self.state.get(item)
-        if v:
-            return v
-        v = StateValue()
-        if add:
-            self.state[item] = v
-        return v
+    def get_if(self, item: Any, add: bool = False) -> Optional['DeductionValue']:
+        """Get deduction value for item"""
+        return self.values.get(item)
 
-    def get_weight(self, item: Any) -> int:
-        """Get weight for item"""
-        v = self.state.get(item)
-        return v.weight if v else 0
+    def get(self, item: Any) -> 'DeductionValue':
+        """Get deduction value for item"""
+        return self.values.setdefault(item, DeductionValue())
 
-    def get_top_item(self, item_type: Type[T]) -> Optional[T]:
-        """Get top item of given type"""
-        best_item: Optional[T] = None
-        best_weight = 0
-        for item, value in self.state.items():
-            if isinstance(item, item_type) and value.weight > best_weight:
-                best_item = item
-                best_weight = value.weight
-        return best_item
-
-    def __add__(self, other: 'DeductionState') -> 'DeductionState':
-        new_state = DeductionState()
-        new_state.state = other.state.copy()
-        for item, value in self.state.items():
-            n_value = new_state.state.get(item, StateValue())
-            new_state.state[item] = n_value + value
-        return new_state
+    def get_all_sorted(self) -> List[Tuple[Any, 'DeductionValue']]:
+        """Get all deduction values sorted by weight"""
+        return sorted(self.values.items(), key=lambda kv: -kv[1].weight)
 
     def __repr__(self) -> str:
         r = []
-        state_sorted = sorted(self.state.items(), key=lambda x: x[1].weight, reverse=True)
-        for item, weight in state_sorted:
-            r.append(f"{item}: {weight}")
+        for key, value in sorted(self.values.items(), key=lambda kv: -kv[1].weight):
+            r.append(f"{value.weight:<3} {key} # {value.reference}")
         return "\n".join(r)
+
+class DeductionValue:
+    """Deduction value"""
+    def __init__(self) -> None:
+        self.weight: int = 0
+        self.reference: Optional[Any] = None
+
+    def __repr__(self) -> str:
+        return f"{self.weight} # {self.reference}"
+
+
+class AddressClue:
+    """Address clue"""
+    def __init__(self, entity: Addressable) -> None:
+        self.entity = entity
+        self.services: Dict[Tuple[Protocol, int], AddressClue] = {}
+        self.source_for: List[ConnectionClue] = []
+        self.target_for: List[ConnectionClue] = []
+
+    def update(self, state: DeductionState, address: AddressAtNetwork, protocol: Protocol, port: int,
+               wildcard: bool = False) -> None:
+        """Update state observing this host"""
+        w = 1 if wildcard else 2
+        value = state.get(self.entity)
+        if w > value.weight:
+            value.weight = w
+            value.reference = address
+        for conn in self.source_for:
+            conn.update(state, w, source=address)
+        for conn in self.target_for:
+            conn.update(state, w, target=address)
+        # check services
+        ep_key = (protocol, port)
+        service_clue = self.services.get(ep_key)
+        if service_clue:
+            service_clue.update(state, address, protocol, port, wildcard)
+
+    def __repr__(self) -> str:
+        r = [f"{self.entity}"]
+        for cc in self.source_for:
+            r.append(f"  => {cc.connection.target.long_name()}")
+        for cc in self.target_for:
+            r.append(f"  <= {cc.connection.source.long_name()}")
+        for service in self.services.values():
+            r.append(f"  {service.entity}")
+            for cc in service.source_for:
+                r.append(f"    => {cc.connection.target.long_name()}")
+            for cc in service.target_for:
+                r.append(f"    <= {cc.connection.source.long_name()}")
+        return "\n".join(r)
+
+
+class ConnectionClue:
+    """Connection clue"""
+    def __init__(self, connection: Connection) -> None:
+        self.connection = connection
+
+    def update(self, state: DeductionState, weight: int,
+               source: Optional[AddressAtNetwork] = None, target: Optional[AddressAtNetwork] = None) -> None:
+        """Update state observing this connection"""
+        end_key = (target != None, self.connection)
+        value = state.get(end_key)
+        if weight > value.weight:
+            value.weight = weight
+            value.reference = source or target
+        sum_value = state.get(self.connection)
+        ss, ts = state.get((True, self.connection)), state.get((False, self.connection))
+        sum_value.weight = ss.weight + ts.weight
+
+    def __repr__(self) -> str:
+        return f"{self.connection.long_name()}"
 
 
 class FlowMatcher:
     """Flow matcher"""
     def __init__(self, engine: MatcherEngine, flow: Flow) -> None:
+        self.engine = engine
         self.system = engine.system
-        self.clues = engine.clues
         self.flow = flow
-        self.sources = DeductionState()
-        self.targets = DeductionState()
+        self.sources = DeductionState(engine)
+        self.targets = DeductionState(engine)
         match flow:
             case IPFlow():
                 net = flow.network or engine.system.get_default_network()
                 # update by source
-                if self.system.is_external(flow.source[1]):
+                if not self.system.is_external(flow.source[1]):
                     # external IP address - HW is local router
-                    matches = self.clues.update_state(AddressAtNetwork(flow.source[1], net), self.sources)
-                else:
-                    matches = self.clues.update_state(AddressAtNetwork(flow.source[0], net), self.sources)
-                    matches += self.clues.update_state(AddressAtNetwork(flow.source[1], net), self.sources)
-                if not matches:
-                    # no direct matches, promote wildcard hosts
-                    for h in engine.wildcard_hosts:
-                        self.clues.update_state(h, self.sources, Weights.WILDCARD_ADDRESS)
-                self.clues.update_state((flow.protocol, flow.source[2]), self.sources)
+                    self.map_address(self.sources, AddressAtNetwork(flow.source[0], net), flow.protocol, flow.source[2])
+                self.map_address(self.sources, AddressAtNetwork(flow.source[1], net), flow.protocol, flow.source[2])
 
                 # update by target
-                if self.system.is_external(flow.target[1]):
+                if not self.system.is_external(flow.target[1]):
                     # external IP address - HW is local router
-                    matches = self.clues.update_state(AddressAtNetwork(flow.target[1], net), self.targets)
-                else:
-                    matches = self.clues.update_state(AddressAtNetwork(flow.target[0], net), self.targets)
-                    matches += self.clues.update_state(AddressAtNetwork(flow.target[1], net), self.targets)
-                if not matches:
-                    # no direct matches, promote wildcard hosts
-                    for h in engine.wildcard_hosts:
-                        self.clues.update_state(h, self.targets, Weights.WILDCARD_ADDRESS)
-                self.clues.update_state((flow.protocol, flow.target[2]), self.targets)
+                    self.map_address(self.targets, AddressAtNetwork(flow.target[0], net), flow.protocol, flow.target[2])
+                self.map_address(self.targets, AddressAtNetwork(flow.target[1], net), flow.protocol, flow.target[2])
             case _:
                 raise NotImplementedError("Flow type not supported in matcher")
         # resolved connection
@@ -310,100 +267,80 @@ class FlowMatcher:
         self.reverse: bool = False
         self.end_addresses: Optional[Tuple[Optional[AnyAddress], Optional[AnyAddress]]] = None
 
+    def map_address(self, state: DeductionState, address: AddressAtNetwork, protocol: Protocol, port: int) -> None:
+        """Map address to deduction state"""
+        clues = self.engine.addresses.get(address)
+        for clue in clues or ():
+            clue.update(state, address, protocol, port)
+        for clue in self.engine.wildcard_hosts:
+            clue.update(state, address, protocol, port, wildcard=True)
+
     def get_connection(self) -> Connection | Tuple[Optional[Addressable], Optional[Addressable]]:
         """Get deduced connection for the flow, return endpoints if no connection matched"""
         if self.connection is not None:
             return self.connection
 
-        # find connection with largest combined weight
-        weights: Dict[Connection, StateValue] = {}
+        source_items = self.sources.get_all_sorted()
+        target_items = self.targets.get_all_sorted()
+
+        # find connection with largest weight
         conn: Optional[Connection] = None
-        best: Optional[StateValue] = None
-        for state in (self.sources, self.targets):
-            for item, value in state.state.items():
-                if isinstance(item, Connection):
-                    bv = weights.setdefault(item, StateValue())
-                    bv.weight += value.weight
-                    bv.references.update(value.references)
-                    if best is None or bv.weight > best.weight:
-                        conn = item
-                        best = bv
+        best_weight = 0
+        ends: Optional[Tuple[AddressAtNetwork, AddressAtNetwork]] = None
+        reverse = False
+        for key, value in source_items:
+            if not isinstance(key, Connection):
+                continue
+            # request direction
+            sv, tv = self.sources.get((False, key)), self.targets.get((True, key))
+            weight = sv.weight + tv.weight if sv.weight > 0 and tv.weight > 0 else 0
+            # reverse direction
+            r_sv, r_tv = self.sources.get((True, key)), self.targets.get((False, key))
+            r_weight = r_sv.weight + r_tv.weight if r_sv.weight > 0 and r_tv.weight > 0 else 0
+            if max(weight, r_weight) < best_weight:
+                continue  # not better than current best
+            reverse = weight < r_weight
+            if not reverse:
+                best_weight = weight
+                ends = cast(Tuple[AddressAtNetwork, AddressAtNetwork], (sv.reference, tv.reference))
+            else:
+                best_weight = r_weight
+                ends = cast(Tuple[AddressAtNetwork, AddressAtNetwork], (r_tv.reference, r_sv.reference))
+            conn = key
+
         if conn:
-            source_weight = self.sources.get(conn.source).weight
-            target_weight = self.targets.get(conn.target).weight
-            target_weight_threshold = Weights.HW_ADDRESS
-            if isinstance(conn.target, Host) and not conn.target.is_expected():
-                # With service targets, also port match is required
-                # But, with unexpected target and no service, only address match is enough
-                target_weight_threshold -= 1
-            if source_weight >= Weights.WILDCARD_ADDRESS and target_weight > target_weight_threshold:
-                self.connection = conn
-                return conn
-            # hmm... perhaps reverse direction
-            source_weight = self.sources.get(conn.target).weight
-            target_weight = self.targets.get(conn.source).weight
-            if source_weight > target_weight_threshold and target_weight >= Weights.WILDCARD_ADDRESS:
-                self.connection = conn
-                self.reverse = True
-                return conn
+            self.connection = conn
+            self.reverse = reverse
+            assert ends
+            self.end_addresses = ends[0].address, ends[1].address
+            return conn
+
         # no connection matched, return best effort endpoints
-        source = self.sources.get_top_item(Addressable)
-        source_weight = self.sources.get(source).weight if source else 0
-        target = self.targets.get_top_item(Addressable)
-        target_weight = self.targets.get(target).weight if target else 0
-        self.connection = \
-            (source if source_weight >= Weights.ADDRESS else None,
-            target if target_weight >= Weights.ADDRESS else None)
+        source: Optional[Addressable] = None
+        target: Optional[Addressable] = None
+        source_weight, target_weight = 0, 0
+        for key, value in items:
+            if isinstance(key, tuple) and isinstance(key[1], Connection):
+                is_target, connection = key
+                if not is_target and value.weight > source_weight:
+                    source_weight = value.weight
+                    source = connection.source
+                if is_target and value.weight > target_weight:
+                    target_weight = value.weight
+                    target = connection.target
+        self.connection = source, target
         return self.connection
 
     def get_host_addresses(self) -> Tuple[Optional[AnyAddress], Optional[AnyAddress]]:
         """Get connection end host addresses for the flow"""
-        conn = self.get_connection()
-        source_end: Optional[Addressable]
-        target_end: Optional[Addressable]
-        if isinstance(conn, Connection):
-            source_end = conn.source
-            target_end = conn.target
-        else:
-            source_end, target_end = conn
-
-        default_net = self.system.get_default_network()
-        result: List[Optional[AnyAddress]] = [None, None]
-
-        if not self.reverse:
-            # flow direction matches connection direction
-            source = source_end, self.sources, False
-            target = target_end, self.targets, True
-        else:
-            # flow direction is reversed compared to connection direction
-            source = source_end, self.targets, True
-            target = target_end, self.sources, False
-
-        for for_items in enumerate((source, target)):
-            index, (end, state, i_target) = for_items
-            if end is None:
-                continue
-            # check if address is listed as reference for the connection end -> return the address
-            references = state.get(end).references
-            net = self.flow.network or default_net
-            ret_addr = None
-            for addr in self.flow.stack(i_target):
-                net_addr = AddressAtNetwork(addr, net)
-                if net_addr in references:
-                    ret_addr = addr
-                    break
-            if ret_addr is None:
-                # default is used e.g. with wildcard match
-                addr = self.flow.get_source_address() if not i_target else self.flow.get_target_address()
-                ret_addr = addr
-            if not ret_addr.get_protocol_port():
-                port = self.flow.port(i_target)
-                # we ensure endpoint address has protocol and port, even when matched by host address only
-                ret_addr = EndpointAddress(ret_addr, self.flow.protocol, port)
-            result[index] = ret_addr
-
-        self.end_addresses = (result[0], result[1])
-        return self.end_addresses
+        source_host, target_host = self.end_addresses if self.end_addresses else (None, None)
+        source_address: Optional[AnyAddress] = None
+        if source_host:
+            source_address = EndpointAddress(source_host, self.flow.protocol, self.flow.port(self.reverse))
+        target_address: Optional[AnyAddress] = None
+        if target_host:
+            target_address = EndpointAddress(target_host, self.flow.protocol, self.flow.port(not self.reverse))
+        return source_address, target_address
 
     def __repr__(self) -> str:
         return f"{self.sources}\n---\n{self.targets}"

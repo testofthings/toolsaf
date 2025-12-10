@@ -26,8 +26,6 @@ def test_connection_basics():
     fm = FlowMatcher(engine, flow)
     conn = fm.get_connection()
     assert conn == dev0_dev1_1234
-    assert fm.sources.get_weight(dev0_dev1_1234.source) == Weights.IP_ADDRESS
-    assert fm.targets.get_weight(dev0_dev1_1234.target) == Weights.IP_ADDRESS + Weights.PROTOCOL_PORT
     assert fm.get_host_addresses() == (
         EndpointAddress.tcp("12.0.0.1", 20123), EndpointAddress.tcp("12.0.0.2", 1234))
 
@@ -36,8 +34,6 @@ def test_connection_basics():
     fm = FlowMatcher(engine, flow)
     conn = fm.get_connection()
     assert conn == dev0_dev1_1234
-    assert fm.sources.get_weight(dev0_dev1_1234.target) == Weights.IP_ADDRESS + Weights.PROTOCOL_PORT
-    assert fm.targets.get_weight(dev0_dev1_1234.source) == Weights.IP_ADDRESS
     assert fm.get_host_addresses() == (
         EndpointAddress.tcp("12.0.0.1", 20124), EndpointAddress.tcp("12.0.0.2", 1234))
 
@@ -45,8 +41,6 @@ def test_connection_basics():
     fm = FlowMatcher(engine, flow)
     conn = fm.get_connection()
     assert conn == dev0_dev10_1234
-    assert fm.sources.get_weight(dev0_dev10_1234.source) == Weights.IP_ADDRESS
-    assert fm.targets.get_weight(dev0_dev10_1234.target) == Weights.WILDCARD_ADDRESS + Weights.PROTOCOL_PORT
     assert fm.get_host_addresses() == (
         EndpointAddress.tcp("12.0.0.1", 20123), EndpointAddress.tcp("12.0.1.1", 1234))
 
@@ -54,8 +48,6 @@ def test_connection_basics():
     fm = FlowMatcher(engine, flow)
     conn = fm.get_connection()
     assert conn == dev0_8888_dev1_1088
-    assert fm.sources.get_weight(dev0_8888_dev1_1088.source) == Weights.IP_ADDRESS + Weights.PROTOCOL_PORT
-    assert fm.targets.get_weight(dev0_8888_dev1_1088.target) == Weights.IP_ADDRESS + Weights.PROTOCOL_PORT
     assert fm.get_host_addresses() == (
         EndpointAddress.tcp("12.0.0.1", 8888), EndpointAddress.tcp("12.0.0.2", 1088))
 
@@ -70,8 +62,6 @@ def test_connection_basics():
     fm = FlowMatcher(engine, flow)
     conn = fm.get_connection()
     assert conn == dev10_dev11_2010
-    assert fm.sources.get_weight(dev10_dev11_2010.source) == Weights.WILDCARD_ADDRESS
-    assert fm.targets.get_weight(dev10_dev11_2010.target) == Weights.WILDCARD_ADDRESS + Weights.PROTOCOL_PORT
     assert fm.get_host_addresses() == (
         EndpointAddress.tcp("12.0.2.1", 8888), EndpointAddress.tcp("12.0.1.1", 2010))
 
