@@ -212,7 +212,7 @@ class AddressClue:
         ep_key = (protocol, port)
         service_clue = self.services.get(ep_key)
         if service_clue:
-            service_clue.update(state, address, protocol, port)
+            service_clue.update(state, address, protocol, port, wildcard)
 
     def __repr__(self) -> str:
         r = [f"{self.entity}"]
