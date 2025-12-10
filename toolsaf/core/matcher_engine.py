@@ -273,7 +273,13 @@ class FlowMatcher:
                     self.map_address(self.targets, AddressAtNetwork(flow.target[0], net), flow.protocol, flow.target[2])
                 self.map_address(self.targets, AddressAtNetwork(flow.target[1], net), flow.protocol, flow.target[2])
             case _:
-                raise NotImplementedError("Flow type not supported in matcher")
+                net = flow.network or engine.system.get_default_network()
+                # update by source
+                for addr in flow.stack(target=False):
+                    self.map_address(self.sources, AddressAtNetwork(addr, net), flow.protocol, flow.port(False))
+                # update by target
+                for addr in flow.stack(target=True):
+                    self.map_address(self.targets, AddressAtNetwork(addr, net), flow.protocol, flow.port(True))
         # resolved connection
         self.connection: Optional[Connection | Tuple[Optional[Addressable], Optional[Addressable]]] = None
         self.reverse: bool = False
