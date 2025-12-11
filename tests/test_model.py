@@ -463,7 +463,16 @@ def test_reply_misinterpretation():
     c1 = m.connection(IPFlow.IP(
         "1:0:0:0:0:2", "192.168.0.2", 1) << ("1:0:0:0:0:1", "192.168.0.1", 1))
 
-    assert c0 != c1
+    c2 = m.connection(IPFlow.UDP(
+      "1:0:0:0:0:2", "192.168.0.2", 4000) << ("1:0:0:0:0:1", "192.168.0.1", 2001))
+
+    assert c0 == c1  # c0 has been converted to c1
+    assert c0 != c2
+
+    check = list(c for c in m.system.connections.values())
+    assert len(check) == 3
+    assert check[0] != check[1]
+    assert check[0] == check[2]
 
 
 def test_unknown_service_in_subnet():
