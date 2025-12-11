@@ -61,6 +61,9 @@ class MatcherEngine:
                 # new address
                 clue.addresses.add(addr_net)
                 # override old mappings for the address
+                for old_clue in self.addresses.get(addr_net, ()):
+                    if old_clue != clue:
+                        old_clue.addresses.remove(addr_net)
                 self.addresses[addr_net] = [clue]
             new_set.add(addr_net)
         for addr_net in list(clue.addresses):
