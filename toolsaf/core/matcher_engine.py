@@ -302,17 +302,25 @@ class FlowMatcher:
         match flow:
             case IPFlow():
                 net = flow.network or engine.system.get_default_network()
-                # update by source
-                if not self.system.is_external(flow.source[1]):
-                    # external IP address - HW is local router
+                # find source ends
+                # - with external IP, HW is the local router
+                # - with HW matching to endpoint, ignore IP
+                use_hw = not engine.system.is_external(flow.source[1]) and \
+                    AddressAtNetwork(flow.source[0], net) in engine.addresses
+                if use_hw:
+                    # match by HW address
                     self.map_address(self.sources, AddressAtNetwork(flow.source[0], net), flow.protocol, flow.source[2])
-                self.map_address(self.sources, AddressAtNetwork(flow.source[1], net), flow.protocol, flow.source[2])
+                else:
+                    # match by IP address
+                    self.map_address(self.sources, AddressAtNetwork(flow.source[1], net), flow.protocol, flow.source[2])
 
                 # update by target
-                if not self.system.is_external(flow.target[1]):
-                    # external IP address - HW is local router
+                use_hw = not engine.system.is_external(flow.target[1]) and \
+                    AddressAtNetwork(flow.target[0], net) in engine.addresses
+                if use_hw:
                     self.map_address(self.targets, AddressAtNetwork(flow.target[0], net), flow.protocol, flow.target[2])
-                self.map_address(self.targets, AddressAtNetwork(flow.target[1], net), flow.protocol, flow.target[2])
+                else:
+                    self.map_address(self.targets, AddressAtNetwork(flow.target[1], net), flow.protocol, flow.target[2])
             case _:
                 net = flow.network or engine.system.get_default_network()
                 # update by source
