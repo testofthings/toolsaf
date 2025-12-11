@@ -81,7 +81,7 @@ class MatchingContext:
         self.engine = MatcherEngine(system.system)
 
         # load system model into matching engine
-        for c in system.system.get_connections():
+        for c in system.system.get_connections(relevant_only=False):
             self.engine.add_connection(c)
         for h in system.system.get_hosts():
             self.engine.add_host(h)
@@ -116,6 +116,9 @@ class MatchingContext:
             if not conn.target.is_service() and flow_matcher.reverse:
                 # Reply to unexpected connection
                 self.create_unknown_service(match)
+            if match.connection.status == Status.PLACEHOLDER:
+                # this is an UNEXPECTED connection found after reset
+                self.set_connection_status(match.connection, (conn.source, source_add), (conn.target, target_add))
             self.observed[flow] = match
         else:
             # no connection, must create new
