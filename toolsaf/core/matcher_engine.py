@@ -131,6 +131,7 @@ class MatcherEngine:
                 case EndpointAddress():
                     ep_key = add.get_protocol_port()
                     assert ep_key is not None, "Endpoint address without protocol/port"
+                    clue.endpoints.add(ep_key)
                     h_addr = add.get_host()
                     host = entity.get_parent_host()
                     if h_addr == Addresses.ANY and host != entity:
@@ -209,6 +210,7 @@ class AddressClue:
         self.entity = entity
         self.services: Dict[Tuple[Protocol, int], AddressClue] = {}
         self.addresses: Set[AddressAtNetwork] = set()
+        self.endpoints: Set[Tuple[Protocol, int]] = set()  # only for services
         self.source_for: List[ConnectionClue] = []
         self.target_for: List[ConnectionClue] = []
 
@@ -216,6 +218,9 @@ class AddressClue:
                wildcard: bool = False) -> None:
         """Update state observing this host"""
         is_service = isinstance(self.entity, Service)
+        ep_key = (protocol, port)
+        if self.endpoints and ep_key not in self.endpoints:
+            return  # this host/service does not have this endpoint
         w = 1 if wildcard else (3 if is_service else 2)
         status = self.entity.status
         match status:
@@ -234,7 +239,6 @@ class AddressClue:
         for conn in self.target_for:
             conn.update(state, w, target=address)
         # check services
-        ep_key = (protocol, port)
         service_clue = self.services.get(ep_key)
         if service_clue:
             service_clue.update(state, address, protocol, port, wildcard)
