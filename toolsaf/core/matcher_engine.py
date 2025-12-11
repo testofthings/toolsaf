@@ -116,7 +116,6 @@ class MatcherEngine:
 
     def add_addressable(self, entity: Addressable) -> 'AddressClue':
         """Add addressable host or service"""
-        # FIXME: Make it impossible to have multiple networks for one address and entity
         clue = self.endpoints.get(entity)
         if clue:
             return clue
