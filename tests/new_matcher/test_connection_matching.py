@@ -1,9 +1,9 @@
 """Test connection matching logic"""
 
 from toolsaf.builder_backend import SystemBackend
-from toolsaf.common.address import EndpointAddress, IPAddress
+from toolsaf.common.address import EndpointAddress
 from toolsaf.common.traffic import IPFlow
-from toolsaf.core.matcher_engine import FlowMatcher, MatcherEngine, Weights
+from toolsaf.core.matcher_engine import FlowMatcher, MatcherEngine
 from toolsaf.main import TCP
 
 

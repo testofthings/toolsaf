@@ -3,17 +3,9 @@
 from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
 from toolsaf.common.address import AddressAtNetwork, Addresses, AnyAddress, EndpointAddress, EntityTag, Protocol
+from toolsaf.common.basics import Status
 from toolsaf.common.traffic import Flow, IPFlow
 from toolsaf.core.model import Addressable, Connection, Host, IoTSystem, Service
-
-class Weights:
-    """Clue weights"""
-    ADDRESS = 100
-    IP_ADDRESS = 101
-    HW_ADDRESS = 102
-    WILDCARD_ADDRESS = 99
-
-    PROTOCOL_PORT = 10
 
 class MatcherEngine:
     """Matcher engine for matching connections and endpoints"""
