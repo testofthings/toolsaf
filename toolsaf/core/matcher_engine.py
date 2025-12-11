@@ -44,6 +44,10 @@ class MatcherEngine:
         # clear old mappings for the address
         self.addresses[net_add] = [clue]
 
+        if not entity.any_host:
+            # remove from wildcard hosts, if there
+            self.wildcard_hosts = [wc for wc in self.wildcard_hosts if wc.entity != entity]
+
     def update_host(self, host: Addressable) -> None:
         """Notify engine of address update for host"""
         clue = self.endpoints.get(host)
@@ -75,6 +79,10 @@ class MatcherEngine:
                     clues.remove(clue)
                     if not clues:
                         del self.addresses[addr_net]
+
+        if not host.any_host:
+            # remove from wildcard hosts, if there, do not re-add
+            self.wildcard_hosts = [wc for wc in self.wildcard_hosts if wc.entity != host]
 
     def add_connection(self, connection: Connection) -> Connection:
         """Add connection to matching engine"""
@@ -150,7 +158,8 @@ class MatcherEngine:
                     self.addresses.setdefault(add_net, []).append(clue)
                     clue.addresses.add(add_net)
             addresses = True
-        if not addresses:
+
+        if entity.any_host or not addresses:
             # no addresses defined, add wildcard clue
             self.wildcard_hosts.append(clue)
 
