@@ -217,6 +217,12 @@ class AddressClue:
         """Update state observing this host"""
         is_service = isinstance(self.entity, Service)
         w = 1 if wildcard else (3 if is_service else 2)
+        status = self.entity.status
+        match status:
+            case Status.EXPECTED:
+                w += 10  # prefer expected entities
+            case Status.EXTERNAL:
+                w += 5  # prefer over unexpected
         if is_service or not wildcard:
             # connections from/to wildcard host only with port/protocol
             value = state.get(self.entity)
