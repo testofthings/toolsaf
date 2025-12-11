@@ -64,6 +64,7 @@ class MatcherEngine:
             if addr_net not in clue.addresses:
                 # new address
                 clue.addresses.add(addr_net)
+                clue.soft_addresses.add(addr_net)   # can be removed later
                 # override old mappings for the address
                 for old_clue in self.addresses.get(addr_net, ()):
                     if old_clue != clue:
@@ -71,7 +72,7 @@ class MatcherEngine:
                 self.addresses[addr_net] = [clue]
             new_set.add(addr_net)
         for addr_net in list(clue.addresses):
-            if addr_net not in new_set:
+            if addr_net not in new_set and addr_net in clue.soft_addresses:
                 # removed address
                 clue.addresses.remove(addr_net)
                 clues = self.addresses.get(addr_net)
@@ -221,7 +222,8 @@ class AddressClue:
     def __init__(self, entity: Addressable) -> None:
         self.entity = entity
         self.services: Dict[Tuple[Protocol, int], AddressClue] = {}
-        self.addresses: Set[AddressAtNetwork] = set()
+        self.addresses: Set[AddressAtNetwork] = set()      # effective addresses
+        self.soft_addresses: Set[AddressAtNetwork] = set() # addresses added/removed as we go
         self.endpoints: Set[Tuple[Protocol, int]] = set()  # only for services
         self.source_for: List[ConnectionClue] = []
         self.target_for: List[ConnectionClue] = []
