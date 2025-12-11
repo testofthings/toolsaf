@@ -1,6 +1,6 @@
 """Connection and endpoint matching"""
 
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
 from toolsaf.common.address import AddressAtNetwork, Addresses, AnyAddress, EndpointAddress, EntityTag, Protocol
 from toolsaf.common.traffic import Flow, IPFlow
@@ -48,12 +48,38 @@ class MatcherEngine:
         net_add = AddressAtNetwork(address, net)
 
         clue = self.add_addressable(entity)
+        clue.addresses.add(net_add)
         # clear old mappings for the address
         self.addresses[net_add] = [clue]
 
     def update_host(self, host: Addressable) -> None:
         """Notify engine of address update for host"""
-        raise NotImplementedError()
+        clue = self.endpoints.get(host)
+        if not clue:
+            self.add_addressable(host)
+            return
+        # delete removed addresses and add new ones
+        new_set: Set[AddressAtNetwork] = set()
+        for address in host.addresses:
+            if isinstance(address, EntityTag):
+                continue  # skip tags
+            net = host.get_networks_for(address)[0]
+            addr_net = AddressAtNetwork(address, net)
+            if addr_net not in clue.addresses:
+                # new address
+                clue.addresses.add(addr_net)
+                # override old mappings for the address
+                self.addresses[addr_net] = [clue]
+            new_set.add(addr_net)
+        for addr_net in list(clue.addresses):
+            if addr_net not in new_set:
+                # removed address
+                clue.addresses.remove(addr_net)
+                clues = self.addresses.get(addr_net)
+                if clues:
+                    clues.remove(clue)
+                    if not clues:
+                        del self.addresses[addr_net]
 
     def add_connection(self, connection: Connection) -> Connection:
         """Add connection to matching engine"""
@@ -127,6 +153,7 @@ class MatcherEngine:
                 case _:
                     add_net = AddressAtNetwork(add, net)
                     self.addresses.setdefault(add_net, []).append(clue)
+                    clue.addresses.add(add_net)
             addresses = True
         if not addresses:
             # no addresses defined, add wildcard clue
@@ -190,6 +217,7 @@ class AddressClue:
     def __init__(self, entity: Addressable) -> None:
         self.entity = entity
         self.services: Dict[Tuple[Protocol, int], AddressClue] = {}
+        self.addresses: Set[AddressAtNetwork] = set()
         self.source_for: List[ConnectionClue] = []
         self.target_for: List[ConnectionClue] = []
 
