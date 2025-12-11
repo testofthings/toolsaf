@@ -57,7 +57,7 @@ class EventSerializer(Serializer[Event]):
     def read_evidence(cls, stream: SerializerStream) -> Evidence:
         """Read evidence from stream"""
         source = stream.resolve("source-id", of_type=EvidenceSource)
-        tail_ref = stream.get("tail-ref") or ""
+        tail_ref = stream.get("ref") or ""
         return Evidence(source, tail_ref)
 
 
