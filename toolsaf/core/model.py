@@ -701,7 +701,7 @@ class IoTSystem(NetworkNode):
         self.call_listeners(lambda ln: ln.address_change(host))
 
         for h in self.get_hosts():
-            if h != host:
+            if h != host and ip_address in h.addresses:
                 h.addresses.discard(ip_address)
                 self.call_listeners(lambda ln: ln.address_change(h))  # pylint: disable=cell-var-from-loop
 
