@@ -376,22 +376,23 @@ class FlowMatcher:
         source_items = self.sources.get_all_sorted()
         target_items = self.targets.get_all_sorted()
 
-        # largest endpoint weight, connection must exceed this (both ends adds at least +1)
-        best_weight = 0
+        # max. endpoint weight
+        max_endpoint_weight = 0
         for key, value in source_items:
             if not isinstance(key, Connection):
-                best_weight = value.weight
+                max_endpoint_weight = value.weight
                 break
         for key, value in target_items:
             if not isinstance(key, Connection):
-                if value.weight > best_weight:
-                    best_weight = value.weight
+                if value.weight > max_endpoint_weight:
+                    max_endpoint_weight = value.weight
                     break
 
         # find connection with largest weight
         conn: Optional[Connection] = None
         conn_weights: Dict[Connection, int] = {}
         ends: Optional[Tuple[AddressAtNetwork, AddressAtNetwork]] = None
+        best_weight = 0
         reverse = False
         for key, _ in source_items:
             if not isinstance(key, Connection) or key in conn_weights:
@@ -403,6 +404,10 @@ class FlowMatcher:
             r_sv, r_tv = self.sources.get((True, key)), self.targets.get((False, key))
             r_weight = r_sv.weight + r_tv.weight if r_sv.weight > 0 and r_tv.weight > 0 else 0
             b_weight = conn_weights[key] = max(weight, r_weight)
+            if key.status != Status.EXPECTED and b_weight < max_endpoint_weight:
+                # best expected connection used despite endpoint weights
+                # - an endpoint may not have any expected connections
+                continue
             if b_weight <= best_weight:
                 continue  # not better than current best
             best_weight = b_weight
