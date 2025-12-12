@@ -378,16 +378,23 @@ class FlowMatcher:
 
         # largest endpoint weight, connection must exceed this (both ends adds at least +1)
         best_weight = 0
-        for key, value in (source_items + target_items):
+        for key, value in source_items:
             if not isinstance(key, Connection):
-                best_weight = max(best_weight, value.weight)
+                best_weight = value.weight
+                break
+        for key, value in target_items:
+            if not isinstance(key, Connection):
+                if value.weight > best_weight:
+                    best_weight = value.weight
+                    break
 
         # find connection with largest weight
         conn: Optional[Connection] = None
+        conn_weights: Dict[Connection, int] = {}
         ends: Optional[Tuple[AddressAtNetwork, AddressAtNetwork]] = None
         reverse = False
         for key, _ in source_items:
-            if not isinstance(key, Connection):
+            if not isinstance(key, Connection) or key in conn_weights:
                 continue
             # request direction
             sv, tv = self.sources.get((False, key)), self.targets.get((True, key))
@@ -395,14 +402,14 @@ class FlowMatcher:
             # reverse direction
             r_sv, r_tv = self.sources.get((True, key)), self.targets.get((False, key))
             r_weight = r_sv.weight + r_tv.weight if r_sv.weight > 0 and r_tv.weight > 0 else 0
-            if max(weight, r_weight) <= best_weight:
+            b_weight = conn_weights[key] = max(weight, r_weight)
+            if b_weight <= best_weight:
                 continue  # not better than current best
+            best_weight = b_weight
             reverse = weight < r_weight
             if not reverse:
-                best_weight = weight
                 ends = cast(Tuple[AddressAtNetwork, AddressAtNetwork], (sv.reference, tv.reference))
             else:
-                best_weight = r_weight
                 ends = cast(Tuple[AddressAtNetwork, AddressAtNetwork], (r_tv.reference, r_sv.reference))
             conn = key
 
