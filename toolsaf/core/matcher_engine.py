@@ -245,13 +245,25 @@ class AddressClue:
         ep_key = (protocol, port)
         if self.endpoints and ep_key not in self.endpoints:
             return  # this host/service does not have this endpoint
-        w = 1 if wildcard else (3 if is_service else 2)
+        # w = 1 if wildcard else (3 if is_service else 2)
         status = self.entity.status
         match status:
+            case Status.EXPECTED if is_service and not wildcard:
+                w = 3000 # address + endpoint match
+            case Status.EXPECTED if not wildcard:
+                w = 1000  # address match
+            case Status.EXPECTED if is_service:
+                w = 300  # endpoint match
+            case Status.EXTERNAL if is_service:
+                w = 100  # prefer over unexpected
             case Status.EXPECTED:
-                w += 10  # prefer expected entities
+                w = 30  # wildcard match
             case Status.EXTERNAL:
-                w += 5  # prefer over unexpected
+                w = 10
+            case Status.UNEXPECTED if is_service:
+                w = 3
+            case _:
+                w = 1
         if is_service or not wildcard:
             # connections from/to wildcard host only with port/protocol
             value = state.get(self.entity)
@@ -364,9 +376,14 @@ class FlowMatcher:
         source_items = self.sources.get_all_sorted()
         target_items = self.targets.get_all_sorted()
 
+        # largest endpoint weight, connection must exceed this (both ends adds at least +1)
+        best_weight = 0
+        for key, value in (source_items + target_items):
+            if not isinstance(key, Connection):
+                best_weight = max(best_weight, value.weight)
+
         # find connection with largest weight
         conn: Optional[Connection] = None
-        best_weight = 0
         ends: Optional[Tuple[AddressAtNetwork, AddressAtNetwork]] = None
         reverse = False
         for key, _ in source_items:

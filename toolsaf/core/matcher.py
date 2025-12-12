@@ -1,6 +1,6 @@
 """Match events into system model"""
 
-from typing import Self, Tuple, Dict
+from typing import Optional, Self, Tuple, Dict
 
 from dataclasses import dataclass
 
@@ -8,7 +8,7 @@ from toolsaf.common.address import AnyAddress, EndpointAddress, IPAddress
 from toolsaf.common.basics import ExternalActivity, Status
 from toolsaf.core.matcher_engine import FlowMatcher, MatcherEngine
 from toolsaf.core.model import IoTSystem, Connection, Host, Addressable, Service, EvidenceNetworkSource, ModelListener
-from toolsaf.common.traffic import Flow, EvidenceSource
+from toolsaf.common.traffic import NO_EVIDENCE, Flow, EvidenceSource
 from toolsaf.common.verdict import Verdict
 
 
@@ -36,18 +36,19 @@ class SystemMatcher(ModelListener):
     def connection_w_ends(self, flow: Flow) -> Tuple[Connection, AnyAddress, AnyAddress, bool]:
         """Find the connection matching the given flow, return also endpoint addresses"""
         source = flow.evidence.source
-        ctx = self._get_context(source)
+        ctx = self.get_context(source)
         m = ctx.get_connection(flow)
         return m.connection, m.source, m.target, m.reply
 
     def endpoint(self, address: AnyAddress, source: EvidenceSource) -> Addressable:
         """Find endpoint by address"""
-        ctx = self._get_context(source)
+        ctx = self.get_context(source)
         e = ctx.get_endpoint(address)
         return e
 
-    def _get_context(self, source: EvidenceSource) -> 'MatchingContext':
+    def get_context(self, source: Optional[EvidenceSource] = None) -> 'MatchingContext':
         """Get matching context for source"""
+        source = NO_EVIDENCE.source if source is None else source
         ctx = self.contexts.get(source)
         if ctx is None:
             ctx = MatchingContext(self, source)
