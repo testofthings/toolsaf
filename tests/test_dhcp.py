@@ -30,7 +30,8 @@ def test_dhcp():
 
     assert dev1.entity.addresses == {EntityTag("Device"), HWAddress.new("1:0:0:0:0:1"), IPAddress.new("192.168.0.1")}
 
-    # IP reassigned
+    # IP reassigned to another (unexpected) device
+    # Is this realistic? DHCP server reassigns same IP to different MAC out of the blue?
     f3 = m.connection(IPFlow.UDP("1:0:0:0:0:5", "0.0.0.0", 68) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 67))
     h2 = sb.system.get_endpoint(HWAddress.new("1:0:0:0:0:5"))
     assert h2.name == "01:00:00:00:00:05"
