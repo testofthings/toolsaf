@@ -84,8 +84,8 @@ class MatcherEngine:
                         del self.addresses[addr_net]
 
         if additions and not host.any_host and not clue.addresses:
-           # remove from wildcard hosts, if there, do not re-add
-           self.wildcard_hosts = [wc for wc in self.wildcard_hosts if wc.entity != host]
+            # remove from wildcard hosts, if there, do not re-add
+            self.wildcard_hosts = [wc for wc in self.wildcard_hosts if wc.entity != host]
 
     def add_connection(self, connection: Connection) -> Connection:
         """Add connection to matching engine"""
