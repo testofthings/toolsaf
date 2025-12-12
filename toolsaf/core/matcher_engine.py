@@ -56,6 +56,7 @@ class MatcherEngine:
             return
         # delete removed addresses and add new ones
         new_set: Set[AddressAtNetwork] = set()
+        additions = False
         for address in host.addresses:
             if isinstance(address, EntityTag):
                 continue  # skip tags
@@ -64,14 +65,16 @@ class MatcherEngine:
             if addr_net not in clue.addresses:
                 # new address
                 clue.addresses.add(addr_net)
+                clue.soft_addresses.add(addr_net)
                 # override old mappings for the address
                 for old_clue in self.addresses.get(addr_net, ()):
                     if old_clue != clue:
                         old_clue.addresses.remove(addr_net)
                 self.addresses[addr_net] = [clue]
+                additions = True
             new_set.add(addr_net)
         for addr_net in list(clue.addresses):
-            if addr_net not in new_set:
+            if addr_net not in new_set and addr_net in clue.soft_addresses:
                 # removed address
                 clue.addresses.remove(addr_net)
                 clues = self.addresses.get(addr_net)
@@ -80,7 +83,7 @@ class MatcherEngine:
                     if not clues:
                         del self.addresses[addr_net]
 
-        if not host.any_host and not clue.addresses:
+        if additions and not host.any_host and not clue.addresses:
            # remove from wildcard hosts, if there, do not re-add
            self.wildcard_hosts = [wc for wc in self.wildcard_hosts if wc.entity != host]
 
@@ -222,6 +225,7 @@ class AddressClue:
         self.entity = entity
         self.services: Dict[Tuple[Protocol, int], AddressClue] = {}
         self.addresses: Set[AddressAtNetwork] = set()      # effective addresses
+        self.soft_addresses: Set[AddressAtNetwork] = set() # addresses added/removed as we go
         self.endpoints: Set[Tuple[Protocol, int]] = set()  # only for services
         self.source_for: List[ConnectionClue] = []
         self.target_for: List[ConnectionClue] = []
