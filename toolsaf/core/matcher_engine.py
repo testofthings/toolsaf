@@ -162,6 +162,14 @@ class MatcherEngine:
                     clue.addresses.add(add_net)
             addresses = True
 
+        if isinstance(entity, Service) and entity.multicast_source:
+            # service is listening on multicast or broadcast address
+            net = entity.get_networks_for(entity.multicast_source)[0]
+            add_net = AddressAtNetwork(entity.multicast_source, net)
+            self.addresses.setdefault(add_net, []).append(clue)
+            clue.addresses.add(add_net)
+            addresses = True
+
         if entity.any_host or not addresses:
             # no addresses defined, add wildcard clue
             self.wildcard_hosts.append(clue)
@@ -308,22 +316,24 @@ class FlowMatcher:
                 net = flow.network or engine.system.get_default_network()
                 # find source ends
                 # - with external IP, HW is the local router
-                # - with HW matching to endpoint, ignore IP
+                # - with HW matching to endpoint, ignore IP, unless multicast/broadcast
                 use_hw = not engine.system.is_external(flow.source[1]) and \
                     AddressAtNetwork(flow.source[0], net) in engine.addresses
+                use_ip = not use_hw or flow.source[1].is_multicast()
                 if use_hw:
                     # match by HW address
                     self.map_address(self.sources, AddressAtNetwork(flow.source[0], net), flow.protocol, flow.source[2])
-                else:
+                if use_ip:
                     # match by IP address
                     self.map_address(self.sources, AddressAtNetwork(flow.source[1], net), flow.protocol, flow.source[2])
 
                 # update by target
                 use_hw = not engine.system.is_external(flow.target[1]) and \
                     AddressAtNetwork(flow.target[0], net) in engine.addresses
+                use_ip = not use_hw or flow.target[1].is_multicast()
                 if use_hw:
                     self.map_address(self.targets, AddressAtNetwork(flow.target[0], net), flow.protocol, flow.target[2])
-                else:
+                if use_ip:
                     self.map_address(self.targets, AddressAtNetwork(flow.target[1], net), flow.protocol, flow.target[2])
             case _:
                 net = flow.network or engine.system.get_default_network()
