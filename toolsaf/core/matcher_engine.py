@@ -394,7 +394,8 @@ class FlowMatcher:
         ends: Optional[Tuple[AddressAtNetwork, AddressAtNetwork]] = None
         best_weight = 0
         reverse = False
-        for key, _ in source_items:
+        # listing by target_items gives preference to target matches, when weights are equal
+        for key, _ in target_items:
             if not isinstance(key, Connection) or key in conn_weights:
                 continue
             # request direction
