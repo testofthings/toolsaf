@@ -1050,6 +1050,8 @@ class SystemBackendRunner(SystemBackend):
         parser.add_argument("--def-loads", "-L", type=str,
                             help="Comma-separated list of tools to load")
         parser.add_argument("--with-files", "-w", action="store_true", help="Show relevant result files for verdicts")
+        parser.add_argument("--trace-source", "-t", type=str, help="Trace how given sources are interpreted"
+                            " (same format as --with-files, separate by whitespace)")
         parser.add_argument("-s", "--show", type=lambda s: s.split(","), default=[],
                             help="Show additional info in output. Valid values: all, properties, ignored, irrelevant")
         parser.add_argument("--no-truncate", action="store_true",
@@ -1168,6 +1170,10 @@ class SystemBackendRunner(SystemBackend):
             with_files = bool(args.with_files)
             report = Report(registry)
             report.source_count = 3 if with_files else 0
+            for source_pick in (args.trace_source or "").split():
+                # trace listed sources
+                if source_pick:
+                    report.source_picks.add(source_pick[1:] if source_pick.startswith("@") else source_pick)
             report.show = args.show
             report.no_truncate = bool(args.no_truncate)
             report.use_color_flag = bool(args.color)
