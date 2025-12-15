@@ -5,7 +5,7 @@ import sys
 import shutil
 import logging
 from functools import cached_property
-from typing import TextIO, List, Dict, Tuple, Union, Any, cast
+from typing import TextIO, List, Dict, Tuple, Union, Any, cast, Set
 from colored import Fore, Style
 
 from toolsaf.common.basics import ConnectionType
@@ -22,6 +22,7 @@ class Report:
         self.registry = registry
         self.system = registry.system
         self.source_count = 3
+        self.source_picks: Set[str] = set()
         self.show: List[str] = []
         self.no_truncate = False
         self.use_color_flag = False
@@ -107,14 +108,17 @@ class Report:
 
     def _get_sources(self, entity: Entity, key: PropertyKey=Properties.EXPECTED) -> List[str]:
         """Returns max self.source_count source strs for entity; if any"""
-        if not self.source_count:
+        if not self.source_count and not self.source_picks:
             return []
         sources = set(filter(None, [
             event.event.evidence.get_reference()
             for event in self.registry.logging.get_log(entity, key)
         ]))
-
-        return list(sources)[:self.source_count]
+        source_list = list(sources)
+        if self.source_picks:
+            picks = [s for s in source_list if s in self.source_picks]
+            return picks
+        return source_list[:self.source_count]
 
     def get_properties_to_print(self, entity: Union[IoTSystem, Host, Addressable, NodeComponent, Connection]) \
                                 -> List[Tuple[PropertyKey, Any]]:
