@@ -459,6 +459,8 @@ class FlowMatcher:
                 continue
             if (net_addr.address.get_host() in source_set) == is_first_source:
                 continue  # same side as first end
+            if key.get_parent_host() == first_end.get_parent_host():
+                continue  # same host as first end, cannot connect to self
             second_end = key
             second_addr = net_addr
             best_weight = value.weight
