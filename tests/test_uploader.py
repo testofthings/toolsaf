@@ -1,5 +1,5 @@
 import pytest
-import sys
+import json
 from unittest.mock import patch, MagicMock, mock_open
 from pathlib import Path
 import tempfile
@@ -169,6 +169,15 @@ def test_handle_response():
 
     response_json = uploader._handle_response(mock_response, stop_on_error=True, print_response_json=True)
     assert response_json == {"result": "success"}
+
+
+def test_handle_response_json_decode_error():
+    uploader = Uploader(SYSTEM)
+    mock_response = MagicMock()
+    mock_response.json.side_effect = json.JSONDecodeError("Expecting value", "", 0)
+
+    with pytest.raises(ConnectionError):
+        uploader._handle_response(mock_response)
 
 
 def test_handle_response_no_json():
