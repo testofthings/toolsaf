@@ -249,19 +249,19 @@ class AddressClue:
         status = self.entity.status
         match status:
             case Status.EXPECTED if is_service and not wildcard:
-                w = 3000 # address + endpoint match
+                w = 128 # address + endpoint match
             case Status.EXPECTED if not wildcard:
-                w = 1000  # address match
+                w = 64  # address match
             case Status.EXPECTED if is_service:
-                w = 300  # endpoint match
+                w = 32  # endpoint match
             case Status.EXTERNAL if is_service:
-                w = 100  # prefer over unexpected
+                w = 16  # prefer over unexpected
             case Status.EXPECTED:
-                w = 30  # wildcard match
+                w = 8   # wildcard match
             case Status.EXTERNAL:
-                w = 10
+                w = 4
             case Status.UNEXPECTED if is_service:
-                w = 3
+                w = 2
             case _:
                 w = 1
         if is_service or not wildcard:
