@@ -219,7 +219,7 @@ def test_match_local_and_remote():
     assert cs11.target.name == "19.168.2.2"
     assert cs12.target.name == "01:00:00:00:02:01"
     assert cs21.target.name == "Device 1"
-    assert cs22.target.name == "Device 1"
+    assert cs22.target.name == "Device 2"  # by IP address
 
 
 def test_reverse_connection_first():
