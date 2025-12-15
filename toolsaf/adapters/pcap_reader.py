@@ -248,4 +248,5 @@ class PCAPReader(SystemWideTool):
         # self.interface.flow_data_update(flow, [ts, le])
 
     def __repr__(self) -> str:
-        return f"{self.source or '???'}:{self.frame_number}"
+        base_ref = (self.source.base_ref if self.source else "") or "PCAP"
+        return f"{base_ref}:{self.frame_number}"
