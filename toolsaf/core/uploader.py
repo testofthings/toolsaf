@@ -1,5 +1,6 @@
 """JSON serialized statement uploader"""
 import os
+import json
 from typing import Union, Dict, List, Any, Optional, cast
 from pathlib import Path
 import requests
@@ -92,7 +93,10 @@ class Uploader:
     def _handle_response(self, response: requests.Response, stop_on_error: bool=False,
                          print_response_json: bool=True) -> Dict[str, Any]:
         """Handle response from server after data upload, returns response JSON"""
-        response_json = cast(Optional[Dict[str, Any]], response.json())
+        try:
+            response_json = cast(Optional[Dict[str, Any]], response.json())
+        except json.JSONDecodeError as e:
+            raise ConnectionError("Data upload failed! Response JSON decode failed") from e
         if not response_json:
             raise ConnectionError("Data upload failed! No JSON response from server")
         if stop_on_error and not response.ok:
