@@ -1,6 +1,6 @@
 """Batch tool-data import"""
 
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import logging
 import pathlib
@@ -127,10 +127,12 @@ class BatchImporter:
 
         try:
             if reader:
-                ev = info.source.rename(name=reader.tool.name, base_ref=file_path.as_posix(),
-                                        label=info.label)
+                ev = info.source.rename(
+                    name=reader.tool.name, base_ref=file_path.as_posix(), label=info.label,
+                    description=info.description, location=info.location
+                )
                 # tool-specific code can override, if knows better
-                ev.timestamp = datetime.fromtimestamp(file_path.stat().st_mtime)
+                ev.timestamp = datetime.fromtimestamp(file_path.stat().st_mtime, tz=timezone.utc)
                 self.evidence.setdefault(info.label, []).append(ev)
                 if skip_processing:
                     self.logger.info("skipping (%s) %s", info.label, file_path.as_posix())
@@ -163,11 +165,14 @@ class BatchImporter:
         for fn in files:
             if not fn.is_file():
                 continue  # directories called later
-            ev = info.source.rename(name=reader.tool.name, base_ref=fn.as_posix(), label=info.label)
+            ev = info.source.rename(
+                name=reader.tool.name, base_ref=fn.as_posix(), label=info.label,
+                description=info.description, location=info.location
+            )
             self.evidence.setdefault(info.label, []).append(ev)
             with fn.open("rb") as f:
                 # tool-specific code can override, if knows better
-                ev.timestamp = datetime.fromtimestamp(fn.stat().st_mtime)
+                ev.timestamp = datetime.fromtimestamp(fn.stat().st_mtime, tz=timezone.utc)
                 done = reader.process_file(f, fn.name, self.interface, ev)
             if done:
                 data.sources.append(ev)
@@ -180,9 +185,12 @@ class BatchImporter:
 
 class FileMetaInfo:
     """Batch file information."""
-    def __init__(self, label: str="", file_type: str="", parent: Optional['FileMetaInfo'] = None) -> None:
+    def __init__(self, label: str="", file_type: str="", parent: Optional['FileMetaInfo'] = None,
+                 description: str="", location: str="") -> None:
         self.label = label
         self.name = label
+        self.description = description
+        self.location = location
         self.file_load_order: List[str] = []
         self.file_type = file_type
         self.from_pipe = False
@@ -233,8 +241,10 @@ class BatchData:
         """Parse from JSON"""
         label = str(json_data.get("label", directory_name))
         file_type = json_data.get("file_type", "")
+        description = json_data.get("description", "")
+        location = json_data.get("location", "")
         meta_name = json_data.get("name", label)
-        info = FileMetaInfo(label, file_type, parent=parent_meta)
+        info = FileMetaInfo(label, file_type, parent=parent_meta, description=description, location=location)
         info.name = meta_name
         info.from_pipe = bool(json_data.get("from_pipe", False))
         info.load_baseline = bool(json_data.get("load_baseline", False))
