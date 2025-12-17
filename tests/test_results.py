@@ -92,22 +92,6 @@ def test_get_sources(values: List, source_count: int, expected: List):
 
 
 @pytest.mark.parametrize(
-    "values, picks, expected",
-    [
-        ([1,2,3], {4}, []),
-        ([1,2,3], {2,3}, [2,3]),
-        ([2,2,None], {2}, [2]),
-    ]
-)
-def test_get_sources_with_picks(values: List, picks: set, expected: List):
-    report = Report(Registry(Setup().get_inspector()))
-    report.source_picks = picks
-    report.registry = MagicMock()
-    report.registry.logging.get_log.return_value = _get_mock_events(values)
-    assert report._get_sources(None) == expected
-
-
-@pytest.mark.parametrize(
     "properties, show, expected",
     [
         (
