@@ -31,10 +31,15 @@ def test_serve_arp():
     f1 = m.connection(EthernetFlow.new(Protocol.ARP, "1:0:0:0:1:1") >> "ff:ff:ff:ff:ff:ff")
     assert f1.status == Status.EXTERNAL
 
-    # dev4 can make ARP calls
-    f1 = m.connection(EthernetFlow.new(Protocol.ARP, "1:0:0:0:0:4") >> "ff:ff:ff:ff:ff:ff")
+    # dev1 has ARP
+    f1 = m.connection(EthernetFlow.new(Protocol.ARP, "1:0:0:0:0:1") >> "ff:ff:ff:ff:ff:ff")
     assert f1.status == Status.EXPECTED
-    # FIXME: The remaining does not work
+
+    # dev4 does not have ARP
+    f1 = m.connection(EthernetFlow.new(Protocol.ARP, "1:0:0:0:0:4") >> "ff:ff:ff:ff:ff:ff")
+    assert f1.status == Status.UNEXPECTED
+
+    # dev1 has ARP
     f1 = m.connection(EthernetFlow.new(Protocol.ARP, "1:0:0:0:0:4") << "1:0:0:0:0:1")
-    # assert f1.status == Status.EXPECTED
+    assert f1.status == Status.EXPECTED
 
