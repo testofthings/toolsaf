@@ -1,9 +1,9 @@
 # Matching traffic and addresses
 
 One of the key functionality of Toolsaf is to read a PCAP file and check it the extracted
-information matches the security statememt.
+information matches the security statement.
 This requires *matching* IP and HW addresses, multicast addresses, protocols, and ports into
-system entitites.
+system entities.
 
 This functionality is implemented in python modules `matcher.py` and `matcher_engine.py`.
 The following describes the roles of different python classes:

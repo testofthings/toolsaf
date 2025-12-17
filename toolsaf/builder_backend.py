@@ -754,7 +754,7 @@ class ARPBackend(ProtocolBackend):
             server_to_bc = host_s >> bc_s
             server_to_bc.connection.status = Status.EXTERNAL  # ARP requests not so interesting
         # Now we return the ARP service
-        # - Eariler we returned the broadcast service, which is not logical
+        # - Earlier we returned the broadcast service, which is not logical
         return host_s
 
 

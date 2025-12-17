@@ -29,7 +29,7 @@ class MatcherEngine:
         return None
 
     def add_host(self, host: Addressable) -> None:
-        """Add host and it's services to matching engine"""
+        """Add host and its services to matching engine"""
         self.add_addressable(host.get_parent_host())
 
     def add_address_mapping(self, address: AnyAddress, entity: Addressable) -> None:
