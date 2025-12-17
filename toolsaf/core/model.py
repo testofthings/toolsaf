@@ -25,8 +25,8 @@ class Connection(Entity):
         self.source = source
         self.target = target
         self.con_type = ConnectionType.UNKNOWN
-        assert source.get_parent_host() != target.get_parent_host(), "Connection source and target the same host: " + \
-            source.get_parent_host().long_name()
+        assert source.get_parent_host() != target.get_parent_host(), \
+            f"Connection source and target the same host: {source.get_parent_host().long_name()}"
 
     def get_tag(self) -> Optional[Tuple[AnyAddress, AnyAddress]]:
         """Get tag addresses, if any"""

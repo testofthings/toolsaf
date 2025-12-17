@@ -39,7 +39,7 @@ def test_dhcp():
     assert f3.target == dhcp.entity
     f4 = m.connection(IPFlow.UDP("1:0:0:0:0:5", "192.168.0.1", 68) << ("1:0:0:0:0:2", "192.168.0.2", 67))
 
-    # FIXME: Remainder of this test fails, as we match by IP not by HW
+    # NOTE: Remainder of this test fails, as we now (purposefully) match by IP not by HW
     return
 
     assert f4 == f3
