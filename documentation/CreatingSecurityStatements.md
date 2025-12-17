@@ -197,14 +197,18 @@ Check out the [services](Services.md) documentation for more details and the lis
 
 A host can send _multicast_ or _broadcast_ messages.
 The following shows example of host sending UDP broadcast to port `1234`.
-Multicast is used similarly by method `multicast`, but the used address must be specified.
 ```python
 bcast = device.broadcast(UDP(port=1234))
 ```
-
 Broadcasts listening is marked by `<<`, e.g.:
 ```python
 gateway << bcast
+```
+
+Broadcast address is `255.255.255.255`.
+Multicast is used similarly by method `multicast`, but the used addresses must be specified with `*` providing wildcard matching any octet:
+```python
+mcast = device.multicast(ip="224.0.*.*", UDP(port=1234))
 ```
 
 Currently UDP, BLE _Advertisement_, and `Proprietary` protocols allow broadcast and multicast.
