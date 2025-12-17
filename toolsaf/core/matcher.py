@@ -93,7 +93,7 @@ class MatchingContext:
             for ad, ent in self.source.address_map.items():
                 self.engine.add_address_mapping(ad, ent)
 
-            # TODO: Activity maps are not ignored. So far, matching work without them
+            # TODO: Activity maps are now ignored. So far, matching work without them
             # assert not self.source.activity_map, "Activity map not supported in matcher engine"
             # check if exteranal activity changes for some entities
             # for me in itertools.chain(*self.endpoints.values()):
