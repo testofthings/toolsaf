@@ -28,6 +28,9 @@ class DHCPService(Service):
         # response to client send by this DHCP service, learn IP
         if flow.source[2] == 67 and flow.target[2] == 68:
             client = connection.source.get_parent_host()
+            if self in client.children:
+                # this service is source of connection - perhaps we missed original request
+                client = connection.target.get_parent_host()
             self.get_system().learn_ip_address(client, flow.target[1])
 
 

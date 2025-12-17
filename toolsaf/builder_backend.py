@@ -751,8 +751,11 @@ class ARPBackend(ProtocolBackend):
             host_s.entity.external_activity = self.external_activity
         c_ok = any(c.source == host_s.entity for c in host_s.entity.get_parent_host().connections)
         if not c_ok:
-            host_s >> bc_s  # # pylint: disable=pointless-statement
-        return bc_s  # NOTE: the broadcast
+            server_to_bc = host_s >> bc_s
+            server_to_bc.connection.status = Status.EXTERNAL  # ARP requests not so interesting
+        # Now we return the ARP service
+        # - Earlier we returned the broadcast service, which is not logical
+        return host_s
 
 
 class DHCPBackend(ProtocolBackend):

@@ -193,7 +193,7 @@ def test_match_overlap_unknowns():
 
     assert cs11 == cs1
     assert cs12 == cs2
-    assert cs13 == cs1
+    assert cs13 == cs1  # earlier !=, but this is unexpected connection to 1:0:0:0:0:3
     assert cs14 != cs1
     assert cs14.target.name == "UDP:2002"
 
@@ -219,7 +219,7 @@ def test_match_local_and_remote():
     assert cs11.target.name == "19.168.2.2"
     assert cs12.target.name == "01:00:00:00:02:01"
     assert cs21.target.name == "Device 1"
-    assert cs22.target.name == "Device 1"
+    assert cs22.target.name == "Device 2"  # by IP address
 
 
 def test_reverse_connection_first():
@@ -463,7 +463,16 @@ def test_reply_misinterpretation():
     c1 = m.connection(IPFlow.IP(
         "1:0:0:0:0:2", "192.168.0.2", 1) << ("1:0:0:0:0:1", "192.168.0.1", 1))
 
-    assert c0 != c1
+    c2 = m.connection(IPFlow.UDP(
+      "1:0:0:0:0:2", "192.168.0.2", 4000) << ("1:0:0:0:0:1", "192.168.0.1", 2001))
+
+    assert c0 == c1  # c0 has been converted to c1
+    assert c0 != c2
+
+    check = list(c for c in m.system.connections.values())
+    assert len(check) == 3
+    assert check[0] != check[1]
+    assert check[0] == check[2]
 
 
 def test_unknown_service_in_subnet():

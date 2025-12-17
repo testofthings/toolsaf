@@ -25,6 +25,8 @@ class Connection(Entity):
         self.source = source
         self.target = target
         self.con_type = ConnectionType.UNKNOWN
+        assert source.get_parent_host() != target.get_parent_host(), \
+            f"Connection source and target the same host: {source.get_parent_host().long_name()}"
 
     def get_tag(self) -> Optional[Tuple[AnyAddress, AnyAddress]]:
         """Get tag addresses, if any"""
@@ -701,7 +703,7 @@ class IoTSystem(NetworkNode):
         self.call_listeners(lambda ln: ln.address_change(host))
 
         for h in self.get_hosts():
-            if h != host:
+            if h != host and ip_address in h.addresses:
                 h.addresses.discard(ip_address)
                 self.call_listeners(lambda ln: ln.address_change(h))  # pylint: disable=cell-var-from-loop
 

@@ -26,7 +26,7 @@ Main components in the architecture diagram are the following:
    finally update the system model.
 
    * **Registry**: Provides short-term event storage in a database.
-     Allows users to reload stored events.
+     Allows users to reload stored events. (DB is now obsolete.)
      Main class: `Registry`.
 
    * **Event logger**: Stores events and the properties they change
@@ -37,6 +37,10 @@ Main components in the architecture diagram are the following:
      accordingly. This requires matching addresses and connections to
      various system entities.
      Main classes: `Inspector` and `Matcher`.
+
+   * **Matcher**: [Matches](Matching.md) addresses, protocols, and ports into
+     system entities.
+     Main class: `Matcher`.
 
  * **Batch importer**: Reads *batch files* of tool results and uses
    various [**Tool adapters**](Adapters.md) to convert input into events.
