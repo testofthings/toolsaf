@@ -366,8 +366,6 @@ class FlowMatcher:
         for clue in clues or ():
             clue.update(state, address, protocol, port)
         for clue in self.engine.wildcard_hosts:
-            if clue.entity.any_host and self.engine.system.is_external(address.address):
-                continue  # any host cannot match external address
             clue.update(state, address, protocol, port, wildcard=True)
 
     def get_connection(self) -> Connection | Tuple[Optional[Addressable], Optional[Addressable]]:
