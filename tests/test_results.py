@@ -99,7 +99,7 @@ def test_get_sources(values: List, source_count: int, expected: List):
         ([2,2,None], {2}, [2]),
     ]
 )
-def test_get_sources(values: List, picks: set, expected: List):
+def test_get_sources_with_picks(values: List, picks: set, expected: List):
     report = Report(Registry(Setup().get_inspector()))
     report.source_picks = picks
     report.registry = MagicMock()
