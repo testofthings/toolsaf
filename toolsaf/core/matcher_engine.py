@@ -16,7 +16,7 @@ class MatcherEngine:
         self.wildcard_hosts: List[AddressClue] = []
         self.connections: Dict[Connection, ConnectionClue] = {}
 
-    def find_host(self, address: Any) -> Optional[Host]:
+    def find_host(self, address: AnyAddress) -> Optional[Host]:
         """Find host by address"""
         host = address.get_host()
         networks = self.system.get_networks_for(host)
