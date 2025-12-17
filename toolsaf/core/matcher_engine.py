@@ -34,15 +34,13 @@ class MatcherEngine:
 
     def add_address_mapping(self, address: AnyAddress, entity: Addressable) -> None:
         """Add address mapping for entity beyond entity's own addresses"""
-        nets = entity.get_networks_for(address)
-        assert len(nets) <= 1, "Unsupported multiple networks for address"
-        net = nets[0] if nets else self.system.get_default_network()
-        net_add = AddressAtNetwork(address, net)
-
-        clue = self.add_addressable(entity)
-        clue.addresses.add(net_add)
-        # clear old mappings for the address
-        self.addresses[net_add] = [clue]
+        nets = entity.get_networks_for(address) or [self.system.get_default_network()]
+        for net in nets:
+            net_add = AddressAtNetwork(address, net)
+            clue = self.add_addressable(entity)
+            clue.addresses.add(net_add)
+            # clear old mappings for the address
+            self.addresses[net_add] = [clue]
 
         if not entity.any_host:
             # remove from wildcard hosts, if there
@@ -60,28 +58,28 @@ class MatcherEngine:
         for address in host.addresses:
             if isinstance(address, EntityTag):
                 continue  # skip tags
-            net = host.get_networks_for(address)[0]
-            addr_net = AddressAtNetwork(address, net)
-            if addr_net not in clue.addresses:
-                # new address
-                clue.addresses.add(addr_net)
-                clue.soft_addresses.add(addr_net)
-                # override old mappings for the address
-                for old_clue in self.addresses.get(addr_net, ()):
-                    if old_clue != clue:
-                        old_clue.addresses.remove(addr_net)
-                self.addresses[addr_net] = [clue]
-                additions = True
-            new_set.add(addr_net)
-        for addr_net in list(clue.addresses):
-            if addr_net not in new_set and addr_net in clue.soft_addresses:
-                # removed address
-                clue.addresses.remove(addr_net)
-                clues = self.addresses.get(addr_net)
-                if clues:
-                    clues.remove(clue)
-                    if not clues:
-                        del self.addresses[addr_net]
+            for net in host.get_networks_for(address):
+                addr_net = AddressAtNetwork(address, net)
+                if addr_net not in clue.addresses:
+                    # new address
+                    clue.addresses.add(addr_net)
+                    clue.soft_addresses.add(addr_net)
+                    # override old mappings for the address
+                    for old_clue in self.addresses.get(addr_net, ()):
+                        if old_clue != clue:
+                            old_clue.addresses.remove(addr_net)
+                    self.addresses[addr_net] = [clue]
+                    additions = True
+                new_set.add(addr_net)
+            for addr_net in list(clue.addresses):
+                if addr_net not in new_set and addr_net in clue.soft_addresses:
+                    # removed address
+                    clue.addresses.remove(addr_net)
+                    clues = self.addresses.get(addr_net)
+                    if clues:
+                        clues.remove(clue)
+                        if not clues:
+                            del self.addresses[addr_net]
 
         if additions and not host.any_host and not clue.addresses:
             # remove from wildcard hosts, if there, do not re-add
@@ -135,40 +133,37 @@ class MatcherEngine:
 
         addresses = False
         for add in entity.addresses:
-            add_nets = entity.get_networks_for(add)
-            # FIXME: Make it impossible to have multiple networks for one address and entity
-            assert len(add_nets) == 1, "Unsupported multiple networks for address"
-            net = add_nets[0]
-            match add:
-                case EntityTag():
-                    continue  # skip tags
-                case EndpointAddress():
-                    ep_key = add.get_protocol_port()
-                    assert ep_key is not None, "Endpoint address without protocol/port"
-                    clue.endpoints.add(ep_key)
-                    h_addr = add.get_host()
-                    host = entity.get_parent_host()
-                    if h_addr == Addresses.ANY and host != entity:
-                        # add endpoint to parent host
-                        host_clue = self.add_addressable(host)
-                        host_clue.services[ep_key] = clue
-                    else:
-                        # new address for this entity
-                        add_net = AddressAtNetwork(h_addr, net)
+            for net in entity.get_networks_for(add):
+                match add:
+                    case EntityTag():
+                        continue  # skip tags
+                    case EndpointAddress():
+                        ep_key = add.get_protocol_port()
+                        assert ep_key is not None, "Endpoint address without protocol/port"
+                        clue.endpoints.add(ep_key)
+                        h_addr = add.get_host()
+                        host = entity.get_parent_host()
+                        if h_addr == Addresses.ANY and host != entity:
+                            # add endpoint to parent host
+                            host_clue = self.add_addressable(host)
+                            host_clue.services[ep_key] = clue
+                        else:
+                            # new address for this entity
+                            add_net = AddressAtNetwork(h_addr, net)
+                            self.addresses.setdefault(add_net, []).append(clue)
+                    case _:
+                        add_net = AddressAtNetwork(add, net)
                         self.addresses.setdefault(add_net, []).append(clue)
-                case _:
-                    add_net = AddressAtNetwork(add, net)
-                    self.addresses.setdefault(add_net, []).append(clue)
-                    clue.addresses.add(add_net)
-            addresses = True
+                        clue.addresses.add(add_net)
+                addresses = True
 
         if isinstance(entity, Service) and entity.multicast_source:
             # service is listening on multicast or broadcast address
-            net = entity.get_networks_for(entity.multicast_source)[0]
-            add_net = AddressAtNetwork(entity.multicast_source, net)
-            self.addresses.setdefault(add_net, []).append(clue)
-            clue.addresses.add(add_net)
-            addresses = True
+            for net in entity.get_networks_for(entity.multicast_source):
+                add_net = AddressAtNetwork(entity.multicast_source, net)
+                self.addresses.setdefault(add_net, []).append(clue)
+                clue.addresses.add(add_net)
+                addresses = True
 
         if entity.any_host or not addresses:
             # no addresses defined, add wildcard clue
