@@ -67,7 +67,7 @@ def test_arp():
     assert cs.source.get_parent_host() == dev1.entity
     assert cs.target.name == "ARP"
     assert cs.target.get_parent_host().name == "ff:ff:ff:ff:ff:ff"
-    assert cs.status_verdict() == (Status.EXPECTED, Verdict.PASS)
+    assert cs.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
     assert cs.source.status_verdict() == (Status.EXPECTED, Verdict.PASS)
     assert cs.target.status_verdict() == (Status.EXPECTED, Verdict.PASS)
 
