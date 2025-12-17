@@ -67,12 +67,6 @@ class ConnectionMatch:
     def __repr__(self) -> str:
         return f"{self.connection}"
 
-@dataclass(frozen=True)
-class AddressMatch:
-    """Matched address"""
-    endpoint: Addressable
-    address: AnyAddress
-
 
 class MatchingContext:
     """Matching context"""

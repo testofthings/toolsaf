@@ -188,21 +188,21 @@ class MatcherEngine:
         return "\n".join(r)
 
 
-class DeductionState:
-    """Clue state"""
+class MatchingState:
+    """Matching state"""
     def __init__(self, engine: MatcherEngine) -> None:
         self.engine = engine
-        self.values: Dict[Any, DeductionValue] = {}
+        self.values: Dict[Any, StateValue] = {}
 
-    def get_if(self, item: Any) -> Optional['DeductionValue']:
+    def get_if(self, item: Any) -> Optional['StateValue']:
         """Get deduction value for item"""
         return self.values.get(item)
 
-    def get(self, item: Any) -> 'DeductionValue':
+    def get(self, item: Any) -> 'StateValue':
         """Get deduction value for item"""
-        return self.values.setdefault(item, DeductionValue())
+        return self.values.setdefault(item, StateValue())
 
-    def get_all_sorted(self) -> List[Tuple[Any, 'DeductionValue']]:
+    def get_all_sorted(self) -> List[Tuple[Any, 'StateValue']]:
         """Get all deduction values sorted by weight"""
         return sorted(self.values.items(), key=lambda kv: -kv[1].weight)
 
@@ -212,8 +212,8 @@ class DeductionState:
             r.append(f"{value.weight:<3} {key} # {value.reference}")
         return "\n".join(r)
 
-class DeductionValue:
-    """Deduction value"""
+class StateValue:
+    """Matching state value"""
     def __init__(self) -> None:
         self.weight: int = 0
         self.reference: Optional[Any] = None
@@ -233,7 +233,7 @@ class AddressClue:
         self.source_for: List[ConnectionClue] = []
         self.target_for: List[ConnectionClue] = []
 
-    def update(self, state: DeductionState, address: AddressAtNetwork, protocol: Protocol, port: int,
+    def update(self, state: MatchingState, address: AddressAtNetwork, protocol: Protocol, port: int,
                wildcard: bool = False) -> None:
         """Update state observing this host"""
         is_service = isinstance(self.entity, Service)
@@ -294,7 +294,7 @@ class ConnectionClue:
     def __init__(self, connection: Connection) -> None:
         self.connection = connection
 
-    def update(self, state: DeductionState, weight: int,
+    def update(self, state: MatchingState, weight: int,
                source: Optional[AddressAtNetwork] = None, target: Optional[AddressAtNetwork] = None) -> None:
         """Update state observing this connection"""
         end_key = (target is not None, self.connection)
@@ -316,8 +316,8 @@ class FlowMatcher:
         self.engine = engine
         self.system = engine.system
         self.flow = flow
-        self.sources = DeductionState(engine)
-        self.targets = DeductionState(engine)
+        self.sources = MatchingState(engine)
+        self.targets = MatchingState(engine)
         match flow:
             case IPFlow():
                 net = flow.network or engine.system.get_default_network()
@@ -355,11 +355,13 @@ class FlowMatcher:
         self.reverse: bool = False
         self.end_addresses: Optional[Tuple[Optional[AnyAddress], Optional[AnyAddress]]] = None
 
-    def map_address(self, state: DeductionState, address: AddressAtNetwork, protocol: Protocol, port: int) -> None:
-        """Map address to deduction state"""
+    def map_address(self, state: MatchingState, address: AddressAtNetwork, protocol: Protocol, port: int) -> None:
+        """Map address to state"""
+        # 1. Map by address
         clues = self.engine.addresses.get(address)
         for clue in clues or ():
             clue.update(state, address, protocol, port)
+        # 2. Map the wildcard hosts
         for clue in self.engine.wildcard_hosts:
             clue.update(state, address, protocol, port, wildcard=True)
 
