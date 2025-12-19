@@ -320,7 +320,9 @@ class HWAddress(AnyAddress):
         return self.data == HWAddresses.NULL.data
 
     def is_multicast(self) -> bool:
-        return self.data == HWAddresses.BROADCAST.data
+        # Assuming Ethernet MAC address, check the I/G bit - TODO: generalize
+        first_byte = int(self.data[0:2], 16)
+        return (first_byte & 1) == 1
 
     def is_hardware(self) -> bool:
         return True
