@@ -1,7 +1,6 @@
 """Model builder"""
 
 from typing import Dict, List, Optional, Self, Tuple, Type, Union
-from toolsaf.core.address_ranges import AddressRange, MulticastTarget
 from toolsaf.common.address import AnyAddress, HWAddress, HWAddresses, IPAddress, IPAddresses, Network
 from toolsaf.common.basics import ConnectionType, HostType, ExternalActivity
 from toolsaf.common.android import MobilePermissions

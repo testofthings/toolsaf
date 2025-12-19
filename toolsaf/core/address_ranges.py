@@ -3,7 +3,7 @@
 from ipaddress import IPv4Address
 from typing import List, Optional, Tuple
 
-from toolsaf.common.address import Addresses, AnyAddress, EntityTag, IPAddress, PseudoAddress
+from toolsaf.common.address import Addresses, AnyAddress, IPAddress
 
 
 class AddressRange:
@@ -25,17 +25,17 @@ class AddressRange:
                 range_parts.append((0, 255))
             else:
                 octet = int(part)
-                if not (0 <= octet <= 255):
+                if not 0 <= octet <= 255:
                     raise ValueError(f"Invalid octet in address range: '{part}'")
                 range_parts.append((octet, octet))
-        return cls(range_parts)        
+        return cls(range_parts)
 
     def is_match(self, address: AnyAddress) -> bool:
         """Check if address matches the range"""
         match address:
             case IPAddress() if len(self.parts) == 4 and isinstance(address.data, IPv4Address):
                 for i, octet in enumerate(address.data.packed):
-                    if not (self.parts[i][0] <= octet <= self.parts[i][1]):
+                    if not self.parts[i][0] <= octet <= self.parts[i][1]:
                         return False
                 return True
         return False
@@ -67,7 +67,7 @@ class MulticastTarget:
         assert (fixed_address is None) != (address_range is None), "Either fixed_address or range must be provided"
         self.fixed_address = fixed_address
         self.address_range = address_range
-    
+
     def is_match(self, address: AnyAddress) -> bool:
         """Check if address matches here"""
         if self.fixed_address is not None:
@@ -85,12 +85,12 @@ class MulticastTarget:
         return ""
 
     @classmethod
-    def parse_address_range(cls, range: str) -> 'MulticastTarget':
+    def parse_address_range(cls, address_range: str) -> 'MulticastTarget':
         """Parse multicast target from address range"""
-        if "*" in range or "-" in range:
-            addr_range = AddressRange.parse_range(range)
+        if "*" in address_range or "-" in address_range:
+            addr_range = AddressRange.parse_range(address_range)
             return cls(address_range=addr_range)
-        fixed = Addresses.parse_address(range)
+        fixed = Addresses.parse_address(address_range)
         return cls(fixed_address=fixed)
 
     def __hash__(self) -> int:

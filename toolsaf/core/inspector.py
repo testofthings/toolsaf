@@ -3,7 +3,7 @@
 import logging
 from typing import Dict, Optional, Set, List
 
-from toolsaf.common.address import Addresses, AnyAddress
+from toolsaf.common.address import AnyAddress
 from toolsaf.common.basics import ExternalActivity, Status
 from toolsaf.common.entity import Entity
 from toolsaf.core.event_interface import EventInterface, PropertyAddressEvent, PropertyEvent
