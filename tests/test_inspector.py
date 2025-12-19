@@ -179,6 +179,9 @@ def test_multicast_many_listeners():
     bc10 = sb.device().ip("192.168.2.10") << broadcast
     bc11 = sb.device().ip("192.168.2.11") << broadcast
     bc12 = sb.device().ip("192.168.2.12") << broadcast
+
+    broadcast2 = dev1.broadcast(UDP(port=335))
+    bc20 = sb.device().ip("192.168.2.13") << broadcast2
     i = Inspector(sb.system)
 
     cs1 = i.connection(IPFlow.UDP(
@@ -186,6 +189,7 @@ def test_multicast_many_listeners():
     assert bc10.connection.status_verdict() == (Status.EXPECTED, Verdict.PASS)
     assert bc11.connection.status_verdict() == (Status.EXPECTED, Verdict.PASS)
     assert bc12.connection.status_verdict() == (Status.EXPECTED, Verdict.PASS)
+    assert bc20.connection.status_verdict() == (Status.EXPECTED, Verdict.INCON)
 
 
 def test_multicast_proprietary():

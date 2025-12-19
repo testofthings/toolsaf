@@ -61,7 +61,7 @@ class Inspector(EventInterface):
     def connection(self, flow: Flow) -> Optional[Connection]:
         self.logger.debug("inspect flow %s", flow)
         key = self.matcher.connection_w_ends(flow)
-        conn, _, _, reply = key
+        conn, source_add, target_add, reply = key
         assert conn.status != Status.PLACEHOLDER, f"Received placeholder connection: {conn}"
 
         flow.reply = reply  # bit ugly to fix, but now available for logger
@@ -88,24 +88,33 @@ class Inspector(EventInterface):
             updated.update(changed)
             return change
 
-        def update_all_broadcast_listeners(target: Addressable) -> bool:
+        def update_all_broadcast_listeners(target: Addressable, address: AnyAddress) -> bool:
             """Matcher only finds one broadcast listener, update the remaining"""
             if not update_seen_status(target):
                 return False
-            mc = Addresses.get_multicast(target.addresses)
-            if not mc:
-                return True
+            host_add = address.get_host()
             for c in self.system.get_connections():
-                if mc in c.target.addresses:
-                    # same target address -> same broadcast
-                    change = c.set_seen_now()
-                    if change:
-                        self._check_entity(c)
-                        updated.add(c)
-                    change = c.target.set_seen_now()
-                    if change:
-                        self._check_entity(c.target)
-                        updated.add(c.target)
+                c_target = c.target
+                if not isinstance(c_target, Service) or not c_target.multicast_target:
+                    continue
+                # found connection with multicast target -> check if it matches
+                if not c_target.multicast_target.address_range.is_match(host_add):
+                    continue
+                for target_add in c_target.addresses:
+                    m_add = target_add.change_host(host_add)
+                    if m_add == address:
+                        break
+                else:
+                    return False
+                # matched, update seen status
+                change = c.set_seen_now()
+                if change:
+                    self._check_entity(c)
+                    updated.add(c)
+                change = c.target.set_seen_now()
+                if change:
+                    self._check_entity(c.target)
+                    updated.add(c.target)
             return True
 
 
@@ -132,7 +141,7 @@ class Inspector(EventInterface):
                     update_seen_status(target)
                 elif conn.target.is_relevant() and conn.target.is_multicast():
                     # multicast updated when sent to
-                    update_all_broadcast_listeners(target)
+                    update_all_broadcast_listeners(target, target_add if not reply else source_add)
                 elif target.status == Status.EXTERNAL:
                     # external target, send update even that verdict remains inconclusve
                     exp = conn.target.get_expected_verdict(default=None)
