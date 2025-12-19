@@ -46,6 +46,13 @@ def test_dns_name():
     assert ad != DNSName("www.example.org")
 
 
+def test_pseudo_address():
+    assert Addresses.BLE_Ad == PseudoAddress("BLE_Ad", address_type="hw")
+    assert Addresses.BLE_Ad.get_parseable_value() == "BLE_Ad|hw"
+    assert Addresses.ANY == PseudoAddress("*")
+    assert Addresses.ANY.get_parseable_value() == "*"
+
+
 def test_endpoint_address():
     ad = EndpointAddress.ip("1.2.3.4", Protocol.UDP, 1234)
     assert f"{ad}" == "1.2.3.4/udp:1234"
@@ -71,6 +78,9 @@ def test_parse_address():
     a = Addresses.parse_address("1:2:3:4:5:6|hw")
     assert isinstance(a, HWAddress)
     assert f"{a}" == "01:02:03:04:05:06"
+
+    a = Addresses.parse_address("BLE_Ad|hw")
+    assert a is Addresses.BLE_Ad
 
 
 def test_parse_endpoint_address():

@@ -153,9 +153,11 @@ class EntityTag(AnyAddress):
 
 class PseudoAddress(AnyAddress):
     """Pseudo-address"""
-    def __init__(self, name: str, wildcard: bool=False, multicast: bool=False, hardware: bool=False) -> None:
+    def __init__(self, name: str, wildcard: bool=False, multicast: bool=False, hardware: bool=False,
+                 address_type: str ="") -> None:
         self.name = name
-        # only name used in equality
+        self.address_type = address_type
+        # only name + address_type used in equality
         self.wildcard = wildcard
         self.multicast = multicast
         self.hardware = hardware
@@ -175,16 +177,19 @@ class PseudoAddress(AnyAddress):
     def priority(self) -> int:
         return 3
 
+    def get_parseable_value(self) -> str:
+        return f"{self.name}|{self.address_type}" if self.address_type else self.name
+
     def __repr__(self) -> str:
         return self.name
 
     def __hash__(self) -> int:
-        return self.name.__hash__()
+        return hash((self.name, self.address_type))
 
     def __eq__(self, value: object) -> bool:
         if not isinstance(value, PseudoAddress):
             return False
-        return self.name == value.name
+        return self.name == value.name and self.address_type == value.address_type
 
 class Addresses:
     """Address constants and utilities"""
@@ -193,7 +198,7 @@ class Addresses:
     ANY = PseudoAddress("*", wildcard=True)
 
     # Pseudo address for BLE advertisement
-    BLE_Ad = PseudoAddress("BLE_Ad", multicast=True, hardware=True)
+    BLE_Ad = PseudoAddress("BLE_Ad", multicast=True, hardware=True, address_type="hw")
 
     @classmethod
     def get_prioritized(cls, addresses: Iterable[AnyAddress],ip: bool=True,
@@ -253,6 +258,8 @@ class Addresses:
                 return EntityTag(v)
             case ("ip", v):
                 return IPAddress.new(v)
+            case ("hw", "BLE_Ad"):
+                return Addresses.BLE_Ad
             case ("hw", v):
                 return HWAddress.new(v)
             case ("name", v):
