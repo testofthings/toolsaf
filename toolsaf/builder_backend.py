@@ -854,10 +854,19 @@ class IPBackend(ProtocolBackend):
     """IP protocol backend"""
 
     def __init__(self, configurer: IP) -> None:
-        super().__init__(Protocol.IP, name=configurer.name)
+        super().__init__(Protocol.IP, port=configurer.ip_protocol, name=configurer.name)
+        self.configurer = configurer
         if configurer.administration:
             self.host_type = HostType.ADMINISTRATIVE
             self.con_type = ConnectionType.ADMINISTRATIVE
+
+    def as_multicast_(self, target: ServiceBackend) -> 'ServiceBackend':
+        target_spec = self.configurer.multicast_target
+        assert target_spec is not None, "multicast_target was None"
+        multicast = MulticastTarget(address_range=AddressRange.parse_range(target_spec))
+        target.entity.name += f" {multicast.address_range}"
+        target.entity.multicast_target = multicast
+        return target
 
 
 class MQTTBackend(ProtocolBackend):

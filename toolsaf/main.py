@@ -376,8 +376,9 @@ class ICMP(ProtocolConfigurer):
 
 class IP(ProtocolConfigurer):
     """IPv4 or v6 configurer"""
-    def __init__(self, name: str="IP", administration: bool=False) -> None:
+    def __init__(self, name: str="IP", protocol: int=-1, administration: bool=False) -> None:
         ProtocolConfigurer.__init__(self, name)
+        self.ip_protocol = protocol
         self.administration = administration
 
 
