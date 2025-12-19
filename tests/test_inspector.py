@@ -193,6 +193,32 @@ def test_multicast_many_listeners():
     assert bc20.connection.status_verdict() == (Status.EXPECTED, Verdict.INCON)
 
 
+def test_multicast_many_addresses():
+    sb = SystemBackend()
+    dev0 = sb.device("Multicast")
+    dev1 = sb.device("4:0:0:0:0:1")
+    # this revealed a bug with many multicast services with same protocol/port
+    cast_a = dev1 >> dev0 / UDP(port=5000).multicast("226.*.*.*")
+    cast_b = dev1 >> dev0 / UDP(port=5001).multicast("226.*.*.*")
+    cast_c = dev1 >> dev0 / UDP(port=5000).broadcast()
+    cast_d = dev1 >> dev0 / UDP(port=5001).broadcast()
+
+    i = Inspector(sb.system)
+    c1 = i.connection(IPFlow.UDP(
+        "4:0:0:0:0:1", "192.168.0.1", 1100) >> ("ff:ff:ff:ff:ff:ff", "226.1.2.3", 5000))
+    c2 = i.connection(IPFlow.UDP(
+        "4:0:0:0:0:1", "192.168.0.1", 1101) >> ("ff:ff:ff:ff:ff:ff", "226.1.2.3", 5001))
+    c3 = i.connection(IPFlow.UDP(
+        "4:0:0:0:0:1", "192.168.0.1", 1103) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 5000))
+    c4 = i.connection(IPFlow.UDP(
+        "4:0:0:0:0:1", "192.168.0.1", 1104) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 5001))
+
+    assert c1 == cast_a.connection
+    assert c2 == cast_b.connection
+    assert c3 == cast_c.connection
+    assert c4 == cast_d.connection
+
+
 def test_multicast_proprietary():
     sb = SystemBackend()
     dev1 = sb.device().hw("4:0:0:0:0:1")

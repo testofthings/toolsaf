@@ -409,7 +409,7 @@ class HostBackend(NodeBackend, HostBuilder):
         system.hosts_by_name[entity.name] = self
         if DNSName.looks_like(entity.name):
             self.name(entity.name)
-        self.service_builders: Dict[Tuple[Protocol, int], ServiceBackend] = {}
+        self.service_builders: Dict[Tuple[str, Protocol, int], ServiceBackend] = {}
 
     def hw(self, address: str) -> Self:
         self.new_address_(HWAddress.new(address))
@@ -668,7 +668,7 @@ class ProtocolBackend:
 
     def get_service_(self, parent: HostBackend) -> ServiceBackend:
         """Create or get service builder"""
-        key = self.transport, (self.service_port if self.port_to_name else -1)
+        key = self.multicast_target or "", self.transport, (self.service_port if self.port_to_name else -1)
         old = parent.service_builders.get(key)
         if old:
             return old
@@ -724,8 +724,8 @@ class ARPBackend(ProtocolBackend):
         # ARP can be broadcast, get or create the broadcast host and service
         bc_node = parent.system.get_host_(
             f"{HWAddresses.BROADCAST}", description="Broadcast")
-        bc_s = bc_node.service_builders.get(
-            (self.transport, self.service_port))
+        bc_s_key = ("", self.transport, self.service_port)
+        bc_s = bc_node.service_builders.get(bc_s_key)
         # Three entities:
         # host_s: ARP service at host
         # bc_node: Broadcast logical node
@@ -738,8 +738,7 @@ class ARPBackend(ProtocolBackend):
             bc_node.entity.host_type = HostType.ADMINISTRATIVE
             bc_node.entity.status = Status.EXTERNAL
             # ARP service at the broadcast node, but avoid looping back to ARPBackend
-            bc_s = ARPBackend(
-                ARP(), broadcast_endpoint=True).get_service_(bc_node)
+            bc_s = ARPBackend(ARP(), broadcast_endpoint=True).get_service_(bc_node)
             bc_s.entity.host_type = HostType.ADMINISTRATIVE
             bc_s.entity.con_type = ConnectionType.ADMINISTRATIVE
             bc_s.entity.external_activity = bc_node.entity.external_activity
