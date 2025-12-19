@@ -3,7 +3,7 @@
 from ipaddress import IPv4Address
 from typing import List, Optional, Tuple
 
-from toolsaf.common.address import AnyAddress, IPAddress
+from toolsaf.common.address import Addresses, AnyAddress, IPAddress
 
 
 class AddressRange:
@@ -40,6 +40,14 @@ class AddressRange:
                 return True
         return False
 
+    def __hash__(self) -> int:
+        return hash(tuple(self.parts))
+
+    def __eq__(self, value: object) -> bool:
+        if not isinstance(value, AddressRange):
+            return False
+        return self.parts == value.parts
+
     def __repr__(self) -> str:
         parts_str = []
         for part in self.parts:
@@ -50,7 +58,6 @@ class AddressRange:
             else:
                 parts_str.append(f"{part[0]}-{part[1]}")
         return ".".join(parts_str)
-
 
 
 class MulticastTarget:
@@ -68,6 +75,31 @@ class MulticastTarget:
         if self.address_range is not None:
             return self.address_range.is_match(address)
         return False
+
+    def get_parseable_value(self) -> str:
+        """Get parseable value"""
+        if self.fixed_address:
+            return self.fixed_address.get_parseable_value()
+        if self.address_range:
+            return repr(self.address_range)
+        return ""
+
+    @classmethod
+    def parse_address_range(cls, range: str) -> 'MulticastTarget':
+        """Parse multicast target from address range"""
+        if "*" in range or "-" in range:
+            addr_range = AddressRange.parse_range(range)
+            return cls(address_range=addr_range)
+        return cls(fixed_address=Addresses.parse_address(range))
+
+    def __hash__(self) -> int:
+        return hash((self.fixed_address, self.address_range))
+
+    def __eq__(self, value: object) -> bool:
+        if not isinstance(value, MulticastTarget):
+            return False
+        return (self.fixed_address == value.fixed_address and
+                self.address_range == value.address_range)
 
     def __repr__(self) -> str:
         return f"Multicast: {self.fixed_address or self.address_range}"
