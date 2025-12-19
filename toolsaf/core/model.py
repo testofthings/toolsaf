@@ -6,7 +6,7 @@ import re
 from typing import List, Set, Optional, Tuple, TypeVar, Callable, Dict, Any, Self, Iterable, Iterator, Union
 from urllib.parse import urlparse
 
-from toolsaf.address_ranges import MulticastTarget
+from toolsaf.core.address_ranges import MulticastTarget
 from toolsaf.common.address import AnyAddress, Addresses, EndpointAddress, EntityTag, Network, Protocol, IPAddress, \
     DNSName, AddressSequence
 from toolsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status

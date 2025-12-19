@@ -2,7 +2,7 @@
 
 from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
-from toolsaf.address_ranges import MulticastTarget
+from toolsaf.core.address_ranges import MulticastTarget
 from toolsaf.common.address import AddressAtNetwork, Addresses, AnyAddress, EndpointAddress, EntityTag, Network, Protocol
 from toolsaf.common.basics import Status
 from toolsaf.common.traffic import Flow, IPFlow

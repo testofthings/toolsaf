@@ -10,7 +10,7 @@ import json
 
 from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union, cast, Set
 
-from toolsaf.address_ranges import AddressRange, MulticastTarget
+from toolsaf.core.address_ranges import AddressRange, MulticastTarget
 from toolsaf.common.address import (AddressAtNetwork, Addresses, AnyAddress, DNSName, EndpointAddress, EntityTag,
                                   HWAddress, HWAddresses, IPAddress, IPAddresses, Network, Protocol, PseudoAddress)
 from toolsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status
