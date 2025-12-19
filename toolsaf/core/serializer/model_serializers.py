@@ -8,6 +8,7 @@ from toolsaf.common.basics import HostType, Status, ExternalActivity
 from toolsaf.common.entity import Entity
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.property import PropertyKey, PropertyVerdictValue, PropertySetValue
+from toolsaf.core.address_ranges import MulticastTarget
 from toolsaf.core.model import Addressable, Connection, Host, IoTSystem, NetworkNode, NodeComponent, Service
 from toolsaf.core.components import Software, SoftwareComponent, Cookies, CookieData
 from toolsaf.core.online_resources import OnlineResource
@@ -265,7 +266,8 @@ class ServiceSerializer(Serializer[Service]):
             stream += "protocol", obj.protocol.value
         stream += "con_type", obj.con_type.value
         if obj.multicast_target:
-            stream += "multicast_source", obj.multicast_target.get_parseable_value()
+            # NOTE: We used to have multicast_source, but multicast_target has replaced it
+            stream += "multicast_target", obj.multicast_target.get_parseable_value()
 
     def new(self, stream: SerializerStream) -> Service:
         return Service(stream["name"], stream.resolve("at", of_type=Host))
@@ -274,9 +276,8 @@ class ServiceSerializer(Serializer[Service]):
         obj.con_type = stream["con_type"]
         if (protocol := stream - "protocol"):
             obj.protocol = Protocol(protocol)
-        if (multicast_source := stream - "multicast_source"):
-            obj.multicast_target = Addresses.parse_address(multicast_source)
-
+        if (multicast_target := stream - "multicast_target"):
+            obj.multicast_target = MulticastTarget.parse_address_range(multicast_target)
 
 class DHCPServiceSerializer(Serializer[DHCPService]):
     """Serializer for DHCP service"""

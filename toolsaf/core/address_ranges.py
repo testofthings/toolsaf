@@ -3,7 +3,7 @@
 from ipaddress import IPv4Address
 from typing import List, Optional, Tuple
 
-from toolsaf.common.address import Addresses, AnyAddress, IPAddress
+from toolsaf.common.address import Addresses, AnyAddress, EntityTag, IPAddress, PseudoAddress
 
 
 class AddressRange:
@@ -90,7 +90,8 @@ class MulticastTarget:
         if "*" in range or "-" in range:
             addr_range = AddressRange.parse_range(range)
             return cls(address_range=addr_range)
-        return cls(fixed_address=Addresses.parse_address(range))
+        fixed = Addresses.parse_address(range)
+        return cls(fixed_address=fixed)
 
     def __hash__(self) -> int:
         return hash((self.fixed_address, self.address_range))

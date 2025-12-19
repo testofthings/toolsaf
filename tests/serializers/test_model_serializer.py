@@ -1,8 +1,9 @@
 from unittest.mock import patch, MagicMock
 from ipaddress import ip_network
 
+from toolsaf.core.address_ranges import MulticastTarget
 from toolsaf.main import HTTP, BLEAdvertisement
-from toolsaf.common.address import EntityTag, DNSName, HWAddress, Network
+from toolsaf.common.address import Addresses, EntityTag, DNSName, HWAddress, Network, PseudoAddress
 from toolsaf.common.basics import Status
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.serializer.serializer import SerializerStream
@@ -152,18 +153,18 @@ def test_service_serializer():
     stream.resolve = mock_resolve
 
     device = Setup().system.device("Device 1")
-    service = device.broadcast(BLEAdvertisement(event_type=0x03)).entity
+    service = (device / BLEAdvertisement(event_type=0x03)).entity
     serialized = list(stream.write(service))[0]
     assert serialized == {
         "type": "service",
         "id": "id1",
-        "name": "BLE Ad:3 multicast",
+        "name": "BLE Ad:3",
         "authentication": False,
         "client_side": False,
         "reply_from_other_address": False,
         "protocol": "ble",
         "con_type": "",
-        "multicast_source": "BLE_Ad"
+        "multicast_target": "BLE_Ad|hw"
     }
     serialized["type"] = "service"
 
@@ -178,7 +179,7 @@ def test_service_serializer():
     assert new_service.reply_from_other_address == service.reply_from_other_address
     assert new_service.protocol == service.protocol
     assert new_service.con_type == service.con_type
-    assert new_service.multicast_target == EntityTag("BLE_Ad")
+    assert new_service.multicast_target == MulticastTarget(fixed_address=Addresses.BLE_Ad)
 
     stream = SerializerStream(serializer)
     service = (device / HTTP).entity
