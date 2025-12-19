@@ -242,7 +242,7 @@ class AddressClue:
         multicast = self.multicast_source.get(address.network)
         if multicast:
             assert is_service, "Multicast source only for services"
-            if not multicast.address_range.is_match(address.address):
+            if not multicast.is_match(address.address):
                 return  # multicast address does not match
         status = self.entity.status
         match status:

@@ -98,7 +98,7 @@ class Inspector(EventInterface):
                 if not isinstance(c_target, Service) or not c_target.multicast_target:
                     continue
                 # found connection with multicast target -> check if it matches
-                if not c_target.multicast_target.address_range.is_match(host_add):
+                if not c_target.multicast_target.is_match(host_add):
                     continue
                 for target_add in c_target.addresses:
                     m_add = target_add.change_host(host_add)

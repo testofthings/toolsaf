@@ -1,7 +1,7 @@
 """Address range matching"""
 
 from ipaddress import IPv4Address
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from toolsaf.common.address import AnyAddress, IPAddress
 
@@ -55,8 +55,19 @@ class AddressRange:
 
 class MulticastTarget:
     """Multicast target definition"""
-    def __init__(self, address_range: AddressRange) -> None:
+    def __init__(self, fixed_address: Optional[AnyAddress] = None,
+                 address_range: Optional[AddressRange] = None) -> None:
+        assert (fixed_address is None) != (address_range is None), "Either fixed_address or range must be provided"
+        self.fixed_address = fixed_address
         self.address_range = address_range
     
+    def is_match(self, address: AnyAddress) -> bool:
+        """Check if address matches here"""
+        if self.fixed_address is not None:
+            return self.fixed_address == address
+        if self.address_range is not None:
+            return self.address_range.is_match(address)
+        return False
+
     def __repr__(self) -> str:
-        return f"Multicast range: {self.address_range}"
+        return f"Multicast: {self.fixed_address or self.address_range}"

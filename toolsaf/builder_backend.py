@@ -659,7 +659,7 @@ class ProtocolBackend:
         self.specific_address: AnyAddress = Addresses.ANY
         self.external_activity: Optional[ExternalActivity] = None
         self.critical_parameter: List[SensitiveData] = []
-        self.multicast_target: Optional[MulticastTarget] = None
+        self.multicast_target: Optional[str] = None
 
     def as_multicast_(self, target: ServiceBackend) -> 'ServiceBackend':
         """The protocol as multicast"""
@@ -918,9 +918,11 @@ class UDPBackend(ProtocolBackend):
             self.con_type = ConnectionType.ADMINISTRATIVE
 
     def as_multicast_(self, target: ServiceBackend) -> 'ServiceBackend':
-        assert self.multicast_target
-        target.entity.name += f" {self.multicast_target.address_range}"
-        target.entity.multicast_target = self.multicast_target
+        target_spec = self.configurer.multicast_target
+        assert target_spec is not None, "multicast_target was None"
+        multicast = MulticastTarget(address_range=AddressRange.parse_range(target_spec))
+        target.entity.name += f" {multicast.address_range}"
+        target.entity.multicast_target = multicast
         return target
 
 
@@ -933,7 +935,10 @@ class BLEAdvertisementBackend(ProtocolBackend):
         self.configurer = configurer
 
     def as_multicast_(self, target: ServiceBackend) -> 'ServiceBackend':
-        # FIXME: Range does not support HW address
+        target_spec = self.configurer.multicast_target
+        assert target_spec is not None, "multicast_target was None"
+        multicast = MulticastTarget(fixed_address=HWAddresses.BROADCAST)
+        target.entity.multicast_target = multicast
         return target
 
 
@@ -945,7 +950,10 @@ class ProprietaryProtocolBackend(ProtocolBackend):
         self.configurer = configurer
 
     def as_multicast_(self, target: ServiceBackend) -> 'ServiceBackend':
-        # FIXME: Range does not support Pseudo address
+        target_spec = self.configurer.multicast_target
+        assert target_spec is not None, "multicast_target was None"
+        multicast = MulticastTarget(fixed_address=PseudoAddress(target_spec))
+        target.entity.multicast_target = multicast
         return target
 
 

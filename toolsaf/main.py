@@ -291,7 +291,7 @@ class ProtocolConfigurer:
         self.name = name
         self.networks: List[NetworkBuilder] = []
         self.address: Optional[AnyAddress] = None
-        self.multicast_target: Optional[MulticastTarget] = None
+        self.multicast_target: Optional[str] = None
 
     def in_network(self, *network: NetworkBuilder) -> Self:
         """Specify networks for the service"""
@@ -303,9 +303,13 @@ class ProtocolConfigurer:
         self.address = IPAddress.new(address)
         return self
 
+    def broadcast(self) -> Self:
+        """This service is listening to broadcast address"""
+        return self.multicast(str(IPAddresses.BROADCAST))
+
     def multicast(self, address: str) -> Self:
         """This service is listening to multicast/broadcast address"""
-        self.multicast_target = MulticastTarget(AddressRange.parse_range(address))
+        self.multicast_target = address
         return self
 
     def __repr__(self) -> str:
@@ -430,6 +434,9 @@ class BLEAdvertisement(ProtocolConfigurer):
     def __init__(self, event_type: int) -> None:
         ProtocolConfigurer.__init__(self, "BLE Ad")
         self.event_type = event_type
+
+    def broadcast(self) -> Self:
+        return self.multicast("ff:ff:ff:ff:ff:ff")
 
 
 class Proprietary(ProtocolConfigurer):
