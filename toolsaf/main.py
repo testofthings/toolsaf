@@ -437,7 +437,7 @@ class BLEAdvertisement(ProtocolConfigurer):
         self.broadcast()  # always "broadcast"
 
     def broadcast(self) -> Self:
-        return self.multicast("ff:ff:ff:ff:ff:ff")
+        return self.multicast("<BLE Advertisement>")  # parameter does not matter
 
 
 

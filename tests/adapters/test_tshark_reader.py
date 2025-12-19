@@ -41,5 +41,5 @@ def test_process_file():
 
         # Unknown device
         assert HWAddress("bb:bb:bb:bb:bb:bb") in connections[2].source.addresses
-        assert connections[2].target.name == "BLE Ad:1 multicast"
+        assert connections[2].target.name == "BLE Ad:1"
         assert connections[2].get_verdict({}) == Verdict.INCON

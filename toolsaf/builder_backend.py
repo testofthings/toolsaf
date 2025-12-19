@@ -939,7 +939,7 @@ class BLEAdvertisementBackend(ProtocolBackend):
     def as_multicast_(self, target: ServiceBackend) -> 'ServiceBackend':
         target_spec = self.configurer.multicast_target
         assert target_spec is not None, "multicast_target was None"
-        multicast = MulticastTarget(fixed_address=HWAddresses.BROADCAST)
+        multicast = MulticastTarget(fixed_address=Addresses.BLE_Ad)
         target.entity.multicast_target = multicast
         return target
 
