@@ -238,9 +238,8 @@ class Addresses:
                 protocol, port = address, "-1"
             else:
                 protocol, port = address.split(":")
-            return EndpointAddress(
-                host=PseudoAddress(name="*", wildcard=True),
-                protocol=Protocol.get_protocol(protocol),
+            return EndpointAddress.any(
+                protocol=Protocol.get_protocol(protocol) or Protocol.ANY,
                 port=int(port)
             )
         v, _, t = address.rpartition("|")
