@@ -88,12 +88,14 @@ class Inspector(EventInterface):
             updated.update(changed)
             return change
 
-        def update_all_broadcast_listeners(target: Addressable, address: AnyAddress) -> bool:
+        def update_all_broadcast_listeners(source: Addressable, target: Addressable, address: AnyAddress) -> bool:
             """Matcher only finds one broadcast listener, update the remaining"""
             if not update_seen_status(target):
                 return False
             host_add = address.get_host()
             for c in self.system.get_connections():
+                if c.source != source:
+                    continue  # only connections from the same source
                 c_target = c.target
                 if not isinstance(c_target, Service) or not c_target.multicast_target:
                     continue
@@ -105,7 +107,7 @@ class Inspector(EventInterface):
                     if m_add == address:
                         break
                 else:
-                    return False
+                    continue
                 # matched, update seen status
                 change = c.set_seen_now()
                 if change:
@@ -141,7 +143,7 @@ class Inspector(EventInterface):
                     update_seen_status(target)
                 elif conn.target.is_relevant() and conn.target.is_multicast():
                     # multicast updated when sent to
-                    update_all_broadcast_listeners(target, target_add if not reply else source_add)
+                    update_all_broadcast_listeners(source, target, target_add if not reply else source_add)
                 elif target.status == Status.EXTERNAL:
                     # external target, send update even that verdict remains inconclusve
                     exp = conn.target.get_expected_verdict(default=None)
