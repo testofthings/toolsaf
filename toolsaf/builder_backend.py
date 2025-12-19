@@ -10,7 +10,7 @@ import json
 
 from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union, cast, Set
 
-from toolsaf.address_ranges import AddressRange, MulticastSource
+from toolsaf.address_ranges import AddressRange, MulticastTarget
 from toolsaf.common.address import (AddressAtNetwork, Addresses, AnyAddress, DNSName, EndpointAddress, EntityTag,
                                   HWAddress, HWAddresses, IPAddress, IPAddresses, Network, Protocol, PseudoAddress)
 from toolsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status
@@ -24,7 +24,7 @@ from toolsaf.core.serializer.event_serializers import EventSerializer
 from toolsaf.core.serializer.model_serializers import IoTSystemSerializer
 from toolsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP, IP, TLS, MQTT, FTP,
                         BLEAdvertisement, ConnectionBuilder,
-                        CookieBuilder, HostBuilder, NetworkBuilder, NodeBuilder,
+                        CookieBuilder, HostBuilder, MulticastConfigurer, NetworkBuilder, NodeBuilder,
                         ConfigurationException, OSBuilder, Proprietary, ProtocolConfigurer, ProtocolType,
                         SensitiveDataBuilder, ServiceBuilder, ServiceGroupBuilder, ServiceOrGroup,
                         SoftwareBuilder, SystemBuilder, IgnoreRulesBuilder)
@@ -424,26 +424,20 @@ class HostBackend(NodeBackend, HostBuilder):
             self / p  # pylint: disable=pointless-statement
         return self
 
-    def multicast(self, address: str, protocol: 'ProtocolConfigurer') -> 'ServiceBackend':
-        conf = self.system.get_protocol_backend(protocol)
-        return conf.as_multicast_(address, self)
+    def multicast(self, address: str, protocol: 'ProtocolConfigurer') -> MulticastConfigurer:
+        return MulticastConfigurer(self, address, protocol)
 
-    def broadcast(self, protocol: 'ProtocolConfigurer') -> 'ServiceBackend':
-        conf = self.system.get_protocol_backend(protocol)
-        add = f"{IPAddresses.BROADCAST}" if conf.transport == Protocol.UDP \
+    def broadcast(self, protocol: 'ProtocolConfigurer') -> MulticastConfigurer:
+        add = f"{IPAddresses.BROADCAST}" if isinstance(protocol, (UDP, UDPBackend)) \
             else f"{HWAddresses.BROADCAST}"
-        return self.multicast(add, protocol)
+        return MulticastConfigurer(self, add, protocol)
 
     def os(self) -> OSBuilder:
         return OSBackend(self)
 
-    def __lshift__(self, multicast: ServiceBuilder) -> 'ConnectionBackend':
-        assert isinstance(multicast, ServiceBackend)
-        source = multicast.entity
-        assert source.multicast_source and multicast.multicast_protocol, "Can only receive multicast"
-        # create a service for listening the multicast
-        target = self / multicast.multicast_protocol
-        c = multicast >> target  # broadcast is from the multicast port
+    def __lshift__(self, multicast: MulticastConfigurer) -> ConnectionBuilder:
+        target = self / multicast.protocol.multicast(multicast.address)
+        c = multicast.source >> target
         return c
 
     def cookies(self) -> 'CookieBackend':
@@ -648,6 +642,7 @@ class ProtocolBackend:
         be = pt_cre(configurer)
         be.networks = [n.network for n in configurer.networks]
         be.specific_address = configurer.address or Addresses.ANY
+        be.multicast_target = configurer.multicast_target
         assert isinstance(be, ProtocolBackend)
         return be
 
@@ -664,8 +659,9 @@ class ProtocolBackend:
         self.specific_address: AnyAddress = Addresses.ANY
         self.external_activity: Optional[ExternalActivity] = None
         self.critical_parameter: List[SensitiveData] = []
+        self.multicast_target: Optional[MulticastTarget] = None
 
-    def as_multicast_(self, address: str, host: 'HostBackend') -> 'ServiceBackend':
+    def as_multicast_(self, target: ServiceBackend) -> 'ServiceBackend':
         """The protocol as multicast"""
         raise ConfigurationException(
             f"{self.service_name} cannot be broad/multicast")
@@ -702,6 +698,8 @@ class ProtocolBackend:
             s.entity.external_activity = self.external_activity
         s.entity.protocol = self.protocol
         s.entity.networks = self.networks
+        if self.multicast_target:
+            self.as_multicast_(s)
         return s
 
     def __repr__(self) -> str:
@@ -919,14 +917,11 @@ class UDPBackend(ProtocolBackend):
             self.host_type = HostType.ADMINISTRATIVE
             self.con_type = ConnectionType.ADMINISTRATIVE
 
-    def as_multicast_(self, address: str, host: HostBackend) -> 'ServiceBackend':
-        sb = self.get_service_(host)
-        sb.entity.addresses.clear()  # address information in the multicast source
-        range = AddressRange.parse_range(address)
-        sb.entity.multicast_source = MulticastSource(range)
-        sb.entity.name = f"UDP {range}"
-        sb.multicast_protocol = self.configurer
-        return sb
+    def as_multicast_(self, target: ServiceBackend) -> 'ServiceBackend':
+        assert self.multicast_target
+        target.entity.name += f" {self.multicast_target.address_range}"
+        target.entity.multicast_target = self.multicast_target
+        return target
 
 
 class BLEAdvertisementBackend(ProtocolBackend):
@@ -937,13 +932,9 @@ class BLEAdvertisementBackend(ProtocolBackend):
                          name=configurer.name, protocol=Protocol.BLE)
         self.configurer = configurer
 
-    def as_multicast_(self, address: str, host: HostBackend) -> 'ServiceBackend':
-        sb = self.get_service_(host)
-        sb.entity.name += " multicast"
+    def as_multicast_(self, target: ServiceBackend) -> 'ServiceBackend':
         # FIXME: Range does not support HW address
-        sb.entity.multicast_source = MulticastSource(address_range=AddressRange.parse_range(address))
-        sb.multicast_protocol = self.configurer
-        return sb
+        return target
 
 
 class ProprietaryProtocolBackend(ProtocolBackend):
@@ -953,14 +944,9 @@ class ProprietaryProtocolBackend(ProtocolBackend):
         super().__init__(Protocol.OTHER, port=configurer.port, name=configurer.name)
         self.configurer = configurer
 
-    def as_multicast_(self, address: str, host: HostBackend) -> 'ServiceBackend':
-        # play along also with multicast
-        sb = self.get_service_(host)
-        sb.entity.name += " multicast"
+    def as_multicast_(self, target: ServiceBackend) -> 'ServiceBackend':
         # FIXME: Range does not support Pseudo address
-        sb.entity.multicast_source = MulticastSource(address_range=AddressRange.parse_range(address))
-        sb.multicast_protocol = self.configurer
-        return sb
+        return target
 
 
 class ProtocolConfigurers:

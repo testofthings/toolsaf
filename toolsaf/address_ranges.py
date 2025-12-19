@@ -53,8 +53,8 @@ class AddressRange:
 
 
 
-class MulticastSource:
-    """Multicast source definition"""
+class MulticastTarget:
+    """Multicast target definition"""
     def __init__(self, address_range: AddressRange) -> None:
         self.address_range = address_range
     

@@ -264,8 +264,8 @@ class ServiceSerializer(Serializer[Service]):
         if obj.protocol:
             stream += "protocol", obj.protocol.value
         stream += "con_type", obj.con_type.value
-        if obj.multicast_source:
-            stream += "multicast_source", obj.multicast_source.get_parseable_value()
+        if obj.multicast_target:
+            stream += "multicast_source", obj.multicast_target.get_parseable_value()
 
     def new(self, stream: SerializerStream) -> Service:
         return Service(stream["name"], stream.resolve("at", of_type=Host))
@@ -275,7 +275,7 @@ class ServiceSerializer(Serializer[Service]):
         if (protocol := stream - "protocol"):
             obj.protocol = Protocol(protocol)
         if (multicast_source := stream - "multicast_source"):
-            obj.multicast_source = Addresses.parse_address(multicast_source)
+            obj.multicast_target = Addresses.parse_address(multicast_source)
 
 
 class DHCPServiceSerializer(Serializer[DHCPService]):

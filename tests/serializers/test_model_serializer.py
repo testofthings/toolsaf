@@ -178,7 +178,7 @@ def test_service_serializer():
     assert new_service.reply_from_other_address == service.reply_from_other_address
     assert new_service.protocol == service.protocol
     assert new_service.con_type == service.con_type
-    assert new_service.multicast_source == EntityTag("BLE_Ad")
+    assert new_service.multicast_target == EntityTag("BLE_Ad")
 
     stream = SerializerStream(serializer)
     service = (device / HTTP).entity

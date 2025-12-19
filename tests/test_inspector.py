@@ -153,8 +153,8 @@ def test_foreign_connection():
 def test_multicast():
     sb = SystemBackend()
     dev1 = sb.device().hw("1:0:0:0:0:1")
-    broadcast = dev1.broadcast(UDP(port=333))
-    bc = sb.any() << broadcast  # use any host here
+    any_host = sb.any()
+    bc = dev1 >> any_host / UDP(port=333).multicast("255.255.255.255")
     i = Inspector(sb.system)
 
     cs1 = i.connection(IPFlow.UDP(

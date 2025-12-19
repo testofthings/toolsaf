@@ -1,6 +1,7 @@
 """Model builder"""
 
 from typing import Dict, List, Optional, Self, Tuple, Type, Union
+from toolsaf.address_ranges import AddressRange, MulticastTarget
 from toolsaf.common.address import AnyAddress, HWAddress, HWAddresses, IPAddress, IPAddresses, Network
 from toolsaf.common.basics import ConnectionType, HostType, ExternalActivity
 from toolsaf.common.android import MobilePermissions
@@ -132,6 +133,17 @@ class ServiceGroupBuilder:
         raise NotImplementedError()
 
 
+class MulticastConfigurer:
+    """Multicast configurer"""
+    def __init__(self, source: 'HostBuilder', address: str, protocol: 'ProtocolConfigurer') -> None:
+        self.source = source
+        self.address = address
+        self.protocol = protocol
+
+    def __repr__(self) -> str:
+        return f"{self.protocol} {self.address}"
+
+
 class HostBuilder(NodeBuilder):
     """Host builder"""
     def __init__(self, system: SystemBuilder) -> None:
@@ -149,15 +161,15 @@ class HostBuilder(NodeBuilder):
         """Serve the configured protocol or protocols"""
         raise NotImplementedError()
 
-    def multicast(self, address: str, protocol: 'ProtocolConfigurer') -> 'ServiceBuilder':
+    def multicast(self, address: str, protocol: 'ProtocolConfigurer') -> MulticastConfigurer:
         """Sends IP multicasts"""
         raise NotImplementedError()
 
-    def broadcast(self, protocol: 'ProtocolConfigurer') -> 'ServiceBuilder':
+    def broadcast(self, protocol: 'ProtocolConfigurer') -> MulticastConfigurer:
         """Sends IP broadcasts"""
         raise NotImplementedError()
 
-    def __lshift__(self, multicast: ServiceBuilder) -> 'ConnectionBuilder':
+    def __lshift__(self, multicast: MulticastConfigurer) -> 'ConnectionBuilder':
         """Receive broadcast or multicast"""
         raise NotImplementedError()
 
@@ -279,6 +291,7 @@ class ProtocolConfigurer:
         self.name = name
         self.networks: List[NetworkBuilder] = []
         self.address: Optional[AnyAddress] = None
+        self.multicast_target: Optional[MulticastTarget] = None
 
     def in_network(self, *network: NetworkBuilder) -> Self:
         """Specify networks for the service"""
@@ -288,6 +301,11 @@ class ProtocolConfigurer:
     def at_address(self, address: str) -> Self:
         """Service in a specific address"""
         self.address = IPAddress.new(address)
+        return self
+
+    def multicast(self, address: str) -> Self:
+        """This service is listening to multicast/broadcast address"""
+        self.multicast_target = MulticastTarget(AddressRange.parse_range(address))
         return self
 
     def __repr__(self) -> str:

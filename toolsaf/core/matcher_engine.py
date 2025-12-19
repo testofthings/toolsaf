@@ -2,7 +2,7 @@
 
 from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
-from toolsaf.address_ranges import MulticastSource
+from toolsaf.address_ranges import MulticastTarget
 from toolsaf.common.address import AddressAtNetwork, Addresses, AnyAddress, EndpointAddress, EntityTag, Network, Protocol
 from toolsaf.common.basics import Status
 from toolsaf.common.traffic import Flow, IPFlow
@@ -158,10 +158,10 @@ class MatcherEngine:
                         clue.addresses.add(add_net)
                 addresses = True
 
-        if isinstance(entity, Service) and entity.multicast_source:
+        if isinstance(entity, Service) and entity.multicast_target:
             # service is listening on multicast or broadcast address
             for net in entity.networks or [self.system.get_default_network()]:
-                clue.multicast_source[net] = entity.multicast_source
+                clue.multicast_source[net] = entity.multicast_target
 
         if entity.any_host or not addresses or clue.multicast_source:
             # no addresses defined, add wildcard clue
@@ -230,39 +230,39 @@ class AddressClue:
         self.endpoints: Set[Tuple[Protocol, int]] = set()  # only for services
         self.source_for: List[ConnectionClue] = []
         self.target_for: List[ConnectionClue] = []
-        self.multicast_source: Dict[Network, MulticastSource] = {}
+        self.multicast_source: Dict[Network, MulticastTarget] = {}
 
     def update(self, state: MatchingState, address: AddressAtNetwork, protocol: Protocol, port: int,
                wildcard: bool = False) -> None:
         """Update state observing this host"""
-        service_match = isinstance(self.entity, Service)
+        is_service = isinstance(self.entity, Service)
         ep_key = (protocol, port)
         if self.endpoints and ep_key not in self.endpoints:
             return  # this host/service does not have this endpoint
         multicast = self.multicast_source.get(address.network)
         if multicast:
-            assert service_match, "Multicast source only for services"
+            assert is_service, "Multicast source only for services"
             if not multicast.address_range.is_match(address.address):
-                service_match = False  # multicast address does not match
+                return  # multicast address does not match
         status = self.entity.status
         match status:
-            case Status.EXPECTED if service_match and not wildcard:
+            case Status.EXPECTED if is_service and not wildcard:
                 w = 128 # address + endpoint match
             case Status.EXPECTED if not wildcard:
                 w = 64  # address match
-            case Status.EXPECTED if service_match:
+            case Status.EXPECTED if is_service:
                 w = 32  # endpoint match
-            case Status.EXTERNAL if service_match:
+            case Status.EXTERNAL if is_service:
                 w = 16  # prefer over unexpected
             case Status.EXPECTED:
                 w = 8   # wildcard match
             case Status.EXTERNAL:
                 w = 4
-            case Status.UNEXPECTED if service_match:
+            case Status.UNEXPECTED if is_service:
                 w = 2
             case _:
                 w = 1
-        if service_match or not wildcard:
+        if is_service or not wildcard:
             # connections from/to wildcard host only with port/protocol
             value = state.get(self.entity)
             if w > value.weight:
