@@ -736,6 +736,7 @@ class ARPBackend(ProtocolBackend):
             # anyone can make broadcasts (it does not reply)
             bc_node.entity.external_activity = ExternalActivity.OPEN
             bc_node.entity.host_type = HostType.ADMINISTRATIVE
+            bc_node.entity.status = Status.EXTERNAL
             # ARP service at the broadcast node, but avoid looping back to ARPBackend
             bc_s = ARPBackend(
                 ARP(), broadcast_endpoint=True).get_service_(bc_node)
@@ -748,6 +749,7 @@ class ARPBackend(ProtocolBackend):
         if not c_ok:
             server_to_bc = host_s >> bc_s
             server_to_bc.connection.status = Status.EXTERNAL  # ARP requests not so interesting
+            server_to_bc.connection.target.status = Status.EXTERNAL
         # Now we return the ARP service
         # - Earlier we returned the broadcast service, which is not logical
         return host_s

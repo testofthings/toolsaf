@@ -1,4 +1,4 @@
-from toolsaf.common.address import HWAddress, Protocol, HWAddresses
+from toolsaf.common.address import EndpointAddress, HWAddress, Protocol, HWAddresses
 from toolsaf.common.verdict import Verdict
 from toolsaf.builder_backend import SystemBackend
 from toolsaf.core.inspector import Inspector
@@ -46,17 +46,24 @@ def test_arp():
 
     ev = NO_EVIDENCE
 
+    arp_broadcast = i.matcher.get_context().get_endpoint(HWAddresses.BROADCAST)
+    assert arp_broadcast and arp_broadcast.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
+
+    arp_broadcast_s = i.matcher.get_context().get_endpoint(
+        EndpointAddress(HWAddresses.BROADCAST, protocol=Protocol.ARP))
+    assert arp_broadcast_s and arp_broadcast_s.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
+
     # ARP query
-    cs = i.connection(EthernetFlow(ev, HWAddress.new("21:02:03:04:05:06"), HWAddress.new("01:02:03:04:05:06"),
+    cs = i.connection(EthernetFlow(ev, HWAddress.new("20:02:03:04:05:06"), HWAddress.new("01:02:03:04:05:06"),
                                    protocol=Protocol.ARP))
-    assert cs.source.name == "21:02:03:04:05:06"
+    assert cs.source.name == "20:02:03:04:05:06"
     assert cs.target.name == "ARP"
     assert cs.target.get_parent_host() == dev1.entity
     assert cs.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
     assert cs.source.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
     assert cs.target.status_verdict() == (Status.EXPECTED, Verdict.INCON)
     # response
-    cs2 = i.connection(EthernetFlow(ev, HWAddress.new("01:02:03:04:05:06"), HWAddress.new("21:02:03:04:05:06"),
+    cs2 = i.connection(EthernetFlow(ev, HWAddress.new("01:02:03:04:05:06"), HWAddress.new("20:02:03:04:05:06"),
                                     protocol=Protocol.ARP))
     assert cs2 == cs
 
@@ -69,12 +76,12 @@ def test_arp():
     assert cs.target.get_parent_host().name == "ff:ff:ff:ff:ff:ff"
     assert cs.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
     assert cs.source.status_verdict() == (Status.EXPECTED, Verdict.PASS)
-    assert cs.target.status_verdict() == (Status.EXPECTED, Verdict.PASS)
+    assert cs.target.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
 
     # NOTE: This will not match, should it? No!
-    cs = i.connection(EthernetFlow(ev, HWAddress.new("21:02:03:04:05:06"), HWAddress.new("01:02:03:04:05:06"),
+    cs = i.connection(EthernetFlow(ev, HWAddress.new("20:02:03:04:05:06"), HWAddress.new("01:02:03:04:05:06"),
                                    payload=0x0806))
-    assert cs.source.name == "21:02:03:04:05:06"
+    assert cs.source.name == "20:02:03:04:05:06"
     assert cs.target == dev1.entity
     assert cs.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
 
