@@ -177,15 +177,16 @@ def test_get_system_address():
         _segment(EntityTag("B"), "target"), _segment(EndpointAddress(Addresses.ANY, Protocol.TCP, 111)),
     ))
 
-    ble_ad = device.broadcast(BLEAdvertisement(event_type=0x03))
+    ble_ad = device / BLEAdvertisement(event_type=0x03)
     assert ble_ad.entity.get_system_address() == AddressSequence.new(
         EntityTag("D"), EndpointAddress(Addresses.ANY, Protocol.BLE, 3)
     )
 
-    connection = (backend << ble_ad).connection
-    assert connection.get_system_address() == AddressSequence((
-        _segment(EntityTag("D"), "source"),
-        _segment(EntityTag("B"), "target"), _segment(EndpointAddress(PseudoAddress("BLE_Ad"), Protocol.BLE, 3)),
+    connection = (backend >> ble_ad).connection
+    sa = connection.get_system_address()
+    assert sa == AddressSequence((
+        _segment(EntityTag("B"), "source"),
+        _segment(EntityTag("D"), "target"), _segment(EndpointAddress(Addresses.ANY, Protocol.BLE, 3)),
     ))
 
 

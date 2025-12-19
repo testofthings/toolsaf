@@ -1,8 +1,9 @@
 from toolsaf.common.basics import ExternalActivity, Status
-from toolsaf.builder_backend import SystemBackend
+from toolsaf.builder_backend import ConnectionBackend, SystemBackend
+from toolsaf.core.model import Service
 from toolsaf.core.services import NameEvent
 import test_model
-from toolsaf.common.address import DNSName, EndpointAddress, Protocol, IPAddress, PseudoAddress
+from toolsaf.common.address import DNSName, EndpointAddress, EntityTag, HWAddress, Protocol, IPAddress, PseudoAddress
 from toolsaf.core.inspector import Inspector
 from toolsaf.main import DHCP, DNS, UDP, TCP, Proprietary
 from toolsaf.common.traffic import NO_EVIDENCE, IPFlow, Evidence, EvidenceSource, ServiceScan, HostScan
@@ -194,11 +195,17 @@ def test_multicast_many_listeners():
 
 def test_multicast_proprietary():
     sb = SystemBackend()
-    dev1 = sb.device().hw("1:0:0:0:0:1")
+    dev1 = sb.device().hw("4:0:0:0:0:1")
     broadcast = dev1.multicast("ADDRESS", Proprietary("Custom", port=9000))
     cb = sb.device().ip("192.168.2.10") << broadcast
-    assert cb.connection.target.addresses == \
-        {EndpointAddress(PseudoAddress("ADDRESS"), Protocol.OTHER, 9000)}
+    assert isinstance(cb, ConnectionBackend)
+    assert cb.connection.source.addresses == \
+        {EntityTag("Device"), HWAddress.new("4:0:0:0:0:1")}
+    conn_target = cb.connection.target
+    assert isinstance(conn_target, Service)
+    assert conn_target.addresses == \
+        {EndpointAddress.any(Protocol.OTHER, 9000)}
+    assert conn_target.multicast_target and conn_target.multicast_target.fixed_address == PseudoAddress("ADDRESS")
 
 
 

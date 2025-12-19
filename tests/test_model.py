@@ -545,10 +545,10 @@ def test_find_entity():
     seq = Addresses.parse_system_address("source=Test_Device/udp:68&target=Test_Backend/udp:67")
     assert system.system.find_entity(seq) == connection
 
-    ble_ad = device.broadcast(BLEAdvertisement(event_type=0x03))
+    ble_ad = device / BLEAdvertisement(event_type=0x03)
     seq = Addresses.parse_system_address("Test_Device/ble:3")
     assert system.system.find_entity(seq) == ble_ad.entity
 
-    connection = (backend << ble_ad).connection
-    seq = Addresses.parse_system_address("source=Test_Device&target=Test_Backend/ble:3")
+    connection = (backend >> ble_ad).connection
+    seq = Addresses.parse_system_address("source=Test_Backend&target=Test_Device/ble:3")
     assert system.system.find_entity(seq) == connection

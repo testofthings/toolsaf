@@ -434,9 +434,11 @@ class BLEAdvertisement(ProtocolConfigurer):
     def __init__(self, event_type: int) -> None:
         ProtocolConfigurer.__init__(self, "BLE Ad")
         self.event_type = event_type
+        self.broadcast()  # always "broadcast"
 
     def broadcast(self) -> Self:
         return self.multicast("ff:ff:ff:ff:ff:ff")
+
 
 
 class Proprietary(ProtocolConfigurer):
