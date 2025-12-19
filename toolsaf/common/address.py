@@ -244,19 +244,20 @@ class Addresses:
                 port=int(port)
             )
         v, _, t = address.rpartition("|")
-        if v == "" and t:
-            # no type given
-            if t[0].isdigit():
-                return IPAddress.new(t)  # if starts with digit it is IP
-            return EntityTag(t)  # otherwise tag
-        if t == "tag":
-            return EntityTag(v)
-        if t == "ip":
-            return IPAddress.new(v)
-        if t == "hw":
-            return HWAddress.new(v)
-        if t == "name":
-            return DNSName(v)
+        match (t, v):
+            case (t, "") if t:
+                v = t # No type given
+                if v[0].isdigit():
+                    return IPAddress.new(v)
+                return EntityTag(v)
+            case ("tag", v):
+                return EntityTag(v)
+            case ("ip", v):
+                return IPAddress.new(v)
+            case ("hw", v):
+                return HWAddress.new(v)
+            case ("name", v):
+                return DNSName(v)
         raise ValueError(f"Unknown address type '{t}', allowed are 'ip', 'hw', and 'name'")
 
     @classmethod
