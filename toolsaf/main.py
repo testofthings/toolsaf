@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Self, Tuple, Type, Union
 from toolsaf.common.address import AnyAddress, HWAddress, HWAddresses, IPAddress, IPAddresses, Network
 from toolsaf.common.basics import ConnectionType, HostType, ExternalActivity
 from toolsaf.common.android import MobilePermissions
+from toolsaf.core.address_ranges import PortRange
 
 
 ProtocolType = Union['ProtocolConfigurer', Type['ProtocolConfigurer']]
@@ -291,6 +292,7 @@ class ProtocolConfigurer:
         self.networks: List[NetworkBuilder] = []
         self.address: Optional[AnyAddress] = None
         self.multicast_target: Optional[str] = None
+        self.protocol_port_range: Optional[PortRange] = None
 
     def in_network(self, *network: NetworkBuilder) -> Self:
         """Specify networks for the service"""
@@ -309,6 +311,21 @@ class ProtocolConfigurer:
     def multicast(self, address: str) -> Self:
         """This service is listening to multicast/broadcast address"""
         self.multicast_target = address
+        return self
+
+    def ports(self, *number: int) -> Self:
+        """Add port(s) for the service"""
+        for port in number:
+            self.port_range(port, port)
+        return self
+
+    def port_range(self, start: int, end: int) -> Self:
+        """Set port range for the service"""
+        p_range = PortRange([(start, end)])
+        if self.protocol_port_range:
+            self.protocol_port_range = self.protocol_port_range + p_range
+        else:
+            self.protocol_port_range = p_range
         return self
 
     def __repr__(self) -> str:
@@ -422,7 +439,7 @@ class TCP(ProtocolConfigurer):
 
 class UDP(ProtocolConfigurer):
     """UDP configurer"""
-    def __init__(self, port: int, name: str="UDP", administrative: bool=False) -> None:
+    def __init__(self, port: int = -1, name: str="UDP", administrative: bool=False) -> None:
         ProtocolConfigurer.__init__(self, name)
         self.port = port
         self.name = name

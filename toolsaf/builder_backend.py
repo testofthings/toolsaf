@@ -10,7 +10,7 @@ import json
 
 from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union, cast, Set
 
-from toolsaf.core.address_ranges import AddressRange, MulticastTarget
+from toolsaf.core.address_ranges import NULL_PORT_RANGE, AddressRange, MulticastTarget, PortRange
 from toolsaf.common.address import (AddressAtNetwork, Addresses, AnyAddress, DNSName, EndpointAddress, EntityTag,
                                   HWAddress, HWAddresses, IPAddress, IPAddresses, Network, Protocol, PseudoAddress)
 from toolsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status
@@ -409,7 +409,7 @@ class HostBackend(NodeBackend, HostBuilder):
         system.hosts_by_name[entity.name] = self
         if DNSName.looks_like(entity.name):
             self.name(entity.name)
-        self.service_builders: Dict[Tuple[str, Protocol, int], ServiceBackend] = {}
+        self.service_builders: Dict[Tuple[str, PortRange, Protocol, int], ServiceBackend] = {}
 
     def hw(self, address: str) -> Self:
         self.new_address_(HWAddress.new(address))
@@ -643,6 +643,7 @@ class ProtocolBackend:
         be.networks = [n.network for n in configurer.networks]
         be.specific_address = configurer.address or Addresses.ANY
         be.multicast_target = configurer.multicast_target
+        be.port_range = configurer.protocol_port_range
         assert isinstance(be, ProtocolBackend)
         return be
 
@@ -660,15 +661,16 @@ class ProtocolBackend:
         self.external_activity: Optional[ExternalActivity] = None
         self.critical_parameter: List[SensitiveData] = []
         self.multicast_target: Optional[str] = None
+        self.port_range: Optional[PortRange] = None
 
     def as_multicast_(self, target: ServiceBackend) -> 'ServiceBackend':
         """The protocol as multicast"""
-        raise ConfigurationException(
-            f"{self.service_name} cannot be broad/multicast")
+        raise ConfigurationException(f"{self.service_name} cannot be broad/multicast")
 
     def get_service_(self, parent: HostBackend) -> ServiceBackend:
         """Create or get service builder"""
-        key = self.multicast_target or "", self.transport, (self.service_port if self.port_to_name else -1)
+        key = self.multicast_target or "", self.port_range or NULL_PORT_RANGE, \
+            self.transport, (self.service_port if self.port_to_name else -1)
         old = parent.service_builders.get(key)
         if old:
             return old
@@ -689,11 +691,17 @@ class ProtocolBackend:
         return b
 
     def _create_service(self, parent: HostBackend) -> ServiceBackend:
+        if self.port_range:
+            # Port range instead of single port number
+            if self.service_port >= 0:
+                raise ConfigurationException(f"Cannot have both port and port range for {self.service_name}")
+            self.service_port = self.port_range.get_low_port()
         s = ServiceBackend(parent,
                            parent.new_service_(self.service_name, self.service_port if self.port_to_name else -1))
         s.entity.authentication = self.authentication
         s.entity.host_type = self.host_type
         s.entity.con_type = self.con_type
+        s.entity.port_range = self.port_range
         if self.external_activity is not None:
             s.entity.external_activity = self.external_activity
         s.entity.protocol = self.protocol
@@ -724,7 +732,7 @@ class ARPBackend(ProtocolBackend):
         # ARP can be broadcast, get or create the broadcast host and service
         bc_node = parent.system.get_host_(
             f"{HWAddresses.BROADCAST}", description="Broadcast")
-        bc_s_key = ("", self.transport, self.service_port)
+        bc_s_key = ("", NULL_PORT_RANGE, self.transport, self.service_port)
         bc_s = bc_node.service_builders.get(bc_s_key)
         # Three entities:
         # host_s: ARP service at host

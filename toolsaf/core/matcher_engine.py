@@ -2,7 +2,7 @@
 
 from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
-from toolsaf.core.address_ranges import MulticastTarget
+from toolsaf.core.address_ranges import MulticastTarget, PortRange
 from toolsaf.common.address import AddressAtNetwork, Addresses, AnyAddress, EndpointAddress, EntityTag, \
     Network, Protocol
 from toolsaf.common.basics import Status
@@ -131,7 +131,9 @@ class MatcherEngine:
         parent = entity.get_parent_host()
         if parent != entity:
             # ensure parent host is also added
-            self.add_addressable(parent)
+            parent_clue = self.add_addressable(parent)
+        else:
+            parent_clue = None
 
         addresses = False
         for add in entity.addresses:
@@ -159,10 +161,16 @@ class MatcherEngine:
                         clue.addresses.add(add_net)
                 addresses = True
 
-        if isinstance(entity, Service) and entity.multicast_target:
-            # service is listening on multicast or broadcast address
-            for net in entity.networks or [self.system.get_default_network()]:
-                clue.multicast_source[net] = entity.multicast_target
+        if isinstance(entity, Service):
+            if entity.multicast_target:
+                # service is listening on multicast or broadcast address
+                for net in entity.networks or [self.system.get_default_network()]:
+                    clue.multicast_source[net] = entity.multicast_target
+            if entity.port_range:
+                # service matching range of ports
+                clue.port_ranges.append(entity.port_range)
+                if parent_clue:
+                    parent_clue.port_ranges.append(entity.port_range)
 
         if entity.any_host or not addresses or clue.multicast_source:
             # no addresses defined, add wildcard clue
@@ -225,6 +233,7 @@ class AddressClue:
     """Address clue"""
     def __init__(self, entity: Addressable) -> None:
         self.entity = entity
+        self.port_ranges: List[PortRange] = []
         self.services: Dict[Tuple[Protocol, int], AddressClue] = {}
         self.addresses: Set[AddressAtNetwork] = set()      # effective addresses
         self.soft_addresses: Set[AddressAtNetwork] = set() # addresses added/removed as we go
@@ -238,6 +247,13 @@ class AddressClue:
         """Update state observing this host"""
         is_service = isinstance(self.entity, Service)
         ep_key = (protocol, port)
+        if self.port_ranges and ep_key not in self.endpoints and ep_key not in self.services:
+            # check port ranges
+            for pr in self.port_ranges:
+                if pr.is_match(port):
+                    port = pr.get_low_port()  # use low port for matching
+                    ep_key = (protocol, port)
+                    break
         if self.endpoints and ep_key not in self.endpoints:
             return  # this host/service does not have this endpoint
 

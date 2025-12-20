@@ -104,3 +104,57 @@ class MulticastTarget:
 
     def __repr__(self) -> str:
         return f"Multicast: {self.fixed_address or self.address_range}"
+
+
+class PortRange:
+    """Port range"""
+    def __init__(self, ranges: List[Tuple[int, int]]) -> None:
+        # Check that ranges are valid and non-overlapping
+        if not ranges:
+            raise ValueError("Port range cannot be empty")
+        self.ranges = ranges
+        i = -1
+        for ra in ranges:
+            start, end = ra
+            if start <= i:
+                raise ValueError(f"Overlapping or out of order range: {start}-{end}")
+            if start > end:
+                raise ValueError(f"Invalid port range: start {start} > end {end}")
+            i = end
+
+    def __add__(self, other: 'PortRange') -> 'PortRange':
+        """Add other port range, must be non-overlapping"""
+        new_ranges = self.ranges + other.ranges
+        sorted_ranges = sorted(new_ranges, key=lambda r: r[0])
+        return PortRange(sorted_ranges)
+
+    def get_low_port(self) -> int:
+        """Get lowest port in the range"""
+        return self.ranges[0][0]
+
+    def is_match(self, port: int) -> bool:
+        """Check if port matches the range"""
+        for ra in self.ranges:
+            if ra[0] <= port <= ra[1]:
+                return True
+        return False
+
+    def __hash__(self) -> int:
+        return hash(tuple(self.ranges))
+
+    def __eq__(self, value: object) -> bool:
+        if not isinstance(value, PortRange):
+            return False
+        return self.ranges == value.ranges
+
+    def __repr__(self) -> str:
+        parts = []
+        for ra in self.ranges:
+            if ra[0] == ra[1]:
+                parts.append(str(ra[0]))
+            else:
+                parts.append(f"{ra[0]}-{ra[1]}")
+        return ",".join(parts)
+
+# Null range
+NULL_PORT_RANGE = PortRange([(0, 0)])

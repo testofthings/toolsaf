@@ -6,7 +6,7 @@ import re
 from typing import List, Set, Optional, Tuple, TypeVar, Callable, Dict, Any, Self, Iterable, Iterator, Union
 from urllib.parse import urlparse
 
-from toolsaf.core.address_ranges import MulticastTarget
+from toolsaf.core.address_ranges import MulticastTarget, PortRange
 from toolsaf.common.address import AnyAddress, Addresses, EndpointAddress, EntityTag, Network, Protocol, IPAddress, \
     DNSName, AddressSequence
 from toolsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status
@@ -494,6 +494,7 @@ class Service(Addressable):
         self.authentication = False            # Now a flag, an object later?
         self.client_side = False               # client side "service" (DHCP)
         self.multicast_target: Optional[MulticastTarget] = None # Multicast target service?
+        self.port_range: Optional[PortRange] = None             # Port from a range?
         self.reply_from_other_address = False  # reply comes from other port (DHCP)
 
     @classmethod
