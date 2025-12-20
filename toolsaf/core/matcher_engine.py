@@ -234,35 +234,41 @@ class AddressClue:
         self.multicast_source: Dict[Network, MulticastTarget] = {}
 
     def update(self, state: MatchingState, address: AddressAtNetwork, protocol: Protocol, port: int,
-               wildcard: bool = False) -> None:
+               multicast: bool = False, wildcard: bool = False) -> None:
         """Update state observing this host"""
         is_service = isinstance(self.entity, Service)
         ep_key = (protocol, port)
         if self.endpoints and ep_key not in self.endpoints:
             return  # this host/service does not have this endpoint
-        multicast = self.multicast_source.get(address.network)
-        if multicast:
+
+        multicast_source = self.multicast_source.get(address.network)
+        multicast_match = False
+        if multicast_source:
             assert is_service, "Multicast source only for services"
-            if not multicast.is_match(address.address):
+            if not multicast_source.is_match(address.address):
                 return  # multicast address does not match
+            multicast_match = True
+
         status = self.entity.status
         match status:
             case Status.EXPECTED if is_service and not wildcard:
-                w = 128 # address + endpoint match
+                w = 128 # expected address + service match
+            case Status.EXPECTED if is_service and multicast_match:
+                w = 128 # expected multicast address + service match
             case Status.EXPECTED if not wildcard:
-                w = 64  # address match
+                w = 64  # expected address match
             case Status.EXPECTED if is_service:
-                w = 32  # endpoint match
+                w = 32  # expected service match
             case Status.EXTERNAL if is_service:
-                w = 16  # prefer over unexpected
+                w = 16  # external service
             case Status.EXPECTED:
-                w = 8   # wildcard match
+                w = 8   # expected wildcard match
             case Status.EXTERNAL:
-                w = 4
+                w = 4   # external wildcard match
             case Status.UNEXPECTED if is_service:
-                w = 2
+                w = 2   # unexpected service
             case _:
-                w = 1
+                w = 1  # unexpected address or wildcard
         if is_service or not wildcard:
             # connections from/to wildcard host only with port/protocol
             value = state.get(self.entity)
@@ -276,7 +282,7 @@ class AddressClue:
         # check services
         service_clue = self.services.get(ep_key)
         if service_clue:
-            service_clue.update(state, address, protocol, port, wildcard)
+            service_clue.update(state, address, protocol, port, multicast, wildcard=wildcard)
 
     def __repr__(self) -> str:
         r = [f"{self.entity}"]
@@ -328,22 +334,26 @@ class FlowMatcher:
                 # find source ends
                 # - with external IP, HW is the local router
                 # - with HW matching to endpoint, ignore IP, unless multicast/broadcast
+                is_multicast = flow.source[0].is_multicast()
                 use_ip = (AddressAtNetwork(flow.source[1], net) in engine.addresses or \
-                    engine.system.is_external(flow.source[1])) or flow.source[0].is_multicast()
+                    engine.system.is_external(flow.source[1])) or is_multicast
                 use_hw = not use_ip
                 if use_ip:
                     # match by IP address
-                    self.map_address(self.sources, AddressAtNetwork(flow.source[1], net), flow.protocol, flow.source[2])
+                    self.map_address(self.sources, AddressAtNetwork(flow.source[1], net), flow.protocol, flow.source[2],
+                                     multicast=is_multicast)
                 if use_hw:
                     # match by HW address
                     self.map_address(self.sources, AddressAtNetwork(flow.source[0], net), flow.protocol, flow.source[2])
 
                 # update by target
+                is_multicast = flow.target[0].is_multicast()
                 use_ip = (AddressAtNetwork(flow.target[1], net) in engine.addresses or \
-                    engine.system.is_external(flow.target[1])) or flow.target[0].is_multicast()
+                    engine.system.is_external(flow.target[1])) or is_multicast
                 use_hw = not use_ip
                 if use_ip:
-                    self.map_address(self.targets, AddressAtNetwork(flow.target[1], net), flow.protocol, flow.target[2])
+                    self.map_address(self.targets, AddressAtNetwork(flow.target[1], net), flow.protocol, flow.target[2],
+                                     multicast=is_multicast)
                 if use_hw:
                     self.map_address(self.targets, AddressAtNetwork(flow.target[0], net), flow.protocol, flow.target[2])
             case _:
@@ -359,7 +369,8 @@ class FlowMatcher:
         self.reverse: bool = False
         self.end_addresses: Optional[Tuple[Optional[AnyAddress], Optional[AnyAddress]]] = None
 
-    def map_address(self, state: MatchingState, address: AddressAtNetwork, protocol: Protocol, port: int) -> None:
+    def map_address(self, state: MatchingState, address: AddressAtNetwork, protocol: Protocol, port: int,
+                    multicast: bool = False) -> None:
         """Map address to state"""
         # 1. Map by address
         clues = self.engine.addresses.get(address)
@@ -367,7 +378,7 @@ class FlowMatcher:
             clue.update(state, address, protocol, port)
         # 2. Map the wildcard hosts
         for clue in self.engine.wildcard_hosts:
-            clue.update(state, address, protocol, port, wildcard=True)
+            clue.update(state, address, protocol, port, multicast=multicast, wildcard=True)
 
     def get_connection(self) -> Connection | Tuple[Optional[Addressable], Optional[Addressable]]:
         """Get deduced connection for the flow, return endpoints if no connection matched"""
