@@ -135,6 +135,19 @@ class MatcherEngine:
         else:
             parent_clue = None
 
+        port_range: Optional[PortRange] = None
+        if isinstance(entity, Service):
+            if entity.multicast_target:
+                # service is listening on multicast or broadcast address
+                for net in entity.networks or [self.system.get_default_network()]:
+                    clue.multicast_source[net] = entity.multicast_target
+            port_range = entity.port_range
+            if port_range:
+                # service matching range of ports
+                clue.port_ranges.append(port_range)
+                if parent_clue:  # -> add to parent list of services with port range
+                    parent_clue.services_range.append(clue)
+
         addresses = False
         for add in entity.addresses:
             for net in entity.get_networks_for(add):
@@ -146,11 +159,10 @@ class MatcherEngine:
                         assert ep_key is not None, "Endpoint address without protocol/port"
                         clue.endpoints.add(ep_key)
                         h_addr = add.get_host()
-                        host = entity.get_parent_host()
-                        if h_addr == Addresses.ANY and host != entity:
+                        if h_addr == Addresses.ANY and parent_clue:
                             # add endpoint to parent host
-                            host_clue = self.add_addressable(host)
-                            host_clue.services[ep_key] = clue
+                            if not port_range:
+                                parent_clue.services_by[ep_key] = clue  # specific endpoint, cache by parent
                         else:
                             # new address for this entity
                             add_net = AddressAtNetwork(h_addr, net)
@@ -160,17 +172,6 @@ class MatcherEngine:
                         self.addresses.setdefault(add_net, []).append(clue)
                         clue.addresses.add(add_net)
                 addresses = True
-
-        if isinstance(entity, Service):
-            if entity.multicast_target:
-                # service is listening on multicast or broadcast address
-                for net in entity.networks or [self.system.get_default_network()]:
-                    clue.multicast_source[net] = entity.multicast_target
-            if entity.port_range:
-                # service matching range of ports
-                clue.port_ranges.append(entity.port_range)
-                if parent_clue:
-                    parent_clue.port_ranges.append(entity.port_range)
 
         if entity.any_host or not addresses or clue.multicast_source:
             # no addresses defined, add wildcard clue
@@ -234,7 +235,8 @@ class AddressClue:
     def __init__(self, entity: Addressable) -> None:
         self.entity = entity
         self.port_ranges: List[PortRange] = []
-        self.services: Dict[Tuple[Protocol, int], AddressClue] = {}
+        self.services_by: Dict[Tuple[Protocol, int], AddressClue] = {}  # services by endpoints
+        self.services_range: List[AddressClue] = []                     # services with port ranges
         self.addresses: Set[AddressAtNetwork] = set()      # effective addresses
         self.soft_addresses: Set[AddressAtNetwork] = set() # addresses added/removed as we go
         self.endpoints: Set[Tuple[Protocol, int]] = set()  # only for services
@@ -247,13 +249,11 @@ class AddressClue:
         """Update state observing this host"""
         is_service = isinstance(self.entity, Service)
         ep_key = (protocol, port)
-        if self.port_ranges and ep_key not in self.endpoints and ep_key not in self.services:
-            # check port ranges
-            for pr in self.port_ranges:
-                if pr.is_match(port):
-                    port = pr.get_low_port()  # use low port for matching
-                    ep_key = (protocol, port)
-                    break
+        for pr in self.port_ranges or ():
+            # use lowest port in range for matching
+            if pr.is_match(port):
+                ep_key = (protocol, pr.get_low_port())
+                break
         if self.endpoints and ep_key not in self.endpoints:
             return  # this host/service does not have this endpoint
 
@@ -296,8 +296,10 @@ class AddressClue:
         for conn in self.target_for:
             conn.update(state, w, target=address)
         # check services
-        service_clue = self.services.get(ep_key)
+        service_clue = self.services_by.get(ep_key)
         if service_clue:
+            service_clue.update(state, address, protocol, port, multicast, wildcard=wildcard)
+        for service_clue in self.services_range:
             service_clue.update(state, address, protocol, port, multicast, wildcard=wildcard)
 
     def __repr__(self) -> str:
@@ -306,7 +308,7 @@ class AddressClue:
             r.append(f"  => {cc.connection.target.long_name()}")
         for cc in self.target_for:
             r.append(f"  <= {cc.connection.source.long_name()}")
-        for service in self.services.values():
+        for service in self.services_by.values():
             r.append(f"  {service.entity}")
             for cc in service.source_for:
                 r.append(f"    => {cc.connection.target.long_name()}")
