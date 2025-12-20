@@ -24,14 +24,14 @@ def test_reset():
     assert dev1.get_verdict(cache) == Verdict.INCON
 
     # expected connections
-    cs1 = r.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1100) >> ("1:0:0:0:0:2", "192.168.0.2", 1234))
-    cs2 = r.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1100) << ("1:0:0:0:0:2", "192.168.0.2", 1234))
+    cs1 = r.connection(IPFlow.UDP("a:0:0:0:0:1", "192.168.0.1", 1100) >> ("a:0:0:0:0:2", "192.168.0.2", 1234))
+    cs2 = r.connection(IPFlow.UDP("a:0:0:0:0:1", "192.168.0.1", 1100) << ("a:0:0:0:0:2", "192.168.0.2", 1234))
     # connection from unexpected host
-    cs3 = r.connection(IPFlow.UDP("1:0:0:0:0:3", "192.168.0.3", 1100) >> ("1:0:0:0:0:2", "192.168.0.2", 1234))
+    cs3 = r.connection(IPFlow.UDP("a:0:0:0:0:3", "192.168.0.3", 1100) >> ("a:0:0:0:0:2", "192.168.0.2", 1234))
     # connection to unexpected host
-    cs4 = r.connection(IPFlow.UDP("1:0:0:0:0:4", "192.168.0.4", 1100) << ("1:0:0:0:0:1", "192.168.0.1", 1234))
+    cs4 = r.connection(IPFlow.UDP("a:0:0:0:0:4", "192.168.0.4", 1100) << ("a:0:0:0:0:1", "192.168.0.1", 1234))
     # unexpected service in known host
-    cs5 = r.connection(IPFlow.UDP("1:0:0:0:0:3", "192.168.0.3", 1100) << ("1:0:0:0:0:2", "192.168.0.2", 1234))
+    cs5 = r.connection(IPFlow.UDP("a:0:0:0:0:3", "192.168.0.3", 1100) << ("a:0:0:0:0:2", "192.168.0.2", 1234))
 
     cache = {}
     assert dev1.get_verdict(cache) == Verdict.FAIL
@@ -73,13 +73,13 @@ def test_reset_2():
     flows = r.logging.collect_flows()
     assert len(flows) == 1
 
-    c1 = r.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1100) >> ("1:0:0:0:0:2", "192.168.0.2", 1234))
+    c1 = r.connection(IPFlow.UDP("a:0:0:0:0:1", "192.168.0.1", 1100) >> ("a:0:0:0:0:2", "192.168.0.2", 1234))
     assert c1.status == Status.EXPECTED
     assert c1.is_relevant(ignore_ends=True)
-    c2 = r.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1100) >> ("1:0:0:0:0:3", "1.0.0.3", 1234))
+    c2 = r.connection(IPFlow.UDP("a:0:0:0:0:1", "192.168.0.1", 1100) >> ("a:0:0:0:0:3", "1.0.0.3", 1234))
     assert c2.status == Status.UNEXPECTED
     assert c2.is_relevant(ignore_ends=True)
-    c3 = r.connection(IPFlow.UDP("1:0:0:1:0:4", "192.168.0.3", 1100) >> ("1:0:0:0:0:4", "1.0.0.4", 1234))
+    c3 = r.connection(IPFlow.UDP("a:0:0:1:0:4", "192.168.0.3", 1100) >> ("a:0:0:0:0:4", "1.0.0.4", 1234))
     assert c3.status == Status.EXTERNAL
     assert not c3.is_relevant(ignore_ends=True)
     flows = r.logging.collect_flows()
@@ -108,13 +108,13 @@ def test_reset_2():
 
 def test_reset_dhcp():
     sb = SystemBackend()
-    dev1 = sb.device().hw("1:0:0:0:0:1")
+    dev1 = sb.device().hw("a:0:0:0:0:1")
     dhcp = sb.any() / DHCP
     c1 = dev1 >> dhcp
     r = Registry(Inspector(sb.system))
 
-    f1 = r.connection(IPFlow.UDP("1:0:0:0:0:1", "0.0.0.0", 68) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 67))
-    f2 = r.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 68) << ("1:0:0:0:0:2", "192.168.0.2", 67))
+    f1 = r.connection(IPFlow.UDP("a:0:0:0:0:1", "0.0.0.0", 68) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 67))
+    f2 = r.connection(IPFlow.UDP("a:0:0:0:0:1", "192.168.0.1", 68) << ("a:0:0:0:0:2", "192.168.0.2", 67))
 
     cli = dev1.entity
     ser = dhcp.entity

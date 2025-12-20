@@ -12,15 +12,15 @@ from toolsaf.common.basics import Status
 
 def test_dhcp():
     sb = SystemBackend()
-    dev1 = sb.device().hw("1:0:0:0:0:1")
+    dev1 = sb.device().hw("a:0:0:0:0:1")
     dhcp = sb.any().name("X") / DHCP
     c1 = dev1 >> dhcp
     m = SystemMatcher(sb.system)
 
     assert (dev1 / UDP(port=68)).entity.client_side
 
-    f1 = m.connection(IPFlow.UDP("1:0:0:0:0:1", "0.0.0.0", 68) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 67))
-    f2 = m.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 68) << ("1:0:0:0:0:2", "192.168.0.2", 67))
+    f1 = m.connection(IPFlow.UDP("a:0:0:0:0:1", "0.0.0.0", 68) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 67))
+    f2 = m.connection(IPFlow.UDP("a:0:0:0:0:1", "192.168.0.1", 68) << ("a:0:0:0:0:2", "192.168.0.2", 67))
 
     assert c1.connection.source == (dev1 / UDP(port=68)).entity
     assert c1.connection.target == dhcp.entity
@@ -28,24 +28,24 @@ def test_dhcp():
     assert f1 == c1.connection
     assert f2 == c1.connection
 
-    assert dev1.entity.addresses == {EntityTag("Device"), HWAddress.new("1:0:0:0:0:1"), IPAddress.new("192.168.0.1")}
+    assert dev1.entity.addresses == {EntityTag("Device"), HWAddress.new("a:0:0:0:0:1"), IPAddress.new("192.168.0.1")}
 
     # IP reassigned to another (unexpected) device
     # Is this realistic? DHCP server reassigns same IP to different MAC out of the blue?
-    f3 = m.connection(IPFlow.UDP("1:0:0:0:0:5", "0.0.0.0", 68) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 67))
-    h2 = sb.system.get_endpoint(HWAddress.new("1:0:0:0:0:5"))
-    assert h2.name == "01:00:00:00:00:05"
+    f3 = m.connection(IPFlow.UDP("a:0:0:0:0:5", "0.0.0.0", 68) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 67))
+    h2 = sb.system.get_endpoint(HWAddress.new("a:0:0:0:0:5"))
+    assert h2.name == "0a:00:00:00:00:05"
     assert f3.source.get_parent_host() == h2
     assert f3.target == dhcp.entity
-    f4 = m.connection(IPFlow.UDP("1:0:0:0:0:5", "192.168.0.1", 68) << ("1:0:0:0:0:2", "192.168.0.2", 67))
+    f4 = m.connection(IPFlow.UDP("a:0:0:0:0:5", "192.168.0.1", 68) << ("a:0:0:0:0:2", "192.168.0.2", 67))
 
     # NOTE: Remainder of this test fails, as we now (purposefully) match by IP not by HW
     return
 
     assert f4 == f3
 
-    assert dev1.entity.addresses == {EntityTag("Device"), HWAddress.new("1:0:0:0:0:1")}
-    assert h2.addresses == {HWAddress.new("1:0:0:0:0:5"), IPAddress.new("192.168.0.1")}
+    assert dev1.entity.addresses == {EntityTag("Device"), HWAddress.new("a:0:0:0:0:1")}
+    assert h2.addresses == {HWAddress.new("a:0:0:0:0:5"), IPAddress.new("192.168.0.1")}
     assert h2.name == "192.168.0.1"  # renamed
 
     assert f1 != f3
@@ -59,15 +59,15 @@ def test_dhcp():
 
     # one more time...
     # IP reassigned
-    m.connection(IPFlow.UDP("1:0:0:0:0:6", "0.0.0.0", 68) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 67))
-    h3 = sb.system.get_endpoint(HWAddress.new("1:0:0:0:0:6"))
-    assert h3.name == "01:00:00:00:00:06"
-    m.connection(IPFlow.UDP("1:0:0:0:0:6", "192.168.0.1", 68) << ("1:0:0:0:0:2", "192.168.0.2", 67))
+    m.connection(IPFlow.UDP("a:0:0:0:0:6", "0.0.0.0", 68) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 67))
+    h3 = sb.system.get_endpoint(HWAddress.new("a:0:0:0:0:6"))
+    assert h3.name == "0a:00:00:00:00:06"
+    m.connection(IPFlow.UDP("a:0:0:0:0:6", "192.168.0.1", 68) << ("a:0:0:0:0:2", "192.168.0.2", 67))
 
-    assert dev1.entity.addresses == {EntityTag("Device"), HWAddress.new("1:0:0:0:0:1")}
-    assert h2.addresses == {HWAddress.new("1:0:0:0:0:5")}
+    assert dev1.entity.addresses == {EntityTag("Device"), HWAddress.new("a:0:0:0:0:1")}
+    assert h2.addresses == {HWAddress.new("a:0:0:0:0:5")}
     assert h2.name == "192.168.0.1 1"
-    assert h3.addresses == {HWAddress.new("1:0:0:0:0:6"), IPAddress.new("192.168.0.1")}
+    assert h3.addresses == {HWAddress.new("a:0:0:0:0:6"), IPAddress.new("192.168.0.1")}
     assert h3.name == "192.168.0.1 2"
 
 
@@ -133,7 +133,7 @@ def test_dhcp_address_learning():
     ctx = m.get_context()
 
     c0 = m.connection(IPFlow.UDP("30:c6:f7:52:db:00", "0.0.0.0", 68) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 67))
-    c1 = m.connection(IPFlow.UDP("30:c6:f7:52:db:00", "192.168.0.5", 68) << ("1:0:0:0:0:2", "192.168.0.1", 67))
+    c1 = m.connection(IPFlow.UDP("30:c6:f7:52:db:00", "192.168.0.5", 68) << ("a:0:0:0:0:2", "192.168.0.1", 67))
 
     assert c1 != c0  # unfortunately we missed that first request from dev0
     assert c1.target == dev1.entity

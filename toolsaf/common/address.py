@@ -329,8 +329,6 @@ class HWAddress(AnyAddress):
     def is_multicast(self) -> bool:
         # Assuming Ethernet MAC address, check the I/G bit - TODO: generalize
         first_byte = int(self.data[0:2], 16)
-        if first_byte == 1:
-            return False  # FIXME: Temporarily fixing unit tests
         return (first_byte & 1) == 1
 
     def is_hardware(self) -> bool:
