@@ -696,6 +696,8 @@ class ProtocolBackend:
             if self.service_port >= 0:
                 raise ConfigurationException(f"Cannot have both port and port range for {self.service_name}")
             self.service_port = self.port_range.get_low_port()
+            self.port_to_name = False
+            self.service_name = f"{self.service_name} {self.port_range.get_name()}"
         s = ServiceBackend(parent,
                            parent.new_service_(self.service_name, self.service_port if self.port_to_name else -1))
         s.entity.authentication = self.authentication

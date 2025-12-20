@@ -18,6 +18,9 @@ def test_port_range_matching():
     assert str(s0.entity.port_range) == "1000-2000,2500"
     assert str(s1.entity.port_range) == "2200-2499,3000,3001"
 
+    assert s0.entity.name == "UDP 1000...2500"
+    assert s1.entity.name == "UDP 2200...3001"
+
     m = SystemMatcher(sb.system)
 
     flow = IPFlow.UDP("10:0:0:0:0:1", "120.0.0.2", 1100) >> ("10:0:0:0:0:2", "120.0.0.1", 1001)

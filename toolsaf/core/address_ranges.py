@@ -132,12 +132,25 @@ class PortRange:
         """Get lowest port in the range"""
         return self.ranges[0][0]
 
+    def get_high_port(self) -> int:
+        """Get highest port in the range"""
+        return self.ranges[-1][1]
+
     def is_match(self, port: int) -> bool:
         """Check if port matches the range"""
         for ra in self.ranges:
             if ra[0] <= port <= ra[1]:
                 return True
         return False
+
+    def get_name(self) -> str:
+        """Get name for the port range"""
+        lo, hi = self.get_low_port(), self.get_high_port()
+        if lo == hi:
+            return str(lo)
+        if len(self.ranges) == 1:
+            return f"{lo}-{hi}"  # single range
+        return f"{lo}...{hi}" # multiple ranges
 
     def __hash__(self) -> int:
         return hash(tuple(self.ranges))
