@@ -110,8 +110,6 @@ class PortRange:
     """Port range"""
     def __init__(self, ranges: List[Tuple[int, int]]) -> None:
         # Check that ranges are valid and non-overlapping
-        if not ranges:
-            raise ValueError("Port range cannot be empty")
         self.ranges = ranges
         i = -1
         for ra in ranges:
@@ -188,4 +186,4 @@ class PortRange:
         return self.get_parseable_value()
 
 # Null range
-NULL_PORT_RANGE = PortRange([(0, 0)])
+NULL_PORT_RANGE = PortRange([])
