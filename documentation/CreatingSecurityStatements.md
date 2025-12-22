@@ -215,7 +215,8 @@ port ranges for UDP and TCP, e.g. (note use of `TCP()` with empty brackets):
 b_service = backend / TCP().port_range(8000-9000)
 ```
 
-Multiple `port_range(...)` definitions can be chained, as required.
+Multiple `port_range(...)` definitions can be chained,
+and individual ports can be defined like `port(2000, 3000)`.
 Port ranges can be used with multicasts and broadcasts below.
 
 ## Multicast and broadcast
