@@ -152,6 +152,30 @@ class PortRange:
             return f"{lo}-{hi}"  # single range
         return f"{lo}...{hi}" # multiple ranges
 
+    def get_parseable_value(self) -> str:
+        """Get parseable value"""
+        parts = []
+        for ra in self.ranges:
+            if ra[0] == ra[1]:
+                parts.append(str(ra[0]))
+            else:
+                parts.append(f"{ra[0]}-{ra[1]}")
+        return ",".join(parts)
+
+    @classmethod
+    def parse_port_range(cls, port_range: str) -> 'PortRange':
+        """Parse port range definition"""
+        parts = port_range.split(",")
+        ranges: List[Tuple[int, int]] = []
+        for part in parts:
+            if "-" in part:
+                start_str, end_str = part.split("-", 1)
+                start, end = int(start_str), int(end_str)
+            else:
+                start = end = int(part)
+            ranges.append((start, end))
+        return cls(ranges)
+
     def __hash__(self) -> int:
         return hash(tuple(self.ranges))
 
@@ -161,13 +185,7 @@ class PortRange:
         return self.ranges == value.ranges
 
     def __repr__(self) -> str:
-        parts = []
-        for ra in self.ranges:
-            if ra[0] == ra[1]:
-                parts.append(str(ra[0]))
-            else:
-                parts.append(f"{ra[0]}-{ra[1]}")
-        return ",".join(parts)
+        return self.get_parseable_value()
 
 # Null range
 NULL_PORT_RANGE = PortRange([(0, 0)])
