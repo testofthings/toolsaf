@@ -694,7 +694,8 @@ class ProtocolBackend:
         if self.port_range:
             # Port range instead of single port number
             if self.service_port >= 0:
-                raise ConfigurationException(f"Cannot have both port and port range for {self.service_name}")
+                raise ConfigurationException(
+                    f"Cannot define both port=<port> and use port ranges in {self.service_name}")
             self.service_port = self.port_range.get_low_port()
             self.port_to_name = False
             self.service_name = f"{self.service_name}:{self.port_range.get_name()}"

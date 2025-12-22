@@ -197,8 +197,8 @@ Check out the [services](Services.md) documentation for more details and the lis
 
 Many protocol endpoints in a host are separated by ports or similar number:
 
-* TCP `port`. Application TCP protcols have default ports, e.g. TLS in port 443
-* UDP `port`. Application UDP protcols have default ports, e.g. DNS in port 53
+* TCP `port`. Application TCP protocols have default ports, e.g. TLS in port 443
+* UDP `port`. Application UDP protocols have default ports, e.g. DNS in port 53
 * IP `protocol_id`.
 * BLE advertisement `event_type`.
 
