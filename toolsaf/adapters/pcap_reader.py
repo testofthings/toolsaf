@@ -180,12 +180,22 @@ class PCAPReader(SystemWideTool):
         for rd in dns_frames.DNSMessage.Question.iterate(frame):
             name = dns_frames.DNSName.string(rd, dns_frames.DNSQuestion.QNAME)
             if name not in self.dns_names:
+                try:
+                    DNSName.validate(name)
+                except ValueError:
+                    self.logger.warning("Invalid DNS name in question: '%s'", name)
+                    continue
                 self.dns_names[name] = ""
                 events.append(NameEvent(evidence, service, name=DNSName(name), peers=peers))
 
         def learn_name(name: str, ip: IPv4Address | IPv6Address) -> None:
             old = self.dns_names.get(ip)
             if old == name:
+                return
+            try:
+                DNSName.validate(name)
+            except ValueError:
+                self.logger.warning("Invalid DNS name in resource record: '%s'", name)
                 return
             self.dns_names[ip] = name
             n = NameEvent(evidence, service, name=DNSName(name), address=IPAddress(ip), peers=peers)

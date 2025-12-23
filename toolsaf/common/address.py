@@ -5,6 +5,7 @@ import enum
 import ipaddress
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network
 from typing import Union, Optional, Tuple, Iterable, Self, List
+import re
 
 
 class Protocol(enum.Enum):
@@ -256,6 +257,7 @@ class Addresses:
         if t == "hw":
             return HWAddress.new(v)
         if t == "name":
+            DNSName.validate(v)
             return DNSName(v)
         raise ValueError(f"Unknown address type '{t}', allowed are 'ip', 'hw', and 'name'")
 
@@ -414,6 +416,19 @@ class DNSName(AnyAddress):
     """DNS name"""
     def __init__(self, name: str) -> None:
         self.name = name
+
+    # DNS name part validation, allow "_" for infrastructure names
+    NAME_RE = re.compile(r"^(?!-)[_A-Za-z0-9-]{1,63}(?<!-)$")
+
+    @classmethod
+    def validate(cls, name: str) -> None:
+        """Validate DNS name, raise ValueError if invalid"""
+        if not isinstance(name, str) or not name or len(name) > 253:
+            raise ValueError(f"Invalid DNS name: '{name}'")
+        # Each label must be 1-63 chars, only letters, digits, hyphens, not start/end with hyphen
+        for label in name.rstrip('.').split('.'):
+            if not cls.NAME_RE.match(label):
+                raise ValueError(f"Invalid DNS label in name: '{name}'")
 
     def is_global(self) -> bool:
         return True  # well, perhaps a flag for this later
