@@ -20,6 +20,7 @@ def test_process_file():
                                 ("1.2.3.4/data/data.txt", io.BytesIO(b'test')),
                                 ("1.2.3.4/errors.txt", io.BytesIO(json_str)),
                                 ("5.6.7.8/errors.txt", io.BytesIO(json_str2)),
+                                ("certificates/", io.BytesIO(b'')),
                                 ("certificates/BE1.com", io.BytesIO(b'test')),
                                 ("certificates/BE2.com", io.BytesIO(b'test')),
                                 ("certificates/BE3.com", io.BytesIO(b'test'))]):
