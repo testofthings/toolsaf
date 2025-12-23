@@ -241,7 +241,7 @@ class Addresses:
                 protocol, port = address.split(":")
             return EndpointAddress(
                 host=PseudoAddress(name="*", wildcard=True),
-                protocol=Protocol.get_protocol(protocol),
+                protocol=Protocol.get_protocol(protocol) or Protocol.ANY,
                 port=int(port)
             )
         v, _, t = address.rpartition("|")
