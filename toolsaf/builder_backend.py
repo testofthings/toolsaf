@@ -247,6 +247,7 @@ class NodeBackend(NodeBuilder, NodeManipulator):
         return self
 
     def dns(self, name: str) -> Self:
+        DNSName.validate(name)
         dn = DNSName(name)
         networks = self.entity.get_networks_for(dn)
         assert len(networks) == 1, "DNS name must be in one network"
@@ -462,6 +463,8 @@ class HostBackend(NodeBackend, HostBuilder):
         return conf.get_service_(self)
 
     def ignore_name_requests(self, *name: str) -> Self:
+        for n in name:
+            DNSName.validate(n)
         self.entity.ignore_name_requests.update([DNSName(n) for n in name])
         return self
 

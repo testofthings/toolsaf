@@ -5,6 +5,7 @@ import enum
 import ipaddress
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network
 from typing import Union, Optional, Tuple, Iterable, Self, List
+import re
 
 
 class Protocol(enum.Enum):
@@ -240,7 +241,7 @@ class Addresses:
                 protocol, port = address.split(":")
             return EndpointAddress(
                 host=PseudoAddress(name="*", wildcard=True),
-                protocol=Protocol.get_protocol(protocol),
+                protocol=Protocol.get_protocol(protocol) or Protocol.ANY,
                 port=int(port)
             )
         v, _, t = address.rpartition("|")
@@ -256,6 +257,7 @@ class Addresses:
         if t == "hw":
             return HWAddress.new(v)
         if t == "name":
+            DNSName.validate(v)
             return DNSName(v)
         raise ValueError(f"Unknown address type '{t}', allowed are 'ip', 'hw', and 'name'")
 
@@ -274,9 +276,12 @@ class Addresses:
         if p == "":
             return addr
         prot, _, port = p.partition(":")
+        protocol = Protocol.get_protocol(prot)
+        if protocol is None:
+            raise ValueError(f"Unknown protocol in endpoint address '{value}'")
         if port == "":
-            return EndpointAddress(addr, Protocol.get_protocol(prot), -1)
-        return EndpointAddress(addr, Protocol.get_protocol(prot), int(port))
+            return EndpointAddress(addr, protocol, -1)
+        return EndpointAddress(addr, protocol, int(port))
 
     @classmethod
     def parse_system_address(cls, value: str) -> 'AddressSequence':
@@ -415,6 +420,19 @@ class DNSName(AnyAddress):
     def __init__(self, name: str) -> None:
         self.name = name
 
+    # DNS name part validation, allow "_" for infrastructure names
+    NAME_RE = re.compile(r"^(?!-)[_A-Za-z0-9-]{1,63}(?<!-)$")
+
+    @classmethod
+    def validate(cls, name: str) -> None:
+        """Validate DNS name, raise ValueError if invalid"""
+        if not isinstance(name, str) or not name or len(name) > 253:
+            raise ValueError(f"Invalid DNS name: '{name}'")
+        # Each label must be 1-63 chars, only letters, digits, hyphens, not start/end with hyphen
+        for label in name.rstrip('.').split('.'):
+            if not cls.NAME_RE.match(label):
+                raise ValueError(f"Invalid DNS label in name: '{name}'")
+
     def is_global(self) -> bool:
         return True  # well, perhaps a flag for this later
 
@@ -459,8 +477,9 @@ class DNSName(AnyAddress):
 
 class EndpointAddress(AnyAddress):
     """Endpoint address made up from host, protocol, and port"""
-    def __init__(self, host: AnyAddress, protocol: Union[Protocol, None], port: int=-1) -> None:
+    def __init__(self, host: AnyAddress, protocol: Protocol, port: int=-1) -> None:
         assert isinstance(host, AnyAddress)
+        assert isinstance(protocol, Protocol)
         self.host = host
         self.protocol = protocol
         self.port = port
@@ -500,7 +519,7 @@ class EndpointAddress(AnyAddress):
         return self.host
 
     def get_protocol_port(self) -> Optional[Tuple[Protocol, int]]:
-        return (self.protocol, self.port) if self.protocol else None
+        return self.protocol, self.port
 
     def change_host(self, host: Optional['AnyAddress']) -> 'EndpointAddress':
         return EndpointAddress(host or self.host, self.protocol, self.port)
@@ -527,7 +546,6 @@ class EndpointAddress(AnyAddress):
         return self.host.priority() + 1
 
     def get_parseable_value(self) -> str:
-        assert self.protocol, "protocol was None"
         port = f":{self.port}" if self.port >= 0 else ""
         prot = f"/{self.protocol.value}" if self.protocol != Protocol.ANY else ""
         return f"{self.host.get_parseable_value()}{prot}{port}"
@@ -548,7 +566,6 @@ class EndpointAddress(AnyAddress):
         return f"{value[0].value}:{value[1]}" if value[1] >= 0 else f"{value[0].value}"
 
     def __repr__(self) -> str:
-        assert self.protocol, "protocol was None"
         port = f":{self.port}" if self.port >= 0 else ""
         prot = f"/{self.protocol.value}" if self.protocol != Protocol.ANY else ""
         return f"{self.host}{prot}{port}"
