@@ -567,7 +567,7 @@ class EndpointAddress(AnyAddress):
 
     def __repr__(self) -> str:
         port = f":{self.port}" if self.port >= 0 else ""
-        prot = f"/{self.protocol.value}" if self.protocol and self.protocol != Protocol.ANY else ""
+        prot = f"/{self.protocol.value}" if self.protocol != Protocol.ANY else ""
         return f"{self.host}{prot}{port}"
 
 
