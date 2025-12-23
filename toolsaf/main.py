@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Self, Tuple, Type, Union
 from toolsaf.common.address import AnyAddress, HWAddress, HWAddresses, IPAddress, IPAddresses, Network
 from toolsaf.common.basics import ConnectionType, HostType, ExternalActivity
 from toolsaf.common.android import MobilePermissions
+from toolsaf.core.address_ranges import PortRange
 
 
 ProtocolType = Union['ProtocolConfigurer', Type['ProtocolConfigurer']]
@@ -132,6 +133,17 @@ class ServiceGroupBuilder:
         raise NotImplementedError()
 
 
+class MulticastConfigurer:
+    """Multicast configurer"""
+    def __init__(self, source: 'HostBuilder', address: str, protocol: 'ProtocolConfigurer') -> None:
+        self.source = source
+        self.address = address
+        self.protocol = protocol
+
+    def __repr__(self) -> str:
+        return f"{self.protocol} {self.address}"
+
+
 class HostBuilder(NodeBuilder):
     """Host builder"""
     def __init__(self, system: SystemBuilder) -> None:
@@ -149,15 +161,15 @@ class HostBuilder(NodeBuilder):
         """Serve the configured protocol or protocols"""
         raise NotImplementedError()
 
-    def multicast(self, address: str, protocol: 'ProtocolConfigurer') -> 'ServiceBuilder':
+    def multicast(self, address: str, protocol: 'ProtocolConfigurer') -> MulticastConfigurer:
         """Sends IP multicasts"""
         raise NotImplementedError()
 
-    def broadcast(self, protocol: 'ProtocolConfigurer') -> 'ServiceBuilder':
+    def broadcast(self, protocol: 'ProtocolConfigurer') -> MulticastConfigurer:
         """Sends IP broadcasts"""
         raise NotImplementedError()
 
-    def __lshift__(self, multicast: ServiceBuilder) -> 'ConnectionBuilder':
+    def __lshift__(self, multicast: MulticastConfigurer) -> 'ConnectionBuilder':
         """Receive broadcast or multicast"""
         raise NotImplementedError()
 
@@ -279,6 +291,8 @@ class ProtocolConfigurer:
         self.name = name
         self.networks: List[NetworkBuilder] = []
         self.address: Optional[AnyAddress] = None
+        self.multicast_target: Optional[str] = None
+        self.protocol_port_range: Optional[PortRange] = None
 
     def in_network(self, *network: NetworkBuilder) -> Self:
         """Specify networks for the service"""
@@ -288,6 +302,30 @@ class ProtocolConfigurer:
     def at_address(self, address: str) -> Self:
         """Service in a specific address"""
         self.address = IPAddress.new(address)
+        return self
+
+    def broadcast(self) -> Self:
+        """This service is listening to broadcast address"""
+        return self.multicast(str(IPAddresses.BROADCAST))
+
+    def multicast(self, address: str) -> Self:
+        """This service is listening to multicast/broadcast address"""
+        self.multicast_target = address
+        return self
+
+    def ports(self, *number: int) -> Self:
+        """Add port(s) for the service"""
+        for port in number:
+            self.port_range(port, port)
+        return self
+
+    def port_range(self, start: int, end: int) -> Self:
+        """Set port range for the service"""
+        p_range = PortRange([(start, end)])
+        if self.protocol_port_range:
+            self.protocol_port_range = self.protocol_port_range + p_range
+        else:
+            self.protocol_port_range = p_range
         return self
 
     def __repr__(self) -> str:
@@ -355,8 +393,9 @@ class ICMP(ProtocolConfigurer):
 
 class IP(ProtocolConfigurer):
     """IPv4 or v6 configurer"""
-    def __init__(self, name: str="IP", administration: bool=False) -> None:
+    def __init__(self, name: str="IP", protocol: int=-1, administration: bool=False) -> None:
         ProtocolConfigurer.__init__(self, name)
+        self.ip_protocol = protocol
         self.administration = administration
 
 
@@ -400,7 +439,7 @@ class TCP(ProtocolConfigurer):
 
 class UDP(ProtocolConfigurer):
     """UDP configurer"""
-    def __init__(self, port: int, name: str="UDP", administrative: bool=False) -> None:
+    def __init__(self, port: int = -1, name: str="UDP", administrative: bool=False) -> None:
         ProtocolConfigurer.__init__(self, name)
         self.port = port
         self.name = name
@@ -412,6 +451,11 @@ class BLEAdvertisement(ProtocolConfigurer):
     def __init__(self, event_type: int) -> None:
         ProtocolConfigurer.__init__(self, "BLE Ad")
         self.event_type = event_type
+        self.broadcast()  # always "broadcast"
+
+    def broadcast(self) -> Self:
+        return self.multicast("<BLE Advertisement>")  # parameter does not matter
+
 
 
 class Proprietary(ProtocolConfigurer):

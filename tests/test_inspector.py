@@ -1,8 +1,9 @@
 from toolsaf.common.basics import ExternalActivity, Status
-from toolsaf.builder_backend import SystemBackend
+from toolsaf.builder_backend import ConnectionBackend, SystemBackend
+from toolsaf.core.model import Service
 from toolsaf.core.services import NameEvent
 import test_model
-from toolsaf.common.address import DNSName, EndpointAddress, Protocol, IPAddress, PseudoAddress
+from toolsaf.common.address import DNSName, EndpointAddress, EntityTag, HWAddress, Protocol, IPAddress, PseudoAddress
 from toolsaf.core.inspector import Inspector
 from toolsaf.main import DHCP, DNS, UDP, TCP, Proprietary
 from toolsaf.common.traffic import NO_EVIDENCE, IPFlow, Evidence, EvidenceSource, ServiceScan, HostScan
@@ -11,7 +12,7 @@ from toolsaf.common.verdict import Verdict
 
 def simple_setup_3(tcp=False) -> SystemBackend:
     sb = SystemBackend()
-    dev1 = sb.device().hw("1:0:0:0:0:1")
+    dev1 = sb.device().hw("a:0:0:0:0:1")
     dev2 = sb.device().ip("192.168.0.2")
     dev3 = sb.device().ip("192.168.0.3")
     if tcp:
@@ -31,14 +32,14 @@ def test_traffic_verdict():
     assert all(d.entity.status_verdict() == (Status.EXPECTED, Verdict.INCON) for d in [dev1, dev2, dev3])
 
     # expected connections
-    cs = i.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1100) >> ("1:0:0:0:0:2", "192.168.0.2", 1234))
+    cs = i.connection(IPFlow.UDP("a:0:0:0:0:1", "192.168.0.1", 1100) >> ("a:0:0:0:0:2", "192.168.0.2", 1234))
     assert cs.status_verdict() == (Status.EXPECTED, Verdict.PASS)
     assert cs.target.status_verdict() == (Status.EXPECTED, Verdict.INCON)
     assert dev1.entity.status_verdict() == (Status.EXPECTED, Verdict.PASS)
     assert dev2.entity.status_verdict() == (Status.EXPECTED, Verdict.INCON)
     assert dev3.entity.status_verdict() == (Status.EXPECTED, Verdict.INCON)
 
-    cs = i.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1100) << ("1:0:0:0:0:2", "192.168.0.2", 1234))
+    cs = i.connection(IPFlow.UDP("a:0:0:0:0:1", "192.168.0.1", 1100) << ("a:0:0:0:0:2", "192.168.0.2", 1234))
     assert cs.status_verdict() == (Status.EXPECTED, Verdict.PASS)
     assert cs.target.status_verdict() == (Status.EXPECTED, Verdict.PASS)
     assert dev1.entity.status_verdict() == (Status.EXPECTED, Verdict.PASS)
@@ -46,20 +47,20 @@ def test_traffic_verdict():
     assert dev3.entity.status_verdict() == (Status.EXPECTED, Verdict.INCON)
 
     # connection from unexpected host
-    cs = i.connection(IPFlow.UDP("1:0:0:0:0:3", "192.168.0.3", 1100) >> ("1:0:0:0:0:2", "192.168.0.2", 1234))
+    cs = i.connection(IPFlow.UDP("a:0:0:0:0:3", "192.168.0.3", 1100) >> ("a:0:0:0:0:2", "192.168.0.2", 1234))
     assert cs.status_verdict() == (Status.UNEXPECTED, Verdict.FAIL)
     assert dev1.entity.status_verdict() == (Status.EXPECTED, Verdict.PASS)
     assert dev2.entity.status_verdict() == (Status.EXPECTED, Verdict.PASS)
     assert dev3.entity.status_verdict() == (Status.EXPECTED, Verdict.PASS)
 
     # connection to unexpected host
-    cs = i.connection(IPFlow.UDP("1:0:0:0:0:4", "192.168.0.4", 1100) << ("1:0:0:0:0:1", "192.168.0.1", 1234))
+    cs = i.connection(IPFlow.UDP("a:0:0:0:0:4", "192.168.0.4", 1100) << ("a:0:0:0:0:1", "192.168.0.1", 1234))
     assert cs.status_verdict() == (Status.UNEXPECTED, Verdict.FAIL)
     assert cs.target.status_verdict() == (Status.UNEXPECTED, Verdict.FAIL)  # fails instantly without waiting reply
     assert dev1.entity.status_verdict() == (Status.EXPECTED, Verdict.PASS)
 
     # unexpected service in known host
-    cs = i.connection(IPFlow.UDP("1:0:0:0:0:3", "192.168.0.3", 1100) << ("1:0:0:0:0:2", "192.168.0.2", 1234))
+    cs = i.connection(IPFlow.UDP("a:0:0:0:0:3", "192.168.0.3", 1100) << ("a:0:0:0:0:2", "192.168.0.2", 1234))
     assert cs.status_verdict() == (Status.UNEXPECTED, Verdict.FAIL)
     assert dev2.entity.status_verdict() == (Status.EXPECTED, Verdict.PASS)
     assert dev3.entity.status_verdict() == (Status.EXPECTED, Verdict.PASS)
@@ -67,31 +68,31 @@ def test_traffic_verdict():
 
 def test_irrelevant_traffic():
     sb = SystemBackend()
-    dev1 = sb.device().hw("1:0:0:0:0:1")
+    dev1 = sb.device().hw("a:0:0:0:0:1")
     dev2 = sb.device().ip("192.168.0.2")
     dev2.external_activity(ExternalActivity.UNLIMITED)
     dev1 >> dev2 / UDP(port=1234)
     i = Inspector(sb.system)
 
     # expected connections
-    cs = i.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1100) >> ("1:0:0:0:0:2", "192.168.0.2", 1234))
+    cs = i.connection(IPFlow.UDP("a:0:0:0:0:1", "192.168.0.1", 1100) >> ("a:0:0:0:0:2", "192.168.0.2", 1234))
     assert cs.status_verdict() == (Status.EXPECTED, Verdict.PASS)
     assert dev1.entity.status_verdict() == (Status.EXPECTED, Verdict.PASS)
     assert dev2.entity.status_verdict() == (Status.EXPECTED, Verdict.INCON)
-    cs = i.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1100) << ("1:0:0:0:0:2", "192.168.0.2", 1234))
+    cs = i.connection(IPFlow.UDP("a:0:0:0:0:1", "192.168.0.1", 1100) << ("a:0:0:0:0:2", "192.168.0.2", 1234))
     assert cs.status_verdict() == (Status.EXPECTED, Verdict.PASS)
     assert dev1.entity.status_verdict() == (Status.EXPECTED, Verdict.PASS)
     assert dev2.entity.status_verdict() == (Status.EXPECTED, Verdict.PASS)
 
     # unexpected connection to known service
-    cs = i.connection(IPFlow.UDP("1:0:0:0:0:3", "192.168.0.3", 1100) >> ("1:0:0:0:0:2", "192.168.0.2", 1234))
+    cs = i.connection(IPFlow.UDP("a:0:0:0:0:3", "192.168.0.3", 1100) >> ("a:0:0:0:0:2", "192.168.0.2", 1234))
     dev3 = cs.source
     assert cs.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
     assert dev1.entity.status_verdict() == (Status.EXPECTED, Verdict.PASS)
     assert dev3.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
 
     # connection to unexpected service
-    cs = i.connection(IPFlow.UDP("1:0:0:0:0:2", "192.168.0.2", 1100) >> ("1:0:0:0:0:4", "192.168.0.4", 4444))
+    cs = i.connection(IPFlow.UDP("a:0:0:0:0:2", "192.168.0.2", 1100) >> ("a:0:0:0:0:4", "192.168.0.4", 4444))
     dev4 = cs.target
     assert cs.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
     assert dev2.entity.status_verdict() == (Status.EXPECTED, Verdict.PASS)
@@ -127,9 +128,9 @@ def test_foreign_connection():
 
     # target is known service
     cs1 = i.connection(IPFlow.UDP(
-        "20:0:0:0:0:1", "192.168.10.1", 2000) >> ("1:0:0:0:0:2", "192.168.0.2", 1234))
+        "20:0:0:0:0:1", "192.168.10.1", 2000) >> ("a:0:0:0:0:2", "192.168.0.2", 1234))
     cs1_2 = i.connection(IPFlow.UDP(
-        "20:0:0:0:0:1", "192.168.10.1", 2000) << ("1:0:0:0:0:2", "192.168.0.2", 1234))
+        "20:0:0:0:0:1", "192.168.10.1", 2000) << ("a:0:0:0:0:2", "192.168.0.2", 1234))
     assert cs1 == cs1_2
     assert cs1.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
     assert cs1.source.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
@@ -139,9 +140,9 @@ def test_foreign_connection():
 
     # target is unknown service, fine for UNLIMITED activity
     cs2 = i.connection(IPFlow.UDP(
-        "20:0:0:0:0:1", "192.168.10.1", 2000) >> ("1:0:0:0:0:2", "192.168.0.2", 2001))
+        "20:0:0:0:0:1", "192.168.10.1", 2000) >> ("a:0:0:0:0:2", "192.168.0.2", 2001))
     cs2_2 = i.connection(IPFlow.UDP(
-        "20:0:0:0:0:1", "192.168.10.1", 2000) << ("1:0:0:0:0:2", "192.168.0.2", 2001))
+        "20:0:0:0:0:1", "192.168.10.1", 2000) << ("a:0:0:0:0:2", "192.168.0.2", 2001))
     assert cs2 == cs2_2
     assert cs2.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
     assert cs2.source.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
@@ -152,20 +153,20 @@ def test_foreign_connection():
 
 def test_multicast():
     sb = SystemBackend()
-    dev1 = sb.device().hw("1:0:0:0:0:1")
-    broadcast = dev1.broadcast(UDP(port=333))
-    bc = sb.any() << broadcast  # use any host here
+    dev1 = sb.device().hw("a:0:0:0:0:1")
+    any_host = sb.any()
+    bc = dev1 >> any_host / UDP(port=333).multicast("255.255.255.255")
     i = Inspector(sb.system)
 
     cs1 = i.connection(IPFlow.UDP(
-        "1:0:0:0:0:1", "192.168.0.1", 1100) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 333))
+        "a:0:0:0:0:1", "192.168.0.1", 1100) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 333))
     assert cs1.status_verdict() == (Status.EXPECTED, Verdict.PASS)
     assert cs1.source.status_verdict() == (Status.EXPECTED, Verdict.PASS)
     assert cs1.target.is_multicast()
     assert cs1.target.status_verdict() == (Status.EXPECTED, Verdict.PASS)
 
     cs2 = i.connection(IPFlow.UDP(
-        "1:0:0:0:0:1", "192.168.0.1", 1100) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 222))
+        "a:0:0:0:0:1", "192.168.0.1", 1100) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 222))
     assert cs2.status_verdict() == (Status.UNEXPECTED, Verdict.FAIL)
     assert cs2.source.status_verdict() == (Status.EXPECTED, Verdict.PASS)
     assert cs2.target.is_multicast()
@@ -174,38 +175,79 @@ def test_multicast():
 
 def test_multicast_many_listeners():
     sb = SystemBackend()
-    dev1 = sb.device().hw("1:0:0:0:0:1")
+    dev1 = sb.device().hw("a:0:0:0:0:1")
     broadcast = dev1.broadcast(UDP(port=333))
     bc10 = sb.device().ip("192.168.2.10") << broadcast
     bc11 = sb.device().ip("192.168.2.11") << broadcast
     bc12 = sb.device().ip("192.168.2.12") << broadcast
+
+    dev2 = sb.device().hw("8:0:0:0:0:1")
+    broadcast2 = dev2.broadcast(UDP(port=333))
+    bc13 = sb.device().ip("192.168.2.13")  << broadcast2
+
+    broadcast3 = dev1.broadcast(UDP(port=335))
+    bc20 = sb.device().ip("192.168.2.14") << broadcast3
     i = Inspector(sb.system)
 
     cs1 = i.connection(IPFlow.UDP(
-        "1:0:0:0:0:1", "192.168.0.1", 1100) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 333))
+        "a:0:0:0:0:1", "192.168.0.1", 1100) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 333))
     assert bc10.connection.status_verdict() == (Status.EXPECTED, Verdict.PASS)
     assert bc11.connection.status_verdict() == (Status.EXPECTED, Verdict.PASS)
     assert bc12.connection.status_verdict() == (Status.EXPECTED, Verdict.PASS)
+    assert bc13.connection.status_verdict() == (Status.EXPECTED, Verdict.INCON)
+    assert bc20.connection.status_verdict() == (Status.EXPECTED, Verdict.INCON)
+
+
+def test_multicast_many_addresses():
+    sb = SystemBackend()
+    dev0 = sb.device("Multicast")
+    dev1 = sb.device("4:0:0:0:0:1")
+    # this revealed a bug with many multicast services with same protocol/port
+    cast_a = dev1 >> dev0 / UDP(port=5000).multicast("226.*.*.*")
+    cast_b = dev1 >> dev0 / UDP(port=5001).multicast("226.*.*.*")
+    cast_c = dev1 >> dev0 / UDP(port=5000).broadcast()
+    cast_d = dev1 >> dev0 / UDP(port=5001).broadcast()
+
+    i = Inspector(sb.system)
+    c1 = i.connection(IPFlow.UDP(
+        "4:0:0:0:0:1", "192.168.0.1", 1100) >> ("ff:ff:ff:ff:ff:ff", "226.1.2.3", 5000))
+    c2 = i.connection(IPFlow.UDP(
+        "4:0:0:0:0:1", "192.168.0.1", 1101) >> ("ff:ff:ff:ff:ff:ff", "226.1.2.3", 5001))
+    c3 = i.connection(IPFlow.UDP(
+        "4:0:0:0:0:1", "192.168.0.1", 1103) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 5000))
+    c4 = i.connection(IPFlow.UDP(
+        "4:0:0:0:0:1", "192.168.0.1", 1104) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 5001))
+
+    assert c1 == cast_a.connection
+    assert c2 == cast_b.connection
+    assert c3 == cast_c.connection
+    assert c4 == cast_d.connection
 
 
 def test_multicast_proprietary():
     sb = SystemBackend()
-    dev1 = sb.device().hw("1:0:0:0:0:1")
+    dev1 = sb.device().hw("4:0:0:0:0:1")
     broadcast = dev1.multicast("ADDRESS", Proprietary("Custom", port=9000))
     cb = sb.device().ip("192.168.2.10") << broadcast
-    assert cb.connection.target.addresses == \
-        {EndpointAddress(PseudoAddress("ADDRESS"), Protocol.OTHER, 9000)}
+    assert isinstance(cb, ConnectionBackend)
+    assert cb.connection.source.addresses == \
+        {EntityTag("Device"), HWAddress.new("4:0:0:0:0:1")}
+    conn_target = cb.connection.target
+    assert isinstance(conn_target, Service)
+    assert conn_target.addresses == \
+        {EndpointAddress.any(Protocol.OTHER, 9000)}
+    assert conn_target.multicast_target and conn_target.multicast_target.fixed_address == PseudoAddress("ADDRESS")
 
 
 
 def test_external_dhcp_multicast():
     sb = SystemBackend()
-    dev1 = sb.mobile().hw("1:0:0:0:0:1")  # unlimited activity
+    dev1 = sb.mobile().hw("a:0:0:0:0:1")  # unlimited activity
     dev2 = sb.backend().serve(DHCP)       # listens for broafcasts to ff:ff:ff:ff:ff:ff
     i = Inspector(sb.system)
 
     cs1 = i.connection(IPFlow.UDP(
-        "1:0:0:0:0:1", "192.168.0.1", 68) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 67))
+        "a:0:0:0:0:1", "192.168.0.1", 68) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 67))
     assert cs1.status_verdict() == (Status.EXTERNAL, Verdict.INCON)
 
 
@@ -225,7 +267,7 @@ def test_learn_dns_name():
     ev = NameEvent(NO_EVIDENCE, dns.entity, name=DNSName("Aname.org"), address=IPAddress.new("12.0.0.2"))
     i.name(ev)
 
-    flow = IPFlow.UDP("1:0:0:0:0:1", "22.0.0.1", 1100) >> ("1:0:0:0:0:2", "12.0.0.2", 1234)
+    flow = IPFlow.UDP("a:0:0:0:0:1", "22.0.0.1", 1100) >> ("a:0:0:0:0:2", "12.0.0.2", 1234)
     con = i.connection(flow)
 
     assert con.status_verdict() == (Status.EXTERNAL, Verdict.INCON)  # backend and unknown source
@@ -235,7 +277,7 @@ def test_learn_dns_name():
 def test_learn_dns_name_expected_connection():
     """Learn DNS name to match to expected connection"""
     sb = SystemBackend()
-    dev0 = sb.device().hw("1:0:0:0:0:1")
+    dev0 = sb.device().hw("a:0:0:0:0:1")
     ser1 = sb.backend("Aname.org")
     dev0 >> ser1 / UDP(port=1234)
     dns = sb.backend() / DNS
@@ -249,7 +291,7 @@ def test_learn_dns_name_expected_connection():
     ev = NameEvent(NO_EVIDENCE, dns.entity, name=DNSName("Aname.org"), address=IPAddress.new("12.0.0.2"))
     i.name(ev)
 
-    flow = IPFlow.UDP("1:0:0:0:0:1", "192.168.0.2", 1100) >> ("1:0:0:0:0:2", "12.0.0.2", 1234)
+    flow = IPFlow.UDP("a:0:0:0:0:1", "192.168.0.2", 1100) >> ("a:0:0:0:0:2", "12.0.0.2", 1234)
     con = i.connection(flow)
 
     assert con.get_expected_verdict() == Verdict.PASS

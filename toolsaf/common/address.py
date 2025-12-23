@@ -154,9 +154,11 @@ class EntityTag(AnyAddress):
 
 class PseudoAddress(AnyAddress):
     """Pseudo-address"""
-    def __init__(self, name: str, wildcard: bool=False, multicast: bool=False, hardware: bool=False) -> None:
+    def __init__(self, name: str, wildcard: bool=False, multicast: bool=False, hardware: bool=False,
+                 address_type: str ="") -> None:
         self.name = name
-        # only name used in equality
+        self.address_type = address_type
+        # only name + address_type used in equality
         self.wildcard = wildcard
         self.multicast = multicast
         self.hardware = hardware
@@ -176,16 +178,19 @@ class PseudoAddress(AnyAddress):
     def priority(self) -> int:
         return 3
 
+    def get_parseable_value(self) -> str:
+        return f"{self.name}|{self.address_type}" if self.address_type else self.name
+
     def __repr__(self) -> str:
         return self.name
 
     def __hash__(self) -> int:
-        return self.name.__hash__()
+        return hash((self.name, self.address_type))
 
     def __eq__(self, value: object) -> bool:
         if not isinstance(value, PseudoAddress):
             return False
-        return self.name == value.name
+        return self.name == value.name and self.address_type == value.address_type
 
 class Addresses:
     """Address constants and utilities"""
@@ -194,7 +199,7 @@ class Addresses:
     ANY = PseudoAddress("*", wildcard=True)
 
     # Pseudo address for BLE advertisement
-    BLE_Ad = PseudoAddress("BLE_Ad", multicast=True, hardware=True)
+    BLE_Ad = PseudoAddress("BLE_Ad", multicast=True, hardware=True, address_type="hw")
 
     @classmethod
     def get_prioritized(cls, addresses: Iterable[AnyAddress],ip: bool=True,
@@ -239,26 +244,28 @@ class Addresses:
                 protocol, port = address, "-1"
             else:
                 protocol, port = address.split(":")
-            return EndpointAddress(
-                host=PseudoAddress(name="*", wildcard=True),
+            return EndpointAddress.any(
                 protocol=Protocol.get_protocol(protocol) or Protocol.ANY,
                 port=int(port)
             )
         v, _, t = address.rpartition("|")
-        if v == "" and t:
-            # no type given
-            if t[0].isdigit():
-                return IPAddress.new(t)  # if starts with digit it is IP
-            return EntityTag(t)  # otherwise tag
-        if t == "tag":
-            return EntityTag(v)
-        if t == "ip":
-            return IPAddress.new(v)
-        if t == "hw":
-            return HWAddress.new(v)
-        if t == "name":
-            DNSName.validate(v)
-            return DNSName(v)
+        match (t, v):
+            case (t, "") if t:
+                v = t # No type given
+                if v[0].isdigit():
+                    return IPAddress.new(v)
+                return EntityTag(v)
+            case ("tag", v):
+                return EntityTag(v)
+            case ("ip", v):
+                return IPAddress.new(v)
+            case ("hw", "BLE_Ad"):
+                return Addresses.BLE_Ad
+            case ("hw", v):
+                return HWAddress.new(v)
+            case ("name", v):
+                DNSName.validate(v)
+                return DNSName(v)
         raise ValueError(f"Unknown address type '{t}', allowed are 'ip', 'hw', and 'name'")
 
     @classmethod
@@ -325,7 +332,9 @@ class HWAddress(AnyAddress):
         return self.data == HWAddresses.NULL.data
 
     def is_multicast(self) -> bool:
-        return self.data == HWAddresses.BROADCAST.data
+        # Assuming Ethernet MAC address, check the I/G bit - TODO: generalize
+        first_byte = int(self.data[0:2], 16)
+        return (first_byte & 1) == 1
 
     def is_hardware(self) -> bool:
         return True

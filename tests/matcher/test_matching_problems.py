@@ -12,8 +12,7 @@ def test_broadcast_matching_with_arp():
     any_host = sb.any()
     dev1 = sb.device("Dev1").ip("10.42.0.184")
     dev2 = sb.device("Dev2").ip("10.42.0.200")
-    dev2_bc = dev2.broadcast(UDP(port=6667))
-    c0 = dev1 >> dev2_bc
+    c0 = dev1 >> dev2 / UDP(port=6667).broadcast()
     m = SystemMatcher(sb.system)
 
     f1 = m.connection(IPFlow.UDP("7c:f6:66:24:a7:36", "10.42.0.184", 63144) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 6667))

@@ -1,8 +1,9 @@
 from unittest.mock import patch, MagicMock
 from ipaddress import ip_network
 
-from toolsaf.main import HTTP, BLEAdvertisement
-from toolsaf.common.address import EntityTag, DNSName, HWAddress, Network
+from toolsaf.core.address_ranges import AddressRange, MulticastTarget
+from toolsaf.main import HTTP, UDP, BLEAdvertisement
+from toolsaf.common.address import Addresses, EntityTag, DNSName, HWAddress, Network, PseudoAddress
 from toolsaf.common.basics import Status
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.serializer.serializer import SerializerStream
@@ -152,20 +153,19 @@ def test_service_serializer():
     stream.resolve = mock_resolve
 
     device = Setup().system.device("Device 1")
-    service = device.broadcast(BLEAdvertisement(event_type=0x03)).entity
+    service = (device / BLEAdvertisement(event_type=0x03)).entity
     serialized = list(stream.write(service))[0]
     assert serialized == {
         "type": "service",
         "id": "id1",
-        "name": "BLE Ad:3 multicast",
+        "name": "BLE Ad:3",
         "authentication": False,
         "client_side": False,
         "reply_from_other_address": False,
         "protocol": "ble",
         "con_type": "",
-        "multicast_source": "BLE_Ad"
+        "multicast_target": "BLE_Ad|hw"
     }
-    serialized["type"] = "service"
 
     stream.resolve.return_value = device.entity
     new_service = list(stream.read([serialized]))[0]
@@ -178,7 +178,8 @@ def test_service_serializer():
     assert new_service.reply_from_other_address == service.reply_from_other_address
     assert new_service.protocol == service.protocol
     assert new_service.con_type == service.con_type
-    assert new_service.multicast_source == EntityTag("BLE_Ad")
+    assert new_service.multicast_target == MulticastTarget(fixed_address=Addresses.BLE_Ad)
+    assert new_service.port_range is None
 
     stream = SerializerStream(serializer)
     service = (device / HTTP).entity
@@ -206,6 +207,76 @@ def test_service_serializer():
     assert new_service.reply_from_other_address == service.reply_from_other_address
     assert new_service.protocol == service.protocol
     assert new_service.con_type == service.con_type
+
+
+def test_service_with_multicast_target_serializer():
+    serializer = ServiceSerializer()
+    serializer.config.map_class("service", serializer)
+    stream = SerializerStream(serializer)
+    mock_resolve = MagicMock()
+    stream.resolve = mock_resolve
+
+    device = Setup().system.device("Device 1")
+    service = (device / UDP(port=987).multicast("224.0.*.*")).entity
+    serialized = list(stream.write(service))[0]
+    assert serialized == {
+        "type": "service",
+        "id": "id1",
+        "name": "UDP:987 224.0.*.*",
+        "authentication": False,
+        "client_side": False,
+        "reply_from_other_address": False,
+        "protocol": "",
+        "con_type": "",
+        "multicast_target": "224.0.*.*"
+    }
+
+
+    stream.resolve.return_value = device.entity
+    new_service = list(stream.read([serialized]))[0]
+
+    assert isinstance(new_service, Service)
+    assert new_service.parent == device.entity
+    assert new_service.name == service.name
+    assert new_service.authentication == service.authentication
+    assert new_service.client_side == service.client_side
+    assert new_service.reply_from_other_address == service.reply_from_other_address
+    assert new_service.protocol is None  # NOTE: Not Any now
+    assert new_service.con_type == service.con_type
+    assert new_service.multicast_target == service.multicast_target
+    assert new_service.port_range is None
+
+    # add test with port range, too
+
+    service = (device / UDP().port_range(1000, 2000).multicast("224.0.0.1")).entity
+    serialized = list(stream.write(service))[0]
+    assert serialized == {
+        "type": "service",
+        "id": "id3",
+        "name": "UDP:1000-2000 224.0.0.1",
+        "authentication": False,
+        "client_side": False,
+        "reply_from_other_address": False,
+        "protocol": "",
+        "con_type": "",
+        "multicast_target": "224.0.0.1",
+        "port_range": "1000-2000",
+    }
+
+
+    stream.resolve.return_value = device.entity
+    new_service = list(stream.read([serialized]))[0]
+
+    assert isinstance(new_service, Service)
+    assert new_service.parent == device.entity
+    assert new_service.name == service.name
+    assert new_service.authentication == service.authentication
+    assert new_service.client_side == service.client_side
+    assert new_service.reply_from_other_address == service.reply_from_other_address
+    assert new_service.protocol is None  # NOTE: Not Any now
+    assert new_service.con_type == service.con_type
+    assert new_service.multicast_target == MulticastTarget(fixed_address=Addresses.parse_address("224.0.0.1"))
+    assert new_service.port_range == service.port_range
 
 
 def test_connection_serializer():

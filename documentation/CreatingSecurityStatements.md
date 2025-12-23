@@ -193,22 +193,51 @@ if the backend has not explicitly defined them.
 
 Check out the [services](Services.md) documentation for more details and the list of available protocols.
 
+## Ports and port ranges
+
+Many protocol endpoints in a host are separated by ports or similar number:
+
+* TCP `port`. Application TCP protocols have default ports, e.g. TLS in port 443
+* UDP `port`. Application UDP protocols have default ports, e.g. DNS in port 53
+* IP `protocol_id`.
+* BLE advertisement `event_type`.
+
+For example, the following defines TCP service in port 8888.
+
+```python
+a_service = backend / TCP(port=8888)
+```
+
+A service availale using many ports or available in random port can use
+port ranges for UDP and TCP, e.g. (note use of `TCP()` with empty brackets):
+
+```python
+b_service = backend / TCP().port_range(8000-9000)
+```
+
+Multiple `port_range(...)` definitions can be chained,
+and individual ports can be defined like `port(2000, 3000)`.
+Port ranges can be used with multicasts and broadcasts below.
+
 ## Multicast and broadcast
 
-A host can send _multicast_ or _broadcast_ messages.
-The following shows example of host sending UDP broadcast to port `1234`.
-Multicast is used similarly by method `multicast`, but the used address must be specified.
+A host can listen to and receive _multicast_ or _broadcast_ messages.
+The following shows example of host listening for UDP broadcast to port `1234`.
 ```python
-bcast = device.broadcast(UDP(port=1234))
+bcast = device / UDP(port=1234).broadcast()
+```
+Sending broadcasts or multicasts is marked as other connections, e.g.:
+```python
+sensor >> bcast
 ```
 
-Broadcasts listening is marked by `<<`, e.g.:
+Broadcast is using IPv4 address `255.255.255.255`.
+Multicast is used similarly by method `multicast`, but the used addresses must be specified. Octet ranges (e.g. `1-128`) or `*` for any octet value can be used for wildcard multicast addressing, e.g:
 ```python
-gateway << bcast
+mcast = device / UDP(port=1234).multicast("224.0.*.*")
 ```
 
-Currently UDP, BLE _Advertisement_, and `Proprietary` protocols allow broadcast and multicast.
-
+Currently UDP, IP, BLE _Advertisement_, and `Proprietary` protocols allow broadcast and multicast.
 
 ## Software Bill of Materials (SBOM)
 

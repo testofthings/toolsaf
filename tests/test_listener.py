@@ -46,8 +46,8 @@ def test_model_events():
     reg = Registry(Inspector(sb.system))
     reg.system.model_listeners.append(lis)
 
-    cs1 = reg.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1100) >> ("1:0:0:0:0:2", "192.168.0.2", 1234))
-    cs2 = reg.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1100) >> ("1:0:0:0:0:3", "1.0.0.3", 1234))
+    cs1 = reg.connection(IPFlow.UDP("a:0:0:0:0:1", "192.168.0.1", 1100) >> ("a:0:0:0:0:2", "192.168.0.2", 1234))
+    cs2 = reg.connection(IPFlow.UDP("a:0:0:0:0:1", "192.168.0.1", 1100) >> ("a:0:0:0:0:3", "1.0.0.3", 1234))
     assert lis.labels == [
         'Device 1 => Device 2 UDP:1234 property check:expected=[Pass]',
         'Device 1 property check:expected=[Pass]',
@@ -56,13 +56,13 @@ def test_model_events():
     ]
 
     # identical flows -> no change
-    cs1 = reg.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1100) >> ("1:0:0:0:0:2", "192.168.0.2", 1234))
-    cs2 = reg.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1100) >> ("1:0:0:0:0:3", "1.0.0.3", 1234))
+    cs1 = reg.connection(IPFlow.UDP("a:0:0:0:0:1", "192.168.0.1", 1100) >> ("a:0:0:0:0:2", "192.168.0.2", 1234))
+    cs2 = reg.connection(IPFlow.UDP("a:0:0:0:0:1", "192.168.0.1", 1100) >> ("a:0:0:0:0:3", "1.0.0.3", 1234))
     assert len(lis.events) == 4
 
     # flow source port changes -> no change
-    cs1 = reg.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1102) >> ("1:0:0:0:0:2", "192.168.0.2", 1234))
-    cs2 = reg.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1104) >> ("1:0:0:0:0:3", "1.0.0.3", 1234))
+    cs1 = reg.connection(IPFlow.UDP("a:0:0:0:0:1", "192.168.0.1", 1102) >> ("a:0:0:0:0:2", "192.168.0.2", 1234))
+    cs2 = reg.connection(IPFlow.UDP("a:0:0:0:0:1", "192.168.0.1", 1104) >> ("a:0:0:0:0:3", "1.0.0.3", 1234))
     assert len(lis.events) == 4
 
     lis.events.clear()
@@ -76,8 +76,8 @@ def test_registry_events():
 
     lis0 = AModelListener()
     reg.system.model_listeners.append(lis0)
-    cs1 = reg.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1100) >> ("1:0:0:0:0:2", "192.168.0.2", 1234))
-    cs2 = reg.connection(IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1100) >> ("1:0:0:0:0:3", "1.0.0.3", 1234))
+    cs1 = reg.connection(IPFlow.UDP("a:0:0:0:0:1", "192.168.0.1", 1100) >> ("a:0:0:0:0:2", "192.168.0.2", 1234))
+    cs2 = reg.connection(IPFlow.UDP("a:0:0:0:0:1", "192.168.0.1", 1100) >> ("a:0:0:0:0:3", "1.0.0.3", 1234))
     assert lis0.labels == [
         'Device 1 => Device 2 UDP:1234 property check:expected=[Pass]',
         'Device 1 property check:expected=[Pass]',

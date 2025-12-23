@@ -46,6 +46,13 @@ def test_dns_name():
     assert ad != DNSName("www.example.org")
 
 
+def test_pseudo_address():
+    assert Addresses.BLE_Ad == PseudoAddress("BLE_Ad", address_type="hw")
+    assert Addresses.BLE_Ad.get_parseable_value() == "BLE_Ad|hw"
+    assert Addresses.ANY == PseudoAddress("*")
+    assert Addresses.ANY.get_parseable_value() == "*"
+
+
 def test_endpoint_address():
     ad = EndpointAddress.ip("1.2.3.4", Protocol.UDP, 1234)
     assert f"{ad}" == "1.2.3.4/udp:1234"
@@ -71,6 +78,9 @@ def test_parse_address():
     a = Addresses.parse_address("1:2:3:4:5:6|hw")
     assert isinstance(a, HWAddress)
     assert f"{a}" == "01:02:03:04:05:06"
+
+    a = Addresses.parse_address("BLE_Ad|hw")
+    assert a is Addresses.BLE_Ad
 
 
 def test_parse_endpoint_address():
@@ -177,15 +187,16 @@ def test_get_system_address():
         _segment(EntityTag("B"), "target"), _segment(EndpointAddress(Addresses.ANY, Protocol.TCP, 111)),
     ))
 
-    ble_ad = device.broadcast(BLEAdvertisement(event_type=0x03))
+    ble_ad = device / BLEAdvertisement(event_type=0x03)
     assert ble_ad.entity.get_system_address() == AddressSequence.new(
         EntityTag("D"), EndpointAddress(Addresses.ANY, Protocol.BLE, 3)
     )
 
-    connection = (backend << ble_ad).connection
-    assert connection.get_system_address() == AddressSequence((
-        _segment(EntityTag("D"), "source"),
-        _segment(EntityTag("B"), "target"), _segment(EndpointAddress(PseudoAddress("BLE_Ad"), Protocol.BLE, 3)),
+    connection = (backend >> ble_ad).connection
+    sa = connection.get_system_address()
+    assert sa == AddressSequence((
+        _segment(EntityTag("B"), "source"),
+        _segment(EntityTag("D"), "target"), _segment(EndpointAddress(Addresses.ANY, Protocol.BLE, 3)),
     ))
 
 
