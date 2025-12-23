@@ -53,6 +53,7 @@ class CertMITMReader(SystemWideTool):
             for file in zip_file.filelist:
                 if "certificates" in file.filename:
                     dns_name = DNSName(file.filename.split("/")[-1].split("_")[0])
+                    DNSName.validate(dns_name.name)
                     if dns_name in dns_names:
                         continue
                     dns_names.add(dns_name)
