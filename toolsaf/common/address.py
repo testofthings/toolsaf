@@ -276,9 +276,12 @@ class Addresses:
         if p == "":
             return addr
         prot, _, port = p.partition(":")
+        protocol = Protocol.get_protocol(prot)
+        if protocol is None:
+            raise ValueError(f"Unknown protocol in endpoint address '{value}'")
         if port == "":
-            return EndpointAddress(addr, Protocol.get_protocol(prot), -1)
-        return EndpointAddress(addr, Protocol.get_protocol(prot), int(port))
+            return EndpointAddress(addr, protocol, -1)
+        return EndpointAddress(addr, protocol, int(port))
 
     @classmethod
     def parse_system_address(cls, value: str) -> 'AddressSequence':
@@ -474,8 +477,9 @@ class DNSName(AnyAddress):
 
 class EndpointAddress(AnyAddress):
     """Endpoint address made up from host, protocol, and port"""
-    def __init__(self, host: AnyAddress, protocol: Union[Protocol, None], port: int=-1) -> None:
+    def __init__(self, host: AnyAddress, protocol: Protocol, port: int=-1) -> None:
         assert isinstance(host, AnyAddress)
+        assert isinstance(protocol, Protocol)
         self.host = host
         self.protocol = protocol
         self.port = port
@@ -515,7 +519,7 @@ class EndpointAddress(AnyAddress):
         return self.host
 
     def get_protocol_port(self) -> Optional[Tuple[Protocol, int]]:
-        return (self.protocol, self.port) if self.protocol else None
+        return self.protocol, self.port
 
     def change_host(self, host: Optional['AnyAddress']) -> 'EndpointAddress':
         return EndpointAddress(host or self.host, self.protocol, self.port)
@@ -542,7 +546,6 @@ class EndpointAddress(AnyAddress):
         return self.host.priority() + 1
 
     def get_parseable_value(self) -> str:
-        assert self.protocol, "protocol was None"
         port = f":{self.port}" if self.port >= 0 else ""
         prot = f"/{self.protocol.value}" if self.protocol != Protocol.ANY else ""
         return f"{self.host.get_parseable_value()}{prot}{port}"
@@ -563,9 +566,8 @@ class EndpointAddress(AnyAddress):
         return f"{value[0].value}:{value[1]}" if value[1] >= 0 else f"{value[0].value}"
 
     def __repr__(self) -> str:
-        assert self.protocol, "protocol was None"
         port = f":{self.port}" if self.port >= 0 else ""
-        prot = f"/{self.protocol.value}" if self.protocol != Protocol.ANY else ""
+        prot = f"/{self.protocol.value}" if self.protocol and self.protocol != Protocol.ANY else ""
         return f"{self.host}{prot}{port}"
 
 
