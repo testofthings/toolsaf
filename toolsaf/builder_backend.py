@@ -58,6 +58,12 @@ class SystemBackend(SystemBuilder):
         self.protocols: Dict[Any, 'ProtocolBackend'] = {}
         self.ignore_backend = IgnoreRulesBackend()
 
+    def matching_level(self, level: int) -> Self:
+        if level < 1 or level > 2:
+            raise ConfigurationException("Matching level must be 1 or 2")
+        self.system.matching_level = level
+        return self
+
     def network(self, subnet: str="", ip_mask: Optional[str] = None) -> 'NetworkBuilder':
         if subnet:
             nb = NetworkBackend(self, subnet)

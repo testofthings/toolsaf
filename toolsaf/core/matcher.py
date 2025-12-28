@@ -188,10 +188,10 @@ class MatchingContext:
 
         # TODO: More strict matching logic experiemented - works fine!
         # - Could also change external activity PASSIVE -> BANNED for local hosts, e.g. devices
-        # system = self.engine.system
-        # if not system.is_external(source[1]) and not system.is_external(target[1]):
-        #     if not (c.target.is_service() and c.target.is_admin()):
-        #         return c
+        system = self.engine.system
+        if system.matching_level > 1 and not system.is_external(source[1]) and not system.is_external(target[1]):
+            if not (c.target.is_service() and c.target.is_admin()):
+                return c
         # all local connections should be defined explicitly, except admin services
 
         def set_external(e: Addressable) -> None:
