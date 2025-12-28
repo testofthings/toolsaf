@@ -20,6 +20,16 @@ Each batch directory also has a _label_, which allows Toolsaf to filter the proc
     "label": "nmap-01"
 }
 ```
+Here is what can be defined in a `00meta.json`:
+| Key                 | Optional? | Use case                                        |
+|---------------------|:---------:|-------------------------------------------------|
+| `file_type`         |           | Type of files in batch directory                |
+| `addresses`         |    X      | [Explained here](#other-metafile-definitions)   |
+| `label`             |    X      | Tool data filtering with the `-L` flag          |
+| `description`       |    X      | Free-form description of your data              |
+| `location`          |    X      | Where the data was collected                    |
+| `external_activity` |    X      | [Explained here](#other-metafile-definitions)   |
+| `file_order`        |    X      | [Explained here](#other-metafile-definitions)   |
 
 Here is an example batch directory structure:
 ```
@@ -30,9 +40,10 @@ sample-data
 ├── pcap-0
 │   ├── 00meta.json
 │   └── capture.pcap
-└── pcap-1
-    ├── 00meta.json
-    └── capture.pcap
+├── pcap-1
+│   ├── 00meta.json
+│   └── capture.pcap
+└── 00meta.json
 ```
 
 See [end of this page](#advanced-metafile-definitions) for advanced options required with some data types.
