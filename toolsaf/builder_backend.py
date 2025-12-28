@@ -248,6 +248,7 @@ class NodeBackend(NodeBuilder, NodeManipulator):
         return self
 
     def dns(self, name: str) -> Self:
+        name = name.strip()
         DNSName.validate(name)
         dn = DNSName(name)
         networks = self.entity.get_networks_for(dn)
@@ -455,8 +456,9 @@ class HostBackend(NodeBackend, HostBuilder):
 
     def ignore_name_requests(self, *name: str) -> Self:
         for n in name:
+            n = n.strip()
             DNSName.validate(n)
-        self.entity.ignore_name_requests.update([DNSName(n) for n in name])
+            self.entity.ignore_name_requests.add(DNSName(n))
         return self
 
     def set_property(self, *key: str) -> Self:
