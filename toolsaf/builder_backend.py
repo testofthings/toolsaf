@@ -102,6 +102,13 @@ class SystemBackend(SystemBuilder):
         b.entity.host_type = HostType.BROWSER
         return b
 
+    def multicast(self, name: str="") -> 'HostBackend':
+        name = name or self._free_host_name("Multicast")
+        b = self.get_host_(name, "Multicast")
+        b.entity.host_type = HostType.GENERIC
+        b.entity.external_activity = ExternalActivity.PASSIVE
+        return b
+
     def any(self, name: str="", node_type: Optional[HostType] = None) -> 'HostBackend':
         name = name or self._free_host_name("Environment")
         b = self.get_host_(name, "Environment")

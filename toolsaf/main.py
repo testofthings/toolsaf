@@ -27,6 +27,7 @@ class SystemBuilder:
            2 = strict, all local connections must be defined explicitly
         """
         raise NotImplementedError()
+
     def network(self, subnet: str="") -> 'NetworkBuilder':
         """Configure network or subnetwork"""
         raise NotImplementedError()
@@ -45,6 +46,10 @@ class SystemBuilder:
 
     def browser(self, name: str="") -> 'HostBuilder':
         """Browser"""
+        raise NotImplementedError()
+
+    def multicast(self, name: str="") -> 'HostBuilder':
+        """Virtual host to listen multicast or broadcast traffic"""
         raise NotImplementedError()
 
     def any(self, name: str="", node_type: Optional[HostType] = None) -> 'HostBuilder':
