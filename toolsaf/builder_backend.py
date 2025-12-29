@@ -58,12 +58,6 @@ class SystemBackend(SystemBuilder):
         self.protocols: Dict[Any, 'ProtocolBackend'] = {}
         self.ignore_backend = IgnoreRulesBackend()
 
-    def matching_level(self, level: int) -> Self:
-        if level < 1 or level > 2:
-            raise ConfigurationException("Matching level must be 1 or 2")
-        self.system.matching_level = level
-        return self
-
     def network(self, subnet: str="", ip_mask: Optional[str] = None) -> 'NetworkBuilder':
         if subnet:
             nb = NetworkBackend(self, subnet)
@@ -1086,6 +1080,8 @@ class SystemBackendRunner(SystemBackend):
                             help="List tools read from batch")
         parser.add_argument("--def-loads", "-L", type=str,
                             help="Comma-separated list of tools to load")
+        parser.add_argument("--match-level", "-m", type=int, choices=[0, 1, 2], default=0,
+                            help="Set matching level, default is 1")
         parser.add_argument("--with-files", "-w", action="store_true", help="Show relevant result files for verdicts")
         parser.add_argument("-s", "--show", type=lambda s: s.split(","), default=[],
                             help="Show additional info in output. Valid values: all, properties, ignored, irrelevant")
@@ -1152,6 +1148,9 @@ class SystemBackendRunner(SystemBackend):
             self.system = deserialized_system
 
         self.finish_()
+
+        if args.match_level:
+            self.system.matching_level = args.match_level
 
         registry = Registry(Inspector(self.system, self.system.ignore_rules))
 

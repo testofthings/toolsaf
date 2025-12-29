@@ -21,13 +21,6 @@ class ConfigurationException(Exception):
 
 class SystemBuilder:
     """System model builder"""
-    def matching_level(self, level: int) -> Self:
-        """Set matching level for the system model:
-           1 = default
-           2 = strict, all local connections must be defined explicitly
-        """
-        raise NotImplementedError()
-
     def network(self, subnet: str="") -> 'NetworkBuilder':
         """Configure network or subnetwork"""
         raise NotImplementedError()
