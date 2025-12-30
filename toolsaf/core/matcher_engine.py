@@ -6,13 +6,14 @@ from toolsaf.core.address_ranges import MulticastTarget, PortRange
 from toolsaf.common.address import AddressAtNetwork, Addresses, AnyAddress, EndpointAddress, EntityTag, \
     Network, Protocol
 from toolsaf.common.basics import Status
-from toolsaf.common.traffic import Flow, IPFlow
+from toolsaf.common.traffic import EvidenceSource, Flow, IPFlow
 from toolsaf.core.model import Addressable, Connection, Host, IoTSystem, Service
 
 class MatcherEngine:
     """Matcher engine for matching connections and endpoints"""
-    def __init__(self, system: IoTSystem):
+    def __init__(self, system: IoTSystem, evidence_source: Optional[EvidenceSource] = None) -> None:
         self.system = system
+        self.evidence_source = evidence_source
         self.endpoints: Dict[Addressable, AddressClue] = {}
         self.addresses: Dict[AddressAtNetwork, List[AddressClue]] = {}
         self.wildcard_hosts: List[AddressClue] = []
@@ -186,6 +187,8 @@ class MatcherEngine:
 
     def __repr__(self) -> str:
         r = []
+        if self.evidence_source:
+            r.append(f"{self.evidence_source}")
         for addr, clues in self.addresses.items():
             for clue in clues:
                 r.append(f"{addr} | {clue}")

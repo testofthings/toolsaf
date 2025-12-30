@@ -73,7 +73,7 @@ class MatchingContext:
     def __init__(self, system: SystemMatcher, source: EvidenceSource) -> None:
         self.system = system
         self.observed: Dict[Flow, ConnectionMatch] = {}
-        self.engine = MatcherEngine(system.system)
+        self.engine = MatcherEngine(system.system, source)
 
         # load system model into matching engine
         for c in system.system.get_connections(relevant_only=False):
