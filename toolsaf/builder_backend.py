@@ -73,6 +73,10 @@ class SystemBackend(SystemBuilder):
         b.entity.host_type = HostType.DEVICE
         # E.g. ICMP ping is fine, but no reply unless in the model
         b.entity.external_activity = ExternalActivity.PASSIVE
+        # TODO: Consider stricter matching
+        # if self.system.matching_level > 1:
+        #     # local devices are not expected to be contacted unless defined
+        #     b.entity.external_activity = ExternalActivity.BANNED
         return b
 
     def backend(self, name: str="") -> 'HostBackend':

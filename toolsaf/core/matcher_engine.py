@@ -1,5 +1,6 @@
 """Connection and endpoint matching"""
 
+import logging
 from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
 from toolsaf.core.address_ranges import MulticastTarget, PortRange
@@ -18,6 +19,7 @@ class MatcherEngine:
         self.addresses: Dict[AddressAtNetwork, List[AddressClue]] = {}
         self.wildcard_hosts: List[AddressClue] = []
         self.connections: Dict[Connection, ConnectionClue] = {}
+        self.logger = logging.getLogger(__name__)
 
     def find_host(self, address: AnyAddress) -> Optional[Host]:
         """Find host by address"""
@@ -53,6 +55,7 @@ class MatcherEngine:
         """Notify engine of address update for host"""
         clue = self.endpoints.get(host)
         if not clue:
+            # self.logger.info("DNS update for %s: new host", host.long_name())
             self.add_addressable(host)
             return
         # delete removed addresses and add new ones
@@ -63,26 +66,35 @@ class MatcherEngine:
                 continue  # skip tags
             for net in host.get_networks_for(address):
                 addr_net = AddressAtNetwork(address, net)
+                new_set.add(addr_net)
                 if addr_net not in clue.addresses:
                     # new address
+                    keep_old = None
+                    for old_clue in self.addresses.get(addr_net, ()):
+                        if old_clue != clue and addr_net not in old_clue.soft_addresses:
+                            keep_old = old_clue
+                            break
+                    if keep_old:
+                        self.logger.info("DNS update for %s: %s, ignored as it is %s's address",
+                                         host.long_name(), addr_net.address, keep_old.entity.long_name())
+                        continue
                     clue.addresses.add(addr_net)
                     clue.soft_addresses.add(addr_net)
-                    # override old mappings for the address
-                    for old_clue in self.addresses.get(addr_net, ()):
-                        if old_clue != clue:
-                            old_clue.addresses.remove(addr_net)
-                    self.addresses[addr_net] = [clue]
+                    if not keep_old:
+                        # override old mappings for the address
+                        self.addresses[addr_net] = [clue]
                     additions = True
-                new_set.add(addr_net)
-            for addr_net in list(clue.addresses):
-                if addr_net not in new_set and addr_net in clue.soft_addresses:
-                    # removed address
-                    clue.addresses.remove(addr_net)
-                    clues = self.addresses.get(addr_net)
-                    if clues:
-                        clues.remove(clue)
-                        if not clues:
-                            del self.addresses[addr_net]
+        for addr_net in list(clue.addresses):
+            if addr_net not in new_set and addr_net in clue.soft_addresses:
+                # removed address
+                self.logger.info("DNS update for %s: removing dropped address %s",
+                                    host.long_name(), addr_net.address)
+                clue.addresses.remove(addr_net)
+                clues = self.addresses.get(addr_net)
+                if clues:
+                    clues.remove(clue)
+                    if not clues:
+                        del self.addresses[addr_net]
 
         if additions and not host.any_host and not clue.addresses:
             # remove from wildcard hosts, if there, do not re-add
