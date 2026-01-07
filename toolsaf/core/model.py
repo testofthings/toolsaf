@@ -591,6 +591,9 @@ class IoTSystem(NetworkNode):
         # Include IgnoreRules in the model
         self.ignore_rules = IgnoreRules()
 
+        # Matching level - higher means stricter matching
+        self.matching_level = 1
+
     # NOTE: get_children() does not return connections
 
     def get_children(self) -> Iterable['Entity']:
