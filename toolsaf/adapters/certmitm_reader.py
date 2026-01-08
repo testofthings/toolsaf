@@ -51,7 +51,7 @@ class CertMITMReader(SystemWideTool):
         # Workaround for showing that certmitm was used
         with ZipFile(data) as zip_file:
             for file in zip_file.filelist:
-                if "certificates" in file.filename:
+                if "certificates" in file.filename and not file.filename.endswith("/"):
                     dns_name = DNSName(file.filename.split("/")[-1].split("_")[0])
                     DNSName.validate(dns_name.name)
                     if dns_name in dns_names:
