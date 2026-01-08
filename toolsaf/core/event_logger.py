@@ -36,7 +36,6 @@ class LoggingEvent:
     def _update_verdict(self, properties: PropertyDict) -> None:
         """Update verdict from properties"""
         for p in properties.values():
-            ver = Verdict.INCON
             match p:
                 case Verdictable():
                     ver = p.get_verdict()
