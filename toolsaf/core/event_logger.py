@@ -10,7 +10,7 @@ from toolsaf.common.entity import Entity
 from toolsaf.core.event_interface import EventInterface, PropertyEvent, PropertyAddressEvent
 from toolsaf.core.inspector import Inspector
 from toolsaf.core.model import IoTSystem, Connection, Host, ModelListener, Service
-from toolsaf.common.property import Properties, PropertyKey, PropertySetValue
+from toolsaf.common.property import Properties, PropertyDict, PropertyKey, PropertySetValue
 from toolsaf.core.services import NameEvent
 from toolsaf.common.traffic import Evidence, EvidenceSource, HostScan, ServiceScan, Flow, Event
 
@@ -20,27 +20,42 @@ class LoggingEvent:
     def __init__(self, event: Event, entity: Optional[Entity] = None,
                  property_value: Optional[Tuple[PropertyKey, Any]] = None) -> None:
         self.event = event
-        self.property_value = property_value  # implicit property set
+        self.property_value = property_value  # implicit property set by inspector
         self.entity = entity
-        self.verdict = Verdict.INCON
+        self.verdict = Verdict.INCON  # expected verdict
+        if isinstance(event, Flow):
+            # Flow can carry properties (at least MITM verdict)
+            self._update_verdict(event.properties)
 
-    def pick_status_verdict(self, entity: Optional[Entity]) -> None:
-        """Pick current status verdict"""
+    def pick_entity_verdict(self, entity: Optional[Entity]) -> None:
+        """Update entity and verdict"""
         if entity is not None:
             self.entity = entity
-            self.verdict = Properties.EXPECTED.get_verdict(entity.properties) or Verdict.INCON
+            self._update_verdict(entity.properties)
+
+    def _update_verdict(self, properties: PropertyDict) -> None:
+        """Update verdict from properties"""
+        for p in properties.values():
+            match p:
+                case Verdictable():
+                    ver = p.get_verdict()
+                case PropertySetValue():
+                    ver = p.get_overall_verdict(properties)
+                case _:
+                    continue
+            self.verdict = Verdict.update(self.verdict, ver)
 
     def resolve_verdict(self) -> Verdict:
-        """Resolve verdict"""
-        if self.verdict != Verdict.INCON:
-            return self.verdict
+        """Resolve verdict, implicit or explicit"""
+        ver = self.verdict
+        ver2 = Verdict.INCON
         if self.property_value:
             value = self.property_value[1]
             if isinstance(value, Verdictable):
-                return value.get_verdict()
+                ver2 = value.get_verdict()
             if isinstance(value, PropertySetValue) and self.entity:
-                return value.get_overall_verdict(self.entity.properties)
-        return Verdict.INCON
+                ver2 = value.get_overall_verdict(self.entity.properties)
+        return Verdict.update(ver, ver2)
 
     def get_properties(self) -> Set[PropertyKey]:
         """Get implicit and explicit properties"""
@@ -122,7 +137,7 @@ class EventLogger(EventInterface, ModelListener):
         e = self.inspector.connection(flow)
         if e is None:
             return None
-        lo.pick_status_verdict(e)
+        lo.pick_entity_verdict(e)
         if self.event_logger:
             self.print_event(lo)
         self.current = None
@@ -133,7 +148,7 @@ class EventLogger(EventInterface, ModelListener):
         e = self.inspector.name(event)
         if e is None:
             return None  # redundant event, no actions
-        lo.pick_status_verdict(e)
+        lo.pick_entity_verdict(e)
         if self.event_logger:
             self.print_event(lo)
         self.current = None
@@ -160,7 +175,7 @@ class EventLogger(EventInterface, ModelListener):
     def service_scan(self, scan: ServiceScan) -> Service:
         lo = self._add(scan)
         e = self.inspector.service_scan(scan)
-        lo.pick_status_verdict(e)
+        lo.pick_entity_verdict(e)
         if self.event_logger:
             self.print_event(lo)
         self.current = None
@@ -169,7 +184,7 @@ class EventLogger(EventInterface, ModelListener):
     def host_scan(self, scan: HostScan) -> Host:
         lo = self._add(scan)
         e = self.inspector.host_scan(scan)
-        lo.pick_status_verdict(e)
+        lo.pick_entity_verdict(e)
         if self.event_logger:
             self.print_event(lo)
         self.current = None
