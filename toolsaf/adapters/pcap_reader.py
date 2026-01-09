@@ -1,6 +1,6 @@
 """PCAP tool"""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from io import BufferedReader
 from ipaddress import IPv4Address, IPv6Address
 import pathlib
@@ -36,7 +36,7 @@ class PCAPReader(SystemWideTool):
         self.source: Optional[EvidenceSource] = None
         self.interface: Optional[EventInterface] = None
         self.frame_number = 0
-        self.timestamp = datetime.fromtimestamp(0)
+        self.timestamp = datetime.fromtimestamp(0, timezone.utc)
         self.ip_reassembler = IPReassembler()
         self.dns_names: Dict[Any, str] = {}  # report one just once
 
@@ -47,7 +47,7 @@ class PCAPReader(SystemWideTool):
         with pcap_file.open("rb") as f:
             ev = EvidenceSource(pcap_file.name)
             # tool-specific code can override, if knows better
-            ev.timestamp = datetime.fromtimestamp(pcap_file.stat().st_mtime)
+            ev.timestamp = datetime.fromtimestamp(pcap_file.stat().st_mtime, timezone.utc)
             r.process_file(f, pcap_file.name, interface, ev)
         return r
 
@@ -74,7 +74,7 @@ class PCAPReader(SystemWideTool):
         for rec in PCAPFile.Packet_Records.iterate(pcap):
             self.frame_number = count + 1
             try:
-                self.timestamp = datetime.fromtimestamp(PacketRecord.Timestamp[rec])
+                self.timestamp = datetime.fromtimestamp(PacketRecord.Timestamp[rec], timezone.utc)
                 self.source.timestamp = self.timestamp  # recent
                 PacketRecord.Packet_Data.process_frame(rec, {
                     EthernetII: self._ethernet_frame
@@ -186,7 +186,9 @@ class PCAPReader(SystemWideTool):
                     self.logger.warning("Invalid DNS name in question: '%s'", name)
                     continue
                 self.dns_names[name] = ""
-                events.append(NameEvent(evidence, service, name=DNSName(name), peers=peers))
+                events.append(NameEvent(
+                    evidence, service, name=DNSName(name), peers=peers, timestamp=self.timestamp
+                ))
 
         def learn_name(name: str, ip: IPv4Address | IPv6Address) -> None:
             old = self.dns_names.get(ip)
@@ -198,7 +200,9 @@ class PCAPReader(SystemWideTool):
                 self.logger.warning("Invalid DNS name in resource record: '%s'", name)
                 return
             self.dns_names[ip] = name
-            n = NameEvent(evidence, service, name=DNSName(name), address=IPAddress(ip), peers=peers)
+            n = NameEvent(
+                evidence, service, name=DNSName(name), address=IPAddress(ip), peers=peers, timestamp=self.timestamp
+            )
             events.append(n)
 
         rd_frames = []
