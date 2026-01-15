@@ -208,15 +208,15 @@ For example, the following defines TCP service in port 8888.
 a_service = backend / TCP(port=8888)
 ```
 
-A service availale using many ports or available in random port can use
+A service available using many ports or available in random port can use
 port ranges for UDP and TCP, e.g. (note use of `TCP()` with empty brackets):
 
 ```python
-b_service = backend / TCP().port_range(8000-9000)
+b_service = backend / TCP().port_range(8000, 9000)
 ```
 
 Multiple `port_range(...)` definitions can be chained,
-and individual ports can be defined like `port(2000, 3000)`.
+and individual ports can be defined like `ports(2000, 3000)`.
 Port ranges can be used with multicasts and broadcasts below.
 
 ## Multicast and broadcast
