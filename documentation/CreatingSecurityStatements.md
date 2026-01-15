@@ -212,7 +212,7 @@ A service availale using many ports or available in random port can use
 port ranges for UDP and TCP, e.g. (note use of `TCP()` with empty brackets):
 
 ```python
-b_service = backend / TCP().port_range(8000-9000)
+b_service = backend / TCP().port_range(8000, 9000)
 ```
 
 Multiple `port_range(...)` definitions can be chained,
