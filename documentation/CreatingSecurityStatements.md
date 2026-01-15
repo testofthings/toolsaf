@@ -208,7 +208,7 @@ For example, the following defines TCP service in port 8888.
 a_service = backend / TCP(port=8888)
 ```
 
-A service availale using many ports or available in random port can use
+A service available using many ports or available in random port can use
 port ranges for UDP and TCP, e.g. (note use of `TCP()` with empty brackets):
 
 ```python
