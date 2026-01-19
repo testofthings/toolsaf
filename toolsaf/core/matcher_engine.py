@@ -1,5 +1,6 @@
 """Connection and endpoint matching"""
 
+import logging
 from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
 from toolsaf.core.address_ranges import MulticastTarget, PortRange
@@ -18,6 +19,8 @@ class MatcherEngine:
         self.addresses: Dict[AddressAtNetwork, List[AddressClue]] = {}
         self.wildcard_hosts: List[AddressClue] = []
         self.connections: Dict[Connection, ConnectionClue] = {}
+        self.logger = logging.getLogger(__name__)
+        self.label = evidence_source.label if evidence_source else "matcher"
 
     def find_host(self, address: AnyAddress) -> Optional[Host]:
         """Find host by address"""
@@ -55,7 +58,8 @@ class MatcherEngine:
         if not clue:
             self.add_addressable(host)
             return
-        # delete removed addresses and add new ones
+
+        # detect host new addresses and add clues for them
         new_set: Set[AddressAtNetwork] = set()
         additions = False
         for address in host.addresses:
@@ -63,26 +67,33 @@ class MatcherEngine:
                 continue  # skip tags
             for net in host.get_networks_for(address):
                 addr_net = AddressAtNetwork(address, net)
+                new_set.add(addr_net)
                 if addr_net not in clue.addresses:
                     # new address
                     clue.addresses.add(addr_net)
                     clue.soft_addresses.add(addr_net)
-                    # override old mappings for the address
-                    for old_clue in self.addresses.get(addr_net, ()):
-                        if old_clue != clue:
-                            old_clue.addresses.remove(addr_net)
-                    self.addresses[addr_net] = [clue]
+
+                    # clues are applied in order:
+                    # 1. Addresses from entity definitions
+                    # 2. Address mappings from metafiles
+                    # 3. DNS name updates
+                    clue_list = self.addresses.setdefault(addr_net, [])
+                    clue_list.append(clue)
+
                     additions = True
-                new_set.add(addr_net)
-            for addr_net in list(clue.addresses):
-                if addr_net not in new_set and addr_net in clue.soft_addresses:
-                    # removed address
-                    clue.addresses.remove(addr_net)
-                    clues = self.addresses.get(addr_net)
-                    if clues:
-                        clues.remove(clue)
-                        if not clues:
-                            del self.addresses[addr_net]
+
+        # detect removed addresses
+        for addr_net in list(clue.addresses):
+            if addr_net not in new_set and addr_net in clue.soft_addresses:
+                # removed address
+                self.logger.info("%s DNS update for %s: %s removed from entity", self.label,
+                                 host.long_name(), addr_net.address)
+                clue.addresses.remove(addr_net)
+                clues = self.addresses.get(addr_net)
+                if clues:
+                    clues.remove(clue)
+                    if not clues:
+                        del self.addresses[addr_net]
 
         if additions and not host.any_host and not clue.addresses:
             # remove from wildcard hosts, if there, do not re-add
@@ -187,6 +198,8 @@ class MatcherEngine:
 
     def __repr__(self) -> str:
         r = []
+        if self.evidence_source:
+            r.append(f"{self.evidence_source}")
         for addr, clues in self.addresses.items():
             for clue in clues:
                 r.append(f"{addr} | {clue}")
