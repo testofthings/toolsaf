@@ -73,6 +73,10 @@ class SystemBackend(SystemBuilder):
         b.entity.host_type = HostType.DEVICE
         # E.g. ICMP ping is fine, but no reply unless in the model
         b.entity.external_activity = ExternalActivity.PASSIVE
+        # TODO: Consider stricter matching
+        # if self.system.matching_level > 1:
+        #     # local devices are not expected to be contacted unless defined
+        #     b.entity.external_activity = ExternalActivity.BANNED
         return b
 
     def backend(self, name: str="") -> 'HostBackend':
@@ -94,6 +98,13 @@ class SystemBackend(SystemBuilder):
         name = name or self._free_host_name("Browser")
         b = self.get_host_(name, "Browser")
         b.entity.host_type = HostType.BROWSER
+        return b
+
+    def multicast(self, name: str="") -> 'HostBackend':
+        name = name or self._free_host_name("Multicast")
+        b = self.get_host_(name, "Multicast")
+        b.entity.host_type = HostType.GENERIC
+        b.entity.external_activity = ExternalActivity.PASSIVE
         return b
 
     def any(self, name: str="", node_type: Optional[HostType] = None) -> 'HostBackend':
@@ -1073,6 +1084,8 @@ class SystemBackendRunner(SystemBackend):
                             help="List tools read from batch")
         parser.add_argument("--def-loads", "-L", type=str,
                             help="Comma-separated list of tools to load")
+        parser.add_argument("--match-level", "-m", type=int, choices=[0, 1, 2], default=0,
+                            help="Set matching level, default is 1")
         parser.add_argument("--with-files", "-w", action="store_true", help="Show relevant result files for verdicts")
         parser.add_argument("-s", "--show", type=lambda s: s.split(","), default=[],
                             help="Show additional info in output. Valid values: all, properties, ignored, irrelevant")
@@ -1139,6 +1152,9 @@ class SystemBackendRunner(SystemBackend):
             self.system = deserialized_system
 
         self.finish_()
+
+        if args.match_level:
+            self.system.matching_level = args.match_level
 
         registry = Registry(Inspector(self.system, self.system.ignore_rules))
 

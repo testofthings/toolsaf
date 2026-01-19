@@ -156,6 +156,7 @@ Once the system object is created, you can begin defining the various network _h
 |----------------------|-------------|
 | `system.device()`    | IoT devices, gateways, and other _things_ |
 | `system.mobile()`    | Mobile applications |
+| `system.multicast()` | Stand-in for network entities outside of the secury statement which listen multicasts or broadcasts. Use when no otherwise defined host is listening for multi/broadcasts. |
 | `system.browser()`   | User's web browser |
 | `system.backend()`   | Backend services |
 | `system.network()`   | System networks |

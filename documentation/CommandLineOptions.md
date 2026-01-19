@@ -108,6 +108,11 @@ By using `--log-events`, you can display all events in the tool data.
 python product/statement.py -r ../sample-data --log-events
 ```
 
+## Experimental: More strict matching
+
+Command line switch `--match-level 2` (or `-m 2`) enabled more strict matching.
+With this, all local connections must be specified in security statement.
+
 ## FIXME:
 ```shell
 --dhcp                Add default DHCP server handling
