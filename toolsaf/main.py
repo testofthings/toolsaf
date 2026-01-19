@@ -41,6 +41,10 @@ class SystemBuilder:
         """Browser"""
         raise NotImplementedError()
 
+    def multicast(self, name: str="") -> 'HostBuilder':
+        """Virtual host to listen multicast or broadcast traffic"""
+        raise NotImplementedError()
+
     def any(self, name: str="", node_type: Optional[HostType] = None) -> 'HostBuilder':
         """Any host"""
         raise NotImplementedError()
