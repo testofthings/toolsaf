@@ -430,7 +430,7 @@ class SSH(ProtocolConfigurer):
 
 class TCP(ProtocolConfigurer):
     """TCP configurer"""
-    def __init__(self, port: int, name: str="TCP", administrative: bool=False) -> None:
+    def __init__(self, port: int=-1, name: str="TCP", administrative: bool=False) -> None:
         ProtocolConfigurer.__init__(self, name)
         self.port = port
         self.name = name
@@ -439,7 +439,7 @@ class TCP(ProtocolConfigurer):
 
 class UDP(ProtocolConfigurer):
     """UDP configurer"""
-    def __init__(self, port: int = -1, name: str="UDP", administrative: bool=False) -> None:
+    def __init__(self, port: int=-1, name: str="UDP", administrative: bool=False) -> None:
         ProtocolConfigurer.__init__(self, name)
         self.port = port
         self.name = name
