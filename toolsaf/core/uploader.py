@@ -1,6 +1,7 @@
 """JSON serialized statement uploader"""
 import os
-from typing import Union, Dict, List, Any, Optional
+import json
+from typing import Union, Dict, List, Any, Optional, cast
 from pathlib import Path
 import requests
 from toolsaf.main import ConfigurationException
@@ -89,10 +90,20 @@ class Uploader:
         except ConnectionError as e:
             raise ConnectionError("Data upload failed!") from e
 
-    def _handle_response(self, response: requests.Response, stop_on_error: bool=False) -> None:
+    def _handle_response(self, response: requests.Response, stop_on_error: bool=False,
+                         print_response_json: bool=True) -> Dict[str, Any]:
+        """Handle response from server after data upload, returns response JSON"""
+        try:
+            response_json = cast(Optional[Dict[str, Any]], response.json())
+        except json.JSONDecodeError as e:
+            raise ConnectionError("Data upload failed! Response JSON decode failed") from e
+        if not response_json:
+            raise ConnectionError("Data upload failed! No JSON response from server")
         if stop_on_error and not response.ok:
-            raise ConnectionError(f"Data upload failed! Server response was: {response.json().get('error')}")
-        print(response.json())
+            raise ConnectionError(f"Data upload failed! Server response was: {response_json.get('error')}")
+        if print_response_json:
+            print(response_json)
+        return response_json
 
     def upload_statement(self) -> None:
         """Upload statement info to API"""
@@ -106,24 +117,43 @@ class Uploader:
         response = self._post(url, entities)
         self._handle_response(response, stop_on_error=True)
 
+    def _upload_evidence_source(self, source: Dict[str, Any]) -> int:
+        """Upload a single EvidenceSource to the API"""
+        url = f"{self._api_url}/api/result/{self.statement_url}/evidence-source"
+        response = self._post(url, source)
+        response_json = self._handle_response(response, stop_on_error=True)
+        if not (source_id := response_json.get("source_id")):
+            raise ConnectionError("Data upload failed! No source_id returned from server")
+        try:
+            source_id = int(source_id)
+        except ValueError as e:
+            raise ConnectionError("Data upload failed! Invalid source_id returned from server") from e
+        return source_id
+
+    def _upload_events(self, events: List[Dict[str, Any]], source_id: int) -> None:
+        """Upload Events related to an EvidenceSource"""
+        url = f"{self._api_url}/api/result/evidence-source/{source_id}/events"
+        response = self._post(url, events)
+        self._handle_response(response, stop_on_error=True, print_response_json=False)
+
     def upload_logs(self, logs: List[Dict[str, Any]]) -> None:
         """Upload EvidenceSources and related Events in batches to the API"""
-        url = f"{self._api_url}/api/statement/{self.statement_url}/events"
-        batch: List[Dict[str, Any]] = []
+        events: List[Dict[str, Any]] = []
+        source_id = 0
         for entry in logs:
-            if entry["type"] == "source" and batch and batch[0] != entry:
-                self._upload_batch(batch, url)
-                batch = []
-            batch.append(entry)
+            if entry["type"] == "source":
+                if events:
+                    self._upload_events(events, source_id)
+                    events = []
+                source_id = self._upload_evidence_source(entry)
+            else:
+                events.append(entry)
+        if events:
+            self._upload_events(events, source_id)
 
-        if batch:
-            self._upload_batch(batch, url)
-
-    def _upload_batch(self, batch: List[Dict[str, Any]], url: str) -> None:
-        """Post a single batch containing one EvidenceSource and its Events"""
-        print(f"Uploading {batch[0]['base_ref']}")
-        response = self._post(url, batch)
-        self._handle_response(response, stop_on_error=True)
+        # Everything uploaded
+        response = self._post(f"{self._api_url}/api/result/{self.statement_url}/commit", {})
+        self._handle_response(response, stop_on_error=False)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 """Nmap scan result XML parser"""
 
 from io import BufferedReader
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Set, Tuple, Optional
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
@@ -43,7 +43,7 @@ class NMAPScan(SystemWideTool):
         if (timestamp := self.get_sub_element(root, "runstats", "finished").get("time")) is None:
             raise ConfigurationException("Could not find timestamp fron nmap .xml")
         try:
-            return datetime.fromtimestamp(int(timestamp))
+            return datetime.fromtimestamp(int(timestamp), timezone.utc)
         except ValueError as err:
             raise ConfigurationException(f"Could not convert {timestamp} to datetime") from err
 

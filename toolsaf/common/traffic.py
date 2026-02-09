@@ -10,11 +10,13 @@ from toolsaf.common.property import PropertyKey
 
 class EvidenceSource:
     """Evidence source"""
-    def __init__(self, name: str = "", base_ref: str="", label: str="") -> None:
+    def __init__(self, name: str = "", base_ref: str="", label: str="", description: str="", location: str="") -> None:
         self.name = name
         self.target = ''
         self.base_ref = base_ref
         self.label = label or base_ref or self.name
+        self.description = description
+        self.location = location
         self.model_override = False  # model loading overrides values
         self.timestamp: Optional[datetime.datetime] = None
 

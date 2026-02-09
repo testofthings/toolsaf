@@ -57,7 +57,7 @@ class EventSerializer(Serializer[Event]):
     def read_evidence(cls, stream: SerializerStream) -> Evidence:
         """Read evidence from stream"""
         source = stream.resolve("source-id", of_type=EvidenceSource)
-        tail_ref = stream.get("tail-ref") or ""
+        tail_ref = stream.get("ref") or ""
         return Evidence(source, tail_ref)
 
 
@@ -66,9 +66,10 @@ class EvidenceSourceSerializer(Serializer[EvidenceSource]):
     def __init__(self, system: IoTSystem) -> None:
         super().__init__(EvidenceSource)
         self.system = system
-        self.config.map_simple_fields("name", "label", "target")
+        self.config.map_simple_fields("name", "target", "description", "location")
 
     def write(self, obj: EvidenceSource, stream: SerializerStream) -> None:
+        stream += "tool_label", obj.label
         stream += "base_ref", Path(obj.base_ref).name
         if obj.timestamp:
             stream += "timestamp", obj.timestamp.isoformat()
@@ -92,6 +93,7 @@ class EvidenceSourceSerializer(Serializer[EvidenceSource]):
 
     def read(self, obj: EvidenceSource, stream: SerializerStream) -> None:
         ts = stream - "timestamp"
+        obj.label = stream["tool_label"]
         obj.base_ref = stream["base_ref"]
         obj.timestamp = datetime.datetime.fromisoformat(ts) if ts else None
         if isinstance(obj, EvidenceNetworkSource):
@@ -392,6 +394,8 @@ class NameEventSerializer(Serializer[NameEvent]):
             stream += "tag", obj.tag.tag
         if obj.address:
             stream += "address", obj.address.get_parseable_value()
+        if obj.timestamp:
+            stream += "timestamp", obj.timestamp.isoformat()
 
     def new(self, stream: SerializerStream) -> NameEvent:
         name = DNSName(v) if (v := stream.get("name")) else None
@@ -419,3 +423,6 @@ class NameEventSerializer(Serializer[NameEvent]):
                 assert isinstance(peer, Addressable)
                 peers.append(peer)
         obj.peers = peers
+
+        if (timestamp := stream - "timestamp"):
+            obj.timestamp = datetime.datetime.fromisoformat(timestamp)

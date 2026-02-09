@@ -41,7 +41,7 @@ def test_process_node():
     with Path("tests/samples/har/browser.json").open("rb") as f:
         scan.process_node(browser.entity, f, setup.get_inspector(), source)
 
-        assert source.timestamp == datetime.strptime("2023-03-27T06:34:38.781Z", "%Y-%m-%dT%H:%M:%S.%fZ")
+        assert source.timestamp == datetime.fromisoformat("2023-03-27T06:34:38.781+00:00")
 
         assert len(browser.entity.components) == 1
         assert len(browser.entity.components[0].cookies) == 3

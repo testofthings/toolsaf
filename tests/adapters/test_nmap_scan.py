@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import MagicMock
 from xml.etree import ElementTree
 from io import BytesIO
-from datetime import datetime
+from datetime import datetime, timezone
 
 from toolsaf.adapters.nmap_scan import NMAPScan
 from toolsaf.main import ConfigurationException, HTTP
@@ -59,7 +59,7 @@ def test_get_from_element(xml_data, value, exp_result):
     [
         (
             '<root><runstats><finished time="1633024800"/></runstats></root>',
-            datetime.fromtimestamp(1633024800)
+            datetime.fromtimestamp(1633024800, timezone.utc)
         ),
         (
             '<root><runstats><finished/></runstats></root>',
@@ -245,7 +245,7 @@ def test_process_file():
 
     scan.process_file(xml_data_bytes, "test.xml", setup.get_inspector(), source)
 
-    assert source.timestamp == datetime.fromtimestamp(1633024800)
+    assert source.timestamp == datetime.fromtimestamp(1633024800, timezone.utc)
     assert len(device.entity.children) == 2
     http = device.entity.children[0]
     ssh = device.entity.children[1]
