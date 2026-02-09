@@ -95,8 +95,6 @@ class EvidenceSourceSerializer(Serializer[EvidenceSource]):
         ts = stream - "timestamp"
         obj.label = stream["tool_label"]
         obj.base_ref = stream["base_ref"]
-        obj.description = stream["description"]
-        obj.location = stream["location"]
         obj.timestamp = datetime.datetime.fromisoformat(ts) if ts else None
         if isinstance(obj, EvidenceNetworkSource):
             add_map = stream - "address_map"
