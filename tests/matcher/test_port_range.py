@@ -6,7 +6,7 @@ from toolsaf.common.traffic import IPFlow
 from toolsaf.core.address_ranges import PortRange
 from toolsaf.core.matcher import SystemMatcher
 from toolsaf.core.matcher_engine import MatcherEngine
-from toolsaf.main import UDP
+from toolsaf.main import UDP, TCP
 
 
 def test_port_range_matching():
@@ -15,12 +15,15 @@ def test_port_range_matching():
     dev0.external_activity(ExternalActivity.OPEN)
     s0 = dev0 / UDP().port_range(1000, 2000).ports(2500)
     s1 = dev0 / UDP().port_range(2200, 2499).ports(3000, 3001)
+    s2 = dev0 / TCP().port_range(1000, 1500).ports(80, 443)
 
     assert str(s0.entity.port_range) == "1000-2000,2500"
     assert str(s1.entity.port_range) == "2200-2499,3000,3001"
+    assert str(s2.entity.port_range) == "80,443,1000-1500"
 
     assert s0.entity.name == "UDP:1000...2500"
     assert s1.entity.name == "UDP:2200...3001"
+    assert s2.entity.name == "TCP:80...1500"
 
     m = SystemMatcher(sb.system)
 
@@ -33,6 +36,14 @@ def test_port_range_matching():
     assert con.target == s1.entity
 
     flow = IPFlow.UDP("10:0:0:0:0:1", "120.0.0.2", 1100) >> ("10:0:0:0:0:2", "120.0.0.1", 2100)
+    con = m.connection(flow)
+    assert con.target == dev0.entity
+
+    flow = IPFlow.TCP("10:0:0:0:0:1", "120.0.0.2", 1100) >> ("10:0:0:0:0:2", "120.0.0.1", 1001)
+    con = m.connection(flow)
+    assert con.target == s2.entity
+
+    flow = IPFlow.TCP("10:0:0:0:0:1", "120.0.0.2", 1100) >> ("10:0:0:0:0:2", "120.0.0.1", 5555)
     con = m.connection(flow)
     assert con.target == dev0.entity
 
