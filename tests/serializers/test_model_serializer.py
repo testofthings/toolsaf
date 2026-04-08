@@ -2,9 +2,9 @@ from unittest.mock import patch, MagicMock
 from ipaddress import ip_network
 
 from toolsaf.core.address_ranges import AddressRange, MulticastTarget
-from toolsaf.main import HTTP, UDP, BLEAdvertisement
+from toolsaf.main import HTTP, UDP, BLEAdvertisement, DHCP, DNS
 from toolsaf.common.address import Addresses, EntityTag, DNSName, HWAddress, Network, PseudoAddress
-from toolsaf.common.basics import Status
+from toolsaf.common.basics import Status, ExternalActivity, HostType, ConnectionType
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.serializer.serializer import SerializerStream
 from toolsaf.core.components import Software, SoftwareComponent
@@ -21,6 +21,8 @@ from toolsaf.core.serializer.model_serializers import (
 )
 from tests.test_model_new import Setup_1
 from tests.test_model import Setup
+
+from toolsaf.core.serializer.pydantic_models import EpicSerializer
 
 
 def test_online_resource_serializer():
@@ -277,6 +279,214 @@ def test_service_with_multicast_target_serializer():
     assert new_service.con_type == service.con_type
     assert new_service.multicast_target == MulticastTarget(fixed_address=Addresses.parse_address("224.0.0.1"))
     assert new_service.port_range == service.port_range
+
+
+def test_iot_system_dto():
+    setup = Setup()
+    setup.system.system.name = "Test System"
+    setup.system.system.description = "desc"
+    setup.system.tag("test-tag")
+    device = setup.system.device("Device 1")
+    setup.system.ignore("pcap-0").at(device).properties("verdict:key", "verdict:key2").because("exp1")
+    setup.system.ignore("pcap-1").properties("verdict:key3").because("exp2")
+    setup.system.system.ignore_rules = setup.system.ignore_backend.get_rules()
+
+    serialized = EpicSerializer().serialize(setup.system.system)
+    assert serialized == {
+        "name": "Test System",
+        "description": "desc",
+        "match_priority": 0,
+        "system_address": "",
+        "long_name": "Test System",
+        "host_type": HostType.GENERIC.value,
+        "status": "Expected",
+        "expected": None,
+        "verdict": Verdict.INCON.value,
+        "external_activity": ExternalActivity.BANNED.value,
+        "properties": {},
+        "type": "system",
+        "upload_tag": "test-tag",
+        "ignore_rules": {
+            "rules": {
+                "pcap-0": [
+                    {
+                        "at": ["Device_1"],
+                        "explanation": "exp1",
+                        "properties": ["verdict:key", "verdict:key2"]
+                    }
+                ],
+                "pcap-1": [
+                    {
+                        "at": [],
+                        "explanation": "exp2",
+                        "properties": ["verdict:key3"]
+                    }
+                ]
+            }
+        }
+    }
+
+    iot_system = EpicSerializer().deserialize(serialized)
+    pass
+
+
+
+def test_host_dto():
+    setup = Setup()
+    device = setup.system.device("Device 1")
+    host = device.entity
+    host.ignore_name_requests.add(DNSName("test.com"))
+    host.ignore_name_requests.add(DNSName("test2.com"))
+
+    serialized = EpicSerializer().serialize(host)
+    ignore_name_reqs = serialized.pop("ignore_name_requests")
+    assert serialized == {
+        "name": "Device 1",
+        "description": "Internet Of Things device",
+        "match_priority": 10,
+        "system_address": "Device_1",
+        "long_name": "Device 1",
+        "host_type": HostType.DEVICE.value,
+        "status": "Expected",
+        "expected": None,
+        "verdict": Verdict.INCON.value,
+        "external_activity": ExternalActivity.PASSIVE.value,
+        "properties": {},
+        "addresses": ["Device_1"],
+        "any_host": False,
+        "type": "host"
+    }
+    assert sorted(ignore_name_reqs) == ["test.com", "test2.com"]
+
+
+def test_service_dto():
+    setup = Setup()
+    device = setup.system.device("Device 1")
+    service = (device / HTTP).entity
+
+    assert EpicSerializer().serialize(service) == {
+        "name": "HTTP:80",
+        "description": "",
+        "match_priority": 10,
+        "system_address": "Device_1/tcp:80",
+        "long_name": "Device 1 HTTP:80",
+        "host_type": HostType.GENERIC.value,
+        "status": "Expected",
+        "expected": None,
+        "verdict": Verdict.INCON.value,
+        "external_activity": ExternalActivity.PASSIVE.value,
+        "properties": {},
+        "addresses": ["*/tcp:80"],
+        "any_host": False,
+        "type": "service",
+        "protocol": "http",
+        "con_type": ConnectionType.UNKNOWN.value,
+        "authentication": False,
+        "client_side": False,
+        "multicast_target": None,
+        "port_range": None,
+        "reply_from_other_address": False
+    }
+
+
+def test_dhcp_service_dto():
+    setup = Setup()
+    device = setup.system.device("Device 1")
+    service = (device / DHCP).entity
+
+    assert EpicSerializer().serialize(service) == {
+        "name": "DHCP",
+        "description": "DHCP service",
+        "match_priority": 10,
+        "system_address": "Device_1/udp:67",
+        "long_name": "Device 1 DHCP",
+        "host_type": HostType.ADMINISTRATIVE.value,
+        "status": "Expected",
+        "expected": None,
+        "verdict": Verdict.INCON.value,
+        "external_activity": ExternalActivity.UNLIMITED.value,
+        "properties": {},
+        "addresses": ["*/udp:67"],
+        "any_host": False,
+        "type": "dhcp-service",
+        "protocol": None,
+        "con_type": ConnectionType.ADMINISTRATIVE.value,
+        "authentication": False,
+        "client_side": False,
+        "multicast_target": None,
+        "port_range": None,
+        "reply_from_other_address": True
+    }
+
+
+def test_dns_service_dto():
+    setup = Setup()
+    device = setup.system.device("Device 1")
+    service = (device / DNS).entity
+
+    assert EpicSerializer().serialize(service) == {
+        "name": "DNS",
+        "description": "",
+        "match_priority": 10,
+        "system_address": "Device_1/udp:53",
+        "long_name": "Device 1 DNS",
+        "host_type": HostType.ADMINISTRATIVE.value,
+        "status": "Expected",
+        "expected": None,
+        "verdict": Verdict.INCON.value,
+        "external_activity": ExternalActivity.OPEN.value,
+        "properties": {},
+        "addresses": ["*/udp:53"],
+        "any_host": False,
+        "type": "dns-service",
+        "protocol": None,
+        "con_type": ConnectionType.ADMINISTRATIVE.value,
+        "authentication": False,
+        "client_side": False,
+        "multicast_target": None,
+        "port_range": None,
+        "reply_from_other_address": False
+    }
+
+
+def test_software_dto():
+    setup = Setup()
+    device = setup.system.device("Device 1")
+    software = device.software("Test Software").sw
+    software.components = {
+        "tc": SoftwareComponent("test-component", "1.0"),
+        "tc2": SoftwareComponent("test-component2", "2.0"),
+    }
+    software.permissions.add("permission1")
+
+    assert EpicSerializer().serialize(software) == {
+        "name": "Test Software",
+        "system_address": "Device_1&software=Test_Software",
+        "status": "Expected",
+        "long_name": "Test Software",
+        "type": "software",
+        "components": [
+            {"key": "tc", "name": "test-component", "version": "1.0"},
+            {"key": "tc2", "name": "test-component2", "version": "2.0"},
+        ],
+        "permissions": ["permission1"]
+    }
+
+
+def test_connection_dto():
+    device1 = Setup().system.device("Device 1")
+    device2 = Setup().system.device("Device 2")
+    connection = (device1 >> device2 / HTTP).connection
+
+    assert EpicSerializer().serialize(connection) == {
+        "type": "connection",
+        "system_address": "source=Device_1&target=Device_2/tcp:80",
+        "source_system_address": "Device_1",
+        "target_system_address": "Device_2/tcp:80",
+        "status": "Expected",
+        "source_long_name": "Device 1",
+        "target_long_name": "Device 2 HTTP:80"
+    }
 
 
 def test_connection_serializer():

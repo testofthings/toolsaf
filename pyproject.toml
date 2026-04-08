@@ -27,7 +27,8 @@ dependencies = [
     "watchdog",
     "colored",
     "diagrams",
-    "shodan"
+    "shodan",
+    "pydantic"
 ]
 
 [project.optional-dependencies]
