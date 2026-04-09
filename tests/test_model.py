@@ -15,6 +15,7 @@ class Setup:
     """Testing setup"""
     def __init__(self):
         self.system = SystemBackend()
+        self.system.tag("test-system")
 
     def get_system(self) -> IoTSystem:
         """Get system"""
