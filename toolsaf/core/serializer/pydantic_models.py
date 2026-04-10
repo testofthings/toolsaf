@@ -1,5 +1,5 @@
 """Model serializers"""
-from typing import Dict, Any, Optional, List, Annotated, Union, Literal
+from typing import Callable, Dict, Any, Optional, List, Annotated, Union, Literal
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 from toolsaf.common.basics import Status, ExternalActivity, HostType, ConnectionType
@@ -28,15 +28,15 @@ UnionDTO = Annotated[
     ],
     Field(discriminator="type")
 ]
-NodeAdapter = TypeAdapter(UnionDTO)
+NODE_ADAPTER: TypeAdapter[UnionDTO] = TypeAdapter(UnionDTO)
 
 
 class EpicSerializer:
     """Serializes the whole model to JSON"""
-    def __init__(self):
-        self.model_map: Dict[str, Addressable] = {} # sys_addr, model object
-        self.verdict_map: Dict[str, Verdict] = {} # sys_addr, verdict
-        self.serializer_map = {
+    def __init__(self) -> None:
+        self.model_map: Dict[str, Any] = {} # sys_addr, model object
+        self.verdict_map: Dict[Any, Verdict] = {} # entity, verdict
+        self.serializer_map: Dict[type, Callable[..., None]] = {
             IoTSystem: self._serialize_iot_system,
             Host: self._serialize_host,
             Service: self._serialize_service,
@@ -50,52 +50,19 @@ class EpicSerializer:
         """Serialize an object to JSON"""
         if not (serializer := self.serializer_map.get(type(obj))):
             raise ValueError(f"Unsupported object type: {type(obj)}")
-        serialized = {}
+        serialized: Dict[str, Any] = {}
         serializer(obj, serialized)
         return serialized
 
-
     def deserialize(self, data: Dict[str, Any]) -> Any:
         """Deserialize an object from JSON"""
-        dto = NodeAdapter.validate_python(data)
-        match dto.type:
-            case "system":
-                model = IoTSystem()
-                self._populate_iot_system(model, dto)
-
-            case "host":
-                model = Host(parent=self.model_map[dto.parent], name=dto.name)
-                self._populate_host(model, dto)
-
-            case "dhcp-service":
-                model = DHCPService(parent=self.model_map[dto.parent], name=dto.name)
-                self._populate_service(model, dto)
-
-            case "dns-service":
-                model = DNSService(parent=self.model_map[dto.parent], name=dto.name)
-                self._populate_service(model, dto)
-
-            case "service":
-                model = Service(name=dto.name, parent=self.model_map[dto.parent])
-                self._populate_service(model, dto)
-
-            case "software":
-                model = Software(entity=self.model_map[dto.parent], name=dto.name)
-                self._populate_software(model, dto)
-
-            case "connection":
-                model = Connection(
-                    source=self.model_map[dto.source_system_address],
-                    target=self.model_map[dto.target_system_address]
-                )
-
-            case _:
-                raise ValueError(f"Unsupported DTO type: {type(dto)}")
-
-        return model
+        dto = NODE_ADAPTER.validate_python(data)
+        return dto.to_model(self.model_map)
 
     def _serialize_network_node(self, obj: NetworkNode, data: Dict[str, Any]) -> None:
-        """FIXME"""
+        """Serialize network node"""
+        expected = obj.get_expected_verdict(None)
+        verdict = obj.get_verdict(self.verdict_map)
         data.update({
             "name": obj.name,
             "description": obj.description,
@@ -103,39 +70,14 @@ class EpicSerializer:
             "system_address": obj.get_system_address().get_parseable_value(),
             "host_type": obj.host_type,
             "status": obj.status.value,
-            "expected": obj.get_expected_verdict(None).value if obj.get_expected_verdict(None) else None,
-            "verdict": obj.get_verdict(self.verdict_map).value if obj.get_verdict(self.verdict_map) else None,
+            "expected": expected.value if expected else None,
+            "verdict": verdict.value,
             "external_activity": obj.external_activity.value,
             "properties": {k.get_name(): k.get_value_json(v, {}) for k, v in obj.properties.items()}
         })
 
-    def _populate_network_node(self, obj: NetworkNode, dto: "NetworkNodeOutDTO") -> None:
-        """Populate a network node with data from JSON"""
-        # Not setting: system_address, expected, verdict
-        obj.name = dto.name
-        obj.description = dto.description
-        obj.match_priority = dto.match_priority
-        obj.host_type = dto.host_type
-        obj.status = dto.status
-        obj.external_activity = dto.external_activity
-
-        for key, value in dto.properties.items():
-            property_key = PropertyKey.parse(key)
-            explanation = value.get("exp", "")
-            if "verdict" in value:
-                verdict = Verdict.parse(value["verdict"])
-                obj.properties[property_key] = PropertyVerdictValue(verdict, explanation)
-            else:
-                sub_keys = {PropertyKey.parse(k) for k in value["set"]}
-                obj.properties[property_key] = PropertySetValue(sub_keys, explanation)
-
-        if not isinstance(obj, IoTSystem):
-            obj.get_system().originals.add(obj)
-
-        self.model_map[dto.system_address] = obj
-
     def _serialize_addressable(self, obj: Addressable, data: Dict[str, Any]) -> None:
-        """FIXME"""
+        """Serialize addressable"""
         self._serialize_network_node(obj, data)
         addresses = [a.get_parseable_value() for a in obj.addresses if not a.is_tag()]
         if (tag := obj.get_tag()) and not isinstance(obj, Service):
@@ -146,17 +88,8 @@ class EpicSerializer:
             "any_host": obj.any_host
         })
 
-    def _populate_addressable(self, obj: Addressable, dto: "AddressableOutDTO") -> None:
-        """Populate an addressable entity with data from JSON"""
-        self._populate_network_node(obj, dto)
-        for address in dto.addresses:
-            obj.addresses.add(Addresses.parse_endpoint(address))
-        obj.parent = self.model_map[dto.parent]
-        obj.parent.children.append(obj)
-        obj.any_host = dto.any_host
-
     def _serialize_ignore_rules(self, obj: IgnoreRules, data: Dict[str, Any]) -> None:
-        """FIXME"""
+        """Serialize ignore rules"""
         rules: Dict[str, List[Dict[str, Any]]] = {}
         for file_type in obj.rules:
             rules[file_type] = []
@@ -169,7 +102,7 @@ class EpicSerializer:
         data["ignore_rules"] = {"rules": rules}
 
     def _serialize_iot_system(self, obj: IoTSystem, data: Dict[str, Any]) -> None:
-        """FIXME"""
+        """Serialize IoT system"""
         self._serialize_network_node(obj, data)
         self._serialize_ignore_rules(obj.ignore_rules, data)
         data.update({
@@ -177,35 +110,16 @@ class EpicSerializer:
             "upload_tag": obj.upload_tag
         })
 
-    def _populate_iot_system(self, obj: IoTSystem, dto: "IoTSystemOutDTO") -> None:
-        """Populate an IoT system with data from JSON"""
-        self._populate_network_node(obj, dto)
-        obj.upload_tag = dto.upload_tag
-        for file_type, rules in dto.ignore_rules.rules.items():
-            obj.ignore_rules.rules[file_type] = [IgnoreRule(
-                file_type=file_type,
-                properties={PropertyKey.parse(p) for p in rule.properties},
-                at=set(rule.at),
-                explanation=rule.explanation
-            ) for rule in rules]
-
     def _serialize_host(self, obj: Host, data: Dict[str, Any]) -> None:
-        """FIXME"""
+        """Serialize host"""
         self._serialize_addressable(obj, data)
         data.update({
             "type": "host",
             "ignore_name_requests": [dns_name.name for dns_name in obj.ignore_name_requests]
         })
 
-    def _populate_host(self, obj: Host, dto: "HostOutDTO") -> Host:
-        """Populate a host with data from JSON"""
-        self._populate_addressable(obj, dto)
-        for dns_name in dto.ignore_name_requests:
-            obj.ignore_name_requests.add(DNSName(dns_name))
-        return obj
-
     def _serialize_service(self, obj: Service, data: Dict[str, Any]) -> None:
-        """FIXME"""
+        """Serialize service"""
         self._serialize_addressable(obj, data)
         data.update({
             "type": "service",
@@ -218,31 +132,18 @@ class EpicSerializer:
             "reply_from_other_address": obj.reply_from_other_address
         })
 
-    def _populate_service(self, obj: Service, dto: "ServiceOutDTO") -> None:
-        """Populate a service with data from JSON"""
-        self._populate_addressable(obj, dto)
-        obj.protocol = dto.protocol
-        obj.con_type = dto.con_type
-        obj.authentication = dto.authentication
-        obj.client_side = dto.client_side
-        if dto.multicast_target:
-            obj.multicast_target = MulticastTarget.parse_address_range(dto.multicast_target)
-        if dto.port_range:
-            obj.port_range = PortRange.parse_port_range(dto.port_range)
-        obj.reply_from_other_address = dto.reply_from_other_address
-
     def _serialize_dhcp_service(self, obj: DHCPService, data: Dict[str, Any]) -> None:
-        """FIXME"""
+        """Serialize DHCP service"""
         self._serialize_service(obj, data)
         data["type"] = "dhcp-service"
 
     def _serialize_dns_service(self, obj: DNSService, data: Dict[str, Any]) -> None:
-        """FIXME"""
+        """Serialize DNS service"""
         self._serialize_service(obj, data)
         data["type"] = "dns-service"
 
     def _serialize_node_component(self, obj: NodeComponent, data: Dict[str, Any]) -> None:
-        """FIXME"""
+        """Serialize node component"""
         data.update({
             "name": obj.name,
             "system_address": obj.get_system_address().get_parseable_value(),
@@ -251,7 +152,7 @@ class EpicSerializer:
         })
 
     def _serialize_software(self, obj: Software, data: Dict[str, Any]) -> None:
-        """FIXME"""
+        """Serialize software"""
         self._serialize_node_component(obj, data)
         data.update({
             "type": "software",
@@ -263,17 +164,8 @@ class EpicSerializer:
             "permissions": list(obj.permissions)
         })
 
-    def _populate_software(self, obj: Software, dto: "SoftwareOutDTO") -> None:
-        """Populate a software component with data from JSON"""
-        for component_dto in dto.components:
-            obj.components[component_dto.key] = SoftwareComponent(
-                name=component_dto.name,
-                version=component_dto.version
-            )
-        obj.permissions = set(dto.permissions)
-
     def _serialize_connection(self, obj: Connection, data: Dict[str, Any]) -> None:
-        """FIXME"""
+        """Serialize connection"""
         data.update({
             "type": "connection",
             "system_address": obj.get_system_address().get_parseable_value(),
@@ -302,6 +194,27 @@ class NetworkNodeOutDTO(BaseDTO):
     external_activity: ExternalActivity
     properties: Dict[str, Any] = {}
 
+    def populate(self, model: NetworkNode, model_map: Dict[str, Any]) -> None:
+        """Populate a network node model from this DTO"""
+        model.name = self.name
+        model.description = self.description
+        model.match_priority = self.match_priority
+        model.host_type = self.host_type
+        model.status = self.status
+        model.external_activity = self.external_activity
+        for key, value in self.properties.items():
+            property_key = PropertyKey.parse(key)
+            explanation = value.get("exp", "")
+            if "verdict" in value:
+                verdict = Verdict.parse(value["verdict"])
+                model.properties[property_key] = PropertyVerdictValue(verdict, explanation)
+            else:
+                sub_keys = {PropertyKey.parse(k) for k in value["set"]}
+                model.properties[property_key] = PropertySetValue(sub_keys, explanation)
+        if not isinstance(model, IoTSystem):
+            model.get_system().originals.add(model)
+        model_map[self.system_address] = model
+
 
 class IgnoreRuleOutDTO(BaseDTO):
     """Serializes ignore rules to JSON"""
@@ -321,6 +234,20 @@ class IoTSystemOutDTO(NetworkNodeOutDTO):
     upload_tag: str
     ignore_rules: IgnoreRulesOutDTO
 
+    def to_model(self, model_map: Dict[str, Any]) -> IoTSystem:
+        """Create and populate an IoTSystem from this DTO"""
+        model = IoTSystem()
+        super().populate(model, model_map)
+        model.upload_tag = self.upload_tag
+        for file_type, rules in self.ignore_rules.rules.items():
+            model.ignore_rules.rules[file_type] = [IgnoreRule(
+                file_type=file_type,
+                properties={PropertyKey.parse(p) for p in rule.properties},
+                at=set(rule.at),
+                explanation=rule.explanation
+            ) for rule in rules]
+        return model
+
 
 class AddressableOutDTO(NetworkNodeOutDTO):
     """Serializes addressable entities to JSON"""
@@ -328,11 +255,29 @@ class AddressableOutDTO(NetworkNodeOutDTO):
     parent: str # Parent system address
     any_host: bool
 
+    def populate(self, model: NetworkNode, model_map: Dict[str, Any]) -> None:
+        """Populate an addressable model from this DTO"""
+        super().populate(model, model_map)
+        assert isinstance(model, Addressable)
+        for address in self.addresses:
+            model.addresses.add(Addresses.parse_endpoint(address))
+        model.parent = model_map[self.parent]
+        model.parent.children.append(model)
+        model.any_host = self.any_host
+
 
 class HostOutDTO(AddressableOutDTO):
     """Serializes hosts to JSON"""
     type: Literal["host"] = "host"
     ignore_name_requests: List[str]
+
+    def to_model(self, model_map: Dict[str, Any]) -> Host:
+        """Create and populate a Host from this DTO"""
+        model = Host(parent=model_map[self.parent], name=self.name)
+        super().populate(model, model_map)
+        for dns_name in self.ignore_name_requests:
+            model.ignore_name_requests.add(DNSName(dns_name))
+        return model
 
 
 class ServiceOutDTO(AddressableOutDTO):
@@ -346,15 +291,47 @@ class ServiceOutDTO(AddressableOutDTO):
     port_range: Optional[str]
     reply_from_other_address: bool
 
+    def populate(self, model: NetworkNode, model_map: Dict[str, Any]) -> None:
+        """Populate a service model from this DTO"""
+        super().populate(model, model_map)
+        assert isinstance(model, Service)
+        model.protocol = self.protocol
+        model.con_type = self.con_type
+        model.authentication = self.authentication
+        model.client_side = self.client_side
+        if self.multicast_target:
+            model.multicast_target = MulticastTarget.parse_address_range(self.multicast_target)
+        if self.port_range:
+            model.port_range = PortRange.parse_port_range(self.port_range)
+        model.reply_from_other_address = self.reply_from_other_address
+
+    def to_model(self, model_map: Dict[str, Any]) -> Service:
+        """Create and populate a Service from this DTO"""
+        model = Service(name=self.name, parent=model_map[self.parent])
+        self.populate(model, model_map)
+        return model
+
 
 class DHCPServiceOutDTO(ServiceOutDTO):
     """Serializes DHCP services to JSON"""
-    type: Literal["dhcp-service"] = "dhcp-service"
+    type: Literal["dhcp-service"] = "dhcp-service"  # type: ignore[assignment]
+
+    def to_model(self, model_map: Dict[str, Any]) -> DHCPService:
+        """Create and populate a DHCPService from this DTO"""
+        model = DHCPService(parent=model_map[self.parent], name=self.name)
+        super().populate(model, model_map)
+        return model
 
 
 class DNSServiceOutDTO(ServiceOutDTO):
     """Serializes DNS services to JSON"""
-    type: Literal["dns-service"] = "dns-service"
+    type: Literal["dns-service"] = "dns-service"  # type: ignore[assignment]
+
+    def to_model(self, model_map: Dict[str, Any]) -> DNSService:
+        """Create and populate a DNSService from this DTO"""
+        model = DNSService(parent=model_map[self.parent], name=self.name)
+        super().populate(model, model_map)
+        return model
 
 
 class NodeComponentOutDTO(BaseDTO):
@@ -364,12 +341,29 @@ class NodeComponentOutDTO(BaseDTO):
     status: Status
     parent: str # Parent system address
 
+    def populate(self, model: NodeComponent, model_map: Dict[str, Any]) -> None:
+        """Populate a node component model from this DTO"""
+        model_map[self.system_address] = model
+        model.status = self.status
+
 
 class SoftwareOutDTO(NodeComponentOutDTO):
     """Serializes software components to JSON"""
     type: Literal["software"] = "software"
     components: List["SoftwareComponentOutDTO"]
     permissions: List[str]
+
+    def to_model(self, model_map: Dict[str, Any]) -> Software:
+        """Create and populate a Software from this DTO"""
+        model = Software(entity=model_map[self.parent], name=self.name)
+        super().populate(model, model_map)
+        for component_dto in self.components:
+            model.components[component_dto.key] = SoftwareComponent(
+                name=component_dto.name,
+                version=component_dto.version
+            )
+        model.permissions = set(self.permissions)
+        return model
 
 
 class SoftwareComponentOutDTO(BaseDTO):
@@ -387,3 +381,10 @@ class ConnectionOutDTO(BaseDTO):
     target_system_address: str
     status: Status
     properties: Dict[str, Any]
+
+    def to_model(self, model_map: Dict[str, Any]) -> Connection:
+        """Create a Connection from this DTO"""
+        return Connection(
+            source=model_map[self.source_system_address],
+            target=model_map[self.target_system_address]
+        )
