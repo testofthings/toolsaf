@@ -23,7 +23,7 @@ from toolsaf.core.services import DHCPService, DNSService
 from tests.test_model_new import Setup_1
 from tests.test_model import Setup
 
-from toolsaf.core.serializer.pydantic_models import EpicSerializer
+from toolsaf.core.serializer.pydantic_models import SystemSerializer
 
 
 def test_online_resource_serializer():
@@ -292,7 +292,7 @@ def test_iot_system_dto():
     setup.system.ignore("pcap-1").properties("verdict:key3").because("exp2")
     setup.system.system.ignore_rules = setup.system.ignore_backend.get_rules()
 
-    serialized = EpicSerializer().serialize(setup.system.system)
+    serialized = SystemSerializer().serialize(setup.system.system)
     ignore_rules = serialized.pop("ignore_rules")
     assert serialized == {
         "name": "Test System",
@@ -318,7 +318,7 @@ def test_iot_system_dto():
     assert ignore_rules["rules"]["pcap-1"][0]["explanation"] == "exp2"
     assert ignore_rules["rules"]["pcap-1"][0]["properties"] == ["verdict:key3"]
 
-    iot_system = EpicSerializer().deserialize(serialized | {"ignore_rules": ignore_rules})
+    iot_system = SystemSerializer().deserialize(serialized | {"ignore_rules": ignore_rules})
     assert isinstance(iot_system, IoTSystem)
     assert iot_system.name == setup.system.system.name
     assert iot_system.upload_tag == setup.system.system.upload_tag
@@ -332,7 +332,7 @@ def test_host_dto():
     host.ignore_name_requests.add(DNSName("test.com"))
     host.ignore_name_requests.add(DNSName("test2.com"))
 
-    serializer = EpicSerializer()
+    serializer = SystemSerializer()
     s_system = serializer.serialize(setup.system.system)
     s_host = serializer.serialize(host)
     ignore_name_reqs = s_host.pop("ignore_name_requests")
@@ -368,7 +368,7 @@ def test_service_dto():
     device = setup.system.device("Device 1")
     service = (device / HTTP).entity
 
-    serializer = EpicSerializer()
+    serializer = SystemSerializer()
     s_system = serializer.serialize(setup.system.system)
     s_host = serializer.serialize(setup.system.device("Device 1").entity)
     s_service = serializer.serialize(service)
@@ -416,7 +416,7 @@ def test_dhcp_service_dto():
     device = setup.system.device("Device 1")
     service = (device / DHCP).entity
 
-    serializer = EpicSerializer()
+    serializer = SystemSerializer()
     s_system = serializer.serialize(setup.system.system)
     s_host = serializer.serialize(device.entity)
     s_service = serializer.serialize(service)
@@ -467,7 +467,7 @@ def test_dns_service_dto():
     device = setup.system.device("Device 1")
     service = (device / DNS).entity
 
-    serializer = EpicSerializer()
+    serializer = SystemSerializer()
     s_system = serializer.serialize(setup.system.system)
     s_host = serializer.serialize(device.entity)
     s_service = serializer.serialize(service)
@@ -523,7 +523,7 @@ def test_software_dto():
     }
     software.permissions.add("permission1")
 
-    serializer = EpicSerializer()
+    serializer = SystemSerializer()
     s_system = serializer.serialize(setup.system.system)
     s_host = serializer.serialize(device.entity)
     s_software = serializer.serialize(software)
@@ -557,7 +557,7 @@ def test_connection_dto():
     device2 = Setup().system.device("Device 2")
     connection = (device1 >> device2 / HTTP).connection
 
-    assert EpicSerializer().serialize(connection) == {
+    assert SystemSerializer().serialize(connection) == {
         "type": "connection",
         "system_address": "source=Device_1&target=Device_2/tcp:80",
         "source_system_address": "Device_1",

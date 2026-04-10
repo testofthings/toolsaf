@@ -18,21 +18,21 @@ from toolsaf.core.components import Software, SoftwareComponent
 
 UnionDTO = Annotated[
     Union[
-        "IoTSystemOutDTO",
-        "HostOutDTO",
-        "ServiceOutDTO",
-        "DHCPServiceOutDTO",
-        "DNSServiceOutDTO",
-        "SoftwareOutDTO",
-        "ConnectionOutDTO"
+        "IoTSystemDTO",
+        "HostDTO",
+        "ServiceDTO",
+        "DHCPServiceDTO",
+        "DNSServiceDTO",
+        "SoftwareDTO",
+        "ConnectionDTO"
     ],
     Field(discriminator="type")
 ]
 NODE_ADAPTER: TypeAdapter[UnionDTO] = TypeAdapter(UnionDTO)
 
 
-class EpicSerializer:
-    """Serializes the whole model to JSON"""
+class SystemSerializer:
+    """Serialize and deserialize IoT systems and their contents"""
     def __init__(self) -> None:
         self.model_map: Dict[str, Any] = {} # sys_addr, model object
         self.verdict_map: Dict[Any, Verdict] = {} # entity, verdict
@@ -178,12 +178,12 @@ class EpicSerializer:
 
 
 class BaseDTO(BaseModel):
-    """Base DTO class"""
+    """Base DTO"""
     model_config = ConfigDict(from_attributes=True)
 
 
-class NetworkNodeOutDTO(BaseDTO):
-    """Serializes network nodes to JSON"""
+class NetworkNodeDTO(BaseDTO):
+    """DTO for NetworkNode"""
     name: str
     description: str
     match_priority: int
@@ -217,23 +217,23 @@ class NetworkNodeOutDTO(BaseDTO):
         model_map[self.system_address] = model
 
 
-class IgnoreRuleOutDTO(BaseDTO):
-    """Serializes ignore rules to JSON"""
+class IgnoreRuleDTO(BaseDTO):
+    """DTO for IgnoreRule"""
     properties: List[str]
     at: List[str]
     explanation: str
 
 
-class IgnoreRulesOutDTO(BaseDTO):
-    """Serializes ignore rules to JSON"""
-    rules: Dict[str, List[IgnoreRuleOutDTO]] # file type, related rules
+class IgnoreRulesDTO(BaseDTO):
+    """DTO for IgnoreRules"""
+    rules: Dict[str, List[IgnoreRuleDTO]] # file type, related rules
 
 
-class IoTSystemOutDTO(NetworkNodeOutDTO):
-    """Serializes IoT systems to JSON"""
+class IoTSystemDTO(NetworkNodeDTO):
+    """DTO for IoTSystem"""
     type: Literal["system"] = "system"
     upload_tag: str
-    ignore_rules: IgnoreRulesOutDTO
+    ignore_rules: IgnoreRulesDTO
 
     def to_model(self, model_map: Dict[str, Any]) -> IoTSystem:
         """Create and populate an IoTSystem from this DTO"""
@@ -250,8 +250,8 @@ class IoTSystemOutDTO(NetworkNodeOutDTO):
         return model
 
 
-class AddressableOutDTO(NetworkNodeOutDTO):
-    """Serializes addressable entities to JSON"""
+class AddressableDTO(NetworkNodeDTO):
+    """DTO for Addressable"""
     addresses: List[str]
     parent: str # Parent system address
     any_host: bool
@@ -267,8 +267,8 @@ class AddressableOutDTO(NetworkNodeOutDTO):
         model.any_host = self.any_host
 
 
-class HostOutDTO(AddressableOutDTO):
-    """Serializes hosts to JSON"""
+class HostDTO(AddressableDTO):
+    """DTO for Host"""
     type: Literal["host"] = "host"
     ignore_name_requests: List[str]
 
@@ -281,8 +281,8 @@ class HostOutDTO(AddressableOutDTO):
         return model
 
 
-class ServiceOutDTO(AddressableOutDTO):
-    """Serializes services to JSON"""
+class ServiceDTO(AddressableDTO):
+    """DTO for Service"""
     type: Literal["service"] = "service"
     protocol: Optional[Protocol]
     con_type: ConnectionType
@@ -313,8 +313,8 @@ class ServiceOutDTO(AddressableOutDTO):
         return model
 
 
-class DHCPServiceOutDTO(ServiceOutDTO):
-    """Serializes DHCP services to JSON"""
+class DHCPServiceDTO(ServiceDTO):
+    """DTO for DHCPService"""
     type: Literal["dhcp-service"] = "dhcp-service"  # type: ignore[assignment]
 
     def to_model(self, model_map: Dict[str, Any]) -> DHCPService:
@@ -324,8 +324,8 @@ class DHCPServiceOutDTO(ServiceOutDTO):
         return model
 
 
-class DNSServiceOutDTO(ServiceOutDTO):
-    """Serializes DNS services to JSON"""
+class DNSServiceDTO(ServiceDTO):
+    """DTO for DNSService"""
     type: Literal["dns-service"] = "dns-service"  # type: ignore[assignment]
 
     def to_model(self, model_map: Dict[str, Any]) -> DNSService:
@@ -335,8 +335,8 @@ class DNSServiceOutDTO(ServiceOutDTO):
         return model
 
 
-class NodeComponentOutDTO(BaseDTO):
-    """Serializes node components to JSON"""
+class NodeComponentDTO(BaseDTO):
+    """DTO for node component fields and population"""
     name: str
     system_address: str
     status: Status
@@ -348,10 +348,10 @@ class NodeComponentOutDTO(BaseDTO):
         model.status = self.status
 
 
-class SoftwareOutDTO(NodeComponentOutDTO):
-    """Serializes software components to JSON"""
+class SoftwareDTO(NodeComponentDTO):
+    """DTO for Software"""
     type: Literal["software"] = "software"
-    components: List["SoftwareComponentOutDTO"]
+    components: List["SoftwareComponentDTO"]
     permissions: List[str]
 
     def to_model(self, model_map: Dict[str, Any]) -> Software:
@@ -367,15 +367,15 @@ class SoftwareOutDTO(NodeComponentOutDTO):
         return model
 
 
-class SoftwareComponentOutDTO(BaseDTO):
-    """Serializes software components to JSON"""
+class SoftwareComponentDTO(BaseDTO):
+    """DTO for SoftwareComponent"""
     key: str
     name: str
     version: str
 
 
-class ConnectionOutDTO(BaseDTO):
-    """Serializes connections to JSON"""
+class ConnectionDTO(BaseDTO):
+    """DTO for Connection"""
     type: Literal["connection"] = "connection"
     system_address: str
     source_system_address: str
