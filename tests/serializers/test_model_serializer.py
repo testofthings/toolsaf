@@ -562,6 +562,7 @@ def test_connection_dto():
         "system_address": "source=Device_1&target=Device_2/tcp:80",
         "source_system_address": "Device_1",
         "target_system_address": "Device_2/tcp:80",
+        "con_type": ConnectionType.UNKNOWN.value,
         "status": "Expected",
         "properties": {},
     }

@@ -171,6 +171,7 @@ class EpicSerializer:
             "system_address": obj.get_system_address().get_parseable_value(),
             "source_system_address": obj.source.get_system_address().get_parseable_value(),
             "target_system_address": obj.target.get_system_address().get_parseable_value(),
+            "con_type": obj.con_type.value,
             "status": obj.status.value,
             "properties": {k.get_name(): k.get_value_json(v, {}) for k, v in obj.properties.items()}
         })
@@ -379,12 +380,25 @@ class ConnectionOutDTO(BaseDTO):
     system_address: str
     source_system_address: str
     target_system_address: str
+    con_type: ConnectionType
     status: Status
     properties: Dict[str, Any]
 
     def to_model(self, model_map: Dict[str, Any]) -> Connection:
         """Create a Connection from this DTO"""
-        return Connection(
+        connection = Connection(
             source=model_map[self.source_system_address],
             target=model_map[self.target_system_address]
         )
+        connection.status = self.status
+        for key, value in self.properties.items():
+            property_key = PropertyKey.parse(key)
+            explanation = value.get("exp", "")
+            if "verdict" in value:
+                verdict = Verdict.parse(value["verdict"])
+                connection.properties[property_key] = PropertyVerdictValue(verdict, explanation)
+            else:
+                sub_keys = {PropertyKey.parse(k) for k in value["set"]}
+                connection.properties[property_key] = PropertySetValue(sub_keys, explanation)
+        model_map[self.system_address] = connection
+        return connection
