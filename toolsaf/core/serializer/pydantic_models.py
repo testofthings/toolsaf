@@ -1,5 +1,6 @@
 """Model serializers"""
 from typing import Callable, Dict, Any, Optional, List, Annotated, Union, Literal
+import logging
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 from toolsaf.common.basics import Status, ExternalActivity, HostType, ConnectionType
@@ -13,7 +14,7 @@ from toolsaf.core.model import (
 from toolsaf.core.address_ranges import MulticastTarget, PortRange
 from toolsaf.core.ignore_rules import IgnoreRules, IgnoreRule
 from toolsaf.core.services import DHCPService, DNSService
-from toolsaf.core.components import Software, SoftwareComponent
+from toolsaf.core.components import Software, SoftwareComponent, Cookies, CookieData
 
 
 UnionDTO = Annotated[
@@ -24,11 +25,13 @@ UnionDTO = Annotated[
         "DHCPServiceDTO",
         "DNSServiceDTO",
         "SoftwareDTO",
+        "CookieDTO",
         "ConnectionDTO"
     ],
     Field(discriminator="type")
 ]
 NODE_ADAPTER: TypeAdapter[UnionDTO] = TypeAdapter(UnionDTO)
+LOGGER = logging.getLogger(__name__)
 
 
 class SystemSerializer:
@@ -43,16 +46,25 @@ class SystemSerializer:
             DHCPService: self._serialize_dhcp_service,
             DNSService: self._serialize_dns_service,
             Software: self._serialize_software,
+            Cookies: self._serialize_cookies,
             Connection: self._serialize_connection
         }
+        self._queue: List[Any] = []
 
-    def serialize(self, obj: Any) -> Dict[str, Any]:
-        """Serialize an object to JSON"""
-        if not (serializer := self.serializer_map.get(type(obj))):
-            raise ValueError(f"Unsupported object type: {type(obj)}")
-        serialized: Dict[str, Any] = {}
-        serializer(obj, serialized)
-        return serialized
+    def serialize(self, obj: Any) -> List[Dict[str, Any]]:
+        """Serialize an object and its children to JSON"""
+        result, q = [], [obj]
+        while q:
+            self._queue = []
+            obj = q.pop(0)
+            if not (serializer := self.serializer_map.get(type(obj))):
+                LOGGER.debug("No serializer found for object of type %s", type(obj))
+                continue
+            serialized: Dict[str, Any] = {}
+            serializer(obj, serialized)
+            result.append(serialized)
+            q = self._queue + q # Depth first
+        return result
 
     def deserialize(self, data: Dict[str, Any]) -> Any:
         """Deserialize an object from JSON"""
@@ -61,7 +73,6 @@ class SystemSerializer:
 
     def _serialize_network_node(self, obj: NetworkNode, data: Dict[str, Any]) -> None:
         """Serialize network node"""
-        expected = obj.get_expected_verdict(None)
         verdict = obj.get_verdict(self.verdict_map)
         data.update({
             "name": obj.name,
@@ -70,11 +81,17 @@ class SystemSerializer:
             "system_address": obj.get_system_address().get_parseable_value(),
             "host_type": obj.host_type,
             "status": obj.status.value,
-            "expected": expected.value if expected else None,
             "verdict": verdict.value,
             "external_activity": obj.external_activity.value,
             "properties": {k.get_name(): k.get_value_json(v, {}) for k, v in obj.properties.items()}
         })
+
+        for child in obj.children:
+            if child.is_expected():
+                self._queue.append(child)
+
+        for component in obj.components:
+            self._queue.append(component)
 
     def _serialize_addressable(self, obj: Addressable, data: Dict[str, Any]) -> None:
         """Serialize addressable"""
@@ -109,6 +126,10 @@ class SystemSerializer:
             "type": "system",
             "upload_tag": obj.upload_tag
         })
+
+        # Add connections at the end of the queue
+        for connection in obj.get_connections():
+            self._queue.append(connection)
 
     def _serialize_host(self, obj: Host, data: Dict[str, Any]) -> None:
         """Serialize host"""
@@ -155,13 +176,27 @@ class SystemSerializer:
         """Serialize software"""
         self._serialize_node_component(obj, data)
         data.update({
-            "type": "software",
+            "type": "sw",
             "components": [{
                 "key": key,
                 "name": component.name,
                 "version": component.version
             } for key, component in obj.components.items()],
             "permissions": list(obj.permissions)
+        })
+
+    def _serialize_cookies(self, obj: Cookies, data: Dict[str, Any]) -> None:
+        """Serialize cookies"""
+        self._serialize_node_component(obj, data)
+        data.update({
+            "type": "cookies",
+            "cookies": {
+                key: {
+                    "domain": cookie.domain,
+                    "path": cookie.path,
+                    "explanation": cookie.explanation
+                } for key, cookie in obj.cookies.items()
+            }
         })
 
     def _serialize_connection(self, obj: Connection, data: Dict[str, Any]) -> None:
@@ -190,7 +225,6 @@ class NetworkNodeDTO(BaseDTO):
     system_address: str
     host_type: HostType
     status: Status
-    expected: Optional[Verdict] = None
     verdict: Optional[Verdict] = None
     external_activity: ExternalActivity
     properties: Dict[str, Any] = {}
@@ -346,11 +380,12 @@ class NodeComponentDTO(BaseDTO):
         """Populate a node component model from this DTO"""
         model_map[self.system_address] = model
         model.status = self.status
+        model.entity.add_component(model)
 
 
 class SoftwareDTO(NodeComponentDTO):
     """DTO for Software"""
-    type: Literal["software"] = "software"
+    type: Literal["sw"] = "sw"
     components: List["SoftwareComponentDTO"]
     permissions: List[str]
 
@@ -374,6 +409,31 @@ class SoftwareComponentDTO(BaseDTO):
     version: str
 
 
+class CookieDTO(NodeComponentDTO):
+    """DTO for Cookies"""
+    type: Literal["cookies"] = "cookies"
+    cookies: Dict[str, "CookieDataDTO"]
+
+    def to_model(self, model_map: Dict[str, Any]) -> Cookies:
+        """Create and populate a Cookies from this DTO"""
+        model = Cookies(entity=model_map[self.parent], name=self.name)
+        super().populate(model, model_map)
+        for key, cookie_dto in self.cookies.items():
+            model.cookies[key] = CookieData(
+                domain=cookie_dto.domain,
+                path=cookie_dto.path,
+                explanation=cookie_dto.explanation
+            )
+        return model
+
+
+class CookieDataDTO(BaseDTO):
+    """DTO for CookieData"""
+    domain: str
+    path: str
+    explanation: str
+
+
 class ConnectionDTO(BaseDTO):
     """DTO for Connection"""
     type: Literal["connection"] = "connection"
@@ -390,6 +450,9 @@ class ConnectionDTO(BaseDTO):
             source=model_map[self.source_system_address],
             target=model_map[self.target_system_address]
         )
+        connection.source.get_parent_host().connections.append(connection)
+        connection.target.get_parent_host().connections.append(connection)
+
         connection.status = self.status
         for key, value in self.properties.items():
             property_key = PropertyKey.parse(key)
