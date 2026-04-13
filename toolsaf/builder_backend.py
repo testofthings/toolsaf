@@ -13,6 +13,7 @@ from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union, cast
 from toolsaf.core.address_ranges import NULL_PORT_RANGE, AddressRange, MulticastTarget, PortRange
 from toolsaf.common.address import (AddressAtNetwork, Addresses, AnyAddress, DNSName, EndpointAddress, EntityTag,
                                   HWAddress, HWAddresses, IPAddress, IPAddresses, Network, Protocol, PseudoAddress)
+from toolsaf.common.traffic import Event, EvidenceSource
 from toolsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status
 from toolsaf.adapters.batch_import import BatchData, BatchImporter, LabelFilter
 from toolsaf.common.serializer.serializer import SerializerStream
@@ -1119,6 +1120,8 @@ class SystemBackendRunner(SystemBackend):
             self.any().serve(DNS)
 
         self.system.ignore_rules = self.ignore_backend.get_rules()
+
+        read_events: List[Event] = []
         if args.read_statement:
             # Ensure the system is empty
             assert len(self.system.get_hosts()) == 0, "System is not empty"
@@ -1129,14 +1132,21 @@ class SystemBackendRunner(SystemBackend):
 
             print(f"Reading security statement from {json_path}")
             json_data = json.loads(json_path.read_text())
-            serializer_version = list(json_data.keys())[0]
+            serializer_version = json_data.get("version", "1.0")
+            if not (serializer_version == "1.1" or serializer_version.startswith("1.1.")):
+                raise ConfigurationException(f"Unsupported statement version {serializer_version}")
 
             # Deserialize the security statement
             serializer = IoTSystemSerializer(self.system)
             stream = SerializerStream(serializer)
-            deserialized_system = list(stream.read(json_data[serializer_version]))[0]
+            deserialized_system = list(stream.read(json_data["statement"]))[0]
             assert isinstance(deserialized_system, IoTSystem), "Deserialized system is not an IoTSystem"
             self.system = deserialized_system
+            if "events" in json_data:
+                log_serializer = EventSerializer(self.system)
+                log_stream = SerializerStream(log_serializer, context=stream.context)
+                for ev in log_stream.read(json_data["events"]):
+                    read_events.append(ev)
 
         self.finish_()
 
@@ -1148,6 +1158,12 @@ class SystemBackendRunner(SystemBackend):
             registry.logging.event_logger = registry.logger
 
         registry.finish_model_load()
+
+        if read_events:
+            for ev in read_events:
+                if isinstance(ev, EvidenceSource):
+                    continue  # sources not processed as events
+                registry.consume(ev)
 
         label_filter = LabelFilter(args.def_loads or "")
 
@@ -1171,20 +1187,21 @@ class SystemBackendRunner(SystemBackend):
         load_data = LoadedData(self.system, registry.logging, batch_import.batch_data)
 
         if args.write_statement:
-            serializer_version = "1.0"
-            json_dump: Dict[str, List[Any]] = {serializer_version: []}
+            json_dump: Dict[str, Any] = {"version": "1.1"}
+            state_dump = json_dump["statement"] = []
             # dump security statement JSON
             ser = IoTSystemSerializer(self.system)
             stream = SerializerStream(ser)
             for js in stream.write(self.system):
-                json_dump[serializer_version].append(js)
+                state_dump.append(js)
             # dump events, if any
             if registry.logging.logs:
+                event_dump = json_dump["events"] = []
                 log_ser = EventSerializer(self.system)
                 stream = SerializerStream(log_ser, context=stream.context)
-                for log in registry.logging.logs:
-                    for js in log_ser.write_event(log.event, stream):
-                        json_dump[serializer_version].append(js)
+                for ev in registry.logging.logs:
+                    for js in log_ser.write_event(ev.event, stream):
+                        event_dump.append(js)
             json.dump(json_dump, args.write_statement.open("w"), indent=4)
             print(f"Security statement written to {args.write_statement}")
 
@@ -1220,8 +1237,8 @@ class SystemBackendRunner(SystemBackend):
                 log_ser = EventSerializer(self.system)
                 event_stream = SerializerStream(log_ser, context=system_stream.context)
                 events = []
-                for log in registry.logging.logs:
-                    events += list(log_ser.write_event(log.event, event_stream))
+                for ev in registry.logging.logs:
+                    events += list(log_ser.write_event(ev.event, event_stream))
                 uploader.upload_logs(events)
 
         return load_data
