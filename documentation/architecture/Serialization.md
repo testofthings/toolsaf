@@ -2,170 +2,132 @@
 
 [Table of contents](README.md)
 
-Toolsaf entities and some other objects are _serialized_ to and from JSON by custom serializer code.
-Propietary custom serialization is used for following reasons:
+Toolsaf entities and events are _serialized_ to and from JSON using using custom code for serialization and Pydantic for deserialization. The approach was chosen for following reasons:
 
-  - Allow full control of the JSON to match planned _Security statement JSON standard_, without sacrificing Python code readability and usability.
+- Custom serialization methods give full control over the JSON output to match the planned _Security statement JSON standard_, without sacrificing Python code readability.
+- DTOs (Data Transfer Objects) make the expected shape of each incoming JSON record explicit.
+- A `type` discriminator field in every record provides Pydantic an easy way to select the correct DTO.
 
-  - Support serialization model where a stream of JSON objects is read and write rather
-  than deeply nested JSON structures.
-  This supports storing of data in relational DB:s and easy updates of serialized objects
-  through e.g. websockets towards Web front-ends.
+Serializer code lives in `toolsaf/core/serializer/`:
+- `pydantic_models.py` — `SystemSerializer` serializes and deserializes the IoT system
+- `pydantic_events.py` — `EventSerializer` serializes and deserializes evidence sources and the events produced by security tools.
 
-Serializer code is located to [serializer.py](../../toolsaf/common/serializer/serializer.py):
-
-  - Generics class `Serializer` which is base class for serializer classes.
-    A serializer can write and/or read instances of a specified class.
-
-  - Class `SerializerContext` maintains mapping between serialized objects and their _ids_.
-
-  - Class `SerializerStream` writes and reads objects with help of serializer and context.
-
-  - Class `SerializerConfiguration` stores configuration per serializer.
-    Each serializer has the configuration in field `config`.
-
-Basic premise is that the serialized classes do not need to have any changes for reading or writing.
-The downside is that a separate _serializer_ class (derived from `Serializer`) is required.
-Separate serializer may be needed for each serialized class or single serializer may
-implement the functionality for many classes.
-
-## Basic use
-
-An object is written the following manner:
-```python
-# 'obj' of class AClass is the object to write into 'json'
-ser = AClassSerializer(obj)
-stream = SerializerStream(ser)
-for json in stream.write(obj):
-    # New JSON in 'json'
-```
-
-Note that an object can produce one or more JSON blobs of data.
-When reading, serializer is called repeatedly until everything is read.
+## How it works
+Both serializers expose the same two methods.
+Call `serialize` to turn a model object into a list of flat JSON dicts.
+Call `deserialize` to turn one JSON dict back into a model object.
 
 ```python
-ser = AClassSerializer(obj)
-stream = SerializerStream(ser)
-for obj in stream.read():
-    # New instance in 'obj'
+# Serialize
+serializer = SystemSerializer()
+records = serializer.serialize(system)  # returns a list of dicts
+
+# Deserialize
+serializer = SystemSerializer()
+for record in records:
+    serializer.deserialize(record)
 ```
 
-A serialized object looks what you would except, `id1` is the object id, which can be
-used to refer the object later in the stream.
+The JSON output is a flat list of records rather than deeply nested structures.
+This makes it straightforward to store in a relational database or stream over a websocket.
+
+The two directions use different approaches under the hood.
+- **Serialization** is handled by hand-written private methods on each serializer class, one per object type.
+- **Deserialization** is handled by Pydantic DTOs, which validate the incoming data and reconstruct the model objects.
+
+## SystemSerializer
+### Writing
+`SystemSerializer` goes through the object graph starting from whatever you pass in and queues children as it goes, so passing in the `IoTSystem` produces the serialized version of the whole security statement.
+
+```python
+serializer = SystemSerializer()
+records = serializer.serialize(system)
+# records[0] is the system, records[1] is the first host, etc.
+```
+
+Internally, `serializer_map` maps objects to private methods such as `_serialize_host` or `_serialize_service`. These methods build the dict.
+
+Each record has a `type` field that identifies what it represents. Objects reference their parent by `system_address` which is a human-readable path, such as `"Device_1/tcp:80"`.
+
 ```json
-{"id": "id1", "a_string": "AAA", "a_int": 2000}
+{"type": "system", "system_address": "", "name": "My System", ...}
+{"type": "host",   "system_address": "Device_1", "parent": "", "name": "Device 1", ...}
+{"type": "service","system_address": "Device_1/tcp:80", "parent": "Device_1", ...}
 ```
 
-## Implementing serializer
-
-Following shows a simple class and it's serializer class.
+### Reading
+When deserializing, Pydantic is first used to validate given data. `SystemSerializer` creates deserialized objects by calling the DTOs' `to_model` methods. Deserialized objects are linked to their parents based on system addresses.
 
 ```python
-class AClass:
-    """Test class A for serialization"""
-    def __init__(self, a_string: str, a_int: int) -> None:
-        self.a_string = a_string
-        self.a_int = a_int
-
-class AClassSerializer(Serializer[AClass]):
-    """Serializer for A class"""
-    def __init__(self):
-        super().__init__(AClass)
-        self.config.map_simple_fields("a_string", "a_int")
+serializer = SystemSerializer()
+for record in records:
+    obj = serializer.deserialize(record)  # returns the Python model object
 ```
 
-As seen, the serializer must tell `Serializer` which class instances it is
-serializing. Then it defines the simple fields which are 1:1 mapped into JSON fields.
-This is done through field `config` of the serializer.
-
-A serializer is free to require access to other objects which are required
-for proper serialization. E.g. consider the following serializer.
-```python
-class NetworkNodeSerializer(Serializer):
-    """Base class for serializing network nodes"""
-    def __init__(self, root: 'IoTSystemSerializer') -> None:
-        super().__init__(class_type)
-        self.root = root
-```
-This serializer requires access to _root_ serializer, which is available in diffenent
-methods explained below.
-
-### Custom writer and reader
-
-A serializer class can implement a custom writer in following manner by `+=`operator (there is also method `write_field` if this looks too scary).
-```python
-    def write(self, obj: AClass, stream: SerializerStream) -> None:
-        stream += "custom-value", "..."
-```
-
-It is custom to assert the proper class for the writen data.
-Reading is done by "subtracting" from stream with `-` , like this (method `get` works similar fashion).
+## EventSerializer
+### Writing
+`EventSerializer` handles evidence sources and the events linked to those sources. Every event carries a reference to the `EvidenceSource` it came from. To avoid repeating the full source in every record, the serializer tracks which sources it has already serialized and only includes the source record the first time it is seen.
 
 ```python
-    def read(self, obj: Any, stream: SerializerStream) -> None:
-        assert isinstanceof(obj, AClass)
-        # Read from custom JSON
-        custom_value = stream - "custom-value"  # get string value from JSON
+serializer = EventSerializer(system)
+records = serializer.serialize(ethernet_flow)
+# records[0] is the EvidenceSource (first time only)
+# records[-1] is the event itself
 ```
 
-Above code returns `None` when "custom-value" is not present. Getter `stream["custom-value"]` would throw an exception.
+A `serializer_map` maps events and sources to a private method such as `_serialize_ethernet_flow` or `_serialize_ip_flow`, which builds the dicts.
 
-### Creating new instances on read
+Subsequent events from the same source just get a `source_id` reference:
 
-Normally, an object is created by constructor which does not take parameter.
-If other constructors should be used, then serializer can implement
-method `new`.
-
-```python
-    def new(self, stream: SerializerStream) -> Optional[AClass]:
-        # Return new instance of the proper class
-```
-
-Returning `None` allows you to skip the object and discard the related JSON.
-This is handy when an object may become obsolete and can be omitted.
-
-### Serializing sub-objects
-
-Consider the follwing class which holds list of objects of type `AClass`,
-and its serializer class.
-Note how the `write`  method explicitly serialize sub-objects, which
-are pushed and read from the stream.
-We must also update `AClass` serializer to add the read objects properly.
-
-```python
-class AClassSerializer(Serializer[AClass]):
-    """Serializer for A class"""
-    def __init__(self):
-        super().__init__(AClass)
-        self.config.map_simple_fields("a_string", "a_int")
-
-    def read(self, obj: AClass, stream: SerializerStream) -> None:
-        parent = stream.resolve(of_type=BClass)
-        parent.sub_instances.append(obj)
-
-class BClass:
-    """Test class B for serializer"""
-    def __init__(self):
-        self.sub_instances: List[AClass] = []
-
-class BClassSerializer(Serializer[BClass]):
-    """Serializer for B class"""
-    def __init__(self):
-        super().__init__(BClass)
-        self.config.map_class("a-type", AClassSerializer())
-
-    def write(self, obj: BClass, stream: SerializerStream) -> None:
-        stream.push_all(obj.sub_instances, at_object=obj)
-
-```
-
-The JSON stream may look like this:
 ```json
-{"id": "id1"},
-{"id": "id2", "type": "a-type", "at": "id1", "a_string": "First", "a_int": 101},
-{"id": "id3", "type": "a-type", "at": "id1", "a_string": "Second", "a_int": 102},
-{"id": "id4", "type": "a-type", "at": "id1", "a_string": "Third", "a_int": 103},
+{"type": "source", "id": "id1", "name": "pcap-tool", "base_ref": "capture.json", ...}
+{"type": "ethernet-flow", "source_id": "id1", "source": "00:11:22:33:44:55|hw", ...}
+{"type": "ip-flow",       "source_id": "id1", "source": ["00:11:22:33:44:55|hw", "1.2.3.4", 443], ...}
 ```
 
-The field `type` specifies the type string given `config.map_new_class`.
-The field `at` specifies which parent should _read_ the instance.
+### Reading
+Call `deserialize` once per record. The serializer accumulates sources in its internal `source_map` so that reconstructed events can be linked to their EvidenceSources.
+
+```python
+serializer = EventSerializer(system)
+for record in records:
+    obj = serializer.deserialize(record)  # EvidenceSource or an event
+```
+
+## DTOs
+All serialized records have a corresponding Pydantic model called a DTO. Pydantic validates the raw dict against the DTO, which catches missing fields and type mismatches early. Each DTO then knows how to turn itself into the real model object via their `to_model` method.
+
+For example, `EthernetFlowDTO` looks roughly like this:
+
+```python
+class EthernetFlowDTO(FlowDTO):
+    type: Literal["ethernet-flow"] = "ethernet-flow"
+    source: str
+    target: str
+    payload: int
+
+    def to_model(self, source_map, system) -> EthernetFlow:
+        flow = EthernetFlow(
+            self.get_evidence(source_map),
+            source=HWAddress.new(...),
+            target=HWAddress.new(...),
+            payload=self.payload
+        )
+        self.populate(flow)  # fills in protocol, timestamp, properties
+        return flow
+```
+
+All event DTOs inherit from `BaseEventDTO` (which has `source_id` and `tail_ref`), and flow DTOs additionally inherit from `FlowDTO` (which adds `protocol`, `timestamp`, and `properties`).
+
+Model DTOs follow a similar hierarchy: `NetworkNodeDTO` → `AddressableDTO` → `HostDTO` / `ServiceDTO`, and so on.
+
+## JSON Format Details
+A few conventions apply across all records:
+- Field names use `snake_case`.
+- Timestamps are ISO 8601 strings.
+- Properties are serialized as a dict keyed by property name, with the value nested inside:
+```json
+"properties": {
+    "verdict:key": {"verdict": "Pass", "exp": "explanation text"}
+}
+```
