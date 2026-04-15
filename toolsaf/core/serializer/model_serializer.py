@@ -1,4 +1,4 @@
-"""Model serializers"""
+"""Model (de)serialization"""
 from typing import Callable, Dict, Any, Optional, List, Annotated, Union, Literal
 import logging
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter

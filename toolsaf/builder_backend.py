@@ -20,8 +20,8 @@ from toolsaf.core.components import CookieData, Cookies, DataReference, StoredDa
 from toolsaf.common.release_info import ReleaseInfo
 from toolsaf.common.property import PropertyVerdictValue
 from toolsaf.core.event_logger import EventLogger
-from toolsaf.core.serializer.pydantic_events import EventSerializer
-from toolsaf.core.serializer.pydantic_models import SystemSerializer
+from toolsaf.core.serializer.event_serializer import EventSerializer
+from toolsaf.core.serializer.model_serializer import SystemSerializer
 from toolsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP, IP, TLS, MQTT, FTP,
                         BLEAdvertisement, ConnectionBuilder,
                         CookieBuilder, HostBuilder, MulticastConfigurer, NetworkBuilder, NodeBuilder,

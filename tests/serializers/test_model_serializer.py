@@ -4,7 +4,7 @@ from toolsaf.common.basics import ExternalActivity, HostType, ConnectionType
 from toolsaf.common.verdict import Verdict
 from toolsaf.core.components import Software, SoftwareComponent, Cookies, CookieData
 from toolsaf.core.model import IoTSystem, Host, Service
-from toolsaf.core.serializer.pydantic_models import SystemSerializer
+from toolsaf.core.serializer.model_serializer import SystemSerializer
 from toolsaf.core.services import DHCPService, DNSService
 from tests.test_model import Setup
 

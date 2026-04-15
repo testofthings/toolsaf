@@ -9,8 +9,8 @@ Toolsaf entities and events are _serialized_ to and from JSON using using custom
 - A `type` discriminator field in every record provides Pydantic an easy way to select the correct DTO.
 
 Serializer code lives in `toolsaf/core/serializer/`:
-- `pydantic_models.py` — `SystemSerializer` serializes and deserializes the IoT system
-- `pydantic_events.py` — `EventSerializer` serializes and deserializes evidence sources and the events produced by security tools.
+- `model_serializer.py` — `SystemSerializer` serializes and deserializes the IoT system
+- `event_serializer.py` — `EventSerializer` serializes and deserializes evidence sources and the events produced by security tools.
 
 ## How it works
 Both serializers expose the same two methods.

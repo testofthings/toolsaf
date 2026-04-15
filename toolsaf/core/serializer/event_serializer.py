@@ -1,4 +1,4 @@
-"""Pydantic-based event serializers"""
+"""Event (de)serialization"""
 import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Annotated, Union, Literal, Tuple
@@ -17,7 +17,7 @@ from toolsaf.common.traffic import (
 from toolsaf.common.verdict import Verdict
 from toolsaf.core.event_interface import PropertyAddressEvent, PropertyEvent
 from toolsaf.core.model import IoTSystem, Addressable, EvidenceNetworkSource
-from toolsaf.core.serializer.pydantic_models import BaseDTO
+from toolsaf.core.serializer.model_serializer import BaseDTO
 from toolsaf.core.services import NameEvent, DNSService
 
 
