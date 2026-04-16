@@ -3,7 +3,7 @@ from toolsaf.common.address import DNSName, Protocol
 from toolsaf.common.basics import ExternalActivity, HostType, ConnectionType
 from toolsaf.common.verdict import Verdict
 from toolsaf.core.components import Software, SoftwareComponent, Cookies, CookieData
-from toolsaf.core.model import IoTSystem, Host, Service
+from toolsaf.core.model import IoTSystem, Host, Service, Connection
 from toolsaf.core.serializer.model_serializer import SystemSerializer
 from toolsaf.core.services import DHCPService, DNSService
 from tests.test_model import Setup
@@ -23,10 +23,11 @@ def test_iot_system_dto():
     serialized = records[0]
     ignore_rules = serialized.pop("ignore_rules")
     assert serialized == {
+        "long_name": "Test System",
         "name": "Test System",
         "description": "desc",
         "match_priority": 0,
-        "system_address": "",
+        "address": "",
         "host_type": HostType.GENERIC.value,
         "status": "Expected",
         "verdict": Verdict.INCON.value,
@@ -65,17 +66,18 @@ def test_host_dto():
     s_host = records[1]
     ignore_name_reqs = s_host.pop("ignore_name_requests")
     assert s_host == {
+        "long_name": "Device 1",
         "name": "Device 1",
         "description": "Internet Of Things device",
         "match_priority": 10,
-        "system_address": "Device_1",
+        "address": "Device_1",
         "host_type": HostType.DEVICE.value,
         "status": "Expected",
         "verdict": Verdict.INCON.value,
         "external_activity": ExternalActivity.PASSIVE.value,
         "properties": {},
         "addresses": ["Device_1"],
-        "parent": "",
+        "parent_address": "",
         "any_host": False,
         "type": "host"
     }
@@ -101,17 +103,18 @@ def test_service_dto():
     s_host = records[1]
     s_service = records[2]
     assert s_service == {
+        "long_name": "Device 1 HTTP:80",
         "name": "HTTP:80",
         "description": "",
         "match_priority": 10,
-        "system_address": "Device_1/tcp:80",
+        "address": "Device_1/tcp:80",
         "host_type": HostType.GENERIC.value,
         "status": "Expected",
         "verdict": Verdict.INCON.value,
         "external_activity": ExternalActivity.PASSIVE.value,
         "properties": {},
         "addresses": ["*/tcp:80"],
-        "parent": "Device_1",
+        "parent_address": "Device_1",
         "any_host": False,
         "type": "service",
         "protocol": Protocol.HTTP.value,
@@ -150,17 +153,18 @@ def test_dhcp_service_dto():
     s_service = records[2]
 
     assert s_service == {
+        "long_name": "Device 1 DHCP",
         "name": "DHCP",
         "description": "DHCP service",
         "match_priority": 10,
-        "system_address": "Device_1/udp:67",
+        "address": "Device_1/udp:67",
         "host_type": HostType.ADMINISTRATIVE.value,
         "status": "Expected",
         "verdict": Verdict.INCON.value,
         "external_activity": ExternalActivity.UNLIMITED.value,
         "properties": {},
         "addresses": ["*/udp:67"],
-        "parent": "Device_1",
+        "parent_address": "Device_1",
         "any_host": False,
         "type": "dhcp-service",
         "protocol": None,
@@ -201,17 +205,18 @@ def test_dns_service_dto():
     s_service = records[2]
 
     assert s_service == {
+        "long_name": "Device 1 DNS",
         "name": "DNS",
         "description": "",
         "match_priority": 10,
-        "system_address": "Device_1/udp:53",
+        "address": "Device_1/udp:53",
         "host_type": HostType.ADMINISTRATIVE.value,
         "status": "Expected",
         "verdict": Verdict.INCON.value,
         "external_activity": ExternalActivity.OPEN.value,
         "properties": {},
         "addresses": ["*/udp:53"],
-        "parent": "Device_1",
+        "parent_address": "Device_1",
         "any_host": False,
         "type": "dns-service",
         "protocol": None,
@@ -257,10 +262,11 @@ def test_software_dto():
     s_software = records[2]
 
     assert s_software == {
+        "long_name": "Test Software",
         "name": "Test Software",
-        "system_address": "Device_1&software=Test_Software",
+        "address": "Device_1&software=Test_Software",
         "status": "Expected",
-        "parent": "Device_1",
+        "parent_address": "Device_1",
         "type": "sw",
         "components": [
             {"key": "tc", "name": "test-component", "version": "1.0"},
@@ -295,10 +301,11 @@ def test_cookies_dto():
     s_cookies = records[2]
 
     assert s_cookies == {
+        "long_name": "Cookies",
         "name": "Cookies",
-        "system_address": "Device_1&cookies=Cookies",
+        "address": "Device_1&cookies=Cookies",
         "status": "Expected",
-        "parent": "Device_1",
+        "parent_address": "Device_1",
         "type": "cookies",
         "cookies": {
             "a": {"domain": "example.com", "path": "/app", "explanation": "cookie-a"},
@@ -317,16 +324,29 @@ def test_cookies_dto():
 
 
 def test_connection_dto():
-    device1 = Setup().system.device("Device 1")
-    device2 = Setup().system.device("Device 2")
+    setup = Setup()
+    device1 = setup.system.device("Device 1")
+    device2 = setup.system.device("Device 2")
     connection = (device1 >> device2 / HTTP).connection
 
-    assert SystemSerializer().serialize(connection) == [{
+    serializer = SystemSerializer()
+    records = serializer.serialize(setup.system.system)
+    s_connection = records[-1]
+    assert s_connection == {
         "type": "connection",
-        "system_address": "source=Device_1&target=Device_2/tcp:80",
-        "source_system_address": "Device_1",
-        "target_system_address": "Device_2/tcp:80",
+        "name": "HTTP:80",
+        "long_name": "Device 1 => Device 2 HTTP:80",
+        "address": "source=Device_1&target=Device_2/tcp:80",
+        "source_address": "Device_1",
+        "target_address": "Device_2/tcp:80",
         "con_type": ConnectionType.UNKNOWN.value,
         "status": "Expected",
         "properties": {},
-    }]
+    }
+
+    deserialized = [serializer.deserialize(record) for record in records]
+    new_connection = deserialized[-1]
+    assert isinstance(new_connection, Connection)
+    assert new_connection.con_type == connection.con_type
+    assert new_connection.source == deserialized[1]
+    assert new_connection.target == deserialized[3]

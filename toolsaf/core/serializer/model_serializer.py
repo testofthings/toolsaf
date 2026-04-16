@@ -3,6 +3,7 @@ from typing import Callable, Dict, Any, Optional, List, Annotated, Union, Litera
 import logging
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
+from toolsaf.common.entity import Entity
 from toolsaf.common.basics import Status, ExternalActivity, HostType, ConnectionType
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.address import Protocol, Addresses, DNSName
@@ -71,14 +72,21 @@ class SystemSerializer:
         dto = NODE_ADAPTER.validate_python(data)
         return dto.to_model(self.model_map)
 
+    def _serialize_entity(self, obj: Entity, data: Dict[str, Any]) -> None:
+        """Serialize common entity fields"""
+        data.update({
+            "long_name": obj.long_name()
+        })
+
     def _serialize_network_node(self, obj: NetworkNode, data: Dict[str, Any]) -> None:
         """Serialize network node"""
+        self._serialize_entity(obj, data)
         verdict = obj.get_verdict(self.verdict_map)
         data.update({
             "name": obj.name,
             "description": obj.description,
             "match_priority": obj.match_priority,
-            "system_address": obj.get_system_address().get_parseable_value(),
+            "address": obj.get_system_address().get_parseable_value(),
             "host_type": obj.host_type,
             "status": obj.status.value,
             "verdict": verdict.value,
@@ -101,7 +109,7 @@ class SystemSerializer:
             addresses.append(tag.get_parseable_value())
         data.update({
             "addresses": addresses,
-            "parent": obj.parent.get_system_address().get_parseable_value(),
+            "parent_address": obj.parent.get_system_address().get_parseable_value(),
             "any_host": obj.any_host
         })
 
@@ -165,11 +173,12 @@ class SystemSerializer:
 
     def _serialize_node_component(self, obj: NodeComponent, data: Dict[str, Any]) -> None:
         """Serialize node component"""
+        self._serialize_entity(obj, data)
         data.update({
             "name": obj.name,
-            "system_address": obj.get_system_address().get_parseable_value(),
+            "address": obj.get_system_address().get_parseable_value(),
             "status": obj.status.value,
-            "parent": obj.entity.get_system_address().get_parseable_value()
+            "parent_address": obj.entity.get_system_address().get_parseable_value()
         })
 
     def _serialize_software(self, obj: Software, data: Dict[str, Any]) -> None:
@@ -203,9 +212,11 @@ class SystemSerializer:
         """Serialize connection"""
         data.update({
             "type": "connection",
-            "system_address": obj.get_system_address().get_parseable_value(),
-            "source_system_address": obj.source.get_system_address().get_parseable_value(),
-            "target_system_address": obj.target.get_system_address().get_parseable_value(),
+            "name": obj.target.name,
+            "long_name": obj.long_name(),
+            "address": obj.get_system_address().get_parseable_value(),
+            "source_address": obj.source.get_system_address().get_parseable_value(),
+            "target_address": obj.target.get_system_address().get_parseable_value(),
             "con_type": obj.con_type.value,
             "status": obj.status.value,
             "properties": {k.get_name(): k.get_value_json(v, {}) for k, v in obj.properties.items()}
@@ -217,12 +228,17 @@ class BaseDTO(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class NetworkNodeDTO(BaseDTO):
+class EntityDTO(BaseDTO):
+    """DTO for Entity"""
+    long_name: str
+
+
+class NetworkNodeDTO(EntityDTO):
     """DTO for NetworkNode"""
     name: str
     description: str
     match_priority: int
-    system_address: str
+    address: str
     host_type: HostType
     status: Status
     verdict: Optional[Verdict] = None
@@ -248,7 +264,7 @@ class NetworkNodeDTO(BaseDTO):
                 model.properties[property_key] = PropertySetValue(sub_keys, explanation)
         if not isinstance(model, IoTSystem):
             model.get_system().originals.add(model)
-        model_map[self.system_address] = model
+        model_map[self.address] = model
 
 
 class IgnoreRuleDTO(BaseDTO):
@@ -287,7 +303,7 @@ class IoTSystemDTO(NetworkNodeDTO):
 class AddressableDTO(NetworkNodeDTO):
     """DTO for Addressable"""
     addresses: List[str]
-    parent: str # Parent system address
+    parent_address: str # Parent system address
     any_host: bool
 
     def populate(self, model: NetworkNode, model_map: Dict[str, Any]) -> None:
@@ -296,7 +312,7 @@ class AddressableDTO(NetworkNodeDTO):
         assert isinstance(model, Addressable)
         for address in self.addresses:
             model.addresses.add(Addresses.parse_endpoint(address))
-        model.parent = model_map[self.parent]
+        model.parent = model_map[self.parent_address]
         model.parent.children.append(model)
         model.any_host = self.any_host
 
@@ -304,11 +320,11 @@ class AddressableDTO(NetworkNodeDTO):
 class HostDTO(AddressableDTO):
     """DTO for Host"""
     type: Literal["host"] = "host"
-    ignore_name_requests: List[str]
+    ignore_name_requests: List[str] = []
 
     def to_model(self, model_map: Dict[str, Any]) -> Host:
         """Create and populate a Host from this DTO"""
-        model = Host(parent=model_map[self.parent], name=self.name)
+        model = Host(parent=model_map[self.parent_address], name=self.name)
         super().populate(model, model_map)
         for dns_name in self.ignore_name_requests:
             model.ignore_name_requests.add(DNSName(dns_name))
@@ -322,8 +338,8 @@ class ServiceDTO(AddressableDTO):
     con_type: ConnectionType
     authentication: bool
     client_side: bool
-    multicast_target: Optional[str]
-    port_range: Optional[str]
+    multicast_target: Optional[str] = None
+    port_range: Optional[str] = None
     reply_from_other_address: bool
 
     def populate(self, model: NetworkNode, model_map: Dict[str, Any]) -> None:
@@ -342,7 +358,7 @@ class ServiceDTO(AddressableDTO):
 
     def to_model(self, model_map: Dict[str, Any]) -> Service:
         """Create and populate a Service from this DTO"""
-        model = Service(name=self.name, parent=model_map[self.parent])
+        model = Service(name=self.name, parent=model_map[self.parent_address])
         self.populate(model, model_map)
         return model
 
@@ -353,7 +369,7 @@ class DHCPServiceDTO(ServiceDTO):
 
     def to_model(self, model_map: Dict[str, Any]) -> DHCPService:
         """Create and populate a DHCPService from this DTO"""
-        model = DHCPService(parent=model_map[self.parent], name=self.name)
+        model = DHCPService(parent=model_map[self.parent_address], name=self.name)
         super().populate(model, model_map)
         return model
 
@@ -364,21 +380,21 @@ class DNSServiceDTO(ServiceDTO):
 
     def to_model(self, model_map: Dict[str, Any]) -> DNSService:
         """Create and populate a DNSService from this DTO"""
-        model = DNSService(parent=model_map[self.parent], name=self.name)
+        model = DNSService(parent=model_map[self.parent_address], name=self.name)
         super().populate(model, model_map)
         return model
 
 
-class NodeComponentDTO(BaseDTO):
+class NodeComponentDTO(EntityDTO):
     """DTO for node component fields and population"""
     name: str
-    system_address: str
+    address: str
     status: Status
-    parent: str # Parent system address
+    parent_address: str # Parent system address
 
     def populate(self, model: NodeComponent, model_map: Dict[str, Any]) -> None:
         """Populate a node component model from this DTO"""
-        model_map[self.system_address] = model
+        model_map[self.address] = model
         model.status = self.status
         model.entity.add_component(model)
 
@@ -387,11 +403,11 @@ class SoftwareDTO(NodeComponentDTO):
     """DTO for Software"""
     type: Literal["sw"] = "sw"
     components: List["SoftwareComponentDTO"]
-    permissions: List[str]
+    permissions: List[str] = []
 
     def to_model(self, model_map: Dict[str, Any]) -> Software:
         """Create and populate a Software from this DTO"""
-        model = Software(entity=model_map[self.parent], name=self.name)
+        model = Software(entity=model_map[self.parent_address], name=self.name)
         super().populate(model, model_map)
         for component_dto in self.components:
             model.components[component_dto.key] = SoftwareComponent(
@@ -416,7 +432,7 @@ class CookieDTO(NodeComponentDTO):
 
     def to_model(self, model_map: Dict[str, Any]) -> Cookies:
         """Create and populate a Cookies from this DTO"""
-        model = Cookies(entity=model_map[self.parent], name=self.name)
+        model = Cookies(entity=model_map[self.parent_address], name=self.name)
         super().populate(model, model_map)
         for key, cookie_dto in self.cookies.items():
             model.cookies[key] = CookieData(
@@ -437,23 +453,26 @@ class CookieDataDTO(BaseDTO):
 class ConnectionDTO(BaseDTO):
     """DTO for Connection"""
     type: Literal["connection"] = "connection"
-    system_address: str
-    source_system_address: str
-    target_system_address: str
+    name: str
+    long_name: str
+    address: str
+    source_address: str
+    target_address: str
     con_type: ConnectionType
     status: Status
-    properties: Dict[str, Any]
+    properties: Dict[str, Any] = {}
 
     def to_model(self, model_map: Dict[str, Any]) -> Connection:
         """Create a Connection from this DTO"""
         connection = Connection(
-            source=model_map[self.source_system_address],
-            target=model_map[self.target_system_address]
+            source=model_map[self.source_address],
+            target=model_map[self.target_address]
         )
         connection.source.get_parent_host().connections.append(connection)
         connection.target.get_parent_host().connections.append(connection)
 
         connection.status = self.status
+        connection.con_type = self.con_type
         for key, value in self.properties.items():
             property_key = PropertyKey.parse(key)
             explanation = value.get("exp", "")
@@ -463,5 +482,5 @@ class ConnectionDTO(BaseDTO):
             else:
                 sub_keys = {PropertyKey.parse(k) for k in value["set"]}
                 connection.properties[property_key] = PropertySetValue(sub_keys, explanation)
-        model_map[self.system_address] = connection
+        model_map[self.address] = connection
         return connection
