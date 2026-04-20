@@ -1,12 +1,13 @@
 """Model (de)serialization"""
 from typing import Callable, Dict, Any, Optional, List, Annotated, Union, Literal
 import logging
+import ipaddress
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 from toolsaf.common.entity import Entity
 from toolsaf.common.basics import Status, ExternalActivity, HostType, ConnectionType
 from toolsaf.common.verdict import Verdict
-from toolsaf.common.address import Protocol, Addresses, DNSName
+from toolsaf.common.address import Protocol, Addresses, DNSName, Network
 from toolsaf.common.property import PropertyKey, PropertyVerdictValue, PropertySetValue
 from toolsaf.core.model import (
     NetworkNode, IoTSystem, Addressable, Host, Service,
@@ -27,7 +28,8 @@ UnionDTO = Annotated[
         "DNSServiceDTO",
         "SoftwareDTO",
         "CookieDTO",
-        "ConnectionDTO"
+        "ConnectionDTO",
+        "NetworkDTO"
     ],
     Field(discriminator="type")
 ]
@@ -484,3 +486,17 @@ class ConnectionDTO(BaseDTO):
                 connection.properties[property_key] = PropertySetValue(sub_keys, explanation)
         model_map[self.address] = connection
         return connection
+
+
+class NetworkDTO(BaseDTO):
+    """DTO for Netowrks"""
+    type: Literal["network"] = "network"
+    name: str
+    address: Optional[str]
+    parent_address: str
+
+    def to_model(self, model_map: Dict[str, Any]) -> Network: # pylint: disable=unused-argument
+        """Create a Network from this DTO"""
+        ip_network = ipaddress.ip_network(self.address) if self.address else None
+        network = Network(name=self.name, ip_network=ip_network)
+        return network
