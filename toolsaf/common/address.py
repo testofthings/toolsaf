@@ -293,6 +293,8 @@ class Addresses:
     @classmethod
     def parse_system_address(cls, value: str) -> 'AddressSequence':
         """Parse system addresses"""
+        if value == "": # IoTSystem
+            return AddressSequence((), )
         segments = []
         for segment in value.split("&"):
             if len(segment_split := segment.split("=")) == 2:
