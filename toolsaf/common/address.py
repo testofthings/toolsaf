@@ -4,8 +4,10 @@ from dataclasses import dataclass
 import enum
 import ipaddress
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network
-from typing import Union, Optional, Tuple, Iterable, Self, List
+from typing import Union, Optional, Tuple, Iterable, Self, List, Any
 import re
+from pydantic import GetCoreSchemaHandler
+from pydantic_core import core_schema
 
 
 class Protocol(enum.Enum):
@@ -106,6 +108,21 @@ class AnyAddress:
 
     def __lt__(self, other: 'AnyAddress') -> bool:
         return self.__repr__() < other.__repr__()
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler # pylint: disable=unused-argument
+    ) -> core_schema.CoreSchema:
+        """Pydantic core schema"""
+        return core_schema.no_info_after_validator_function(
+            Addresses.parse_endpoint,
+            core_schema.str_schema(),
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                lambda a: a.get_parseable_value(),
+                info_arg=False,
+                return_schema=core_schema.str_schema()
+            )
+        )
 
 
 class EntityTag(AnyAddress):
