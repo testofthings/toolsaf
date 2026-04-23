@@ -2,11 +2,11 @@
 import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Annotated, Union, Literal, Tuple
-from pydantic import Field, TypeAdapter
+from pydantic import Field, TypeAdapter, field_validator, Discriminator, Tag
 
 from toolsaf.common.address import (
     AnyAddress, Addresses, EndpointAddress, Protocol,
-    HWAddress, IPAddress, EntityTag, DNSName
+    HWAddress, IPAddress, EntityTag, DNSName,
 )
 from toolsaf.common.property import PropertyKey, PropertyVerdictValue, PropertySetValue
 from toolsaf.common.release_info import ReleaseInfo
@@ -17,8 +17,11 @@ from toolsaf.common.traffic import (
 from toolsaf.common.verdict import Verdict
 from toolsaf.core.event_interface import PropertyAddressEvent, PropertyEvent
 from toolsaf.core.model import IoTSystem, Addressable, EvidenceNetworkSource
-from toolsaf.core.serializer.model_serializer import BaseDTO
+from toolsaf.core.serializer.model_serializer import BaseDTO, PropertyDTO
 from toolsaf.core.services import NameEvent, DNSService
+from toolsaf.core.serializer.types import (
+    SourceIdType, NameType, DescriptionType, SystemAddressType
+)
 
 
 UnionEventDTO = Annotated[
@@ -36,6 +39,22 @@ UnionEventDTO = Annotated[
     Field(discriminator="type")
 ]
 EVENT_ADAPTER: TypeAdapter[UnionEventDTO] = TypeAdapter(UnionEventDTO)
+
+
+def sw_name_discriminator(obj: Any) -> str:
+    """Discriminator for PropertyEventValueUnion"""
+    if isinstance(obj, dict) and "sw_name" in obj:
+        return "release info"
+    return "key value"
+
+
+PropertyEventValueUnion = Annotated[
+    Union[
+        Annotated["ReleaseInfoDTO", Tag("release info")],
+        Annotated["PropEventValueDTO", Tag("key value")],
+    ],
+    Discriminator(sw_name_discriminator)
+]
 
 
 class EventSerializer:
@@ -178,21 +197,27 @@ class EventSerializer:
 
     def _serialize_service_scan(self, scan: ServiceScan, source_id: str) -> Dict[str, Any]:
         """Serialize a ServiceScan"""
-        return {
+        data: Dict[str, Any] = {
             "type": "service-scan",
             "source_id": source_id,
             "service_name": scan.service_name,
             "address": scan.endpoint.get_parseable_value(),
         }
+        if scan.evidence.tail_ref:
+            data["tail_ref"] = scan.evidence.tail_ref
+        return data
 
     def _serialize_host_scan(self, scan: HostScan, source_id: str) -> Dict[str, Any]:
         """Serialize a HostScan"""
-        return {
+        data: Dict[str, Any] = {
             "type": "host-scan",
             "source_id": source_id,
             "host": scan.host.get_parseable_value(),
             "endpoints": [e.get_parseable_value() for e in scan.endpoints],
         }
+        if scan.evidence.tail_ref:
+            data["tail_ref"] = scan.evidence.tail_ref
+        return data
 
     def _serialize_property_address_event(
         self, event: PropertyAddressEvent, source_id: str
@@ -240,15 +265,6 @@ class EventSerializer:
         return data
 
 
-def _deserialize_properties(data: Dict[str, Any]) -> Dict[PropertyKey, Any]:
-    """Deserialize properties dict"""
-    result: Dict[PropertyKey, Any] = {}
-    for key_name, value in data.items():
-        key = PropertyKey.parse(key_name)
-        result[key] = key.decode_value_json(value)
-    return result
-
-
 def _deserialize_key_value(key_name: str, value_dict: Dict[str, Any]) -> Tuple[PropertyKey, Any]:
     """Deserialize a property key-value pair from key_name and a value_dict"""
     property_key = PropertyKey.parse(key_name)
@@ -269,18 +285,57 @@ def _deserialize_key_value(key_name: str, value_dict: Dict[str, Any]) -> Tuple[P
     return property_key, PropertySetValue(sub_keys, explanation)
 
 
+class ReleaseInfoDTO(BaseDTO):
+    """DTO for ReleaseInfo"""
+    sw_name: str = Field(..., min_length=1, max_length=100)
+    interval_days: Optional[int] = None
+    latest_release_name: str = Field("?", max_length=100)
+    first_release: Optional[datetime.datetime] = None
+    latest_release: Optional[datetime.datetime] = None
+
+    def to_model(self) -> ReleaseInfo:
+        """Create a ReleaseInfo model from this DTO"""
+        release_info = ReleaseInfo(self.sw_name)
+        release_info.interval_days = self.interval_days
+        release_info.latest_release_name = self.latest_release_name
+        release_info.first_release = self.first_release
+        release_info.latest_release = self.latest_release
+        return release_info
+
+
+class PropEventValueDTO(BaseDTO):
+    """DTO for propery event value"""
+    verdict: Optional[Verdict] = None
+    sub_keys: Optional[List[PropertyKey]] = None
+    explanation: DescriptionType = ""
+
+    def to_model(self) -> PropertyVerdictValue | PropertySetValue:
+        """Create a PropertyVerdictValue or PropertySetValue from this DTO"""
+        if self.verdict is not None:
+            return PropertyVerdictValue(self.verdict, self.explanation)
+        if self.sub_keys is not None:
+            return PropertySetValue(set(self.sub_keys), self.explanation)
+        raise ValueError("PropEventValueDTO must have either verdict or sub_keys")
+
+
+class AddressMapEntryDTO(BaseDTO):
+    """DTO for EvidenceSource address map entry"""
+    address: AnyAddress
+    entity: SystemAddressType
+
+
 class EvidenceSourceDTO(BaseDTO):
     """DTO for EvidenceSource"""
-    id: str
+    id: SourceIdType
     type: Literal["source"] = "source"
-    name: str
-    tool_label: str
-    target: str
-    description: str
-    location: str
-    base_ref: str
-    timestamp: Optional[str] = None
-    address_map: Optional[List[Dict[str, str]]] = None
+    name: NameType
+    tool_label: NameType
+    target: str = Field("", max_length=200)
+    description: DescriptionType
+    location: str = Field("", max_length=200)
+    base_ref: str = Field("", max_length=300)
+    timestamp: Optional[datetime.datetime] = None
+    address_map: Optional[List[AddressMapEntryDTO]] = None
 
     def to_model(self, source_map: Dict[str, EvidenceSource], system: IoTSystem) -> EvidenceNetworkSource:
         """Create and register an EvidenceNetworkSource from this DTO"""
@@ -288,23 +343,31 @@ class EvidenceSourceDTO(BaseDTO):
         source.target = self.target
         source.description = self.description
         source.location = self.location
-        if self.timestamp:
-            source.timestamp = datetime.datetime.fromisoformat(self.timestamp)
+        source.timestamp = self.timestamp
         if self.address_map:
             for entry in self.address_map:
-                address = Addresses.parse_endpoint(entry["address"])
-                system_address = Addresses.parse_system_address(entry["entity"])
-                entity = system.find_entity(system_address)
+                entity = system.find_entity(Addresses.parse_system_address(entry.entity))
                 if entity is not None and isinstance(entity, Addressable):
-                    source.address_map[address] = entity
+                    source.address_map[entry.address] = entity
         source_map[self.id] = source
         return source
 
 
 class BaseEventDTO(BaseDTO):
     """Base DTO for all event types"""
-    source_id: str
+    source_id: SourceIdType
     tail_ref: Optional[str] = None
+
+    @field_validator("tail_ref")
+    @classmethod
+    def validate_tail_ref(cls, tail_ref: Optional[str]) -> Optional[str]:
+        """Validate that tail_ref is a valid filename if present"""
+        if tail_ref is not None:
+            if tail_ref[0] != ":" or not tail_ref[1:].isnumeric():
+                raise ValueError("tail_ref must start with ':' followed by numbers")
+            if len(tail_ref) > 20:
+                raise ValueError("tail_ref must be at most 20 characters long")
+        return tail_ref
 
     def get_evidence(self, source_map: Dict[str, EvidenceSource]) -> Evidence:
         """Build Evidence from the source_map"""
@@ -314,30 +377,30 @@ class BaseEventDTO(BaseDTO):
 class FlowDTO(BaseEventDTO):
     """DTO for Flow"""
     protocol: Protocol
-    timestamp: Optional[str] = None
-    properties: Dict[str, Any] = {}
+    timestamp: Optional[datetime.datetime] = None
+    properties: Dict[PropertyKey, PropertyDTO] = {}
 
     def populate(self, flow: Flow) -> None:
         """Populate a Flow with the common fields in FlowDTO"""
         flow.protocol = self.protocol
-        if self.timestamp:
-            flow.timestamp = datetime.datetime.fromisoformat(self.timestamp)
-        flow.properties = _deserialize_properties(self.properties)
+        flow.timestamp = self.timestamp
+        for key, property_dto in self.properties.items():
+            property_dto.populate(flow, key)
 
 
 class EthernetFlowDTO(FlowDTO):
     """DTO for EthernetFlow"""
     type: Literal["ethernet-flow"] = "ethernet-flow"
-    source: str
-    target: str
+    source: HWAddress
+    target: HWAddress
     payload: int
 
     def to_model(self, source_map: Dict[str, EvidenceSource], _system: IoTSystem) -> EthernetFlow:
         """Create an EthernetFlow from this DTO"""
         flow = EthernetFlow(
             self.get_evidence(source_map),
-            source=HWAddress.new(self.source.replace("|hw", "")),
-            target=HWAddress.new(self.target.replace("|hw", "")),
+            source=self.source,
+            target=self.target,
             payload=self.payload,
             protocol=self.protocol
         )
@@ -348,17 +411,15 @@ class EthernetFlowDTO(FlowDTO):
 class IPFlowDTO(FlowDTO):
     """DTO for IPFlow"""
     type: Literal["ip-flow"] = "ip-flow"
-    source: Tuple[str, str, int]
-    target: Tuple[str, str, int]
+    source: Tuple[HWAddress, IPAddress, int]
+    target: Tuple[HWAddress, IPAddress, int]
 
     def to_model(self, source_map: Dict[str, EvidenceSource], _system: IoTSystem) -> IPFlow:
         """Create an IPFlow from this DTO"""
-        hw_s, ip_s, port_s = self.source
-        hw_t, ip_t, port_t = self.target
         flow = IPFlow(
             self.get_evidence(source_map),
-            source=(HWAddress.new(hw_s.replace("|hw", "")), IPAddress.new(ip_s), port_s),
-            target=(HWAddress.new(hw_t.replace("|hw", "")), IPAddress.new(ip_t), port_t),
+            source=self.source,
+            target=self.target,
             protocol=Protocol(self.protocol)
         )
         self.populate(flow)
@@ -368,14 +429,14 @@ class IPFlowDTO(FlowDTO):
 class BLEAdvertisementFlowDTO(FlowDTO):
     """DTO for BLEAdvertisementFlow"""
     type: Literal["ble-advertisement-flow"] = "ble-advertisement-flow"
-    source: str
+    source: HWAddress
     event_type: int
 
     def to_model(self, source_map: Dict[str, EvidenceSource], _system: IoTSystem) -> BLEAdvertisementFlow:
         """Create a BLEAdvertisementFlow from this DTO"""
         flow = BLEAdvertisementFlow(
             self.get_evidence(source_map),
-            source=HWAddress.new(self.source.replace("|hw", "")),
+            source=self.source,
             event_type=self.event_type
         )
         self.populate(flow)
@@ -385,14 +446,14 @@ class BLEAdvertisementFlowDTO(FlowDTO):
 class ServiceScanDTO(BaseEventDTO):
     """DTO for ServiceScan"""
     type: Literal["service-scan"] = "service-scan"
-    service_name: str
-    address: str
+    service_name: str = Field(..., min_length=1, max_length=200)
+    address: AnyAddress
 
     def to_model(self, source_map: Dict[str, EvidenceSource], _system: IoTSystem) -> ServiceScan:
         """Create a ServiceScan from this DTO"""
         return ServiceScan(
             self.get_evidence(source_map),
-            endpoint=Addresses.parse_endpoint(self.address),
+            endpoint=self.address,
             service_name=self.service_name
         )
 
@@ -400,45 +461,40 @@ class ServiceScanDTO(BaseEventDTO):
 class HostScanDTO(BaseEventDTO):
     """DTO for HostScan"""
     type: Literal["host-scan"] = "host-scan"
-    host: str
-    endpoints: List[str]
+    host: AnyAddress
+    endpoints: List[EndpointAddress]
 
     def to_model(self, source_map: Dict[str, EvidenceSource], _system: IoTSystem) -> HostScan:
         """Create a HostScan from this DTO"""
-        parsed_endpoints: set[EndpointAddress] = set()
-        for ep_str in self.endpoints:
-            endpoint = Addresses.parse_endpoint(ep_str)
-            assert isinstance(endpoint, EndpointAddress)
-            parsed_endpoints.add(endpoint)
         return HostScan(
             self.get_evidence(source_map),
-            host=Addresses.parse_endpoint(self.host),
-            endpoints=parsed_endpoints
+            host=self.host,
+            endpoints=set(self.endpoints)
         )
 
 
 class PropertyAddressEventDTO(BaseEventDTO):
     """DTO for PropertyAddressEvent"""
     type: Literal["property-address-event"] = "property-address-event"
-    address: str
-    key: str
-    value: Dict[str, Any]
+    address: AnyAddress
+    key: PropertyKey
+    value: PropertyEventValueUnion
 
     def to_model(self, source_map: Dict[str, EvidenceSource], _system: IoTSystem) -> PropertyAddressEvent:
         """Create a PropertyAddressEvent from this DTO"""
         return PropertyAddressEvent(
             self.get_evidence(source_map),
-            address=Addresses.parse_endpoint(self.address),
-            key_value=_deserialize_key_value(self.key, self.value)
+            address=self.address,
+            key_value=(self.key, self.value.to_model())
         )
 
 
 class PropertyEventDTO(BaseEventDTO):
     """DTO for PropertyEvent"""
     type: Literal["property-event"] = "property-event"
-    address: str  # "" means the IoTSystem root entity
-    key: str
-    value: Dict[str, Any]
+    address: SystemAddressType  # "" means the IoTSystem root entity
+    key: PropertyKey
+    value: PropertyEventValueUnion
 
     def to_model(self, source_map: Dict[str, EvidenceSource], system: IoTSystem) -> PropertyEvent:
         """Create a PropertyEvent from this DTO"""
@@ -446,27 +502,26 @@ class PropertyEventDTO(BaseEventDTO):
             return PropertyEvent(
                 self.get_evidence(source_map),
                 entity=system,
-                key_value=_deserialize_key_value(self.key, self.value)
+                key_value=(self.key, self.value.to_model())
             )
-        system_address = Addresses.parse_system_address(self.address)
-        entity = system.find_endpoint(system_address)
+        entity = system.find_endpoint(Addresses.parse_system_address(self.address))
         assert entity is not None, f"Entity not found for address: {self.address}"
         return PropertyEvent(
             self.get_evidence(source_map),
             entity=entity,
-            key_value=_deserialize_key_value(self.key, self.value)
+            key_value=(self.key, self.value.to_model())
         )
 
 
 class NameEventDTO(BaseEventDTO):
     """DTO for NameEvent"""
     type: Literal["name-event"] = "name-event"
-    name: Optional[str] = None
-    tag: Optional[str] = None
-    service: Optional[str] = None
-    address: Optional[str] = None
-    peers: List[str] = []
-    timestamp: Optional[str] = None
+    name: Optional[NameType] = None
+    tag: Optional[NameType] = None
+    service: Optional[SystemAddressType] = None
+    address: Optional[AnyAddress] = None
+    peers: List[SystemAddressType] = []
+    timestamp: Optional[datetime.datetime] = None
 
     def to_model(self, source_map: Dict[str, EvidenceSource], system: IoTSystem) -> NameEvent:
         """Create a NameEvent from this DTO"""
@@ -477,20 +532,17 @@ class NameEventDTO(BaseEventDTO):
             service = svc
         name = DNSName(self.name) if self.name else None
         tag = EntityTag.new(self.tag) if self.tag else None
-        address: Optional[AnyAddress] = Addresses.parse_address(self.address) if self.address else None
         peers: List[Addressable] = []
         for peer_str in self.peers:
             peer = system.find_endpoint(Addresses.parse_system_address(peer_str))
             if peer is not None and isinstance(peer, Addressable):
                 peers.append(peer)
-        event = NameEvent(
+        return NameEvent(
             self.get_evidence(source_map),
             service=service,
             name=name,
             tag=tag,
-            address=address,
-            peers=peers
+            address=self.address,
+            peers=peers,
+            timestamp=self.timestamp
         )
-        if self.timestamp:
-            event.timestamp = datetime.datetime.fromisoformat(self.timestamp)
-        return event

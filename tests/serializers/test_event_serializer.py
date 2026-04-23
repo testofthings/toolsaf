@@ -8,7 +8,7 @@ from toolsaf.common.traffic import (
     HostScan, ServiceScan, HWAddress, IPAddress
 )
 from toolsaf.core.event_interface import PropertyAddressEvent, PropertyEvent
-from toolsaf.core.model import IoTSystem
+from toolsaf.core.model import IoTSystem, EvidenceNetworkSource
 from toolsaf.core.services import NameEvent
 from toolsaf.common.property import PropertyKey, PropertyVerdictValue, PropertySetValue
 from toolsaf.common.verdict import Verdict
@@ -26,22 +26,16 @@ T = TypeVar("T")
 
 def _get_serialized_event(event, system: IoTSystem = IoTSystem()):
     serializer = EventSerializer(system)
-    records = serializer.serialize(event)
-    return records[-1]
+    return serializer.serialize(event)[-1]
 
 
 def _get_deserialized_object(obj: T, system: IoTSystem = SYSTEM) -> T:
-    serializer = EventSerializer(SYSTEM)
+    serializer = EventSerializer(system)
     records = serializer.serialize(obj)
-
-    des = EventSerializer(system)
-    result = None
-    for record in records:
-        result = des.deserialize(record)
-    return result
+    return [serializer.deserialize(record) for record in records][-1]
 
 
-def test_pydantic_serialize_event_source():
+def test_event_source():
     serializer = EventSerializer(SYSTEM)
 
     source1 = EvidenceSource(
@@ -70,29 +64,51 @@ def test_pydantic_serialize_event_source():
     assert source2_json["description"] == ""
     assert source2_json["location"] == ""
 
+    new_flow = _get_deserialized_object(EthernetFlow(Evidence(source1), source=HWADDRESS, target=HWADDRESS))
+    new_source = new_flow.evidence.source
+    assert new_source.name == source1.name
+    assert new_source.base_ref == "test1.json"
+    assert new_source.label == source1.label
+    assert new_source.timestamp == source1.timestamp
+    assert new_source.target == source1.target
 
-def test_pydantic_new_event_source_from_serialized():
-    source = EvidenceSource(name="TestSource1", base_ref="../test1.json", label="test-label")
-    source.timestamp = datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+
+def test_event_source_address_map():
+    setup = Setup()
+    device = setup.system.device("Test Device")
+    system = setup.get_system()
+
+    source = EvidenceNetworkSource(name="MapSource", base_ref="../test.json", label="test-label")
+    ip_addr = IPAddress.new("192.168.1.1")
+    source.address_map[ip_addr] = device.entity
 
     flow = EthernetFlow(Evidence(source), source=HWADDRESS, target=HWADDRESS)
-    new_flow = _get_deserialized_object(flow)
+    serializer = EventSerializer(system)
+    records = serializer.serialize(flow)
+    source_dict = records[0]
+
+    assert "address_map" in source_dict
+    assert len(source_dict["address_map"]) == 1
+    assert source_dict["address_map"][0]["address"] == "192.168.1.1"
+    assert source_dict["address_map"][0]["entity"] == "Test_Device"
+
+    new_flow = [serializer.deserialize(record) for record in records][-1]
     new_source = new_flow.evidence.source
-    assert new_source.name == source.name
-    assert new_source.base_ref == "test1.json"
-    assert new_source.label == source.label
-    assert new_source.timestamp == source.timestamp
-    assert new_source.target == source.target
+    assert ip_addr in new_source.address_map
+    assert new_source.address_map[ip_addr] == device.entity
 
 
-def test_pydantic_ethernet_flow_serializer():
+def test_ethernet_flow():
     ethernet_flow = EthernetFlow(
-        Evidence(SOURCE),
+        Evidence(SOURCE, tail_ref=":12"),
         source=HWADDRESS,
         target=HWADDRESS,
         payload=5
     )
     ethernet_flow.timestamp = datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+    ethernet_flow.properties = {
+        PropertyKey("eth-key"): PropertyVerdictValue(Verdict.PASS, "eth test")
+    }
 
     assert _get_serialized_event(ethernet_flow) == {
         "type": "ethernet-flow",
@@ -101,18 +117,10 @@ def test_pydantic_ethernet_flow_serializer():
         "target": "00:00:00:00:00:00|hw",
         "protocol": "eth",
         "payload": 5,
-        "timestamp": "2025-01-01T00:00:00+00:00"
+        "timestamp": "2025-01-01T00:00:00+00:00",
+        "tail_ref": ":12",
+        "properties": {"eth-key": {"verdict": "Pass", "exp": "eth test"}}
     }
-
-
-def test_pydantic_new_ethernet_flow_from_serialized():
-    ethernet_flow = EthernetFlow(
-        Evidence(SOURCE),
-        source=HWADDRESS,
-        target=HWADDRESS,
-        payload=5
-    )
-    ethernet_flow.timestamp = datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
 
     new_ethernet_flow = _get_deserialized_object(ethernet_flow)
     assert new_ethernet_flow.source == HWADDRESS
@@ -121,12 +129,14 @@ def test_pydantic_new_ethernet_flow_from_serialized():
     assert new_ethernet_flow.protocol == Protocol.ETHERNET
     assert new_ethernet_flow.timestamp == datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
     assert new_ethernet_flow.evidence.source.name == "Test"
+    assert new_ethernet_flow.evidence.tail_ref == ":12"
+    assert new_ethernet_flow.properties[PropertyKey("eth-key")] == PropertyVerdictValue(Verdict.PASS, "eth test")
 
 
-def test_pydantic_ip_flow_serializer():
+def test_ip_flow():
     ip_flow = IPFlow(Evidence(SOURCE, tail_ref=":10"),
         source=(HWADDRESS, IPADDRESS, 10),
-        target=(HWADDRESS, IPADDRESS, 10),
+        target=(HWADDRESS, IPADDRESS, 11),
         protocol=Protocol.TCP
     )
     ip_flow.timestamp = datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
@@ -145,23 +155,10 @@ def test_pydantic_ip_flow_serializer():
         "type": "ip-flow",
         "source_id": "id1",
         "source": ["00:00:00:00:00:00|hw", "1.1.1.1", 10],
-        "target": ["00:00:00:00:00:00|hw", "1.1.1.1", 10],
+        "target": ["00:00:00:00:00:00|hw", "1.1.1.1", 11],
         "protocol": "tcp",
         "timestamp": "2025-01-01T00:00:00+00:00",
         "tail_ref": ":10"
-    }
-
-
-def test_pydantic_new_ip_flow_from_serialized():
-    ip_flow = IPFlow(Evidence(SOURCE, tail_ref=":10"),
-        source=(HWADDRESS, IPADDRESS, 10),
-        target=(HWADDRESS, IPADDRESS, 11),
-        protocol=Protocol.TCP
-    )
-    ip_flow.timestamp = datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-    ip_flow.properties = {
-        PropertyKey("test-key"): PropertyVerdictValue(Verdict.PASS, "test"),
-        PropertyKey("test-key2"): PropertySetValue({PropertyKey("1"), PropertyKey("2")}, "test2")
     }
 
     new_ip_flow = _get_deserialized_object(ip_flow)
@@ -175,30 +172,27 @@ def test_pydantic_new_ip_flow_from_serialized():
     assert new_ip_flow.properties[PropertyKey("test-key2")] == PropertySetValue({PropertyKey("1"), PropertyKey("2")}, "test2")
 
 
-def test_pydantic_ble_advertisement_flow_serializer():
-    ble_flow = BLEAdvertisementFlow(Evidence(SOURCE),
+def test_ble_advertisement_flow():
+    ble_flow = BLEAdvertisementFlow(
+        Evidence(SOURCE, tail_ref=":34"),
         source=HWADDRESS,
         event_type=0x03
     )
+    ble_flow.timestamp = datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+    ble_flow.properties = {
+        PropertyKey("ble-key"): PropertyVerdictValue(Verdict.PASS, "ble test")
+    }
 
     assert _get_serialized_event(ble_flow) == {
         "type": "ble-advertisement-flow",
         "source_id": "id1",
         "source": "00:00:00:00:00:00|hw",
         "protocol": "ble",
-        "event_type": 3
+        "event_type": 3,
+        "timestamp": "2025-01-01T00:00:00+00:00",
+        "tail_ref": ":34",
+        "properties": {"ble-key": {"verdict": "Pass", "exp": "ble test"}}
     }
-
-    ble_flow.timestamp = datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-    assert _get_serialized_event(ble_flow)["timestamp"] == "2025-01-01T00:00:00+00:00"
-
-
-def test_pydantic_new_ble_advertisement_flow_from_serialized():
-    ble_flow = BLEAdvertisementFlow(Evidence(SOURCE),
-        source=HWADDRESS,
-        event_type=0x03
-    )
-    ble_flow.timestamp = datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
 
     new_ble_flow = _get_deserialized_object(ble_flow)
     assert new_ble_flow.source == HWADDRESS
@@ -206,57 +200,49 @@ def test_pydantic_new_ble_advertisement_flow_from_serialized():
     assert new_ble_flow.protocol == ble_flow.protocol
     assert new_ble_flow.timestamp == datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
     assert new_ble_flow.evidence.source.name == "Test"
+    assert new_ble_flow.evidence.tail_ref == ":34"
+    assert new_ble_flow.properties[PropertyKey("ble-key")] == PropertyVerdictValue(Verdict.PASS, "ble test")
 
 
-def test_pydantic_serialize_service_scan():
-    service_scan = ServiceScan(Evidence(SOURCE),
-        EndpointAddress.ip("127.0.0.1", Protocol.TCP, 8000), service_name="test-name"
+def test_service_scan():
+    service_scan = ServiceScan(
+        Evidence(SOURCE, tail_ref=":56"),
+        EndpointAddress.ip("127.0.0.1", Protocol.TCP, 8000),
+        service_name="test-name"
     )
 
     assert _get_serialized_event(service_scan) == {
         "type": "service-scan",
         "source_id": "id1",
         "service_name": "test-name",
-        "address": "127.0.0.1/tcp:8000"
+        "address": "127.0.0.1/tcp:8000",
+        "tail_ref": ":56"
     }
-
-
-def test_pydantic_new_service_scan_from_serialized():
-    service_scan = ServiceScan(
-        Evidence(SOURCE), EndpointAddress.ip("127.0.0.1", Protocol.TCP, 8000), service_name="test-name"
-    )
 
     new_service_scan = _get_deserialized_object(service_scan)
     assert new_service_scan.endpoint == EndpointAddress.ip("127.0.0.1", Protocol.TCP, 8000)
     assert new_service_scan.service_name == "test-name"
     assert new_service_scan.evidence.source.name == "Test"
     assert new_service_scan.evidence.source.base_ref == "test.json"
+    assert new_service_scan.evidence.tail_ref == ":56"
 
 
-def test_pydantic_serialize_host_scan():
+def test_host_scan():
+    endpoints = [
+        EndpointAddress.ip("1.1.1.2", Protocol.TCP, 8000),
+        EndpointAddress.ip("1.1.1.2", Protocol.TCP, 8002),
+    ]
     host_scan = HostScan(
-        Evidence(SOURCE), IPADDRESS, endpoints=[
-            EndpointAddress.ip("1.1.1.2", Protocol.TCP, 8000),
-            EndpointAddress.ip("1.1.1.2", Protocol.TCP, 8002),
-        ]
+        Evidence(SOURCE, tail_ref=":78"), IPADDRESS, endpoints=endpoints
     )
 
     assert _get_serialized_event(host_scan) == {
         "type": "host-scan",
         "source_id": "id1",
         "host": "1.1.1.1",
-        "endpoints": ["1.1.1.2/tcp:8000", "1.1.1.2/tcp:8002"]
+        "endpoints": ["1.1.1.2/tcp:8000", "1.1.1.2/tcp:8002"],
+        "tail_ref": ":78"
     }
-
-
-def test_pydantic_new_host_scan_from_serialized():
-    endpoints = [
-        EndpointAddress.ip("1.1.1.2", Protocol.TCP, 8000),
-        EndpointAddress.ip("1.1.1.2", Protocol.TCP, 8002),
-    ]
-    host_scan = HostScan(
-        Evidence(SOURCE), IPADDRESS, endpoints=set(endpoints)
-    )
 
     new_host_scan = _get_deserialized_object(host_scan)
     assert new_host_scan.host == IPADDRESS
@@ -264,94 +250,105 @@ def test_pydantic_new_host_scan_from_serialized():
     assert endpoints[1] in new_host_scan.endpoints
     assert new_host_scan.evidence.source.name == "Test"
     assert new_host_scan.evidence.source.base_ref == "test.json"
+    assert new_host_scan.evidence.tail_ref == ":78"
 
 
-def test_pydantic_serialize_property_address_event():
-    property_address_event = PropertyAddressEvent(
+def test_property_address_event():
+    # PropertyVerdictValue
+    event = PropertyAddressEvent(
         Evidence(SOURCE), IPADDRESS,
         PropertyKey.parse("test-key:abc").verdict(Verdict.PASS, "test explanation")
     )
-
-    assert _get_serialized_event(property_address_event) == {
+    assert _get_serialized_event(event) == {
         "type": "property-address-event",
         "source_id": "id1",
         "address": "1.1.1.1",
         "key": "test-key:abc",
         "value": {"verdict": "Pass", "explanation": "test explanation"}
     }
+    new_event = _get_deserialized_object(event)
+    assert new_event.address == IPADDRESS
+    assert new_event.key_value == PropertyKey.parse("test-key:abc").verdict(Verdict.PASS, "test explanation")
+    assert new_event.evidence.source.name == "Test"
 
-    property_address_event = PropertyAddressEvent(
+    # PropertySetValue
+    event = PropertyAddressEvent(
         Evidence(SOURCE), IPADDRESS,
         PropertyKey("test-key").value_set({PropertyKey("value-key"), PropertyKey("key-value")})
     )
-    serialized_event = _get_serialized_event(property_address_event)
-    assert "value-key" in serialized_event["value"]["sub_keys"]
-    assert "key-value" in serialized_event["value"]["sub_keys"]
-    assert serialized_event["value"]["explanation"] == ""
-    serialized_event.pop("value")
+    serialized = _get_serialized_event(event)
+    assert "value-key" in serialized["value"]["sub_keys"]
+    assert "key-value" in serialized["value"]["sub_keys"]
+    assert serialized["value"]["explanation"] == ""
+    new_event = _get_deserialized_object(event)
+    assert new_event.address == IPADDRESS
+    assert new_event.key_value == PropertyKey("test-key").value_set({PropertyKey("value-key"), PropertyKey("key-value")})
 
-    assert serialized_event == {
+    # ReleaseInfo
+    info = ReleaseInfo("AddrSW")
+    info.sw_name = "test-software"
+    info.interval_days = 7
+    info.latest_release_name = "v2.0"
+    info.first_release = datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+    info.latest_release = datetime(2025, 6, 1, 0, 0, 0, tzinfo=timezone.utc)
+    event = PropertyAddressEvent(Evidence(SOURCE), IPADDRESS, (ReleaseInfo.PROPERTY_KEY, info))
+    assert _get_serialized_event(event) == {
         "type": "property-address-event",
         "source_id": "id1",
         "address": "1.1.1.1",
-        "key": "test-key"
+        "key": ReleaseInfo.PROPERTY_KEY.get_name(),
+        "value": {
+            "sw_name": "test-software",
+            "interval_days": 7,
+            "latest_release_name": "v2.0",
+            "first_release": datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc).isoformat(),
+            "latest_release": datetime(2025, 6, 1, 0, 0, 0, tzinfo=timezone.utc).isoformat(),
+        }
     }
+    new_event = _get_deserialized_object(event)
+    assert new_event.address == IPADDRESS
+    key, value = new_event.key_value
+    assert key == ReleaseInfo.PROPERTY_KEY
+    assert isinstance(value, ReleaseInfo)
+    assert value.sw_name == info.sw_name
+    assert value.interval_days == info.interval_days
+    assert value.latest_release_name == info.latest_release_name
+    assert value.first_release == info.first_release
+    assert value.latest_release == info.latest_release
 
 
-def test_pydantic_new_property_address_event_from_serialized():
-    property_address_event = PropertyAddressEvent(
-        Evidence(SOURCE), IPADDRESS,
-        PropertyKey.parse("test-key:abc").verdict(Verdict.PASS, "test explanation")
-    )
-
-    new_property_address_event = _get_deserialized_object(property_address_event)
-    assert new_property_address_event.address == IPADDRESS
-    assert new_property_address_event.key_value == PropertyKey.parse("test-key:abc").verdict(Verdict.PASS, "test explanation")
-    assert new_property_address_event.evidence.source.name == "Test"
-
-    property_address_event = PropertyAddressEvent(
-        Evidence(SOURCE), IPADDRESS,
-        PropertyKey.parse("test-key:abc").value_set({PropertyKey("value-key"), PropertyKey("key-value")})
-    )
-
-    new_property_address_event = _get_deserialized_object(property_address_event)
-    assert new_property_address_event.address == IPADDRESS
-    assert new_property_address_event.key_value == PropertyKey.parse("test-key:abc").value_set({PropertyKey("value-key"), PropertyKey("key-value")})
-
-
-def test_pydantic_serialize_property_event():
+def test_property_event():
     setup = Setup()
+    system = setup.get_system()
     software = setup.system.device("Test Device").software("Test Software").sw
 
     # PropertyVerdictValue
-    property_event = PropertyEvent(
+    event = PropertyEvent(
         Evidence(SOURCE), software,
-        PropertyKey("test-key:abc").verdict(Verdict.PASS, "test explanation")
+        PropertyKey.parse("test-key:abc").verdict(Verdict.PASS, "test explanation")
     )
-    serialized_event = _get_serialized_event(property_event)
-    assert serialized_event == {
+    assert _get_serialized_event(event) == {
         "type": "property-event",
         "source_id": "id1",
         "address": "Test_Device&software=Test_Software",
         "key": "test-key:abc",
         "value": {"verdict": "Pass", "explanation": "test explanation"}
     }
+    new_event = _get_deserialized_object(event, system)
+    assert event.entity == new_event.entity
+    assert event.key_value == new_event.key_value
 
     # PropertySetValue
-    property_event = PropertyEvent(
+    event = PropertyEvent(
         Evidence(SOURCE), software,
         PropertyKey("test-key").value_set({PropertyKey("value-key"), PropertyKey("key-value")})
     )
-    serialized_event = _get_serialized_event(property_event)
-    assert "value-key" in serialized_event["value"]["sub_keys"]
-    assert "key-value" in serialized_event["value"]["sub_keys"]
-    serialized_event.pop("value")
-    assert serialized_event == {
-        "type": "property-event",
-        "source_id": "id1",
-        "address": "Test_Device&software=Test_Software",
-        "key": "test-key"
-    }
+    serialized = _get_serialized_event(event)
+    assert "value-key" in serialized["value"]["sub_keys"]
+    assert "key-value" in serialized["value"]["sub_keys"]
+    new_event = _get_deserialized_object(event, system)
+    assert event.entity == new_event.entity
+    assert event.key_value == new_event.key_value
 
     # ReleaseInfo
     info = ReleaseInfo("SwRelease")
@@ -360,12 +357,8 @@ def test_pydantic_serialize_property_event():
     info.latest_release_name = "test-name"
     info.interval_days = 1
     info.sw_name = "test-name2"
-    property_event = PropertyEvent(
-        Evidence(SOURCE), software,
-        (ReleaseInfo.PROPERTY_KEY, info)
-    )
-    serialized_event = _get_serialized_event(property_event)
-    assert serialized_event == {
+    event = PropertyEvent(Evidence(SOURCE), software, (ReleaseInfo.PROPERTY_KEY, info))
+    assert _get_serialized_event(event) == {
         "type": "property-event",
         "source_id": "id1",
         "address": "Test_Device&software=Test_Software",
@@ -378,64 +371,49 @@ def test_pydantic_serialize_property_event():
             "interval_days": 1
         }
     }
+    new_event = _get_deserialized_object(event, system)
+    assert event.entity == new_event.entity
+    key, value = new_event.key_value
+    assert key == ReleaseInfo.PROPERTY_KEY
+    assert isinstance(value, ReleaseInfo)
+    assert value.sw_name == info.sw_name
+    assert value.interval_days == info.interval_days
+    assert value.latest_release_name == info.latest_release_name
+    assert value.first_release == info.first_release
+    assert value.latest_release == info.latest_release
 
-
-def test_pydantic_new_property_event_from_serialized():
-    setup = Setup()
-    system = setup.get_system()
-    software = setup.system.device("Test Device").software("Test Software").sw
-
-    # PropertyVerdictValue
-    property_event = PropertyEvent(
-        Evidence(SOURCE), software,
-        PropertyKey.parse("test-key:abc").verdict(Verdict.PASS, "test explanation")
+    # IoTSystem root entity (address == "")
+    event = PropertyEvent(
+        Evidence(SOURCE), SYSTEM,
+        PropertyKey("system-key").verdict(Verdict.PASS, "system explanation")
     )
-
-    new_property_event = _get_deserialized_object(property_event, system)
-    assert property_event.entity == new_property_event.entity
-    assert property_event.key_value == new_property_event.key_value
-
-    # PropertySetValue
-    property_event = PropertyEvent(
-        Evidence(SOURCE), software,
-        PropertyKey.parse("test-key:abc").value_set({PropertyKey("value-key"), PropertyKey("key-value")})
-    )
-
-    new_property_event = _get_deserialized_object(property_event, system)
-    assert property_event.entity == new_property_event.entity
-    assert property_event.key_value == new_property_event.key_value
-
-    # ReleaseInfo
-    info = ReleaseInfo("SwRelease")
-    info.first_release = datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-    info.latest_release = datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-    info.latest_release_name = "test-name"
-    info.interval_days = 1
-    info.sw_name = "test-name2"
-    property_event = PropertyEvent(
-        Evidence(SOURCE), software,
-        (ReleaseInfo.PROPERTY_KEY, info)
-    )
-
-    new_property_event = _get_deserialized_object(property_event, system)
-    assert property_event.entity == new_property_event.entity
-    assert new_property_event.key_value == new_property_event.key_value
+    assert _get_serialized_event(event, SYSTEM) == {
+        "type": "property-event",
+        "source_id": "id1",
+        "address": "",
+        "key": "system-key",
+        "value": {"verdict": "Pass", "explanation": "system explanation"}
+    }
+    new_event = _get_deserialized_object(event, SYSTEM)
+    assert new_event.entity is SYSTEM
+    assert new_event.key_value == event.key_value
 
 
-def test_pydantic_serialize_name_event():
+def test_name_event():
     setup = Setup()
     services = setup.system.any("Services")
     device = setup.system.device("Test Device")
     device >> services / DNS
-
     name_event = NameEvent(
         Evidence(SOURCE),
         services.entity.children[0],
         DNSName("test.com"),
         EntityTag.new("test-tag"),
         IPADDRESS,
-        [device.entity, services.entity.children[0]]
+        [device.entity, services.entity.children[0]],
+        timestamp=datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
     )
+
     assert _get_serialized_event(name_event) == {
         "type": "name-event",
         "source_id": "id1",
@@ -443,23 +421,14 @@ def test_pydantic_serialize_name_event():
         "peers": ["Test_Device", "Services/udp:53"],
         "service": "Services/udp:53",
         "tag": "test-tag",
-        "address": "1.1.1.1"
+        "address": "1.1.1.1",
+        "timestamp": "2025-01-01T00:00:00+00:00"
     }
 
-
-def test_pydantic_new_name_event_from_serialized():
-    setup = Setup()
-    services = setup.system.any("Services")
-    device = setup.system.device("Test Device")
-    device >> services / DNS
-    name_event = NameEvent(
-        Evidence(SOURCE),
-        services.entity.children[0],
-        DNSName("test.com"),
-        EntityTag.new("test-tag"),
-        IPADDRESS,
-        [device.entity, services.entity.children[0]]
-    )
-
     new_name_event = _get_deserialized_object(name_event, setup.get_system())
-    assert new_name_event == name_event
+    assert new_name_event.service == name_event.service
+    assert new_name_event.name == name_event.name
+    assert new_name_event.address == name_event.address
+    assert new_name_event.tag == name_event.tag
+    assert set(new_name_event.peers) == set(name_event.peers)
+    assert new_name_event.timestamp == name_event.timestamp

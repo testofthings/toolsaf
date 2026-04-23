@@ -10,6 +10,7 @@ from pydantic import (
 )
 
 from toolsaf.common.entity import Entity
+from toolsaf.common.traffic import Flow
 from toolsaf.common.basics import Status, ExternalActivity, HostType, ConnectionType
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.address import Protocol, DNSName, Network, AnyAddress
@@ -259,7 +260,7 @@ class PropertyDTO(BaseDTO):
                 raise ValueError("Property key too long")
         return set_list
 
-    def populate(self, model: NetworkNode | Connection, key: PropertyKey) -> None:
+    def populate(self, model: NetworkNode | Connection | Flow, key: PropertyKey) -> None:
         """Populate a model's properties from this DTO"""
         if self.verdict:
             model.properties[key] = PropertyVerdictValue(self.verdict, self.exp)
