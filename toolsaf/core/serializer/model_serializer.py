@@ -29,22 +29,6 @@ from toolsaf.core.serializer.types import (
     validate_property_keys
 )
 
-
-UnionDTO = Annotated[
-    Union[
-        "IoTSystemDTO",
-        "HostDTO",
-        "ServiceDTO",
-        "DHCPServiceDTO",
-        "DNSServiceDTO",
-        "SoftwareDTO",
-        "CookieDTO",
-        "ConnectionDTO",
-        "NetworkDTO"
-    ],
-    Field(discriminator="type")
-]
-NODE_ADAPTER: TypeAdapter[UnionDTO] = TypeAdapter(UnionDTO)
 LOGGER = logging.getLogger(__name__)
 
 
@@ -529,3 +513,20 @@ class NetworkDTO(BaseDTO):
         ip_network = ipaddress.ip_network(self.address) if self.address else None
         network = Network(name=self.name, ip_network=ip_network)
         return network
+
+
+UnionDTO = Annotated[
+    Union[
+        IoTSystemDTO,
+        HostDTO,
+        ServiceDTO,
+        DHCPServiceDTO,
+        DNSServiceDTO,
+        SoftwareDTO,
+        CookieDTO,
+        ConnectionDTO,
+        NetworkDTO
+    ],
+    Field(discriminator="type")
+]
+NODE_ADAPTER: TypeAdapter[UnionDTO] = TypeAdapter(UnionDTO)
