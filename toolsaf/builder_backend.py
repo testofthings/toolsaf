@@ -22,6 +22,7 @@ from toolsaf.common.property import PropertyVerdictValue
 from toolsaf.core.event_logger import EventLogger
 from toolsaf.core.serializer.event_serializer import EventSerializer
 from toolsaf.core.serializer.model_serializer import SystemSerializer
+from toolsaf.core.serializer.types import validate_upload_tag
 from toolsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP, IP, TLS, MQTT, FTP,
                         BLEAdvertisement, ConnectionBuilder,
                         CookieBuilder, HostBuilder, MulticastConfigurer, NetworkBuilder, NodeBuilder,
@@ -151,12 +152,11 @@ class SystemBackend(SystemBuilder):
         return self.ignore_backend
 
     def tag(self, tag: str) -> None:
-        """Set a unique tag, consisting of numbers and characters, for statement uploads.
-            Has a minimum length of 3"""
-        assert all(c.isalnum() or c == "-" for c in tag), \
-            f"Upload tag {tag} can only include the '-' symbol and alphanumeric characters"
-        assert len(tag) >= 3, f"Upload tag {tag} is shorter than the minimum length of 3 characters"
-        self.system.upload_tag = tag
+        """
+        Set a unique tag for the security statement.
+        Must be between 3 and 50 characters long. Can only contain alphanumeric characters and hyphens.
+        """
+        self.system.upload_tag = validate_upload_tag(tag)
 
     # Backend methods
 

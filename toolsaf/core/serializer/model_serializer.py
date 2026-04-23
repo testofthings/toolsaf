@@ -1,14 +1,20 @@
 """Model (de)serialization"""
-from typing import Callable, Dict, Any, Optional, List, Annotated, Union, Literal
+from typing import (
+    Callable, Dict, Any, Optional, List, Annotated, Union, Literal
+)
 import logging
 import ipaddress
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
+from pydantic import (
+    BaseModel, ConfigDict, Field, TypeAdapter, field_validator,
+    IPvAnyNetwork
+)
 
 from toolsaf.common.entity import Entity
 from toolsaf.common.basics import Status, ExternalActivity, HostType, ConnectionType
 from toolsaf.common.verdict import Verdict
-from toolsaf.common.address import Protocol, Addresses, DNSName, Network
+from toolsaf.common.address import Protocol, DNSName, Network, AnyAddress
 from toolsaf.common.property import PropertyKey, PropertyVerdictValue, PropertySetValue
+from toolsaf.common.android import MobilePermissions
 from toolsaf.core.model import (
     NetworkNode, IoTSystem, Addressable, Host, Service,
     NodeComponent, Connection
@@ -17,6 +23,10 @@ from toolsaf.core.address_ranges import MulticastTarget, PortRange
 from toolsaf.core.ignore_rules import IgnoreRules, IgnoreRule
 from toolsaf.core.services import DHCPService, DNSService
 from toolsaf.core.components import Software, SoftwareComponent, Cookies, CookieData
+from toolsaf.core.serializer.types import (
+    LongNameType, NameType, DescriptionType, MatchPriorityType, SystemAddressType, UploadTagType,
+    validate_property_keys
+)
 
 
 UnionDTO = Annotated[
@@ -227,25 +237,52 @@ class SystemSerializer:
 
 class BaseDTO(BaseModel):
     """Base DTO"""
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        extra="forbid",
+        str_strip_whitespace=True
+    )
+
+
+class PropertyDTO(BaseDTO):
+    """DTO for a single property"""
+    verdict: Optional[Verdict] = None
+    set: List[PropertyKey] = []
+    exp: DescriptionType
+
+    @field_validator("set", mode="after")
+    @classmethod
+    def validate_set(cls, set_list: List[PropertyKey]) -> List[PropertyKey]:
+        """Validate length of each PropertyKey"""
+        for key in set_list:
+            if len(str(key)) > 100:
+                raise ValueError("Property key too long")
+        return set_list
+
+    def populate(self, model: NetworkNode | Connection, key: PropertyKey) -> None:
+        """Populate a model's properties from this DTO"""
+        if self.verdict:
+            model.properties[key] = PropertyVerdictValue(self.verdict, self.exp)
+        else:
+            model.properties[key] = PropertySetValue(set(self.set), self.exp)
 
 
 class EntityDTO(BaseDTO):
     """DTO for Entity"""
-    long_name: str
+    long_name: LongNameType
 
 
 class NetworkNodeDTO(EntityDTO):
     """DTO for NetworkNode"""
-    name: str
-    description: str
-    match_priority: int
-    address: str
+    name: NameType
+    description: DescriptionType
+    match_priority: MatchPriorityType
+    address: SystemAddressType
     host_type: HostType
     status: Status
     verdict: Optional[Verdict] = None
     external_activity: ExternalActivity
-    properties: Dict[str, Any] = {}
+    properties: Dict[PropertyKey, PropertyDTO]
 
     def populate(self, model: NetworkNode, model_map: Dict[str, Any]) -> None:
         """Populate a network node model from this DTO"""
@@ -255,15 +292,8 @@ class NetworkNodeDTO(EntityDTO):
         model.host_type = self.host_type
         model.status = self.status
         model.external_activity = self.external_activity
-        for key, value in self.properties.items():
-            property_key = PropertyKey.parse(key)
-            explanation = value.get("exp", "")
-            if "verdict" in value:
-                verdict = Verdict.parse(value["verdict"])
-                model.properties[property_key] = PropertyVerdictValue(verdict, explanation)
-            else:
-                sub_keys = {PropertyKey.parse(k) for k in value["set"]}
-                model.properties[property_key] = PropertySetValue(sub_keys, explanation)
+        for key, property_dto in self.properties.items():
+            property_dto.populate(model, key)
         if not isinstance(model, IoTSystem):
             model.get_system().originals.add(model)
         model_map[self.address] = model
@@ -272,19 +302,26 @@ class NetworkNodeDTO(EntityDTO):
 class IgnoreRuleDTO(BaseDTO):
     """DTO for IgnoreRule"""
     properties: List[str]
-    at: List[str]
-    explanation: str
+    at: List[SystemAddressType]
+    explanation: DescriptionType
+
+    @field_validator("properties")
+    @classmethod
+    def validate_properties(cls, properties: List[str]) -> List[str]:
+        """Validate property keys"""
+        validate_property_keys(properties)
+        return properties
 
 
 class IgnoreRulesDTO(BaseDTO):
     """DTO for IgnoreRules"""
-    rules: Dict[str, List[IgnoreRuleDTO]] # file type, related rules
+    rules: Dict[NameType, List[IgnoreRuleDTO]] # file type, related rules
 
 
 class IoTSystemDTO(NetworkNodeDTO):
     """DTO for IoTSystem"""
     type: Literal["system"] = "system"
-    upload_tag: str
+    upload_tag: UploadTagType
     ignore_rules: IgnoreRulesDTO
 
     def to_model(self, model_map: Dict[str, Any]) -> IoTSystem:
@@ -304,16 +341,15 @@ class IoTSystemDTO(NetworkNodeDTO):
 
 class AddressableDTO(NetworkNodeDTO):
     """DTO for Addressable"""
-    addresses: List[str]
-    parent_address: str # Parent system address
+    addresses: List[AnyAddress]
+    parent_address: SystemAddressType
     any_host: bool
 
     def populate(self, model: NetworkNode, model_map: Dict[str, Any]) -> None:
         """Populate an addressable model from this DTO"""
         super().populate(model, model_map)
         assert isinstance(model, Addressable)
-        for address in self.addresses:
-            model.addresses.add(Addresses.parse_endpoint(address))
+        model.addresses = set(self.addresses)
         model.parent = model_map[self.parent_address]
         model.parent.children.append(model)
         model.any_host = self.any_host
@@ -322,7 +358,7 @@ class AddressableDTO(NetworkNodeDTO):
 class HostDTO(AddressableDTO):
     """DTO for Host"""
     type: Literal["host"] = "host"
-    ignore_name_requests: List[str] = []
+    ignore_name_requests: List[NameType] = []
 
     def to_model(self, model_map: Dict[str, Any]) -> Host:
         """Create and populate a Host from this DTO"""
@@ -340,8 +376,8 @@ class ServiceDTO(AddressableDTO):
     con_type: ConnectionType
     authentication: bool
     client_side: bool
-    multicast_target: Optional[str] = None
-    port_range: Optional[str] = None
+    multicast_target: Optional[MulticastTarget] = None
+    port_range: Optional[PortRange] = None
     reply_from_other_address: bool
 
     def populate(self, model: NetworkNode, model_map: Dict[str, Any]) -> None:
@@ -352,10 +388,8 @@ class ServiceDTO(AddressableDTO):
         model.con_type = self.con_type
         model.authentication = self.authentication
         model.client_side = self.client_side
-        if self.multicast_target:
-            model.multicast_target = MulticastTarget.parse_address_range(self.multicast_target)
-        if self.port_range:
-            model.port_range = PortRange.parse_port_range(self.port_range)
+        model.multicast_target = self.multicast_target
+        model.port_range = self.port_range
         model.reply_from_other_address = self.reply_from_other_address
 
     def to_model(self, model_map: Dict[str, Any]) -> Service:
@@ -389,10 +423,10 @@ class DNSServiceDTO(ServiceDTO):
 
 class NodeComponentDTO(EntityDTO):
     """DTO for node component fields and population"""
-    name: str
-    address: str
+    name: NameType
+    address: SystemAddressType
     status: Status
-    parent_address: str # Parent system address
+    parent_address: SystemAddressType
 
     def populate(self, model: NodeComponent, model_map: Dict[str, Any]) -> None:
         """Populate a node component model from this DTO"""
@@ -405,7 +439,7 @@ class SoftwareDTO(NodeComponentDTO):
     """DTO for Software"""
     type: Literal["sw"] = "sw"
     components: List["SoftwareComponentDTO"]
-    permissions: List[str] = []
+    permissions: List[MobilePermissions] = []
 
     def to_model(self, model_map: Dict[str, Any]) -> Software:
         """Create and populate a Software from this DTO"""
@@ -416,21 +450,21 @@ class SoftwareDTO(NodeComponentDTO):
                 name=component_dto.name,
                 version=component_dto.version
             )
-        model.permissions = set(self.permissions)
+        model.permissions = {p.value for p in self.permissions}
         return model
 
 
 class SoftwareComponentDTO(BaseDTO):
     """DTO for SoftwareComponent"""
-    key: str
-    name: str
-    version: str
+    key: NameType
+    name: NameType
+    version: str = Field("", max_length=50)
 
 
 class CookieDTO(NodeComponentDTO):
     """DTO for Cookies"""
     type: Literal["cookies"] = "cookies"
-    cookies: Dict[str, "CookieDataDTO"]
+    cookies: Dict[NameType, "CookieDataDTO"]
 
     def to_model(self, model_map: Dict[str, Any]) -> Cookies:
         """Create and populate a Cookies from this DTO"""
@@ -447,22 +481,22 @@ class CookieDTO(NodeComponentDTO):
 
 class CookieDataDTO(BaseDTO):
     """DTO for CookieData"""
-    domain: str
-    path: str
-    explanation: str
+    domain: str = Field(..., min_length=1, max_length=100)
+    path: str = Field(..., min_length=1, max_length=200)
+    explanation: DescriptionType
 
 
 class ConnectionDTO(BaseDTO):
     """DTO for Connection"""
     type: Literal["connection"] = "connection"
-    name: str
-    long_name: str
-    address: str
-    source_address: str
-    target_address: str
+    name: NameType
+    long_name: LongNameType
+    address: SystemAddressType
+    source_address: SystemAddressType
+    target_address: SystemAddressType
     con_type: ConnectionType
     status: Status
-    properties: Dict[str, Any] = {}
+    properties: Dict[PropertyKey, PropertyDTO]
 
     def to_model(self, model_map: Dict[str, Any]) -> Connection:
         """Create a Connection from this DTO"""
@@ -475,15 +509,9 @@ class ConnectionDTO(BaseDTO):
 
         connection.status = self.status
         connection.con_type = self.con_type
-        for key, value in self.properties.items():
-            property_key = PropertyKey.parse(key)
-            explanation = value.get("exp", "")
-            if "verdict" in value:
-                verdict = Verdict.parse(value["verdict"])
-                connection.properties[property_key] = PropertyVerdictValue(verdict, explanation)
-            else:
-                sub_keys = {PropertyKey.parse(k) for k in value["set"]}
-                connection.properties[property_key] = PropertySetValue(sub_keys, explanation)
+        for key, property_dto in self.properties.items():
+            property_dto.populate(connection, key)
+
         model_map[self.address] = connection
         return connection
 
@@ -491,9 +519,9 @@ class ConnectionDTO(BaseDTO):
 class NetworkDTO(BaseDTO):
     """DTO for Netowrks"""
     type: Literal["network"] = "network"
-    name: str
-    address: Optional[str]
-    parent_address: str
+    name: NameType
+    address: IPvAnyNetwork
+    parent_address: SystemAddressType
 
     def to_model(self, model_map: Dict[str, Any]) -> Network: # pylint: disable=unused-argument
         """Create a Network from this DTO"""
