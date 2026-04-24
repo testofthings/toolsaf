@@ -50,7 +50,6 @@ find = { where = ["."], include = [
         "toolsaf.adapters",
         "toolsaf.adapters.data",
         "toolsaf.common",
-        "toolsaf.common.serializer",
         "toolsaf.core",
         "toolsaf.core.serializer",
         "toolsaf.diagram_visualizer"
