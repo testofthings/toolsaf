@@ -51,17 +51,18 @@ class SystemSerializer:
 
     def serialize(self, obj: Any) -> List[Dict[str, Any]]:
         """Serialize an object and its children to JSON"""
-        result, q = [], [obj]
-        while q:
+        result, stack = [], [obj]
+        while stack:
             self._queue = []
-            obj = q.pop(0)
+            obj = stack.pop()
             if not (serializer := self.serializer_map.get(type(obj))):
                 LOGGER.debug("No serializer found for object of type %s", type(obj))
                 continue
             serialized: Dict[str, Any] = {}
             serializer(obj, serialized)
             result.append(serialized)
-            q = self._queue + q # Depth first
+            if self._queue:
+                stack.extend(reversed(self._queue)) # Depth first
         return result
 
     def deserialize(self, data: Dict[str, Any]) -> Any:
