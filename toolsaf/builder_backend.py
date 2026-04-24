@@ -1187,7 +1187,7 @@ class SystemBackendRunner(SystemBackend):
         load_data = LoadedData(self.system, registry.logging, batch_import.batch_data)
 
         if args.write_statement:
-            serializer_version = "1.0"
+            serializer_version = "2.0"
             serialized_statement: Dict[str, List[Any]] = {}
             # dump security statement JSON
             serialized_statement[serializer_version] = SystemSerializer().serialize(self.system)

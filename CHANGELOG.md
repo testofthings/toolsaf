@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.0
+- Replaced the `SerializerStream`-based security statement (de)serialization approach with the new `SystemSerializer` and `EventSerializer`. Deserialization now utilizes Pydantic.
+- Security statement JSON format version updated from `1.0` to `2.0`. Version `1.0` serialized statements cannot be deserialized with Toolsaf `0.6.0`. Statements must be reserialized to the new format.
+- Changes to (de)serialized data include:
+    - `id` removed.
+    - `at` (ID denoting parent entity) replaced with `parent_address` (system address).
+    - Connection `source` (ID) replaced with `source_address` (system address).
+    - Connection `target` (ID) replaced with `target_address` (system address).
+    - Connection `properties` and `con_type` are now serialized and deserialized.
+    - Connection `source_long_name`, `target_long_name` and `tag` removed.
+    - EvidenceSource `source-id` renamed to `source_id`, `ref` renamed to `tail_ref`.
+    - and so on...
+
 ## 0.5.0
 - Changed data upload to send the deserialized statement and tool data to different API endpoints.
 - Modified security statement event data serialization and deserialization.
