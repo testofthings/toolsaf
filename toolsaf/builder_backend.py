@@ -1133,8 +1133,10 @@ class SystemBackendRunner(SystemBackend):
             json_data = json.loads(json_path.read_text())
             serializer_version = list(json_data.keys())[0]
 
+            records = json_data[serializer_version]
             split_index = next(
-                idx for idx, entry in enumerate(json_data[serializer_version]) if entry["type"] == "source"
+                (idx for idx, entry in enumerate(records) if entry.get("type") == "source"),
+                len(records)
             )
             system_data = json_data[serializer_version][:split_index]
             event_data = json_data[serializer_version][split_index:]
