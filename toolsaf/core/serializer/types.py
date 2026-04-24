@@ -32,17 +32,6 @@ def validate_property_keys(properties: Iterable[str]) -> None:
         raise ValueError("Incorrect property key format") from e
 
 
-def validate_source_id(source_id: str) -> str:
-    """Validate a source ID"""
-    if not 3 <= len(source_id) <= 20:
-        raise ValueError("Source ID must be between 3 and 20 characters")
-    if source_id[:2] != "id":
-        raise ValueError("Source ID must start with 'id'")
-    if not source_id[2:].isnumeric():
-        raise ValueError("Source ID must have numeric characters after 'id'")
-    return source_id
-
-
 LongNameType = Annotated[str, Field(..., min_length=1, max_length=300)]
 NameType = Annotated[str, Field(..., min_length=1, max_length=100)]
 DescriptionType = Annotated[str, Field("", min_length=0, max_length=4000)]
@@ -50,4 +39,4 @@ MatchPriorityType = Annotated[int, Field(..., ge=0, le=10)]
 SystemAddressType = Annotated[str, AfterValidator(validate_address)]
 UploadTagType = Annotated[str, AfterValidator(validate_upload_tag)]
 
-SourceIdType = Annotated[str, AfterValidator(validate_source_id)]
+SourceIdType = Annotated[str, Field(min_length=3, max_length=20, pattern=r"^id\d+$", strict=True)]

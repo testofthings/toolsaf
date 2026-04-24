@@ -134,7 +134,7 @@ def test_ethernet_flow():
 
 
 def test_ip_flow():
-    ip_flow = IPFlow(Evidence(SOURCE, tail_ref=":10"),
+    ip_flow = IPFlow(Evidence(SOURCE, tail_ref=""),
         source=(HWADDRESS, IPADDRESS, 10),
         target=(HWADDRESS, IPADDRESS, 11),
         protocol=Protocol.TCP
@@ -158,11 +158,11 @@ def test_ip_flow():
         "target": ["00:00:00:00:00:00|hw", "1.1.1.1", 11],
         "protocol": "tcp",
         "timestamp": "2025-01-01T00:00:00+00:00",
-        "tail_ref": ":10"
+        "tail_ref": ""
     }
 
     new_ip_flow = _get_deserialized_object(ip_flow)
-    assert new_ip_flow.evidence.tail_ref == ":10"
+    assert new_ip_flow.evidence.tail_ref == ""
     assert new_ip_flow.source == (HWADDRESS, IPADDRESS, 10)
     assert new_ip_flow.target == (HWADDRESS, IPADDRESS, 11)
     assert new_ip_flow.protocol == Protocol.TCP

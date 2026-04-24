@@ -2,7 +2,7 @@
 import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Annotated, Union, Literal, Tuple
-from pydantic import Field, TypeAdapter, field_validator, Discriminator, Tag
+from pydantic import Field, TypeAdapter, Discriminator, Tag
 
 from toolsaf.common.address import (
     AnyAddress, Addresses, EndpointAddress, Protocol,
@@ -160,8 +160,7 @@ class EventSerializer:
             data["timestamp"] = flow.timestamp.isoformat()
         if flow.properties:
             data["properties"] = self._serialize_properties(flow.properties)
-        if flow.evidence.tail_ref:
-            data["tail_ref"] = flow.evidence.tail_ref
+        data["tail_ref"] = flow.evidence.tail_ref
 
     def _serialize_ethernet_flow(self, flow: EthernetFlow, source_id: str) -> Dict[str, Any]:
         """Serialize an EthernetFlow"""
@@ -203,8 +202,7 @@ class EventSerializer:
             "service_name": scan.service_name,
             "address": scan.endpoint.get_parseable_value(),
         }
-        if scan.evidence.tail_ref:
-            data["tail_ref"] = scan.evidence.tail_ref
+        data["tail_ref"] = scan.evidence.tail_ref
         return data
 
     def _serialize_host_scan(self, scan: HostScan, source_id: str) -> Dict[str, Any]:
@@ -215,8 +213,7 @@ class EventSerializer:
             "host": scan.host.get_parseable_value(),
             "endpoints": [e.get_parseable_value() for e in scan.endpoints],
         }
-        if scan.evidence.tail_ref:
-            data["tail_ref"] = scan.evidence.tail_ref
+        data["tail_ref"] = scan.evidence.tail_ref
         return data
 
     def _serialize_property_address_event(
@@ -263,26 +260,6 @@ class EventSerializer:
         if event.timestamp:
             data["timestamp"] = event.timestamp.isoformat()
         return data
-
-
-def _deserialize_key_value(key_name: str, value_dict: Dict[str, Any]) -> Tuple[PropertyKey, Any]:
-    """Deserialize a property key-value pair from key_name and a value_dict"""
-    property_key = PropertyKey.parse(key_name)
-    if "sw_name" in value_dict:
-        info = ReleaseInfo(value_dict["sw_name"])
-        info.interval_days = value_dict.get("interval_days")
-        info.latest_release_name = value_dict.get("latest_release_name") or "?"
-        if (val := value_dict.get("first_release")):
-            info.first_release = datetime.datetime.fromisoformat(val)
-        if (val := value_dict.get("latest_release")):
-            info.latest_release = datetime.datetime.fromisoformat(val)
-        return property_key, info
-    explanation = value_dict.get("explanation", "")
-    if "verdict" in value_dict:
-        verdict = Verdict.parse(value_dict["verdict"])
-        return property_key, PropertyVerdictValue(verdict, explanation)
-    sub_keys = {PropertyKey.parse(k) for k in value_dict.get("sub_keys", [])}
-    return property_key, PropertySetValue(sub_keys, explanation)
 
 
 class ReleaseInfoDTO(BaseDTO):
@@ -356,22 +333,11 @@ class EvidenceSourceDTO(BaseDTO):
 class BaseEventDTO(BaseDTO):
     """Base DTO for all event types"""
     source_id: SourceIdType
-    tail_ref: Optional[str] = None
-
-    @field_validator("tail_ref")
-    @classmethod
-    def validate_tail_ref(cls, tail_ref: Optional[str]) -> Optional[str]:
-        """Validate that tail_ref is a valid filename if present"""
-        if tail_ref is not None:
-            if tail_ref[0] != ":" or not tail_ref[1:].isnumeric():
-                raise ValueError("tail_ref must start with ':' followed by numbers")
-            if len(tail_ref) > 20:
-                raise ValueError("tail_ref must be at most 20 characters long")
-        return tail_ref
+    tail_ref: str = Field(default="", pattern=r"^(:\d+)?$", max_length=20)
 
     def get_evidence(self, source_map: Dict[str, EvidenceSource]) -> Evidence:
         """Build Evidence from the source_map"""
-        return Evidence(source_map[self.source_id], self.tail_ref or "")
+        return Evidence(source_map[self.source_id], self.tail_ref)
 
 
 class FlowDTO(BaseEventDTO):
