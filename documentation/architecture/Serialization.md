@@ -2,7 +2,7 @@
 
 [Table of contents](README.md)
 
-Toolsaf entities and events are _serialized_ to and from JSON using using custom code for serialization and Pydantic for deserialization. The approach was chosen for following reasons:
+Toolsaf entities and events are _serialized_ to and from JSON using custom code for serialization and Pydantic for deserialization. The approach was chosen for following reasons:
 
 - Custom serialization methods give full control over the JSON output to match the planned _Security statement JSON standard_, without sacrificing Python code readability.
 - DTOs (Data Transfer Objects) make the expected shape of each incoming JSON record explicit.

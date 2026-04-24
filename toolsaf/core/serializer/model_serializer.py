@@ -502,7 +502,7 @@ class ConnectionDTO(BaseDTO):
 
 
 class NetworkDTO(BaseDTO):
-    """DTO for Netowrks"""
+    """DTO for Networks"""
     type: Literal["network"] = "network"
     name: NameType
     address: IPvAnyNetwork
