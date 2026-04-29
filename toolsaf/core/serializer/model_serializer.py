@@ -93,8 +93,7 @@ class SystemSerializer:
         })
 
         for child in obj.children:
-            if child.is_expected():
-                self._queue.append(child)
+            self._queue.append(child)
 
         for component in obj.components:
             self._queue.append(component)
