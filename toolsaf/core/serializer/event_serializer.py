@@ -412,7 +412,7 @@ class BLEAdvertisementFlowDTO(FlowDTO):
 class ServiceScanDTO(BaseEventDTO):
     """DTO for ServiceScan"""
     type: Literal["service-scan"] = "service-scan"
-    service_name: str = Field(..., min_length=1, max_length=200)
+    service_name: str = Field(..., min_length=0, max_length=200)
     address: AnyAddress
 
     def to_model(self, source_map: Dict[str, EvidenceSource], _system: IoTSystem) -> ServiceScan:

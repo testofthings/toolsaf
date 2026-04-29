@@ -176,9 +176,9 @@ def _valid_service_scan():
 def test_service_scan_dto_invalid_values():
     key_values = [
         ("type", "host-scan"),
-        ("service_name", ""),
         ("service_name", "a" * 201),
         ("service_name", 123),
+        ("service_name", None),
         ("address", 123),
         ("source_id", "idabc"),
         ("tail_ref", ":abc"),
