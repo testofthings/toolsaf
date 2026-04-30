@@ -202,6 +202,10 @@ def test_get_system_address():
 
 def test_parse_system_address():
     assert Addresses.parse_system_address(
+        ""
+    ) == AddressSequence((), )
+
+    assert Addresses.parse_system_address(
         "1.2.3.4"
     ) == AddressSequence.new(IPAddress.new("1.2.3.4"))
 

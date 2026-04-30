@@ -5,7 +5,7 @@ build-backend   = "setuptools.build_meta"
 # Project metadata
 [project]
 name            = "toolsaf"
-version         = "0.5.0"
+version         = "0.6.0"
 requires-python = ">=3.11"
 description     = "Tool-Driven Security Assessment Framework"
 readme          = "Info.md"
@@ -27,7 +27,8 @@ dependencies = [
     "watchdog",
     "colored",
     "diagrams",
-    "shodan"
+    "shodan",
+    "pydantic"
 ]
 
 [project.optional-dependencies]
@@ -49,7 +50,6 @@ find = { where = ["."], include = [
         "toolsaf.adapters",
         "toolsaf.adapters.data",
         "toolsaf.common",
-        "toolsaf.common.serializer",
         "toolsaf.core",
         "toolsaf.core.serializer",
         "toolsaf.diagram_visualizer"

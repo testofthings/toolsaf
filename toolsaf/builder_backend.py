@@ -13,15 +13,16 @@ from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union, cast
 from toolsaf.core.address_ranges import NULL_PORT_RANGE, AddressRange, MulticastTarget, PortRange
 from toolsaf.common.address import (AddressAtNetwork, Addresses, AnyAddress, DNSName, EndpointAddress, EntityTag,
                                   HWAddress, HWAddresses, IPAddress, IPAddresses, Network, Protocol, PseudoAddress)
+from toolsaf.common.traffic import EvidenceSource
 from toolsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status
 from toolsaf.adapters.batch_import import BatchData, BatchImporter, LabelFilter
-from toolsaf.common.serializer.serializer import SerializerStream
 from toolsaf.core.components import CookieData, Cookies, DataReference, StoredData, OperatingSystem, Software
 from toolsaf.common.release_info import ReleaseInfo
 from toolsaf.common.property import PropertyVerdictValue
 from toolsaf.core.event_logger import EventLogger
-from toolsaf.core.serializer.event_serializers import EventSerializer
-from toolsaf.core.serializer.model_serializers import IoTSystemSerializer
+from toolsaf.core.serializer.event_serializer import EventSerializer
+from toolsaf.core.serializer.model_serializer import SystemSerializer
+from toolsaf.core.serializer.types import validate_upload_tag
 from toolsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP, IP, TLS, MQTT, FTP,
                         BLEAdvertisement, ConnectionBuilder,
                         CookieBuilder, HostBuilder, MulticastConfigurer, NetworkBuilder, NodeBuilder,
@@ -151,12 +152,11 @@ class SystemBackend(SystemBuilder):
         return self.ignore_backend
 
     def tag(self, tag: str) -> None:
-        """Set a unique tag, consisting of numbers and characters, for statement uploads.
-            Has a minimum length of 3"""
-        assert all(c.isalnum() or c == "-" for c in tag), \
-            f"Upload tag {tag} can only include the '-' symbol and alphanumeric characters"
-        assert len(tag) >= 3, f"Upload tag {tag} is shorter than the minimum length of 3 characters"
-        self.system.upload_tag = tag
+        """
+        Set a unique tag for the security statement.
+        Must be between 3 and 50 characters long. Can only contain alphanumeric characters and hyphens.
+        """
+        self.system.upload_tag = validate_upload_tag(tag)
 
     # Backend methods
 
@@ -1118,6 +1118,8 @@ class SystemBackendRunner(SystemBackend):
         if args.dns:
             self.any().serve(DNS)
 
+        events = []
+
         self.system.ignore_rules = self.ignore_backend.get_rules()
         if args.read_statement:
             # Ensure the system is empty
@@ -1131,16 +1133,32 @@ class SystemBackendRunner(SystemBackend):
             json_data = json.loads(json_path.read_text())
             serializer_version = list(json_data.keys())[0]
 
+            records = json_data[serializer_version]
+            split_index = next(
+                (idx for idx, entry in enumerate(records) if entry.get("type") == "source"),
+                len(records)
+            )
+            system_data = json_data[serializer_version][:split_index]
+            event_data = json_data[serializer_version][split_index:]
+
             # Deserialize the security statement
-            serializer = IoTSystemSerializer(self.system)
-            stream = SerializerStream(serializer)
-            deserialized_system = list(stream.read(json_data[serializer_version]))[0]
-            assert isinstance(deserialized_system, IoTSystem), "Deserialized system is not an IoTSystem"
-            self.system = deserialized_system
+            system_serializer = SystemSerializer()
+            for record in system_data:
+                system_serializer.deserialize(record)
+            self.system = system_serializer.model_map[""]
+            assert isinstance(self.system, IoTSystem), "Deserialized system is not an IoTSystem"
+
+            event_serializer = EventSerializer(self.system)
+            for record in event_data:
+                events.append(event_serializer.deserialize(record))
 
         self.finish_()
 
         registry = Registry(Inspector(self.system, self.system.ignore_rules))
+
+        for event in events:
+            if not isinstance(event, EvidenceSource):
+                registry.logging.consume(event)
 
         log_events = args.log_events
         if log_events:
@@ -1171,21 +1189,17 @@ class SystemBackendRunner(SystemBackend):
         load_data = LoadedData(self.system, registry.logging, batch_import.batch_data)
 
         if args.write_statement:
-            serializer_version = "1.0"
-            json_dump: Dict[str, List[Any]] = {serializer_version: []}
+            serializer_version = "2.0"
+            serialized_statement: Dict[str, List[Any]] = {}
             # dump security statement JSON
-            ser = IoTSystemSerializer(self.system)
-            stream = SerializerStream(ser)
-            for js in stream.write(self.system):
-                json_dump[serializer_version].append(js)
+            serialized_statement[serializer_version] = SystemSerializer().serialize(self.system)
             # dump events, if any
             if registry.logging.logs:
-                log_ser = EventSerializer(self.system)
-                stream = SerializerStream(log_ser, context=stream.context)
+                event_serializer = EventSerializer(self.system)
                 for log in registry.logging.logs:
-                    for js in log_ser.write_event(log.event, stream):
-                        json_dump[serializer_version].append(js)
-            json.dump(json_dump, args.write_statement.open("w"), indent=4)
+                    for event in event_serializer.serialize(log.event):
+                        serialized_statement[serializer_version].append(event)
+            json.dump(serialized_statement, args.write_statement.open("w"), indent=4)
             print(f"Security statement written to {args.write_statement}")
 
         if not args.write_statement:
@@ -1212,16 +1226,14 @@ class SystemBackendRunner(SystemBackend):
             uploader.do_upload_pre_procedures(args.key_path)
             uploader.upload_statement()
 
-            ser = IoTSystemSerializer(self.system)
-            system_stream = SerializerStream(ser)
-            uploader.upload_system(list(system_stream.write(self.system)))
+            system_serializer = SystemSerializer()
+            uploader.upload_system(system_serializer.serialize(self.system))
 
             if registry.logging.logs:
-                log_ser = EventSerializer(self.system)
-                event_stream = SerializerStream(log_ser, context=system_stream.context)
-                events = []
+                event_serializer = EventSerializer(self.system)
+                serialized_events: List[Dict[str, Any]] = []
                 for log in registry.logging.logs:
-                    events += list(log_ser.write_event(log.event, event_stream))
-                uploader.upload_logs(events)
+                    serialized_events += event_serializer.serialize(log.event)
+                uploader.upload_logs(serialized_events)
 
         return load_data

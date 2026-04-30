@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 from typing import Set, Dict, Any, Optional, Tuple, Self
+from pydantic import GetCoreSchemaHandler
+from pydantic_core import core_schema
 
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.verdict import Verdictable
@@ -196,6 +198,21 @@ class PropertyKey:
             return
         else:
             properties[self] = value
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler # pylint: disable=unused-argument
+    ) -> core_schema.CoreSchema:
+        """Pydantic core schema"""
+        return core_schema.no_info_after_validator_function(
+            cls.parse,
+            core_schema.str_schema(),
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                lambda pk: str(pk), # pylint: disable=unnecessary-lambda
+                info_arg=False,
+                return_schema=core_schema.str_schema()
+            )
+        )
 
 
 # Property dictionary

@@ -4,8 +4,10 @@ from dataclasses import dataclass
 import enum
 import ipaddress
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network
-from typing import Union, Optional, Tuple, Iterable, Self, List
+from typing import Union, Optional, Tuple, Iterable, Self, List, Any
 import re
+from pydantic import GetCoreSchemaHandler
+from pydantic_core import core_schema
 
 
 class Protocol(enum.Enum):
@@ -106,6 +108,21 @@ class AnyAddress:
 
     def __lt__(self, other: 'AnyAddress') -> bool:
         return self.__repr__() < other.__repr__()
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler # pylint: disable=unused-argument
+    ) -> core_schema.CoreSchema:
+        """Pydantic core schema"""
+        return core_schema.no_info_after_validator_function(
+            Addresses.parse_endpoint,
+            core_schema.str_schema(),
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                lambda a: a.get_parseable_value(),
+                info_arg=False,
+                return_schema=core_schema.str_schema()
+            )
+        )
 
 
 class EntityTag(AnyAddress):
@@ -293,6 +310,8 @@ class Addresses:
     @classmethod
     def parse_system_address(cls, value: str) -> 'AddressSequence':
         """Parse system addresses"""
+        if value == "": # IoTSystem
+            return AddressSequence((), )
         segments = []
         for segment in value.split("&"):
             if len(segment_split := segment.split("=")) == 2:
@@ -356,6 +375,21 @@ class HWAddress(AnyAddress):
     def __repr__(self) -> str:
         return self.data
 
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler # pylint: disable=unused-argument
+    ) -> core_schema.CoreSchema:
+        """Pydantic core schema"""
+        return core_schema.no_info_after_validator_function(
+            lambda v: cls.new(v.replace("|hw", "")),
+            core_schema.str_schema(),
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                lambda a: a.get_parseable_value(),
+                info_arg=False,
+                return_schema=core_schema.str_schema()
+            )
+        )
+
 
 class HWAddresses:
     """HW address constants"""
@@ -414,6 +448,21 @@ class IPAddress(AnyAddress):
 
     def __repr__(self) -> str:
         return str(self.data)
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler # pylint: disable=unused-argument
+    ) -> core_schema.CoreSchema:
+        """Pydantic core schema"""
+        return core_schema.no_info_after_validator_function(
+            cls.new,
+            core_schema.str_schema(),
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                lambda a: a.get_parseable_value(),
+                info_arg=False,
+                return_schema=core_schema.str_schema()
+            )
+        )
 
 
 class IPAddresses:
@@ -578,6 +627,21 @@ class EndpointAddress(AnyAddress):
         port = f":{self.port}" if self.port >= 0 else ""
         prot = f"/{self.protocol.value}" if self.protocol != Protocol.ANY else ""
         return f"{self.host}{prot}{port}"
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler # pylint: disable=unused-argument
+    ) -> core_schema.CoreSchema:
+        """Pydantic core schema"""
+        return core_schema.no_info_after_validator_function(
+            Addresses.parse_endpoint,
+            core_schema.str_schema(),
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                lambda a: a.get_parseable_value(),
+                info_arg=False,
+                return_schema=core_schema.str_schema()
+            )
+        )
 
 
 class Network:

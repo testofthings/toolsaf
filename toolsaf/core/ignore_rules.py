@@ -18,6 +18,11 @@ class IgnoreRule:
     def __repr__(self) -> str:
         return f"IgnoreRule {self.file_type}"
 
+    def __hash__(self) -> int:
+        return hash((
+            self.file_type, frozenset(self.properties), frozenset(self.at), self.explanation
+        ))
+
 
 class IgnoreRules:
     """Rules for ignoring properties based on file type"""
@@ -59,3 +64,11 @@ class IgnoreRules:
                 )
                 return new_pvv
         return verdict_value
+
+    def __hash__(self) -> int:
+        return hash(tuple(
+            (key, tuple(self.rules[key])) for key in sorted(self.rules.keys())
+        ))
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, IgnoreRules) and self.rules == other.rules

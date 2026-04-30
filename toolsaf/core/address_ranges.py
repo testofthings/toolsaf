@@ -1,7 +1,9 @@
 """Address range matching"""
 
 from ipaddress import IPv4Address
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Any
+from pydantic import GetCoreSchemaHandler
+from pydantic_core import core_schema
 
 from toolsaf.common.address import Addresses, AnyAddress, IPAddress
 
@@ -105,6 +107,21 @@ class MulticastTarget:
     def __repr__(self) -> str:
         return f"Multicast: {self.fixed_address or self.address_range}"
 
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler # pylint: disable=unused-argument
+    ) -> core_schema.CoreSchema:
+        """Pydantic schema for MulticastTarget"""
+        return core_schema.no_info_after_validator_function(
+            cls.parse_address_range,
+            core_schema.str_schema(),
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                lambda r: r.get_parseable_value(),
+                info_arg=False,
+                return_schema=core_schema.str_schema()
+            )
+        )
+
 
 class PortRange:
     """Port range"""
@@ -184,6 +201,22 @@ class PortRange:
 
     def __repr__(self) -> str:
         return self.get_parseable_value()
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler # pylint: disable=unused-argument
+    ) -> core_schema.CoreSchema:
+        """Pydantic schema for PortRange"""
+        return core_schema.no_info_after_validator_function(
+            cls.parse_port_range,
+            core_schema.str_schema(),
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                lambda r: r.get_parseable_value(),
+                info_arg=False,
+                return_schema=core_schema.str_schema()
+            )
+        )
+
 
 # Null range
 NULL_PORT_RANGE = PortRange([])
