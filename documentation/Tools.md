@@ -94,6 +94,19 @@ $ unzip <package>.apk AndroidManifest.xml
 ```
 We divide Android permissions into [different categories](../toolsaf/adapters/data/android_permissions.json) that are then used in the DSL.
 
+If the downloaded content is in a form of `.xapk` the following steps are required
+```
+unzip <your_file>.xapk -d xapk_extracted
+```
+Then look for the base file (usually the biggest one) and then:
+```
+apktool d xapk_extracted/<base_file_name>.apk -f -o apk-file
+```
+and now there is `apk-file/AndroidManifest.xml`.
+
+**Note:** The `AndroidManifest.xml` must be renamed to match the app name
+defined in the statement (replacing spaces with underscores).
+
 ### Black Duck vulnerabilities
 
 > 🌐 [Black Duck SCA](https://www.blackduck.com/software-composition-analysis-tools/black-duck-sca.html)
@@ -192,7 +205,7 @@ Data files are Nmap XML-formatted output files with suffix `.xml`. Example metaf
 The nmap-command is run in the following manner to capture the data:
 
 ```
-$ nmap -oX <file>.xml <target>
+sudo nmap -sSU -Pn -p T:1-65535,U:1-2048 -oX <filename>.xml <device ip>
 ```
 
 ### PCAP
@@ -220,13 +233,13 @@ Data files are JSON format Shodan scan results with suffix `.json`. Example meta
 ```
 If there are no Wireshark captures that are processed before the Shodan results, add the `addresses` section to the metafile, so that results are connected correctly.
 
-Shodan scan results can be obtained by using either of the following commands:
+Shodan scan results can be obtained by using either of the following commands from within a virtual environment where toolsaf is installed:
 ```bash
 export SHODAN_API_KEY=your-api-key
 
-python3 toolsaf/adapters/shodan_scan.py iplookup 8.8.8.8 # Results for one IP
+python3 toolsaf.adapters.shodan_scan.py iplookup 8.8.8.8 # Results for one IP
 # OR
-python3 toolsaf/adapters/shodan_scan.py dnslookup ruuvi.com # Results for multiple IPs under given domain
+python3 toolsaf.adapters.shodan_scan.py dnslookup ruuvi.com # Results for multiple IPs under given domain
 ```
 
 ### SPDX
