@@ -76,36 +76,34 @@ In the following list you can find the tools and formats Toolsaf supports. Short
 > 🌐 [APKpure](https://apkpure.net) to fetch APK packages
 > 🌐 [apktool](https://apktool.org) to analyze them.
 
-Toolsaf checks the permissions listed in `.xml` format Android Manifest files. These can be extracted from mobile application's `.apk` files. Example metafile `00meta.json`:
+Toolsaf checks the permissions listed in `.xml` format Android manifest files. These can be extracted from mobile application `.apk` or `.xapk` packages. Example metafile `00meta.json`:
 
 ```json
 {
     "file_type": "apk"
 }
 ```
-A manifest file can be extracted from an Android package file with `apktool` or simply using 'unzip'.
+#### `.apk` Extraction
+Since `.apk` packages are essentially ZIP archives, the most straightforward way to extract the manifest is using `unzip`:
 ```
-$ apktool d <package>.apk -f -o apk-files
+unzip <package>.apk AndroidManifest.xml
 ```
-The file can be found from `apk-file/AndroidManifest.xml`.
-As the package file is a zip, the following works as well.
+Alternatively, you can unpack the package using `apktool`:
 ```
-$ unzip <package>.apk AndroidManifest.xml
+apktool d <package>.apk -f -o apk-files
 ```
-We divide Android permissions into [different categories](../toolsaf/adapters/data/android_permissions.json) that are then used in the DSL.
+The manifest will be located at `apk-files/AndroidManifest.xml`.
 
-If the downloaded content is in a form of `.xapk` the following steps are required
+#### `.xapk` Extraction
+An `.xapk` is a nested archive. You must first extract the outer layer with `unzip`:
 ```
 unzip <your_file>.xapk -d xapk_extracted
 ```
-Then look for the base file (usually the biggest one) and then:
-```
-apktool d xapk_extracted/<base_file_name>.apk -f -o apk-file
-```
-and now there is `apk-file/AndroidManifest.xml`.
+Then locate the base `.apk` file from the `xapk_extracted` directory. It is typically the largest file. From there you can use either of the example commands provided for `.apk` files.
 
-**Note:** The `AndroidManifest.xml` must be renamed to match the app name
-defined in the statement (replacing spaces with underscores).
+**Note:** The extracted `AndroidManifest.xml` must be renamed to match the app name defined in your security statement. Any spaces in the name must be replaced with underscores.
+
+Toolsaf divides Android permissions into [different categories](../toolsaf/adapters/data/android_permissions.json) that are used in the DSL.
 
 ### Black Duck vulnerabilities
 
@@ -233,13 +231,13 @@ Data files are JSON format Shodan scan results with suffix `.json`. Example meta
 ```
 If there are no Wireshark captures that are processed before the Shodan results, add the `addresses` section to the metafile, so that results are connected correctly.
 
-Shodan scan results can be obtained by using either of the following commands from within a virtual environment where toolsaf is installed:
+Toolsaf can be used to obtain Shodan scan results for a single IP address or for the IPs associated with a given domain. Here are examples for both use cases:
 ```bash
 export SHODAN_API_KEY=your-api-key
 
 python3 toolsaf.adapters.shodan_scan.py iplookup 8.8.8.8 # Results for one IP
 # OR
-python3 toolsaf.adapters.shodan_scan.py dnslookup ruuvi.com # Results for multiple IPs under given domain
+python3 toolsaf.adapters.shodan_scan.py dnslookup ruuvi.com # Results for multiple IPs under a given domain
 ```
 
 ### SPDX
