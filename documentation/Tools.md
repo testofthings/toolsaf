@@ -84,11 +84,8 @@ Toolsaf checks the permissions listed in `.xml` format Android manifest files. T
 }
 ```
 #### `.apk` Extraction
-Since `.apk` packages are essentially ZIP archives, the most straightforward way to extract the manifest is using `unzip`:
-```
-unzip <package>.apk AndroidManifest.xml
-```
-Alternatively, you can unpack the package using `apktool`:
+The most straightforward way to extract the manifest is using `apktool`:
+
 ```
 apktool d <package>.apk -f -o apk-files
 ```
@@ -99,7 +96,7 @@ An `.xapk` is a nested archive. You must first extract the outer layer with `unz
 ```
 unzip <your_file>.xapk -d xapk_extracted
 ```
-Then locate the base `.apk` file from the `xapk_extracted` directory. It is typically the largest file. From there you can use either of the example commands provided for `.apk` files.
+Then, locate the base .apk file within the xapk_extracted directory (it is typically the largest file). From there, you can use the `apktool` method explained above.
 
 **Note:** The extracted `AndroidManifest.xml` must be renamed to match the app name defined in your security statement. Any spaces in the name must be replaced with underscores.
 
