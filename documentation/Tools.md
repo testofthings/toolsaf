@@ -76,23 +76,31 @@ In the following list you can find the tools and formats Toolsaf supports. Short
 > 🌐 [APKpure](https://apkpure.net) to fetch APK packages
 > 🌐 [apktool](https://apktool.org) to analyze them.
 
-Toolsaf checks the permissions listed in `.xml` format Android Manifest files. These can be extracted from mobile application's `.apk` files. Example metafile `00meta.json`:
+Toolsaf checks the permissions listed in `.xml` format Android manifest files. These can be extracted from mobile application `.apk` or `.xapk` packages. Example metafile `00meta.json`:
 
 ```json
 {
     "file_type": "apk"
 }
 ```
-A manifest file can be extracted from an Android package file with `apktool` or simply using 'unzip'.
+#### `.apk` Extraction
+The most straightforward way to extract the manifest is using `apktool`:
+
 ```
-$ apktool d <package>.apk -f -o apk-files
+apktool d <package>.apk -f -o apk-files
 ```
-The file can be found from `apk-file/AndroidManifest.xml`.
-As the package file is a zip, the following works as well.
+The manifest will be located at `apk-files/AndroidManifest.xml`.
+
+#### `.xapk` Extraction
+An `.xapk` is a nested archive. You must first extract the outer layer with `unzip`:
 ```
-$ unzip <package>.apk AndroidManifest.xml
+unzip <your_file>.xapk -d xapk_extracted
 ```
-We divide Android permissions into [different categories](../toolsaf/adapters/data/android_permissions.json) that are then used in the DSL.
+Then, locate the base `.apk` file within the `xapk_extracted` directory (it is typically the largest file). From there, you can use the `apktool` method explained above.
+
+**Note:** The extracted `AndroidManifest.xml` must be renamed to match the app name defined in your security statement. Any spaces in the name must be replaced with underscores.
+
+Toolsaf divides Android permissions into [different categories](../toolsaf/adapters/data/android_permissions.json) that are used in the DSL.
 
 ### Black Duck vulnerabilities
 
@@ -192,7 +200,7 @@ Data files are Nmap XML-formatted output files with suffix `.xml`. Example metaf
 The nmap-command is run in the following manner to capture the data:
 
 ```
-$ nmap -oX <file>.xml <target>
+sudo nmap -sSU -Pn -p T:1-65535,U:1-2048 -oX <filename>.xml <device ip>
 ```
 
 ### PCAP
@@ -220,13 +228,13 @@ Data files are JSON format Shodan scan results with suffix `.json`. Example meta
 ```
 If there are no Wireshark captures that are processed before the Shodan results, add the `addresses` section to the metafile, so that results are connected correctly.
 
-Shodan scan results can be obtained by using either of the following commands:
+Toolsaf can be used to obtain Shodan scan results for a single IP address or for the IPs associated with a given domain. Here are examples for both use cases:
 ```bash
 export SHODAN_API_KEY=your-api-key
 
-python3 toolsaf/adapters/shodan_scan.py iplookup 8.8.8.8 # Results for one IP
+python3 toolsaf.adapters.shodan_scan.py iplookup 8.8.8.8 # Results for one IP
 # OR
-python3 toolsaf/adapters/shodan_scan.py dnslookup ruuvi.com # Results for multiple IPs under given domain
+python3 toolsaf.adapters.shodan_scan.py dnslookup ruuvi.com # Results for multiple IPs under a given domain
 ```
 
 ### SPDX
