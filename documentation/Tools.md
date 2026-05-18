@@ -96,7 +96,7 @@ An `.xapk` is a nested archive. You must first extract the outer layer with `unz
 ```
 unzip <your_file>.xapk -d xapk_extracted
 ```
-Then, locate the base .apk file within the xapk_extracted directory (it is typically the largest file). From there, you can use the `apktool` method explained above.
+Then, locate the base `.apk` file within the `xapk_extracted` directory (it is typically the largest file). From there, you can use the `apktool` method explained above.
 
 **Note:** The extracted `AndroidManifest.xml` must be renamed to match the app name defined in your security statement. Any spaces in the name must be replaced with underscores.
 
