@@ -1,5 +1,7 @@
+import pytest
 import pathlib
 
+from toolsaf.main import ConfigurationException
 from toolsaf.common.address import EntityTag, IPAddress, DNSName, Protocol
 from toolsaf.common.verdict import Verdict
 from toolsaf.builder_backend import SystemBackend
@@ -24,6 +26,23 @@ def test_dns():
 
     assert f1 == c1.connection
     assert dev1.entity.addresses == {EntityTag("Device"), IPAddress.new("1.0.0.1"), DNSName("name1.local")}
+
+
+def test_add_dns_names():
+    sb = SystemBackend()
+    dev1 = sb.device().dns("example.com").dns("example.org")
+    assert DNSName("example.com") in dev1.entity.addresses
+    assert DNSName("example.org") in dev1.entity.addresses
+
+    dev2 = sb.device().dns("test.com", "test.org")
+    assert DNSName("test.com") in dev2.entity.addresses
+    assert DNSName("test.org") in dev2.entity.addresses
+
+    with pytest.raises(ConfigurationException, match=r"Using name many times: test\.com"):
+        sb.device().dns("test.com")
+
+    with pytest.raises(ValueError, match=r"Invalid DNS label in name: '-incorrect_domain\.com'"):
+        sb.device().dns("-incorrect_domain.com")
 
 
 def test_dns_pcap():

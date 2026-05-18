@@ -88,8 +88,8 @@ class NodeBuilder:
         """Define entity name, names with dot (.) are assumed to be DNS domain names"""
         raise NotImplementedError()
 
-    def dns(self, name: str) -> Self:
-        """Define DNS name"""
+    def dns(self, *names: str) -> Self:
+        """Define DNS names"""
         raise NotImplementedError()
 
     def describe(self, text: str) -> Self:

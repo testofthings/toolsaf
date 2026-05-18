@@ -247,17 +247,18 @@ class NodeBackend(NodeBuilder, NodeManipulator):
             self.dns(name)
         return self
 
-    def dns(self, name: str) -> Self:
-        name = name.strip()
-        DNSName.validate(name)
-        dn = DNSName(name)
-        networks = self.entity.get_networks_for(dn)
-        assert len(networks) == 1, "DNS name must be in one network"
-        self.entity.addresses.add(dn)
-        key = AddressAtNetwork(dn, networks[0])
-        if key in self.system.entity_by_address:
-            raise ConfigurationException(f"Using name many times: {dn}")
-        self.system.entity_by_address[key] = self
+    def dns(self, *names: str) -> Self:
+        for name in names:
+            name = name.strip()
+            DNSName.validate(name)
+            dn = DNSName(name)
+            networks = self.entity.get_networks_for(dn)
+            assert len(networks) == 1, "DNS name must be in one network"
+            self.entity.addresses.add(dn)
+            key = AddressAtNetwork(dn, networks[0])
+            if key in self.system.entity_by_address:
+                raise ConfigurationException(f"Using name many times: {dn}")
+            self.system.entity_by_address[key] = self
         return self
 
     def describe(self, text: str) -> Self:
