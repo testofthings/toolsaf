@@ -38,6 +38,7 @@ from toolsaf.core.result import Report
 from toolsaf.core.components import SoftwareComponent
 from toolsaf.core.services import DHCPService, DNSService
 from toolsaf.core.online_resources import OnlineResource
+from toolsaf.common.entity import Entity
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.android import MobilePermissions
 from toolsaf.adapters.spdx_reader import SPDXJson
@@ -58,6 +59,7 @@ class SystemBackend(SystemBuilder):
         self.loaders: List[EvidenceLoader] = []
         self.protocols: Dict[Any, 'ProtocolBackend'] = {}
         self.ignore_backend = IgnoreRulesBackend()
+        self._changes: Set[Entity] = set()
 
     def network(self, subnet: str="", ip_mask: Optional[str] = None) -> 'NetworkBuilder':
         if subnet:
@@ -125,6 +127,7 @@ class SystemBackend(SystemBuilder):
         self.system.online_resources.append(
             OnlineResource(name, url, keywords)
         )
+        self.changed(self.system)
         return self
 
     def attach_file(self, file_path: str, relative_to: Optional[str] = None) -> Self:
@@ -149,6 +152,7 @@ class SystemBackend(SystemBuilder):
 
     def ignore(self, file_type: str) -> 'IgnoreRulesBackend':
         self.ignore_backend.new_rule(file_type)
+        self.changed(self.system)
         return self.ignore_backend
 
     def tag(self, tag: str) -> None:
@@ -168,6 +172,7 @@ class SystemBackend(SystemBuilder):
             h.description = description
             h.match_priority = 10
             hb = HostBackend(h, self)
+        self.changed(hb.entity)
         return hb
 
     def get_protocol_backend(self,
@@ -214,6 +219,16 @@ class SystemBackend(SystemBuilder):
             host_names.add(h.name)
             self._check_unique_under_parent(h)
 
+    def changed(self, entity: Entity) -> None:
+        """Add entity to changed set"""
+        self._changes.add(entity)
+
+    def serialize_statement_changes(self) -> str:
+        """FIXME"""
+        serializer = SystemSerializer()
+        result = serializer.serialize_set(self._changes)
+        print(json.dumps(result, indent=4))
+
         # We want to have a authenticator related to each authenticated service
         # NOTE: Not ready to go into this level now...
         # auth_map = DataUsage.map_authenticators(self.system, {})
@@ -259,6 +274,7 @@ class NodeBackend(NodeBuilder, NodeManipulator):
             if key in self.system.entity_by_address:
                 raise ConfigurationException(f"Using name many times: {dn}")
             self.system.entity_by_address[key] = self
+            self.system.changed(self.entity)
         return self
 
     def describe(self, text: str) -> Self:
@@ -283,6 +299,7 @@ class NodeBackend(NodeBuilder, NodeManipulator):
         if sb is None:
             sb = SoftwareBackend(self, name)
             self.sw[name] = sb
+        self.system.changed(sb.sw)
         return sb
 
     def __rshift__(self, target: ServiceOrGroup) -> 'ConnectionBackend':
@@ -305,6 +322,7 @@ class NodeBackend(NodeBuilder, NodeManipulator):
         if not networks:
             raise ConfigurationException(f"Address {address} not in any network range of {self.entity.name}")
         self.entity.addresses.add(address)
+        self.system.changed(self.entity)
         for nw in networks:
             key = AddressAtNetwork(address, nw)
             old = self.system.entity_by_address.get(key)
@@ -371,6 +389,7 @@ class ServiceBackend(NodeBackend, ServiceBuilder):
             e.status = Status.EXPECTED
         s.entity.get_parent_host().connections.append(c)
         self.entity.get_parent_host().connections.append(c)
+        self.system.changed(c)
         return ConnectionBackend(c, (s, self))
 
 
@@ -441,6 +460,7 @@ class HostBackend(NodeBackend, HostBuilder):
     def __lshift__(self, multicast: MulticastConfigurer) -> ConnectionBuilder:
         target = self / multicast.protocol.multicast(multicast.address)
         c = multicast.source >> target
+        self.system.changed(c.connection)
         return c
 
     def cookies(self) -> 'CookieBackend':
@@ -460,11 +480,13 @@ class HostBackend(NodeBackend, HostBuilder):
             n = n.strip()
             DNSName.validate(n)
             self.entity.ignore_name_requests.add(DNSName(n))
+        self.system.changed(self.entity)
         return self
 
     def set_property(self, *key: str) -> Self:
         p = PropertyKey.create(key).persistent()
         self.entity.set_property(p.verdict())  # inconclusive
+        self.system.changed(self.entity)
         return self
 
     def set_permissions(self, *permissions: MobilePermissions) -> Self:
@@ -679,8 +701,10 @@ class ProtocolBackend:
             self.transport, (self.service_port if self.port_to_name else -1)
         old = parent.service_builders.get(key)
         if old:
+            parent.system.changed(old.entity)
             return old
         b = self._create_service(parent)
+        parent.system.changed(b.entity)
         parent.service_builders[key] = b
         b.entity.status = Status.EXPECTED
         assert b.entity.parent == parent.entity
