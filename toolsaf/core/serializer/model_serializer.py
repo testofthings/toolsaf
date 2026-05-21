@@ -66,8 +66,8 @@ class SystemSerializer:
                 stack.extend(reversed(self._queue)) # Depth first
         return result
 
-    def serialize_set(self, obj_set: Set[Any]):
-        """FIXME"""
+    def serialize_set(self, obj_set: Set[Any]) -> List[Dict[str, Any]]:
+        """Serialize a given set of objects"""
         result = []
         for obj in obj_set:
             if not (serializer := self.serializer_map.get(type(obj))):

@@ -59,7 +59,7 @@ class SystemBackend(SystemBuilder):
         self.loaders: List[EvidenceLoader] = []
         self.protocols: Dict[Any, 'ProtocolBackend'] = {}
         self.ignore_backend = IgnoreRulesBackend()
-        self._changes: Set[Entity] = set()
+        self._changes: Set[Entity | Network] = set()
 
     def network(self, subnet: str="", ip_mask: Optional[str] = None) -> 'NetworkBuilder':
         if subnet:
@@ -68,6 +68,7 @@ class SystemBackend(SystemBuilder):
             nb = NetworkBackend(self)
         if ip_mask:
             nb.mask(ip_mask)
+        self.changed(nb.network)
         return nb
 
     def device(self, name: str="") -> 'HostBackend':
@@ -219,15 +220,16 @@ class SystemBackend(SystemBuilder):
             host_names.add(h.name)
             self._check_unique_under_parent(h)
 
-    def changed(self, entity: Entity) -> None:
+    def changed(self, entity: Entity | Network) -> None:
         """Add entity to changed set"""
         self._changes.add(entity)
 
-    def serialize_statement_changes(self) -> str:
-        """FIXME"""
+    def serialize_statement_changes(self) -> List[Dict[str, Any]]:
+        """Serialize changes done to the statement then reset change tracker"""
         serializer = SystemSerializer()
         result = serializer.serialize_set(self._changes)
-        print(json.dumps(result, indent=4))
+        self._changes = set()
+        return result
 
         # We want to have a authenticator related to each authenticated service
         # NOTE: Not ready to go into this level now...
@@ -460,7 +462,7 @@ class HostBackend(NodeBackend, HostBuilder):
     def __lshift__(self, multicast: MulticastConfigurer) -> ConnectionBuilder:
         target = self / multicast.protocol.multicast(multicast.address)
         c = multicast.source >> target
-        self.system.changed(c.connection)
+        self.system.changed(c.connection) # type: ignore[attr-defined]
         return c
 
     def cookies(self) -> 'CookieBackend':
