@@ -388,8 +388,8 @@ def test_connection_dto_invalid_values():
 def _valid_network():
     return {
         "type": "network",
-        "name": "Network",
-        "address": "127.0.0.1",
+        "name": "local",
+        "address": "network=127.0.0.1",
         "parent_address": ""
     }
 

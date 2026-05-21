@@ -351,3 +351,37 @@ def test_connection_dto():
     assert new_connection.source == deserialized[1]
     assert new_connection.target == deserialized[3]
     assert new_connection.properties == connection.properties
+
+
+def test_network_dto():
+    setup = Setup()
+    network = setup.system.network(ip_mask="10.42.0.0/16").network
+    serializer = SystemSerializer()
+    records = serializer.serialize(setup.system.system)
+    s_network = records[-1]
+    assert s_network == {
+        "type": "network",
+        "name": "local",
+        "address": "network=10.42.0.0/16",
+        "parent_address": ""
+    }
+
+    deserialized = [serializer.deserialize(record) for record in records]
+    new_system = deserialized[0]
+    new_network = deserialized[1]
+    assert new_network.name == network.name
+    assert new_network.ip_network == network.ip_network
+    assert [new_network] == new_system.networks
+
+
+def test_network_dto_non_iot_system_networks_not_serialized():
+    setup = Setup()
+    network = setup.system.network("VPN", ip_mask="10.43.0.0/16")
+    setup.system.device("Device 1").in_networks(network).ip("10.43.0.5").entity
+    serializer = SystemSerializer()
+    records = serializer.serialize(setup.system.system)
+
+    assert network.network not in setup.system.system.networks
+    for record in records:
+        if record["type"] == "network":
+            assert record["address"] != "10.43.0.0/16"
