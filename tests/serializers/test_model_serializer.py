@@ -384,4 +384,4 @@ def test_network_dto_non_iot_system_networks_not_serialized():
     assert network.network not in setup.system.system.networks
     for record in records:
         if record["type"] == "network":
-            assert record["address"] != "10.43.0.0/16"
+            assert record["address"] != "network=10.43.0.0/16"

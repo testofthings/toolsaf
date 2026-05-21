@@ -530,7 +530,7 @@ class NetworkDTO(BaseDTO):
     @field_validator("address", mode="before")
     @classmethod
     def parse_address(cls, value: str) -> str:
-        """Strip "address=" prefix from address"""
+        """Strip "network=" prefix from address"""
         if isinstance(value, str) and value.startswith("network="):
             return value.removeprefix("network=")
         return value
