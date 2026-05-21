@@ -4,7 +4,7 @@
     "remoteUser": "dev",
     "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
     "workspaceFolder": "/workspace",
-    "postCreateCommand": "python3 -m venv /workspace/.venv && /workspace/.venv/bin/pip install /workspace/.[dev]",
+    "postCreateCommand": "python3 -m venv /workspace/.venv && /workspace/.venv/bin/pip install -e /workspace/.[dev]",
     "containerEnv": {
         "SHELL": "/bin/bash"
     },
@@ -34,7 +34,7 @@
                 "python.testing.pytestEnabled": true,
 
                 "pylint.interpreter": ["/workspace/.venv/bin/python"],
-                "pylint.args": ["--rcfile=${workspaceFolder}/pyproject.toml", "disable=E0401"],
+                "pylint.args": ["--rcfile=${workspaceFolder}/pyproject.toml", "--disable=E0401"],
                 "pylint.ignorePatterns": ["**/tests/**", "tests/**"],
                 "pylint.cwd": "${workspaceFolder}",
                 "pylint.importStrategy": "fromEnvironment",
