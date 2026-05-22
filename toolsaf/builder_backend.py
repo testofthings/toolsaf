@@ -153,6 +153,7 @@ class SystemBackend(SystemBuilder):
 
     def ignore(self, file_type: str) -> 'IgnoreRulesBackend':
         self.ignore_backend.new_rule(file_type)
+        self.system.ignore_rules = self.ignore_backend.get_rules()
         self.changed(self.system)
         return self.ignore_backend
 
