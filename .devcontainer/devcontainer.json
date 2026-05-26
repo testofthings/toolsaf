@@ -4,13 +4,16 @@
     "remoteUser": "dev",
     "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
     "workspaceFolder": "/workspace",
+    "initializeCommand": "mkdir -p statement-files statement-data",
     "postCreateCommand": "python3 -m venv /workspace/.venv && /workspace/.venv/bin/pip install -e /workspace/.[dev]",
     "containerEnv": {
         "SHELL": "/bin/bash"
     },
     "mounts": [
         "type=volume,target=/home/dev/.vscode-server",
-        "type=volume,target=/workspace/.venv"
+        "type=volume,target=/workspace/.venv",
+        "type=bind,source=${localWorkspaceFolder}/statement-files,target=/workspace/statement-files",
+        "type=bind,source=${localWorkspaceFolder}/statement-data,target=/workspace/statement-data"
     ],
     "customizations": {
         "vscode": {
