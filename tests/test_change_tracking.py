@@ -117,6 +117,13 @@ def test_modify_system_network():
     assert serialized[0]["address"] == "network=10.42.0.0/16"
 
 
+def test_non_local_network_not_serialized():
+    sb = SystemBackend()
+    sb.network("Subnet", ip_mask="10.42.0.0/16").network
+
+    assert len(sb._changes) == 0
+
+
 def test_add_mobile_permissions():
     sb = SystemBackend()
     mobile = sb.mobile("Test Mobile")

@@ -66,9 +66,9 @@ class SystemBackend(SystemBuilder):
             nb = NetworkBackend(self, subnet)
         else:
             nb = NetworkBackend(self)
+            self.changed(nb.network) # Track only local network for now
         if ip_mask:
             nb.mask(ip_mask)
-        self.changed(nb.network)
         return nb
 
     def device(self, name: str="") -> 'HostBackend':
