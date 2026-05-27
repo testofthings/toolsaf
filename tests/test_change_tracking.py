@@ -105,12 +105,16 @@ def test_add_connection():
 
 def test_modify_system_network():
     sb = SystemBackend()
-    network = sb.network("10.42.0.0/16").network
+    network = sb.network(ip_mask="10.42.0.0/16").network
 
     assert len(sb._changes) == 1
     assert network in sb._changes
 
-    # TODO: Add serialization test when network serialization is supported
+    serialized = sb.serialize_statement_changes()
+    assert len(serialized) == 1
+    assert serialized[0]["type"] == "network"
+    assert serialized[0]["name"] == "local"
+    assert serialized[0]["address"] == "network=10.42.0.0/16"
 
 
 def test_add_mobile_permissions():
