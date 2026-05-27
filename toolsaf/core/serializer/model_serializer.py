@@ -45,7 +45,8 @@ class SystemSerializer:
             DNSService: self._serialize_dns_service,
             Software: self._serialize_software,
             Cookies: self._serialize_cookies,
-            Connection: self._serialize_connection
+            Connection: self._serialize_connection,
+            Network: self._serialize_network,
         }
         self._queue: List[Any] = []
 
@@ -97,6 +98,14 @@ class SystemSerializer:
 
         for component in obj.components:
             self._queue.append(component)
+
+        if obj.networks:
+            if not isinstance(obj, IoTSystem):
+                LOGGER.warning("Only IoTSystem's networks are currently supported for serialization")
+            else:
+                for network in obj.networks:
+                    if network.name == "local":
+                        self._queue.append(network)
 
     def _serialize_addressable(self, obj: Addressable, data: Dict[str, Any]) -> None:
         """Serialize addressable"""
@@ -218,6 +227,16 @@ class SystemSerializer:
             "status": obj.status.value,
             "properties": {k.get_name(): k.get_value_json(v, {}) for k, v in obj.properties.items()}
         })
+
+    def _serialize_network(self, obj: Network, data: Dict[str, Any]) -> None:
+        """Serialize network"""
+        if obj.ip_network:
+            data.update({
+                "type": "network",
+                "name": obj.name,
+                "address": f"network={obj.ip_network.exploded}",
+                "parent_address": "" # Currently only the serialization of the IoTSystem's network is supported
+            })
 
 
 class BaseDTO(BaseModel):
@@ -504,14 +523,25 @@ class ConnectionDTO(BaseDTO):
 class NetworkDTO(BaseDTO):
     """DTO for Networks"""
     type: Literal["network"] = "network"
-    name: NameType
+    name: Literal["local"] = "local" # Currently only the IoTSystem's local network is supported
+    parent_address: Literal[""] = ""
     address: IPvAnyNetwork
-    parent_address: SystemAddressType
+
+    @field_validator("address", mode="before")
+    @classmethod
+    def parse_address(cls, value: str) -> str:
+        """Strip "network=" prefix from address"""
+        if isinstance(value, str) and value.startswith("network="):
+            return value.removeprefix("network=")
+        return value
 
     def to_model(self, model_map: Dict[str, Any]) -> Network: # pylint: disable=unused-argument
         """Create a Network from this DTO"""
         ip_network = ipaddress.ip_network(self.address) if self.address else None
         network = Network(name=self.name, ip_network=ip_network)
+        if isinstance(parent := model_map[self.parent_address], IoTSystem):
+            parent.networks = [network]
+        # Network never applied anywhere if the parent was not an IoTSystem
         return network
 
 
