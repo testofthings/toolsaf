@@ -221,17 +221,6 @@ class SystemBackend(SystemBuilder):
             host_names.add(h.name)
             self._check_unique_under_parent(h)
 
-    def changed(self, entity: Entity | Network) -> None:
-        """Add entity to changed set"""
-        self._changes.add(entity)
-
-    def serialize_statement_changes(self) -> List[Dict[str, Any]]:
-        """Serialize changes done to the statement then reset change tracker"""
-        serializer = SystemSerializer()
-        result = serializer.serialize_set(self._changes)
-        self._changes = set()
-        return result
-
         # We want to have a authenticator related to each authenticated service
         # NOTE: Not ready to go into this level now...
         # auth_map = DataUsage.map_authenticators(self.system, {})
@@ -246,6 +235,17 @@ class SystemBackend(SystemBuilder):
         #             exp = f"Authentication by {auth.name} (implicit)"
         #             prop_v = Properties.AUTHENTICATION_DATA.value(explanation=exp)
         #             prop_v[0].set(s.properties, prop_v[1])
+
+    def changed(self, entity: Entity | Network) -> None:
+        """Add entity to changed set"""
+        self._changes.add(entity)
+
+    def serialize_statement_changes(self) -> List[Dict[str, Any]]:
+        """Serialize changes done to the statement then reset change tracker"""
+        serializer = SystemSerializer()
+        result = serializer.serialize_set(self._changes)
+        self._changes = set()
+        return result
 
 
 class NodeBackend(NodeBuilder, NodeManipulator):

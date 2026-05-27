@@ -269,6 +269,9 @@ def test_add_ip_multicast():
                 assert entry["parent_address"] == "Any_Host"
                 assert entry["protocol"] == "" # This IP(protocol=2) is not reflected here, just pointing that out
 
+            case _:
+                pytest.fail("Unexpected entry in serialized changes")
+
 
 def test_add_udp_multicast():
     sb = SystemBackend()
@@ -297,6 +300,9 @@ def test_add_udp_multicast():
                 assert entry["address"] == "Any_Host/udp:1234"
                 assert entry["parent_address"] == "Any_Host"
                 assert entry["multicast_target"] == "224.0.0.251"
+
+            case _:
+                pytest.fail("Unexpected entry in serialized changes")
 
 
 def test_add_sbom():
