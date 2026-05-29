@@ -240,6 +240,10 @@ class SystemBackend(SystemBuilder):
         """Add entity to changed set"""
         self._changes.add(entity)
 
+    def self_changed(self) -> None:
+        """Add the system itself to changed set, use when initially creating the system"""
+        self._changes.add(self.system)
+
     def serialize_statement_changes(self) -> List[Dict[str, Any]]:
         """Serialize changes done to the statement then reset change tracker"""
         serializer = SystemSerializer()

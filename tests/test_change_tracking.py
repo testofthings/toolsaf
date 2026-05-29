@@ -6,6 +6,21 @@ from toolsaf.common.android import LOCATION, NETWORK
 from toolsaf.common.basics import HostType
 
 
+def test_self_changed():
+    sb = SystemBackend(name="Test System")
+    assert len(sb._changes) == 0
+
+    sb.self_changed()
+    assert len(sb._changes) == 1
+    assert sb.system in sb._changes
+
+    serialized = sb.serialize_statement_changes()
+    assert len(serialized) == 1
+    assert serialized[0]["type"] == "system"
+    assert serialized[0]["name"] == "Test System"
+    assert serialized[0]["address"] == ""
+
+
 def test_add_hosts():
     sb = SystemBackend()
     entities = [
