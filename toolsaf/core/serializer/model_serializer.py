@@ -1,6 +1,6 @@
 """Model (de)serialization"""
 from typing import (
-    Callable, Dict, Any, Optional, List, Annotated, Union, Literal
+    Callable, Dict, Any, Optional, List, Annotated, Union, Literal, Set
 )
 import logging
 import ipaddress
@@ -64,6 +64,19 @@ class SystemSerializer:
             result.append(serialized)
             if self._queue:
                 stack.extend(reversed(self._queue)) # Depth first
+        return result
+
+    def serialize_set(self, obj_set: Set[Any]) -> List[Dict[str, Any]]:
+        """Serialize a given set of objects"""
+        result = []
+        for obj in obj_set:
+            if not (serializer := self.serializer_map.get(type(obj))):
+                LOGGER.debug("No serializer found for object of type %s", type(obj))
+                continue
+            serialized: Dict[str, Any] = {}
+            serializer(obj, serialized)
+            result.append(serialized)
+        self._queue = [] # Clear just in case
         return result
 
     def deserialize(self, data: Dict[str, Any]) -> Any:
