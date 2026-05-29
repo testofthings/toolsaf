@@ -61,6 +61,13 @@ class SystemBackend(SystemBuilder):
         self.ignore_backend = IgnoreRulesBackend()
         self._changes: Set[Entity | Network] = set()
 
+    @classmethod
+    def from_entity(cls, system: IoTSystem) -> 'SystemBackend':
+        """Create from deserialized entity"""
+        sb = SystemBackend()
+        sb.system = system
+        return sb
+
     def network(self, subnet: str="", ip_mask: Optional[str] = None) -> 'NetworkBuilder':
         if subnet:
             nb = NetworkBackend(self, subnet)
@@ -261,7 +268,8 @@ class NodeBackend(NodeBuilder, NodeManipulator):
         self.entity = entity
         self.parent: Optional[NodeBackend] = None
         self.sw: Dict[str, SoftwareBackend] = {}
-        system.system.originals.add(entity)
+        if entity not in system.system.originals:
+            system.system.originals.add(entity)
 
     def name(self, name: str) -> Self:
         self.entity.name = name
@@ -433,12 +441,22 @@ class HostBackend(NodeBackend, HostBuilder):
         NodeBackend.__init__(self, entity, system)
         HostBuilder.__init__(self, system)
         self.entity: Host = entity
+        system.hosts_by_name[entity.name] = self
+        self.service_builders: Dict[Tuple[str, PortRange, Protocol, int], ServiceBackend] = {}
+
+    @classmethod
+    def new(cls, entity: Host, system: SystemBackend) -> 'HostBackend':
+        """Create new host backend for the entity"""
+        hb = HostBackend(entity, system)
         system.system.children.append(entity)
         entity.status = Status.EXPECTED
-        system.hosts_by_name[entity.name] = self
-        if DNSName.looks_like(entity.name):
-            self.name(entity.name)
-        self.service_builders: Dict[Tuple[str, PortRange, Protocol, int], ServiceBackend] = {}
+        hb.name(entity.name)
+        return hb
+
+    @classmethod
+    def from_entity(cls, host: Host, system: SystemBackend) -> 'HostBackend':
+        """Create from deserialized entity"""
+        return HostBackend(host, system)
 
     def hw(self, address: str) -> Self:
         self.new_address_(HWAddress.new(address))
