@@ -1,3 +1,5 @@
+import pytest
+
 from toolsaf.main import HTTP, DHCP, DNS
 from toolsaf.common.android import MobilePermissions
 from toolsaf.common.address import DNSName, Protocol, Network
@@ -412,3 +414,9 @@ def test_lazy_load_deserialization():
     assert isinstance(deserialized[6], Service)
     assert isinstance(deserialized[7], Connection)
     assert isinstance(deserialized[8], Network)
+
+
+def test_deserialize_list_missing_address():
+    serializer = SystemSerializer()
+    with pytest.raises(ValueError, match="Each item must have an address field"):
+        serializer.deserialize_list([{"type": "host", "name": "Host without address"}])
