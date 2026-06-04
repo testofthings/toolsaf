@@ -1,6 +1,6 @@
 from toolsaf.main import HTTP, DHCP, DNS
 from toolsaf.common.android import MobilePermissions
-from toolsaf.common.address import DNSName, Protocol
+from toolsaf.common.address import DNSName, Protocol, Network
 from toolsaf.common.basics import ExternalActivity, HostType, ConnectionType
 from toolsaf.common.property import PropertyKey, PropertyVerdictValue, PropertySetValue
 from toolsaf.common.verdict import Verdict
@@ -385,3 +385,30 @@ def test_network_dto_non_iot_system_networks_not_serialized():
     for record in records:
         if record["type"] == "network":
             assert record["address"] != "network=10.43.0.0/16"
+
+
+def test_lazy_load_deserialization():
+    setup = Setup()
+    device1 = setup.system.device("Device 1")
+    device2 = setup.system.device("Device 2")
+    backend1 = setup.system.backend("Backend 1").serve(HTTP)
+    device1 >> device2 / HTTP
+    device2 >> backend1 / HTTP
+
+    serializer = SystemSerializer()
+    records = serializer.serialize(setup.system.system)
+    out_of_order = [
+        records[7], records[5], records[4], records[8],
+        records[1], records[3], records[0], records[6], records[2]
+    ]
+
+    deserialized = serializer.deserialize_list(out_of_order)
+    assert isinstance(deserialized[0], IoTSystem)
+    assert isinstance(deserialized[1], Host)
+    assert isinstance(deserialized[2], Host)
+    assert isinstance(deserialized[3], Service)
+    assert isinstance(deserialized[4], Connection)
+    assert isinstance(deserialized[5], Host)
+    assert isinstance(deserialized[6], Service)
+    assert isinstance(deserialized[7], Connection)
+    assert isinstance(deserialized[8], Network)

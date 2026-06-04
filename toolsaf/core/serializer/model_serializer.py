@@ -50,6 +50,9 @@ class SystemSerializer:
         }
         self._queue: List[Any] = []
 
+        self._raw_data_map: Dict[str, Dict[str, Any]] = {}
+        self._resolving: Set[str] = set()
+
     def serialize(self, obj: Any) -> List[Dict[str, Any]]:
         """Serialize an object and its children to JSON"""
         result, stack = [], [obj]
@@ -83,6 +86,39 @@ class SystemSerializer:
         """Deserialize an object from JSON"""
         dto = NODE_ADAPTER.validate_python(data)
         return dto.to_model(self.model_map)
+
+    def deserialize_list(self, data: List[Dict[str, Any]]) -> List[Any]:
+        """Deserialize a list of objects from JSON. Lazily loads object dependencies"""
+        self._raw_data_map = {item["address"]: item for item in data if "address" in item}
+        self._resolving.clear()
+        self.model_map.clear()
+        for address in self._raw_data_map:
+            self._deserialize(address)
+        return list(self.model_map.values())
+
+    def _deserialize(self, address: str) -> Any:
+        """Deserialize an object and its dependencies"""
+        if address in self.model_map:
+            return self.model_map[address]
+        if address in self._resolving:
+            raise ValueError(f"Circular reference at address {address}")
+        if address not in self._raw_data_map:
+            raise ValueError(f"Address {address} not found in data")
+
+        self._resolving.add(address)
+        dto = NODE_ADAPTER.validate_python(self._raw_data_map[address])
+
+        if (parent_address := getattr(dto, "parent_address", None)) is not None:
+            self._deserialize(parent_address)
+        if hasattr(dto, "source_address"):
+            self._deserialize(dto.source_address)
+        if hasattr(dto, "target_address"):
+            self._deserialize(dto.target_address)
+
+        model = dto.to_model(self.model_map)
+        self.model_map[address] = model # Ensure everything ends up here
+        self._resolving.remove(address)
+        return model
 
     def _serialize_entity(self, obj: Entity, data: Dict[str, Any]) -> None:
         """Serialize common entity fields"""
