@@ -177,6 +177,10 @@ def test_host_dto_invalid_values():
         ("ignore_name_requests", "abc"),
         ("ignore_name_requests", [123]),
         ("ignore_name_requests", ["a"*101]),
+        ("ignore_name_requests", ["-start-with-hyphen"]),
+        ("ignore_name_requests", ["end-with-hyphen-"]),
+        ("ignore_name_requests", ["invalid characters!"]),
+        ("ignore_name_requests", [f"{'a'*64}.com"]),
     ]
     _validate(_valid_host(), key_values, HostDTO)
 

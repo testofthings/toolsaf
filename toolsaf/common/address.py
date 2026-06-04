@@ -532,6 +532,25 @@ class DNSName(AnyAddress):
                 return True  # nost just numbers, good enough for this check
         return False  # only numbers and dots
 
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler # pylint: disable=unused-argument
+    ) -> core_schema.CoreSchema:
+        """Pydantic core schema"""
+        def validate_and_create(name: str) -> 'DNSName':
+            cls.validate(name)
+            return DNSName(name)
+
+        return core_schema.no_info_after_validator_function(
+            validate_and_create,
+            core_schema.str_schema(),
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                lambda a: str(a), # pylint: disable=unnecessary-lambda
+                info_arg=False,
+                return_schema=core_schema.str_schema()
+            )
+        )
+
 
 class EndpointAddress(AnyAddress):
     """Endpoint address made up from host, protocol, and port"""
