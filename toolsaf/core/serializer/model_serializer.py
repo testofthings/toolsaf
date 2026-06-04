@@ -88,9 +88,7 @@ class SystemSerializer:
         return dto.to_model(self.model_map)
 
     def deserialize_list(self, data: List[Dict[str, Any]]) -> List[Any]:
-        """
-        Deserialize a list of objects from JSON. Lazily loads object dependencies
-        """
+        """Deserialize a list of objects from JSON. Lazily loads object dependencies"""
         try:
             self._raw_data_map = {item["address"]: item for item in data}
         except KeyError as e:
