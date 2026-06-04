@@ -375,14 +375,14 @@ class AddressableDTO(NetworkNodeDTO):
 class HostDTO(AddressableDTO):
     """DTO for Host"""
     type: Literal["host"] = "host"
-    ignore_name_requests: List[NameType] = []
+    ignore_name_requests: List[DNSName] = []
 
     def to_model(self, model_map: Dict[str, Any]) -> Host:
         """Create and populate a Host from this DTO"""
         model = Host(parent=model_map[self.parent_address], name=self.name)
         super().populate(model, model_map)
         for dns_name in self.ignore_name_requests:
-            model.ignore_name_requests.add(DNSName(dns_name))
+            model.ignore_name_requests.add(dns_name)
         return model
 
 

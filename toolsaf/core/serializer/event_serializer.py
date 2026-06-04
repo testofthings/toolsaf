@@ -482,7 +482,7 @@ class PropertyEventDTO(BaseEventDTO):
 class NameEventDTO(BaseEventDTO):
     """DTO for NameEvent"""
     type: Literal["name-event"] = "name-event"
-    name: Optional[NameType] = None
+    name: Optional[DNSName] = None
     tag: Optional[NameType] = None
     service: Optional[SystemAddressType] = None
     address: Optional[AnyAddress] = None
@@ -496,7 +496,6 @@ class NameEventDTO(BaseEventDTO):
             svc = system.find_endpoint(Addresses.parse_system_address(self.service))
             assert isinstance(svc, DNSService)
             service = svc
-        name = DNSName(self.name) if self.name else None
         tag = EntityTag.new(self.tag) if self.tag else None
         peers: List[Addressable] = []
         for peer_str in self.peers:
@@ -506,7 +505,7 @@ class NameEventDTO(BaseEventDTO):
         return NameEvent(
             self.get_evidence(source_map),
             service=service,
-            name=name,
+            name=self.name,
             tag=tag,
             address=self.address,
             peers=peers,
