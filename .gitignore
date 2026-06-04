@@ -17,3 +17,5 @@ wheels/
 .toolsaf*
 
 shodan/
+statement-files/
+statement-data/
