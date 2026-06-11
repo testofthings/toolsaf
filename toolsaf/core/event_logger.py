@@ -117,11 +117,6 @@ class EventLogger(EventInterface, ModelListener):
         self.current = ev
         return ev
 
-    def reset(self) -> None:
-        """Reset the log"""
-        self.logs.clear()
-        self.inspector.reset()
-
     def get_system(self) -> IoTSystem:
         return self.inspector.system
 

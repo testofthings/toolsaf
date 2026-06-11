@@ -15,7 +15,7 @@ from toolsaf.common.address import (AddressAtNetwork, Addresses, AnyAddress, DNS
                                   HWAddress, HWAddresses, IPAddress, IPAddresses, Network, Protocol, PseudoAddress)
 from toolsaf.common.traffic import EvidenceSource
 from toolsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status
-from toolsaf.adapters.batch_import import BatchData, BatchImporter, LabelFilter
+from toolsaf.adapters.batch_import import BatchImporter, LabelFilter
 from toolsaf.core.components import CookieData, Cookies, DataReference, StoredData, OperatingSystem, Software
 from toolsaf.common.release_info import ReleaseInfo
 from toolsaf.common.property import PropertyVerdictValue
@@ -29,10 +29,8 @@ from toolsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP,
                         ConfigurationException, OSBuilder, Proprietary, ProtocolConfigurer, ProtocolType,
                         SensitiveDataBuilder, ServiceBuilder, ServiceGroupBuilder, ServiceOrGroup,
                         SoftwareBuilder, SystemBuilder, IgnoreRulesBuilder)
-from toolsaf.core.main_tools import EvidenceLoader, NodeManipulator
 from toolsaf.core.model import Addressable, Connection, Host, IoTSystem, SensitiveData, Service
 from toolsaf.common.property import Properties, PropertyKey
-from toolsaf.core.registry import Registry
 from toolsaf.core.inspector import Inspector
 from toolsaf.core.result import Report
 from toolsaf.core.components import SoftwareComponent
@@ -54,9 +52,7 @@ class SystemBackend(SystemBuilder):
         self.system = IoTSystem(name)
         self.hosts_by_name: Dict[str, 'HostBackend'] = {}
         self.entity_by_address: Dict[AddressAtNetwork, 'NodeBackend'] = {}
-        self.attachments: List[pathlib.Path] = []
         self.diagram = DiagramVisualizer(self)
-        self.loaders: List[EvidenceLoader] = []
         self.protocols: Dict[Any, 'ProtocolBackend'] = {}
         self.ignore_backend = IgnoreRulesBackend()
         self._changes: Set[Entity | Network] = set()
@@ -131,25 +127,8 @@ class SystemBackend(SystemBuilder):
         self.changed(self.system)
         return self
 
-    def attach_file(self, file_path: str, relative_to: Optional[str] = None) -> Self:
-        if relative_to:
-            rel_to = pathlib.Path(relative_to)
-            if not rel_to.is_dir():
-                rel_to = rel_to.parent
-            p = rel_to / file_path
-        else:
-            p = pathlib.Path(file_path)
-        assert p.exists(), f"File not found: {p}"
-        self.attachments.append(p.absolute())
-        return self
-
     def diagram_visualizer(self) -> 'DiagramVisualizer':
         return self.diagram
-
-    def load(self) -> 'EvidenceLoader':
-        el = EvidenceLoader(self)
-        self.loaders.append(el)
-        return el
 
     def ignore(self, file_type: str) -> 'IgnoreRulesBackend':
         self.ignore_backend.new_rule(file_type)
@@ -252,7 +231,7 @@ class SystemBackend(SystemBuilder):
         return result
 
 
-class NodeBackend(NodeBuilder, NodeManipulator):
+class NodeBackend(NodeBuilder):
     """Node building backend"""
 
     def __init__(self, entity: Addressable, system: SystemBackend) -> None:
@@ -320,9 +299,6 @@ class NodeBackend(NodeBuilder, NodeManipulator):
 
     # Backend methods
 
-    def get_node(self) -> Addressable:
-        return self.entity
-
     def new_address_(self, address: AnyAddress) -> AnyAddress:
         """Add new address to the entity"""
         networks = self.entity.get_networks_for(address)
@@ -365,10 +341,12 @@ class ServiceBackend(NodeBackend, ServiceBuilder):
         self.source_fixer: Optional[Callable[[
             'HostBackend'], 'ServiceBackend']] = None
 
+    # NOTE: Can this be deleted?
     def type(self, value: ConnectionType) -> 'ServiceBackend':
         self.entity.con_type = value
         return self
 
+    # NOTE: Can this be deleted?
     def authenticated(self, flag: bool) -> Self:
         self.entity.authentication = flag
         return self
@@ -461,6 +439,7 @@ class HostBackend(NodeBackend, HostBuilder):
             else f"{HWAddresses.BROADCAST}"
         return MulticastConfigurer(self, add, protocol)
 
+    # NOTE: Can this be deleted?
     def os(self) -> OSBuilder:
         return OSBackend(self)
 
@@ -473,6 +452,7 @@ class HostBackend(NodeBackend, HostBuilder):
     def cookies(self) -> 'CookieBackend':
         return CookieBackend(self)
 
+    # NOTE: Can this be deleted?
     def use_data(self, *data: SensitiveDataBuilder) -> Self:
         for db in data:
             db.used_by(hosts=[self])
@@ -498,7 +478,7 @@ class HostBackend(NodeBackend, HostBuilder):
 
     def set_permissions(self, *permissions: MobilePermissions) -> Self:
         """Set permissions for a mobile application"""
-        if self.get_node().host_type != HostType.MOBILE:
+        if self.entity.host_type != HostType.MOBILE:
             raise NotImplementedError("set_permissions only supports mobile at the moment")
         sw = self.get_software()
         for permission in permissions:
@@ -597,16 +577,19 @@ class SoftwareBackend(SoftwareBuilder):
         self.sw.update_connections.extend(cs)
         return self
 
+    # NOTE: Can this be deleted?
     def first_release(self, date: str) -> Self:
         """First release as YYYY-MM-DD"""
         self.sw.info.first_release = ReleaseInfo.parse_time(date)
         return self
 
+    # NOTE: Can this be deleted? not implemented
     def supported_until(self, date: str) -> Self:
         """Support end time YYYY-MM-DD"""
         # EndOfSupport(ReleaseInfo.parse_time(date)) - not implemented
         return self
 
+    # NOTE: Can this be deleted?
     def update_frequency(self, days: int) -> Self:
         """Target update frequency, days"""
         self.sw.info.interval_days = days
@@ -861,6 +844,7 @@ class FTPBackend(ProtocolBackend):
     def __init__(self, configurer: FTP) -> None:
         super().__init__(Protocol.TCP, port=configurer.port, protocol=Protocol.FTP, name=configurer.name)
 
+
 class HTTPBackend(ProtocolBackend):
     """HTTP protocol backend"""
 
@@ -924,7 +908,6 @@ class MQTTBackend(ProtocolBackend):
         super().__init__(Protocol.TCP, port=configurer.port, protocol=Protocol.MQTT, name=configurer.name)
 
 
-
 class TLSBackend(ProtocolBackend):
     """TLS protocol backend"""
 
@@ -932,7 +915,7 @@ class TLSBackend(ProtocolBackend):
         super().__init__(Protocol.TCP, port=configurer.port, protocol=Protocol.TLS, name=configurer.name)
         self.authentication = bool(configurer.auth)
         self.con_type = ConnectionType.ENCRYPTED
-        # self.critical_parameter.append(PieceOfData("TLS-creds"))
+        # self.critical_parameter.append(PieceOfData("TLS-creds")) # NOTE: Can this be deleted? Also other PieceOfData stuff
 
 
 class NTPBackend(ProtocolBackend):
@@ -1037,6 +1020,7 @@ class ProtocolConfigurers:
     }
 
 
+# NOTE: Can this be deleted?
 class OSBackend(OSBuilder):
     """OS builder backend"""
     def __init__(self, parent: HostBackend) -> None:
@@ -1085,18 +1069,10 @@ class IgnoreRulesBackend(IgnoreRulesBuilder):
         return self.ignore_rules
 
 
-class LoadedData:
-    """Loaded data for programmatic invoker"""
-    def __init__(self, system: IoTSystem, log_access: EventLogger, batches: List[BatchData]):
-        self.system = system
-        self.log_access = log_access
-        self.batches = batches
-
-
 class SystemBackendRunner(SystemBackend):
     """Backend for system builder"""
 
-    def _parse_arguments(self, custom_arguments: Optional[List[str]]) -> argparse.Namespace:
+    def _parse_arguments(self) -> argparse.Namespace:
         """Parse command line arguments"""
         parser = argparse.ArgumentParser()
         parser.add_argument("--read", "-r", action="append",
@@ -1137,18 +1113,14 @@ class SystemBackendRunner(SystemBackend):
         parser.add_argument(
             "--log-events", action="store_true", help="Log events")
 
-        args = parser.parse_args(custom_arguments)
+        args = parser.parse_args()
         logging.basicConfig(format='%(message)s', level=getattr(
             logging, args.log_level or 'INFO'))
         return args
 
-    def run(self, custom_arguments: Optional[List[str]] = None) -> Optional[LoadedData]:
+    def run(self) -> None:
         """Model is ready, run the checks, return data for programmatic caller"""
-        args = self._parse_arguments(custom_arguments)
-        if args.dhcp:
-            self.any().serve(DHCP)
-        if args.dns:
-            self.any().serve(DNS)
+        args = self._parse_arguments()
 
         events = []
 
@@ -1186,23 +1158,20 @@ class SystemBackendRunner(SystemBackend):
 
         self.finish_()
 
-        registry = Registry(Inspector(self.system, self.system.ignore_rules))
+        event_logger = EventLogger(Inspector(self.system, self.system.ignore_rules))
 
         for event in events:
             if not isinstance(event, EvidenceSource):
-                registry.logging.consume(event)
+                event_logger.consume(event)
 
-        log_events = args.log_events
-        if log_events:
+        if args.log_events:
             # print event log
-            registry.logging.event_logger = registry.logger
-
-        registry.finish_model_load()
+            event_logger.event_logger = logging.getLogger("events")
 
         label_filter = LabelFilter(args.def_loads or "")
 
         # load file batches, if defined
-        batch_import = BatchImporter(registry, label_filter=label_filter)
+        batch_import = BatchImporter(event_logger, label_filter=label_filter)
         for in_file in args.read or []:
             batch_import.import_batch(pathlib.Path(in_file))
 
@@ -1211,14 +1180,7 @@ class SystemBackendRunner(SystemBackend):
             for label, sl in sorted(batch_import.evidence.items()):
                 sl_s = ", ".join(sorted(set(s.name for s in sl)))
                 print(f"{label:<20} {sl_s}")
-            return None
-
-        # load explicit loaders (if any)
-        for ln in self.loaders:
-            for sub in ln.subs:
-                sub.load(registry, label_filter=label_filter)
-
-        load_data = LoadedData(self.system, registry.logging, batch_import.batch_data)
+            return
 
         if args.write_statement:
             serializer_version = "2.0"
@@ -1226,9 +1188,9 @@ class SystemBackendRunner(SystemBackend):
             # dump security statement JSON
             serialized_statement[serializer_version] = SystemSerializer().serialize(self.system)
             # dump events, if any
-            if registry.logging.logs:
+            if event_logger.logs:
                 event_serializer = EventSerializer(self.system)
-                for log in registry.logging.logs:
+                for log in event_logger.logs:
                     for event in event_serializer.serialize(log.event):
                         serialized_statement[serializer_version].append(event)
             json.dump(serialized_statement, args.write_statement.open("w"), indent=4)
@@ -1236,16 +1198,12 @@ class SystemBackendRunner(SystemBackend):
 
         if not args.write_statement:
             with_files = bool(args.with_files)
-            report = Report(registry)
+            report = Report(event_logger)
             report.source_count = 3 if with_files else 0
             report.show = args.show
             report.no_truncate = bool(args.no_truncate)
             report.use_color_flag = bool(args.color)
             report.print_report(sys.stdout)
-
-        if custom_arguments is not None:
-            # custom arguments, return without 'running' anything
-            return load_data
 
         if args.create_diagram is not None or args.show_diagram is not None:
             self.diagram.set_outformat(args.create_diagram, args.show_diagram)
@@ -1261,11 +1219,9 @@ class SystemBackendRunner(SystemBackend):
             system_serializer = SystemSerializer()
             uploader.upload_system(system_serializer.serialize(self.system))
 
-            if registry.logging.logs:
+            if event_logger.logs:
                 event_serializer = EventSerializer(self.system)
                 serialized_events: List[Dict[str, Any]] = []
-                for log in registry.logging.logs:
+                for log in event_logger.logs:
                     serialized_events += event_serializer.serialize(log.event)
                 uploader.upload_logs(serialized_events)
-
-        return load_data

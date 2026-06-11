@@ -1,6 +1,8 @@
 from toolsaf.builder_backend import SystemBackend
-from toolsaf.main import HTTP, UDP
+from toolsaf.main import HTTP
+from toolsaf.common.address import HWAddress
 from toolsaf.core.matcher import SystemMatcher
+from toolsaf.core.model import EvidenceNetworkSource
 from toolsaf.common.traffic import IPFlow, Evidence
 
 
@@ -9,8 +11,7 @@ def test_source_matching():
     dev1 = sb.device().hw("a:0:0:0:0:1")
     m = SystemMatcher(sb.system)
 
-    source2 = sb.load().traffic().hw(dev1, "a:0:0:0:1:1")
-    e2 = Evidence(source2.get_source())
+    e2 = Evidence(EvidenceNetworkSource("test", address_map={HWAddress.new("a:0:0:0:1:1"): dev1.entity}))
 
     c1 = m.connection(
         (IPFlow.UDP("a:0:0:0:1:1", "192.168.11.2", 2000) >> ("a:0:0:0:0:2", "192.168.20.10", 1001)).set_evidence(e2))

@@ -107,9 +107,3 @@ By using `--log-events`, you can display all events in the tool data.
 ```shell
 python product/statement.py -r ../sample-data --log-events
 ```
-
-## FIXME:
-```shell
---dhcp                Add default DHCP server handling
---dns                 Add default DNS server handling
-```

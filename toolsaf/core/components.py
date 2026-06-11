@@ -25,10 +25,7 @@ class Software(NodeComponent):
     def __repr__(self) -> str:
         return f"{self.name}\n{self.info_string()}"
 
-    def reset(self) -> None:
-        super().reset()
-        self.info = ReleaseInfo(self.name)
-
+    # NOTE: Can this be deleted?
     def info_string(self) -> str:
         s = []
         i = self.info
@@ -104,6 +101,7 @@ class SoftwareComponent:
     version: str = ""
 
 
+# NOTE: CAN THIS BE DELETED
 class OperatingSystem(NodeComponent):
     """Operating system"""
     def __init__(self, entity: NetworkNode) -> None:

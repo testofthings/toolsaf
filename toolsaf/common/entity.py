@@ -20,15 +20,6 @@ class Entity:
         """Get long name, possibly with spaces"""
         return self.concept_name
 
-    def reset(self) -> None:
-        """Reset entity and at least properties"""
-        new_p: Dict[PropertyKey, Any] = {}
-        for k, v in self.properties.items():
-            nv = k.reset(v)
-            if nv is not None:
-                new_p[k] = nv  # keep a property
-        self.properties = new_p
-
     def set_property(self, key_value: Tuple[PropertyKey, Any]) -> Self:
         """Set a property"""
         self.properties[key_value[0]] = key_value[1]

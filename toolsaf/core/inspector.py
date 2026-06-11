@@ -29,13 +29,6 @@ class Inspector(EventInterface):
         self.known_entities: Set[Entity] = set()            # known entities
         self._list_hosts()
 
-    def reset(self) -> None:
-        """Reset the system clearing all evidence"""
-        self.matcher.reset()
-        self.connection_count.clear()
-        self.direction.clear()
-        self._list_hosts()
-
     def _list_hosts(self) -> None:
         """List all hosts"""
         self.known_entities.clear()

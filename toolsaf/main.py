@@ -57,16 +57,8 @@ class SystemBuilder:
         """Document online resource"""
         raise NotImplementedError()
 
-    def attach_file(self, file_path: str, relative_to: Optional[str] = None) -> Self:
-        """Attach a file to the model"""
-        raise NotImplementedError()
-
     def diagram_visualizer(self) -> 'DiagramVisualizer':
         """Security statement visualization"""
-        raise NotImplementedError()
-
-    def load(self) -> 'EvidenceBuilder':
-        """Load built-in evidence"""
         raise NotImplementedError()
 
     def ignore(self, file_type: str) -> 'IgnoreRulesBuilder':

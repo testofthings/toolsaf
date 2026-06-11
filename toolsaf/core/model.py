@@ -70,12 +70,6 @@ class Connection(Entity):
         """Is given entity either end of the connection?"""
         return entity in {self.source, self.target}
 
-    def reset_connection(self, system: 'IoTSystem') -> None:
-        """Reset this connection"""
-        self.reset()
-        if self not in system.originals:
-            self.status = Status.PLACEHOLDER
-
     def long_name(self) -> str:
         """A long name for human consumption"""
         return f"{self.source.long_name()} => {self.target.long_name()}"
@@ -126,12 +120,6 @@ class NodeComponent(Entity):
         """Add new sub-component"""
         self.sub_components.append(component)
         return component
-
-    def reset(self) -> None:
-        """Reset model"""
-        super().reset()
-        for s in self.sub_components:
-            s.reset()
 
     def get_system_address(self) -> AddressSequence:
         return AddressSequence.component(
@@ -284,17 +272,6 @@ class NetworkNode(Entity):
 
     def is_host_reachable(self) -> bool:
         return isinstance(self, Host)  # NOTE: Also IoTSystem is
-
-    def reset(self) -> None:
-        """Reset model"""
-        super().reset()
-        if not self.is_original():
-            self.status = Status.PLACEHOLDER
-        for c in self.children:
-            c.reset()
-        for s in self.components:
-            s.reset()
-        # NOTE: Addressable does not override, thus addresses remain to that the Entities are reused
 
 
 class Addressable(NetworkNode):
@@ -818,13 +795,6 @@ class IoTSystem(NetworkNode):
 
     def create_service(self, address: EndpointAddress) -> Service:
         raise NotImplementedError()
-
-    def reset(self) -> None:
-        super().reset()
-        for h in self.get_hosts():
-            for c in h.connections:
-                c.reset_connection(self)
-        self.connections.clear()
 
     def call_listeners(self, fun: Callable[['ModelListener'], Any]) -> None:
         """Call model listeners"""
