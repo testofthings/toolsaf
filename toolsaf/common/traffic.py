@@ -1,7 +1,7 @@
 """Traffic flow and events"""
 
 import datetime
-from typing import Any, Callable, List, Tuple, Set, Optional, Self, Dict
+from typing import Any, List, Tuple, Set, Optional, Self, Dict
 
 from toolsaf.common.address import HWAddress, IPAddress, HWAddresses, IPAddresses, Network, Protocol, EndpointAddress, \
     AnyAddress, Addresses
@@ -30,10 +30,6 @@ class EvidenceSource:
         s.target = target if target is not None else self.target
         s.model_override = self.model_override
         return s
-
-    def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict[str, Any]:
-        """Get extra data as JSON"""
-        return {}
 
     def __repr__(self) -> str:
         return f"{self.name} {self.base_ref}"
@@ -92,16 +88,6 @@ class Event:
         """Get related properties, if any"""
         return []
 
-    def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict[str, Any]:
-        """Get JSON representation of data"""
-        return {}
-
-    @classmethod
-    def decode_data_json(cls, evidence: Evidence, data: Dict[str, Any],
-                         entity_resolver: Callable[[Any], Any]) -> 'Event':
-        """Placeholder for event decoding from JSON"""
-        raise NotImplementedError()
-
     def __hash__(self) -> int:
         return self.evidence.__hash__()
 
@@ -113,6 +99,7 @@ class Event:
     def __repr__(self) -> str:
         return self.get_value_string()
 
+
 class ServiceScan(Event):
     """Individual service scan result"""
     def __init__(self, evidence: Evidence, endpoint: AnyAddress, service_name: str="") -> None:
@@ -122,22 +109,6 @@ class ServiceScan(Event):
 
     def get_value_string(self) -> str:
         return f"Scanned {self.endpoint}"
-
-    def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict[str, str]:
-        r = {
-            "endpoint": self.endpoint.get_parseable_value(),
-            "service": self.service_name,
-        }
-        return r
-
-    @classmethod
-    def decode_data_json(cls, evidence: Evidence, data: Dict[str, Any],
-                         _entity_resolver: Callable[[Any], Any]) -> 'ServiceScan':
-        """Decode event from JSON"""
-        endpoint = Addresses.parse_endpoint(data["endpoint"])
-        name = data.get("service", "")
-        return ServiceScan(evidence, endpoint, name)
-
 
 
 class HostScan(Event):
@@ -149,24 +120,6 @@ class HostScan(Event):
 
     def get_value_string(self) -> str:
         return f"Scanned {self.host}"
-
-    def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict[str, Any]:
-        return {
-            "host": self.host.get_parseable_value(),
-            "endpoints": [e.get_parseable_value() for e in self.endpoints],
-        }
-
-    @classmethod
-    def decode_data_json(cls, evidence: Evidence, data: Dict[str, Any],
-                         _entity_resolver: Callable[[Any], Any]) -> 'HostScan':
-        """Decode event from JSON"""
-        host = Addresses.parse_endpoint(data["host"])
-        endpoints = set()
-        for ep in data.get("endpoints", []):
-            address = Addresses.parse_endpoint(ep)
-            assert isinstance(address, EndpointAddress), f"Expected endpoint address, not {ep}"
-            endpoints.add(address)
-        return HostScan(evidence, host, endpoints)
 
 
 class Flow(Event):
@@ -208,23 +161,6 @@ class Flow(Event):
         """Get target top address"""
         raise NotImplementedError()
 
-    def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict[str, Any]:
-        r = {}  # protocol set by subclass, which knows the default
-        if self.protocol != Protocol.ETHERNET:
-            r["protocol"] = self.protocol.value
-        if self.properties:
-            p_r = r["properties"] = {}
-            for k, v in self.properties.items():
-                p_r[k.get_name()] = k.get_value_json(v, {})
-        return r
-
-    def decode_properties_json(self, data: Dict[str, Any]) -> None:
-        """Decode properties from JSON"""
-        for k, v in data.get("properties", {}).items():
-            key = PropertyKey.parse(k)
-            value = key.decode_value_json(v)
-            self.properties[key] = value
-
     def __hash__(self) -> int:
         return self.protocol.__hash__() ^ hash(self.properties)
 
@@ -254,33 +190,6 @@ class EthernetFlow(Flow):
 
     def get_target_address(self) -> AnyAddress:
         return self.target
-
-    def get_data_json(self, id_resolver: Callable[[Any], Any]) -> Dict[str, str]:
-        r = super().get_data_json(id_resolver)
-        if self.protocol != Protocol.ETHERNET:
-            r["protocol"] = self.protocol.value
-        r["source"] = f"{self.source}"
-        r["target"] = f"{self.target}"
-        if self.payload >= 0:
-            r["payload"] = self.payload
-        return r
-
-    @classmethod
-    def decode_data_json(cls, evidence: Evidence, data: Dict[str, Any],
-                         _entity_resolver: Callable[[Any], Any]) -> 'EthernetFlow':
-        if "protocol" in data:
-            protocol = Protocol.get_protocol(data["protocol"], Protocol.ETHERNET)
-        else:
-            protocol = Protocol.ETHERNET
-        assert protocol
-        source = HWAddress.new(data["source"])
-        target = HWAddress.new(data["target"])
-        payload = data.get("payload", -1)
-        r = EthernetFlow(evidence, source, target, payload, protocol)
-        r.decode_properties_json(data)
-        if data.get("reverse", False):
-            r = r.reverse()
-        return r
 
     @classmethod
     def new(cls, protocol: Protocol, address: str) -> 'EthernetFlow':
@@ -390,40 +299,6 @@ class IPFlow(Flow):
     def get_target_address(self) -> AnyAddress:
         return self.target[0] if self.target[1].is_null() else self.target[1]
 
-    def get_data_json(self, id_resolver: Callable[[Any], Any]) -> Dict[str, Any]:
-        r = super().get_data_json(id_resolver)
-        r["protocol"] = self.protocol.value
-        if not self.source[0].is_null():
-            r["source_hw"] = f"{self.source[0]}"
-        if not self.source[1].is_null():
-            r["source"] = f"{self.source[1]}"
-        if self.source[2] >= 0:
-            r["source_port"] = self.source[2]
-        if not self.target[0].is_null():
-            r["target_hw"] = f"{self.target[0]}"
-        if not self.target[1].is_null():
-            r["target"] = f"{self.target[1]}"
-        if self.target[2] >= 0:
-            r["target_port"] = self.target[2]
-        return r
-
-    @classmethod
-    def decode_data_json(cls, evidence: Evidence, data: Dict[str, Any],
-                         entity_resolver: Callable[[Any], Any]) -> 'IPFlow':
-        protocol = Protocol.get_protocol(data["protocol"])
-        s_hw = HWAddress.new(data["source_hw"]) if "source_hw" in data else HWAddresses.NULL
-        s_ip = IPAddress.new(data["source"]) if "source" in data else IPAddresses.NULL
-        s_port = data.get("source_port", -1)
-        t_hw = HWAddress.new(data["target_hw"]) if "target_hw" in data else HWAddresses.NULL
-        t_ip = IPAddress.new(data["target"]) if "target" in data else IPAddresses.NULL
-        t_port = data.get("target_port", -1)
-        assert protocol is not None, "Protocol is None"
-        r = IPFlow(evidence, source=(s_hw, s_ip, s_port), target=(t_hw, t_ip, t_port), protocol=protocol)
-        r.decode_properties_json(data)
-        if data.get("reverse", False):
-            r = r.reverse()
-        return r
-
     def __rshift__(self, target: Tuple[str, str, int]) -> 'IPFlow':
         self.target = HWAddress.new(target[0]), IPAddress.new(target[1]), target[2]
         return self
@@ -495,23 +370,6 @@ class BLEAdvertisementFlow(Flow):
 
     def get_target_address(self) -> AnyAddress:
         return (self.source if self.reply else Addresses.BLE_Ad)
-
-    def get_data_json(self, id_resolver: Callable[[Any], Any]) -> Dict[str, Any]:
-        r = super().get_data_json(id_resolver)
-        r["source"] = f"{self.source}"
-        r["event_type"] = self.event_type
-        return r
-
-    @classmethod
-    def decode_data_json(cls, evidence: Evidence, data: Dict[str, Any],
-                         entity_resolver: Callable[[Any], Any]) -> 'BLEAdvertisementFlow':
-        source = HWAddress.new(data["source"])
-        event_type = data["event_type"]
-        r = BLEAdvertisementFlow(evidence, source, event_type)
-        r.decode_properties_json(data)
-        if data.get("reverse", False):
-            r = r.reverse()
-        return r
 
     def get_value_string(self) -> str:
         return f"{self.source} >> 0x{self.event_type:02x} {self.protocol.value.upper()}"

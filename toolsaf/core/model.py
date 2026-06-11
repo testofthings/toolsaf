@@ -875,22 +875,3 @@ class EvidenceNetworkSource(EvidenceSource):
         s.description = self.description if description is None else description
         s.location = self.location if location is None else location
         return s
-
-    def get_data_json(self, id_resolver: Callable[[Any], Any]) -> Dict[str, Any]:
-        r = super().get_data_json(id_resolver)
-        if self.address_map:
-            r["address_map"] = {k.get_parseable_value(): id_resolver(v) for k, v in self.address_map.items()}
-        if self.activity_map:
-            # JSON does not allow integer keys
-            r["activity_map"] = [[id_resolver(k), v.value] for k, v in self.activity_map.items()]
-        return r
-
-    def decode_data_json(self, data: Dict[str, Any], id_resolver: Callable[[Any], Any]) -> 'EvidenceNetworkSource':
-        """Parse data from JSON"""
-        for a, e in data.get("address_map", {}).items():
-            ent = id_resolver(e)
-            self.address_map[Addresses.parse_endpoint(a)] = ent
-        for n, a in data.get("activity_map", {}):
-            ent = id_resolver(n)
-            self.activity_map[ent] = ExternalActivity(a)
-        return self

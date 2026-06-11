@@ -2,7 +2,7 @@
 
 from typing import Dict, List, Optional, Type, Callable, Any, Tuple
 
-from toolsaf.common.address import Addresses, AnyAddress
+from toolsaf.common.address import AnyAddress
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.entity import Entity
 from toolsaf.core.model import Connection, Host, IoTSystem, Service
@@ -83,24 +83,6 @@ class PropertyEvent(Event, Verdictable):
     def get_properties(self) -> List[PropertyKey]:
         return [self.key_value[0]]
 
-    def get_data_json(self, id_resolver: Callable[[Any], Any]) -> Dict[str, Any]:
-        k, v = self.key_value
-        r = {
-            "entity": id_resolver(self.entity),
-            "key": k.get_name(),
-        }
-        k.get_value_json(v, r)
-        return r
-
-    @classmethod
-    def decode_data_json(cls, evidence: Evidence, data: Dict[str, Any],
-                         entity_resolver: Callable[[Any], Any]) -> 'PropertyEvent':
-        """Decode event from JSON"""
-        entity = entity_resolver(data["entity"])
-        key = PropertyKey.parse(data["key"])
-        ver = Verdict.parse(data.get("verdict"))
-        return PropertyEvent(evidence, entity, key.verdict(ver))
-
     def __hash__(self) -> int:
         return super().__hash__() ^ hash(self.entity) ^ hash(self.key_value)
 
@@ -129,23 +111,6 @@ class PropertyAddressEvent(Event, Verdictable):
 
     def get_properties(self) -> List[PropertyKey]:
         return [self.key_value[0]]
-
-    def get_data_json(self, _id_resolver: Callable[[Any], Any]) -> Dict[str, Any]:
-        k, v = self.key_value
-        r = {
-            "address": self.address.get_parseable_value(),
-            "key": k.get_name(),
-        }
-        k.get_value_json(v, r)
-        return r
-
-    @classmethod
-    def decode_data_json(cls, evidence: Evidence, data: Dict[str, Any],
-                         entity_resolver: Callable[[Any], Any]) -> 'PropertyAddressEvent':
-        address = Addresses.parse_endpoint(data["address"])
-        key = PropertyKey.parse(data["key"])
-        ver = Verdict.parse(data.get("verdict"))
-        return PropertyAddressEvent(evidence, address, key.verdict(ver))
 
     def __hash__(self) -> int:
         return super().__hash__() ^ hash(self.address) ^ hash(self.key_value)
