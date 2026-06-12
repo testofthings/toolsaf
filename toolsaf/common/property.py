@@ -20,17 +20,9 @@ class PropertyKey:
         self.model = True
         return self
 
-    def is_protected(self) -> bool:
-        """Is this a protected property?"""
-        return self.segments[0] in Properties.PROTECTED
-
     def append_key(self, segment: str) -> 'PropertyKey':
         """Add key segment"""
         return self.create(self.segments + (segment, ))
-
-    def prefix_key(self, segment: str, append: str="") -> 'PropertyKey':
-        """Prefix key segment, with possibly also adding a key segment"""
-        return self.create((segment, ) + self.segments + ((append, ) if append else ()))
 
     @classmethod
     def create(cls, name: Tuple[str, ...]) -> 'PropertyKey':
@@ -43,22 +35,11 @@ class PropertyKey:
         """Parse name segments into a key"""
         return cls.create(tuple(name_segments.split(":")))
 
-    def reset(self, value: Any) -> Optional[Any]:
-        """Reset the value, return None to remove"""
-        if self.model:
-            return PropertyVerdictValue(Verdict.INCON) if isinstance(value, PropertyVerdictValue) else value
-        return None
-
     def get_name(self, short: bool=False) -> str:
         """Name string"""
         if short:
             return self.segments[-1]
         return ":".join(self.segments)
-
-    def set(self, properties: 'PropertyDict', value: Any) -> Any:
-        """New key and value """
-        properties[self] = value
-        return self, value
 
     def get(self, properties: 'PropertyDict') -> Optional[Any]:
         """Get the set from properties or null"""
@@ -121,15 +102,6 @@ class PropertyKey:
             json_data["value"] = f"{value}"
         return json_data
 
-    def decode_value_json(self, data: Dict[str, Any]) -> Any:
-        """Decode value from JSON"""
-        exp = data.get("exp", "")
-        if "verdict" in data:
-            return PropertyVerdictValue(Verdict.parse(data["verdict"]), exp)
-        if "set" in data:
-            return PropertySetValue({PropertyKey.parse(k) for k in data["set"]}, exp)
-        return data.get("value")
-
     #
     # Verdict value
     #
@@ -179,11 +151,6 @@ class PropertyKey:
     def value_set(self, sub_keys: Set['PropertyKey'], explanation: str="") -> Tuple['PropertyKey', 'PropertySetValue']:
         """New property set value"""
         return self, PropertySetValue(sub_keys, explanation)
-
-    def get_set(self, properties: 'PropertyDict') -> Optional['PropertySetValue']:
-        """Get property set value, if available"""
-        v = properties.get(self)
-        return v if isinstance(v, PropertySetValue) else None
 
     def update_set(self, properties: 'PropertyDict', value: 'PropertySetValue') -> None:
         """Update existing property dictionary with set values"""
@@ -290,23 +257,3 @@ class Properties:
     UPDATE_SEEN = PropertyKey("check", "update-seen")  # Update is seen
     REVIEW = PropertyKey("check", "review")          # IXIT etc. review
     FUNCTIONAL = PropertyKey("other", "functional")
-
-    # Property prefixes protected from manual set
-    PROTECTED = {"check"}
-
-    # Manual override prefix
-    PREFIX_MANUAL = "manual"
-
-    @classmethod
-    def get_flags(cls, properties: Dict[PropertyKey, Any]) -> Set[str]:
-        """Get flag strings"""
-        flags = set()
-        if cls.UI in properties:
-            flags.add("ui")
-        if cls.PHYSICAL in properties:
-            flags.add("physic")
-        if cls.DOCUMENT_CONTENT in properties:
-            flags.add("doc")
-        if cls.REVIEW in properties:
-            flags.add("rev")
-        return flags

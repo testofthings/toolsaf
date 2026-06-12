@@ -915,7 +915,6 @@ class TLSBackend(ProtocolBackend):
         super().__init__(Protocol.TCP, port=configurer.port, protocol=Protocol.TLS, name=configurer.name)
         self.authentication = bool(configurer.auth)
         self.con_type = ConnectionType.ENCRYPTED
-        # self.critical_parameter.append(PieceOfData("TLS-creds")) # NOTE: Can this be deleted? Also other PieceOfData stuff
 
 
 class NTPBackend(ProtocolBackend):
@@ -935,7 +934,6 @@ class SSHBackend(ProtocolBackend):
         super().__init__(Protocol.TCP, port=configurer.port, protocol=Protocol.SSH, name=configurer.name)
         self.authentication = True
         self.con_type = ConnectionType.ENCRYPTED
-        # self.critical_parameter.append(PieceOfData("SSH-creds"))
 
 
 class TCPBackend(ProtocolBackend):

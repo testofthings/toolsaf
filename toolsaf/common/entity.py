@@ -84,10 +84,6 @@ class Entity:
         """Is a service?"""
         return False
 
-    def is_host_reachable(self) -> bool:
-        """Are hosts reachable from here"""
-        return False
-
     def iterate(self, relevant_only: bool=True) -> Iterator['Entity']:
         """Iterate this and all child entities"""
         if not relevant_only or self.is_relevant():

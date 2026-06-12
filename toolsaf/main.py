@@ -244,6 +244,7 @@ class SoftwareBuilder:
            file_path is relative to the statement"""
         raise NotImplementedError()
 
+
 class CookieBuilder:
     """Cookies in a browser"""
     def set(self, cookies: Dict[str, Tuple[str, str, str]]) -> Self:

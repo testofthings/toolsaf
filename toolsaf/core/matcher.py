@@ -146,7 +146,6 @@ class MatchingContext:
         self.engine.add_host(e)
         return e
 
-
     def new_endpoint(self, flow: Flow, target: bool) -> Tuple[Addressable, AnyAddress]:
         """Create a new endpoint host"""
         system = self.system.system

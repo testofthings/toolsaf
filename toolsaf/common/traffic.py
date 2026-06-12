@@ -140,10 +140,6 @@ class Flow(Event):
         """Get source or target (default) port or -1"""
         return -1
 
-    def reverse(self) -> Self:
-        """Reverse the flow"""
-        raise NotImplementedError()
-
     def at_network(self, _network: Network) -> Self:
         """Change nework"""
         raise NotImplementedError()
@@ -195,9 +191,6 @@ class EthernetFlow(Flow):
     def new(cls, protocol: Protocol, address: str) -> 'EthernetFlow':
         """New ethernet-based protocol flow"""
         return EthernetFlow(NO_EVIDENCE, HWAddress.new(address), HWAddresses.NULL, protocol=protocol)
-
-    def reverse(self) -> 'EthernetFlow':
-        return EthernetFlow(self.evidence, self.target, self.source, self.payload, self.protocol)
 
     def at_network(self, network: Network) -> 'EthernetFlow':
         f = EthernetFlow(self.evidence, self.source, self.target, self.payload)
@@ -279,9 +272,6 @@ class IPFlow(Flow):
     def port(self, target: bool=True) -> int:
         return self.target[2] if target else self.source[2]
 
-    def reverse(self) -> 'IPFlow':
-        return IPFlow(self.evidence, self.target, self.source, self.protocol)
-
     def at_network(self, network: Network) -> 'IPFlow':
         f = IPFlow(self.evidence, self.source, self.target, self.protocol)
         f.network = network
@@ -356,9 +346,6 @@ class BLEAdvertisementFlow(Flow):
 
     def port(self, target: bool=True) -> int:
         return self.event_type if target else -1
-
-    def reverse(self) -> Self:
-        return self
 
     def at_network(self, network: Network) -> 'BLEAdvertisementFlow':
         f = BLEAdvertisementFlow(self.evidence, self.source, self.event_type)

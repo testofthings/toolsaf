@@ -4,7 +4,6 @@ import ipaddress
 import itertools
 import re
 from typing import List, Set, Optional, Tuple, TypeVar, Callable, Dict, Any, Self, Iterable, Iterator, Union
-from urllib.parse import urlparse
 
 from toolsaf.core.address_ranges import MulticastTarget, PortRange
 from toolsaf.common.address import AnyAddress, Addresses, EndpointAddress, EntityTag, Network, Protocol, IPAddress, \
@@ -29,19 +28,6 @@ class Connection(Entity):
         assert source.get_parent_host() != target.get_parent_host(), \
             f"Connection source and target the same host: {source.get_parent_host().long_name()}"
 
-    def get_tag(self) -> Optional[Tuple[AnyAddress, AnyAddress]]:
-        """Get tag addresses, if any"""
-        s = self.source.get_tag()
-        t = self.target.get_tag()
-        if s and t:
-            return s, t
-        return None
-
-    def is_original(self) -> bool:
-        """Is this entity originally defined in the model?"""
-        system = self.source.get_system()
-        return self in system.originals
-
     def is_admin(self) -> bool:
         return self.target.is_admin()
 
@@ -60,15 +46,6 @@ class Connection(Entity):
     def is_expected(self) -> bool:
         """Is the connection expected?"""
         return self.status == Status.EXPECTED
-
-    def is_encrypted(self) -> bool:
-        """Is an encrypted connection?"""
-        t = self.target
-        return isinstance(t, Service) and t.is_encrypted()
-
-    def is_end(self, entity: 'NetworkNode') -> bool:
-        """Is given entity either end of the connection?"""
-        return entity in {self.source, self.target}
 
     def long_name(self) -> str:
         """A long name for human consumption"""
@@ -116,6 +93,7 @@ class NodeComponent(Entity):
         """Potentially multi-line information string"""
         return self.name
 
+    # NOTE: Can this be deleted?
     def add_sub(self, component: 'NodeComponent') -> 'NodeComponent':
         """Add new sub-component"""
         self.sub_components.append(component)
@@ -165,10 +143,6 @@ class NetworkNode(Entity):
     def get_hosts(self, include_external: bool=True) -> List['Host']:
         """Get hosts"""
         return [c for c in self.children if isinstance(c, Host) and (include_external or c.is_relevant())]
-
-    def is_original(self) -> bool:
-        """Is this entity originally defined in the model?"""
-        return self in self.get_system().originals
 
     def is_global(self) -> bool:
         """Is globally addressable thing?"""
@@ -263,15 +237,8 @@ class NetworkNode(Entity):
         self.components.append(component)
         return component
 
-    def is_addressable(self) -> bool:
-        """Is addressable entity?"""
-        return isinstance(self, Addressable)
-
     def is_host(self) -> bool:
         return isinstance(self, Host)
-
-    def is_host_reachable(self) -> bool:
-        return isinstance(self, Host)  # NOTE: Also IoTSystem is
 
 
 class Addressable(NetworkNode):
@@ -516,18 +483,6 @@ class Service(Addressable):
                 return True
         return False
 
-    def is_encrypted(self) -> bool:
-        """Is an encrypted service?"""
-        return self.protocol in {Protocol.TLS, Protocol.SSH}
-
-    def get_port(self) -> int:
-        """Resolve port number, return -1 if not found"""
-        for a in self.addresses:
-            app = a.get_protocol_port()
-            if app:
-                return app[1]
-        return -1
-
     def get_parent_host(self) -> 'Host':
         return self.parent.get_parent_host()
 
@@ -579,9 +534,6 @@ class IoTSystem(NetworkNode):
         for c in self.get_connections():
             if c.status != Status.PLACEHOLDER:
                 yield c
-
-    def is_host_reachable(self) -> bool:
-        return True
 
     def is_external(self, address: AnyAddress) -> bool:
         """Is an external network address?"""
@@ -772,17 +724,6 @@ class IoTSystem(NetworkNode):
             c.get_addresses(ads)
         return ads
 
-    def get_network_by_name(self, name: str) -> Network:
-        """Get network by its name"""
-        for nw in self.networks:
-            if nw.name == name:
-                return nw
-        for c in self.children:
-            for nw in c.networks:
-                if nw.name == name:
-                    return nw
-        raise ValueError(f"Network {name} not found")
-
     def get_networks_for(self, address: Optional[AnyAddress]) -> List[Network]:
         ns = super().get_networks_for(address)
         if not ns and address:
@@ -800,28 +741,6 @@ class IoTSystem(NetworkNode):
         """Call model listeners"""
         for ln in self.model_listeners:
             fun(ln)
-
-    def parse_url(self, url: str) -> Tuple[Service, str]:
-        """Parse URL and return the service and path"""
-        u = urlparse(url)
-        proto = Protocol.TLS if u.scheme == "https" else Protocol.get_protocol(u.scheme)
-        if proto is None:
-            raise ValueError(f"Unsupported scheme: {u.scheme}")
-        if u.port is None:
-            port = 80 if proto == Protocol.HTTP else 443
-        else:
-            port = u.port
-        if (hostname := u.hostname) is None:
-            raise ValueError(f"{u} hostname was None")
-        sadd = EndpointAddress(DNSName.name_or_ip(hostname), Protocol.TCP, port)
-        se = self.get_endpoint(sadd)
-        assert isinstance(se, Service)
-        path = u.path
-        if path.startswith("/"):
-            path = path[1:]
-        if path.endswith("/"):
-            path = path[0:-1]
-        return se, path
 
     def get_system_address(self) -> AddressSequence:
         return AddressSequence((), )  # empty sequence

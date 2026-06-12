@@ -54,10 +54,6 @@ class AnyAddress:
         """Get possible IP address here"""
         return None
 
-    def get_hw_address(self) -> Optional['HWAddress']:
-        """Get possible hardware address here"""
-        return None
-
     def get_host(self) -> 'AnyAddress':
         """Get host or self"""
         return self
@@ -76,14 +72,6 @@ class AnyAddress:
 
     def is_multicast(self) -> bool:
         """Is multicast or broadcast address?"""
-        return False
-
-    def is_loopback(self) -> bool:
-        """Is loopback address?"""
-        return False
-
-    def is_hardware(self) -> bool:
-        """Is hardware address?"""
         return False
 
     def is_global(self) -> bool:
@@ -189,9 +177,6 @@ class PseudoAddress(AnyAddress):
     def is_multicast(self) -> bool:
         return self.multicast
 
-    def is_hardware(self) -> bool:
-        return self.hardware
-
     def priority(self) -> int:
         return 3
 
@@ -208,6 +193,7 @@ class PseudoAddress(AnyAddress):
         if not isinstance(value, PseudoAddress):
             return False
         return self.name == value.name and self.address_type == value.address_type
+
 
 class Addresses:
     """Address constants and utilities"""
@@ -344,9 +330,6 @@ class HWAddress(AnyAddress):
         a = "40:00:" + ":".join(f"{b:02x}" for b in address.data.packed[-4:])
         return HWAddress(a)
 
-    def get_hw_address(self) -> Optional['HWAddress']:
-        return self
-
     def is_null(self) -> bool:
         return self.data == HWAddresses.NULL.data
 
@@ -354,9 +337,6 @@ class HWAddress(AnyAddress):
         # Assuming Ethernet MAC address, check the I/G bit - TODO: generalize
         first_byte = int(self.data[0:2], 16)
         return (first_byte & 1) == 1
-
-    def is_hardware(self) -> bool:
-        return True
 
     def priority(self) -> int:
         return 1 if not self.is_multicast() else 11
@@ -428,9 +408,6 @@ class IPAddress(AnyAddress):
 
     def is_global(self) -> bool:
         return self.data.is_global
-
-    def is_loopback(self) -> bool:
-        return self.data.is_loopback
 
     def priority(self) -> int:
         return 2
@@ -589,9 +566,6 @@ class EndpointAddress(AnyAddress):
     def get_ip_address(self) -> Optional[IPAddress]:
         return self.host.get_ip_address()
 
-    def get_hw_address(self) -> Optional[HWAddress]:
-        return self.host.get_hw_address()
-
     def get_host(self) -> AnyAddress:
         return self.host
 
@@ -612,9 +586,6 @@ class EndpointAddress(AnyAddress):
 
     def is_tag(self) -> bool:
         return self.host.is_tag()
-
-    def is_loopback(self) -> bool:
-        return self.host.is_loopback()
 
     def is_wildcard(self) -> bool:
         return self.host.is_wildcard()
@@ -725,6 +696,7 @@ class AddressSegment:
 
     def __hash__(self) -> int:
         return self.address.__hash__() ^ (self.segment_type.__hash__() if self.segment_type else 0)
+
 
 class AddressSequence(AnyAddress):
     """AnyAddress sequences representing system addresses"""

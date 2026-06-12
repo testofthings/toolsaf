@@ -46,14 +46,6 @@ This code is subject to refactoring.
 
 The matcher is a complex module for matching different _events_ to hosts, services, and connections.
 
-## Files [`entity_selector.py`](../../toolsaf/core/entity_selector.py) and [`selector.py`](../../toolsaf/core/selector.py)
-
-These files implement _selectors_ that allow selecting some model entities, e.g., "select all hosts which are not expected."
-The class `Select` contains factory methods for all selectors.
-
-The class `Finder` implements reading and writing of JSON data to pinpoint individual entities.
-**NOTE:** This class should be retired in favor of _addresses_ once they can be used to identify any entity.
-
 ## File [`result.py`](../../toolsaf/core/result.py)
 
 This file implements the result printout of Toolsaf.

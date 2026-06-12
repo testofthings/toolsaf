@@ -119,29 +119,3 @@ class PropertyAddressEvent(Event, Verdictable):
         if not isinstance(other, PropertyAddressEvent):
             return False
         return super().__eq__(other) and self.address == other.address and self.key_value == other.key_value
-
-
-class EventMap:
-    """Map between event classes and names"""
-    Event_types = {
-            "flow-eth": EthernetFlow,
-            "flow-ip": IPFlow,
-            "flow-ble": BLEAdvertisementFlow,
-            "prop-ent": PropertyEvent,
-            "prop-add": PropertyAddressEvent,
-            "name": NameEvent,
-            "scan-service": ServiceScan,
-            "scan-host": HostScan,
-        }
-
-    Event_names = {v: k for k, v in Event_types.items()}
-
-    @classmethod
-    def get_event_class(cls, name: str) -> Optional[Type[Event]]:
-        """Get event class by name"""
-        return cls.Event_types.get(name)
-
-    @classmethod
-    def get_event_name(cls, event: Type[Event]) -> str:
-        """Get event name by class"""
-        return cls.Event_names[event]

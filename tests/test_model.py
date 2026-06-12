@@ -70,10 +70,6 @@ def test_tags():
     assert EntityTag("Doe_Hot") in dev3.entity.addresses
     assert dev3.entity.get_tag() == EntityTag("Doe_Hot")
 
-    c0 = dev1 >> dev3 / TCP(1234)
-    c0_tag = c0.connection.get_tag()
-    assert c0_tag == (EntityTag("Device"), EndpointAddress(EntityTag("Doe_Hot"), Protocol.TCP, 1234))
-
 
 def test_connection_match():
     sb = simple_setup_1()
