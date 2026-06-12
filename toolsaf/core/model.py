@@ -483,6 +483,14 @@ class Service(Addressable):
                 return True
         return False
 
+    def get_port(self) -> int:
+        """Resolve port number, return -1 if not found"""
+        for a in self.addresses:
+            app = a.get_protocol_port()
+            if app:
+                return app[1]
+        return -1
+
     def get_parent_host(self) -> 'Host':
         return self.parent.get_parent_host()
 
