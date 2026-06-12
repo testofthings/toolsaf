@@ -507,8 +507,6 @@ class IoTSystem(NetworkNode):
         self.networks = [Network("local", ip_network=ipaddress.ip_network("192.168.0.0/16"))]  # reasonable default
         # online resources
         self.online_resources: List[OnlineResource]=[]
-        # original entities and connections
-        self.originals: Set[Entity] = {self}
         # consumer for specific message types
         self.message_listeners: Dict[Addressable, Protocol] = {}
         # change listener

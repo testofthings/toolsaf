@@ -350,8 +350,6 @@ class NetworkNodeDTO(EntityDTO):
         model.external_activity = self.external_activity
         for key, property_dto in self.properties.items():
             property_dto.populate(model, key)
-        if not isinstance(model, IoTSystem):
-            model.get_system().originals.add(model)
         model_map[self.address] = model
 
 

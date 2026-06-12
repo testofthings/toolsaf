@@ -240,7 +240,6 @@ class NodeBackend(NodeBuilder):
         self.entity = entity
         self.parent: Optional[NodeBackend] = None
         self.sw: Dict[str, SoftwareBackend] = {}
-        system.system.originals.add(entity)
 
     def name(self, name: str) -> Self:
         self.entity.name = name
@@ -520,7 +519,6 @@ class ConnectionBackend(ConnectionBuilder):
     def __init__(self, connection: Connection, ends: Tuple[NodeBackend, ServiceBackend]) -> None:
         self.connection = connection
         self.ends = ends
-        self.ends[0].system.system.originals.add(connection)
 
     def logical_only(self) -> Self:
         self.connection.con_type = ConnectionType.LOGICAL
