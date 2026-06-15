@@ -16,7 +16,7 @@ def test_pcap():
     for c in m.inspector.system.get_connections():
         cs[c] = []
     for lo in m.logs:
-        if isinstance(lo.event, Flow) or lo.property_value:
+        if isinstance(lo.event, Flow) or not lo.property_value:
             if not lo.entity in cs:
                 cs[lo.entity] = []
             cs[lo.entity].append((lo.event.get_source_address(), lo.event.get_target_address(), lo.event))

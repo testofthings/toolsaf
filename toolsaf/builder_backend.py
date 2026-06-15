@@ -1061,10 +1061,6 @@ class SystemBackendRunner(SystemBackend):
                             help="Display the visualizer's output. Can also set file format. Default is png")
         parser.add_argument("-N", "--diagram-name", type=str,
                             help="File name for created diagram. Default is the system's name")
-        parser.add_argument("--dhcp", action="store_true",
-                            help="Add default DHCP server handling")
-        parser.add_argument("--dns", action="store_true",
-                            help="Add default DNS server handling")
         parser.add_argument("-l", "--log", dest="log_level", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                             help="Set the logging level", default=None)
         parser.add_argument("-W", "--write-statement", type=pathlib.Path,
