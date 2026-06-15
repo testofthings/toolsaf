@@ -89,16 +89,6 @@ class NodeComponent(Entity):
     def long_name(self) -> str:
         return self.name
 
-    def info_string(self) -> str:
-        """Potentially multi-line information string"""
-        return self.name
-
-    # NOTE: Can this be deleted?
-    def add_sub(self, component: 'NodeComponent') -> 'NodeComponent':
-        """Add new sub-component"""
-        self.sub_components.append(component)
-        return component
-
     def get_system_address(self) -> AddressSequence:
         return AddressSequence.component(
             parent=self.entity.get_system_address(),
@@ -435,7 +425,6 @@ class Service(Addressable):
         self.protocol: Optional[Protocol] = None  # known protocol
         self.host_type = parent.host_type
         self.con_type = ConnectionType.UNKNOWN
-        self.authentication = False            # Now a flag, an object later?
         self.client_side = False               # client side "service" (DHCP)
         self.multicast_target: Optional[MulticastTarget] = None # Multicast target service?
         self.port_range: Optional[PortRange] = None             # Port from a range?
@@ -447,11 +436,6 @@ class Service(Addressable):
         if not service_name:
             return f"{port}" if port >= 0 else "???"
         return f"{service_name}:{port}" if port >= 0 else service_name
-
-    @classmethod
-    def is_authentication(cls, entity: Entity) -> Optional[bool]:
-        """Get authentication flag for services or none"""
-        return entity.authentication if isinstance(entity, Service) else None
 
     def is_service(self) -> bool:
         return True

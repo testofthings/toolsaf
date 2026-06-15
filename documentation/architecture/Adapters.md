@@ -96,11 +96,6 @@ File: [ping_command.py](../../toolsaf/adapters/ping_command.py)
 
 Adapter for processing ping command results.
 
-### GithubReleaseReader
-File: [github_releases.py](../../toolsaf/adapters/github_releases.py)
-
-Adapter for processing release information. **Experimental.**
-
 ### ShodanScan
 File: [shodan_scan.py](../../toolsaf/adapters/shodan_scan.py)
 

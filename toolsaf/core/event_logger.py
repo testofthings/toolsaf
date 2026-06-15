@@ -2,8 +2,7 @@
 
 from logging import Logger
 import logging
-from typing import Any, List, Set, Tuple, Dict, Optional, cast
-from toolsaf.common.address import AnyAddress
+from typing import Any, List, Set, Tuple, Optional
 from toolsaf.common.verdict import Verdict, Verdictable
 
 from toolsaf.common.entity import Entity
@@ -184,22 +183,6 @@ class EventLogger(EventInterface, ModelListener):
             self.print_event(lo)
         self.current = None
         return e
-
-    # NOTE: Can this be deleted? Only used in one test
-    def collect_flows(self) -> Dict[Connection, List[Tuple[AnyAddress, AnyAddress, Flow]]]:
-        """Collect relevant connection flows"""
-        r: Dict[Connection, List[Tuple[AnyAddress, AnyAddress, Flow]]] = {}
-        for c in self.inspector.system.get_connections():
-            r[c] = []  # expected connections without flows
-        for lo in self.logs:
-            event = lo.event
-            if not isinstance(event, Flow) or lo.property_value:
-                continue  # only collect pure flows, not property updates
-            c = cast(Connection, lo.entity)
-            cs = r.setdefault(c, [])
-            s, t = event.get_source_address(), event.get_target_address()
-            cs.append((s, t, event))
-        return r
 
     def get_log(self, entity: Optional[Entity] = None, key: Optional[PropertyKey] = None) \
             -> List[LoggingEvent]:

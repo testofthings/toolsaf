@@ -2,14 +2,13 @@
 import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Annotated, Union, Literal, Tuple
-from pydantic import Field, TypeAdapter, Discriminator, Tag
+from pydantic import Field, TypeAdapter
 
 from toolsaf.common.address import (
     AnyAddress, Addresses, EndpointAddress, Protocol,
     HWAddress, IPAddress, EntityTag, DNSName,
 )
 from toolsaf.common.property import PropertyKey, PropertyVerdictValue, PropertySetValue
-from toolsaf.common.release_info import ReleaseInfo
 from toolsaf.common.traffic import (
     Event, Evidence, EvidenceSource, Flow, EthernetFlow,
     IPFlow, BLEAdvertisementFlow, HostScan, ServiceScan
@@ -39,22 +38,6 @@ UnionEventDTO = Annotated[
     Field(discriminator="type")
 ]
 EVENT_ADAPTER: TypeAdapter[UnionEventDTO] = TypeAdapter(UnionEventDTO)
-
-
-def sw_name_discriminator(obj: Any) -> str:
-    """Discriminator for PropertyEventValueUnion"""
-    if isinstance(obj, dict) and "sw_name" in obj:
-        return "release info"
-    return "key value"
-
-
-PropertyEventValueUnion = Annotated[
-    Union[
-        Annotated["ReleaseInfoDTO", Tag("release info")],
-        Annotated["PropEventValueDTO", Tag("key value")],
-    ],
-    Discriminator(sw_name_discriminator)
-]
 
 
 class EventSerializer:
@@ -109,15 +92,7 @@ class EventSerializer:
     def _serialize_key_value(self, key: PropertyKey, value: Any) -> Tuple[str, Dict[str, Any]]:
         """Serialize a property key-value pair, returning (key_name, value_dict)"""
         val: Dict[str, Any] = {}
-        if isinstance(value, ReleaseInfo):
-            val["sw_name"] = value.sw_name
-            val["interval_days"] = value.interval_days
-            val["latest_release_name"] = value.latest_release_name
-            if value.first_release:
-                val["first_release"] = value.first_release.isoformat()
-            if value.latest_release:
-                val["latest_release"] = value.latest_release.isoformat()
-        elif isinstance(value, PropertyVerdictValue):
+        if isinstance(value, PropertyVerdictValue):
             val["verdict"] = value.verdict.value
             val["explanation"] = value.explanation
         elif isinstance(value, PropertySetValue):
@@ -260,24 +235,6 @@ class EventSerializer:
         if event.timestamp:
             data["timestamp"] = event.timestamp.isoformat()
         return data
-
-
-class ReleaseInfoDTO(BaseDTO):
-    """DTO for ReleaseInfo"""
-    sw_name: str = Field(..., min_length=1, max_length=100)
-    interval_days: Optional[int] = None
-    latest_release_name: str = Field("?", max_length=100)
-    first_release: Optional[datetime.datetime] = None
-    latest_release: Optional[datetime.datetime] = None
-
-    def to_model(self) -> ReleaseInfo:
-        """Create a ReleaseInfo model from this DTO"""
-        release_info = ReleaseInfo(self.sw_name)
-        release_info.interval_days = self.interval_days
-        release_info.latest_release_name = self.latest_release_name
-        release_info.first_release = self.first_release
-        release_info.latest_release = self.latest_release
-        return release_info
 
 
 class PropEventValueDTO(BaseDTO):
@@ -444,7 +401,7 @@ class PropertyAddressEventDTO(BaseEventDTO):
     type: Literal["property-address-event"] = "property-address-event"
     address: AnyAddress
     key: PropertyKey
-    value: PropertyEventValueUnion
+    value: PropEventValueDTO
 
     def to_model(self, source_map: Dict[str, EvidenceSource], _system: IoTSystem) -> PropertyAddressEvent:
         """Create a PropertyAddressEvent from this DTO"""
@@ -460,7 +417,7 @@ class PropertyEventDTO(BaseEventDTO):
     type: Literal["property-event"] = "property-event"
     address: SystemAddressType  # "" means the IoTSystem root entity
     key: PropertyKey
-    value: PropertyEventValueUnion
+    value: PropEventValueDTO
 
     def to_model(self, source_map: Dict[str, EvidenceSource], system: IoTSystem) -> PropertyEvent:
         """Create a PropertyEvent from this DTO"""

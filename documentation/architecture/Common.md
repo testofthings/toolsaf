@@ -37,10 +37,6 @@ There are two special property value types:
      A verdict for such a property is evaluated by inspecting the verdict of
      all properties in the set.
 
-## File [release_info.py](../../toolsaf/common/release_info.py)
-
-This is a somewhat experimental storage for release information of a product.
-
 ## File [traffic.py](../../toolsaf/common/traffic.py)
 
 This file contains classes for traffic flows and events in general.

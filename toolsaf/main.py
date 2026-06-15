@@ -110,10 +110,6 @@ class ServiceBuilder(NodeBuilder):
         """Configure connection type"""
         raise NotImplementedError()
 
-    def authenticated(self, flag: bool) -> Self:
-        """Is this service authenticated?"""
-        raise NotImplementedError()
-
     def __truediv__(self, protocol: ProtocolType) -> 'ServiceGroupBuilder':
         """Pick or add the configured protocol to host"""
         raise NotImplementedError()
@@ -225,18 +221,6 @@ class SoftwareBuilder:
     """Software builder"""
     def updates_from(self, source: Union[ConnectionBuilder, ServiceBuilder, HostBuilder]) -> Self:
         """Update mechanism"""
-        raise NotImplementedError()
-
-    def first_release(self, date: str) -> Self:
-        """First release as YYYY-MM-DD"""
-        raise NotImplementedError()
-
-    def supported_until(self, date: str) -> Self:
-        """Support end time YYYY-MM-DD"""
-        raise NotImplementedError()
-
-    def update_frequency(self, days: int) -> Self:
-        """Target update frequency, days"""
         raise NotImplementedError()
 
     def sbom(self, components: Optional[List[str]]=None, file_path: str="") -> Self:

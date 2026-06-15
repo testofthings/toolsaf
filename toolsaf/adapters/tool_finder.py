@@ -8,7 +8,6 @@ from toolsaf.adapters.certmitm_reader import CertMITMReader
 from toolsaf.adapters.nmap_scan import NMAPScan
 from toolsaf.adapters.pcap_reader import PCAPReader
 from toolsaf.adapters.ping_command import PingCommand
-from toolsaf.adapters.github_releases import GithubReleaseReader
 from toolsaf.adapters.setup_reader import SetupCSVReader
 from toolsaf.adapters.shodan_scan import ShodanScan
 from toolsaf.adapters.spdx_reader import SPDXReader
@@ -79,7 +78,6 @@ class ToolFinderImplementation:
         self.http = ToolDepiction("http", WebChecker, extension="http")
         self.certmitm = ToolDepiction("certmitm", CertMITMReader, extension="zip")
         self.nmap = ToolDepiction("nmap", NMAPScan, extension="xml")
-        self.github_releases = ToolDepiction("github-releases", GithubReleaseReader)
         self.ping = ToolDepiction("ping", PingCommand, extension="log")
         self.pcap = ToolDepiction(["capture", ""], PCAPReader, extension="pcap")  # Default tool - file_type ""
         self.pcap = ToolDepiction("capture-json", TSharkReader, extension="json")

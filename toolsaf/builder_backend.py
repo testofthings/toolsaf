@@ -17,7 +17,6 @@ from toolsaf.common.traffic import EvidenceSource
 from toolsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status
 from toolsaf.adapters.batch_import import BatchImporter, LabelFilter
 from toolsaf.core.components import CookieData, Cookies, DataReference, StoredData, OperatingSystem, Software
-from toolsaf.common.release_info import ReleaseInfo
 from toolsaf.common.property import PropertyVerdictValue
 from toolsaf.core.event_logger import EventLogger
 from toolsaf.core.serializer.event_serializer import EventSerializer
@@ -340,14 +339,8 @@ class ServiceBackend(NodeBackend, ServiceBuilder):
         self.source_fixer: Optional[Callable[[
             'HostBackend'], 'ServiceBackend']] = None
 
-    # NOTE: Can this be deleted?
     def type(self, value: ConnectionType) -> 'ServiceBackend':
         self.entity.con_type = value
-        return self
-
-    # NOTE: Can this be deleted?
-    def authenticated(self, flag: bool) -> Self:
-        self.entity.authentication = flag
         return self
 
     def __truediv__(self, protocol: ProtocolType) -> 'ServiceGroupBackend':
@@ -438,7 +431,6 @@ class HostBackend(NodeBackend, HostBuilder):
             else f"{HWAddresses.BROADCAST}"
         return MulticastConfigurer(self, add, protocol)
 
-    # NOTE: Can this be deleted?
     def os(self) -> OSBuilder:
         return OSBackend(self)
 
@@ -451,7 +443,6 @@ class HostBackend(NodeBackend, HostBuilder):
     def cookies(self) -> 'CookieBackend':
         return CookieBackend(self)
 
-    # NOTE: Can this be deleted?
     def use_data(self, *data: SensitiveDataBuilder) -> Self:
         for db in data:
             db.used_by(hosts=[self])
@@ -573,24 +564,6 @@ class SoftwareBackend(SoftwareBuilder):
             raise ConfigurationException(
                 f"Several possible connections between {self.parent} - {source}")
         self.sw.update_connections.extend(cs)
-        return self
-
-    # NOTE: Can this be deleted?
-    def first_release(self, date: str) -> Self:
-        """First release as YYYY-MM-DD"""
-        self.sw.info.first_release = ReleaseInfo.parse_time(date)
-        return self
-
-    # NOTE: Can this be deleted? not implemented
-    def supported_until(self, date: str) -> Self:
-        """Support end time YYYY-MM-DD"""
-        # EndOfSupport(ReleaseInfo.parse_time(date)) - not implemented
-        return self
-
-    # NOTE: Can this be deleted?
-    def update_frequency(self, days: int) -> Self:
-        """Target update frequency, days"""
-        self.sw.info.interval_days = days
         return self
 
     def __sbom_from_list(self, components: List[str]) -> None:
@@ -719,7 +692,6 @@ class ProtocolBackend:
             self.service_name = f"{self.service_name}:{self.port_range.get_name()}"
         s = ServiceBackend(parent,
                            parent.new_service_(self.service_name, self.service_port if self.port_to_name else -1))
-        s.entity.authentication = self.authentication
         s.entity.host_type = self.host_type
         s.entity.con_type = self.con_type
         s.entity.port_range = self.port_range
@@ -1016,7 +988,6 @@ class ProtocolConfigurers:
     }
 
 
-# NOTE: Can this be deleted?
 class OSBackend(OSBuilder):
     """OS builder backend"""
     def __init__(self, parent: HostBackend) -> None:

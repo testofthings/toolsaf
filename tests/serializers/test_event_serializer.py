@@ -12,7 +12,6 @@ from toolsaf.core.model import IoTSystem, EvidenceNetworkSource
 from toolsaf.core.services import NameEvent
 from toolsaf.common.property import PropertyKey, PropertyVerdictValue, PropertySetValue
 from toolsaf.common.verdict import Verdict
-from toolsaf.common.release_info import ReleaseInfo
 from tests.test_model import Setup
 
 
@@ -284,38 +283,6 @@ def test_property_address_event():
     assert new_event.address == IPADDRESS
     assert new_event.key_value == PropertyKey("test-key").value_set({PropertyKey("value-key"), PropertyKey("key-value")})
 
-    # ReleaseInfo
-    info = ReleaseInfo("AddrSW")
-    info.sw_name = "test-software"
-    info.interval_days = 7
-    info.latest_release_name = "v2.0"
-    info.first_release = datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-    info.latest_release = datetime(2025, 6, 1, 0, 0, 0, tzinfo=timezone.utc)
-    event = PropertyAddressEvent(Evidence(SOURCE), IPADDRESS, (ReleaseInfo.PROPERTY_KEY, info))
-    assert _get_serialized_event(event) == {
-        "type": "property-address-event",
-        "source_id": "id1",
-        "address": "1.1.1.1",
-        "key": ReleaseInfo.PROPERTY_KEY.get_name(),
-        "value": {
-            "sw_name": "test-software",
-            "interval_days": 7,
-            "latest_release_name": "v2.0",
-            "first_release": datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc).isoformat(),
-            "latest_release": datetime(2025, 6, 1, 0, 0, 0, tzinfo=timezone.utc).isoformat(),
-        }
-    }
-    new_event = _get_deserialized_object(event)
-    assert new_event.address == IPADDRESS
-    key, value = new_event.key_value
-    assert key == ReleaseInfo.PROPERTY_KEY
-    assert isinstance(value, ReleaseInfo)
-    assert value.sw_name == info.sw_name
-    assert value.interval_days == info.interval_days
-    assert value.latest_release_name == info.latest_release_name
-    assert value.first_release == info.first_release
-    assert value.latest_release == info.latest_release
-
 
 def test_property_event():
     setup = Setup()
@@ -349,38 +316,6 @@ def test_property_event():
     new_event = _get_deserialized_object(event, system)
     assert event.entity == new_event.entity
     assert event.key_value == new_event.key_value
-
-    # ReleaseInfo
-    info = ReleaseInfo("SwRelease")
-    info.first_release = datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-    info.latest_release = datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-    info.latest_release_name = "test-name"
-    info.interval_days = 1
-    info.sw_name = "test-name2"
-    event = PropertyEvent(Evidence(SOURCE), software, (ReleaseInfo.PROPERTY_KEY, info))
-    assert _get_serialized_event(event) == {
-        "type": "property-event",
-        "source_id": "id1",
-        "address": "Test_Device&software=Test_Software",
-        "key": ReleaseInfo.PROPERTY_KEY.get_name(),
-        "value": {
-            "sw_name": "test-name2",
-            "first_release": datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc).isoformat(),
-            "latest_release": datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc).isoformat(),
-            "latest_release_name": "test-name",
-            "interval_days": 1
-        }
-    }
-    new_event = _get_deserialized_object(event, system)
-    assert event.entity == new_event.entity
-    key, value = new_event.key_value
-    assert key == ReleaseInfo.PROPERTY_KEY
-    assert isinstance(value, ReleaseInfo)
-    assert value.sw_name == info.sw_name
-    assert value.interval_days == info.interval_days
-    assert value.latest_release_name == info.latest_release_name
-    assert value.first_release == info.first_release
-    assert value.latest_release == info.latest_release
 
     # IoTSystem root entity (address == "")
     event = PropertyEvent(
