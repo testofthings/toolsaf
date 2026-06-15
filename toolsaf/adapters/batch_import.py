@@ -69,7 +69,11 @@ class BatchImporter:
             parent.sub_data.append(b_data)
 
             # get tool info by file type
-            tool_dep = TOOL_FINDER.by_file_type(info.file_type)
+            try:
+                tool_dep = TOOL_FINDER.by_file_type(info.file_type)
+            except DeprecationWarning as e:
+                self.logger.warning(str(e))
+                return
 
             # list files/directories to process, files first
             proc_list = []
