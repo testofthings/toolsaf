@@ -151,7 +151,7 @@ class SystemBackend(SystemBuilder):
             h = Host(self.system, name, tag=EntityTag.new(name))  # tag is not renamed, name can be
             h.description = description
             h.match_priority = 10
-            hb = HostBackend(h, self)
+            hb = HostBackend.new(h, self)
         self.changed(hb.entity)
         return hb
 
@@ -281,7 +281,7 @@ class NodeBackend(NodeBuilder):
             name = Software.default_name(self.entity)
         sb = self.sw.get(name)
         if sb is None:
-            sb = SoftwareBackend(self, name)
+            sb = SoftwareBackend.new(self, name)
             self.sw[name] = sb
         self.system.changed(sb.sw)
         return sb
@@ -332,12 +332,14 @@ class ServiceBackend(NodeBackend, ServiceBuilder):
         NodeBackend.__init__(self, service, host.system)
         ServiceBuilder.__init__(self, host.system)
         self.entity: Service = service
-        self.entity.match_priority = 10
-        self.entity.external_activity = host.entity.external_activity
         self.parent: HostBackend = host
         self.multicast_protocol: Optional[ProtocolConfigurer] = None  # in broadcast 'source' services
-        self.source_fixer: Optional[Callable[[
-            'HostBackend'], 'ServiceBackend']] = None
+        self.source_fixer: Optional[Callable[['HostBackend'], 'ServiceBackend']] = None
+
+    @classmethod
+    def from_entity(cls, host: 'HostBackend', service: Service) -> 'ServiceBackend':
+        """Create a service backend for a deserialized service"""
+        return cls(host, service)
 
     def type(self, value: ConnectionType) -> 'ServiceBackend':
         self.entity.con_type = value
@@ -403,12 +405,23 @@ class HostBackend(NodeBackend, HostBuilder):
         NodeBackend.__init__(self, entity, system)
         HostBuilder.__init__(self, system)
         self.entity: Host = entity
-        system.system.children.append(entity)
-        entity.status = Status.EXPECTED
         system.hosts_by_name[entity.name] = self
-        if DNSName.looks_like(entity.name):
-            self.name(entity.name)
         self.service_builders: Dict[Tuple[str, PortRange, Protocol, int], ServiceBackend] = {}
+
+    @classmethod
+    def new(cls, entity: Host, system: SystemBackend) -> 'HostBackend':
+        """New host backend"""
+        host_backend = cls(entity, system)
+        entity.status = Status.EXPECTED
+        system.system.children.append(entity)
+        if DNSName.looks_like(entity.name):
+            host_backend.name(entity.name)
+        return host_backend
+
+    @classmethod
+    def from_entity(cls, entity: Host, system: SystemBackend) -> 'HostBackend':
+        """Create a host backend for a deserialized host"""
+        return cls(entity, system)
 
     def hw(self, address: str) -> Self:
         self.new_address_(HWAddress.new(address))
@@ -537,14 +550,24 @@ class NetworkBackend(NetworkBuilder):
 class SoftwareBackend(SoftwareBuilder):
     """Software builder backend"""
 
-    def __init__(self, parent: NodeBackend, software_name: str) -> None:
+    def __init__(self, parent: NodeBackend, software: Software) -> None:
+        self.parent = parent
+        self.sw = software
+
+    @classmethod
+    def new(cls, parent: NodeBackend, software_name: str) -> 'SoftwareBackend':
+        """New software backend"""
         sw = Software.get_software(parent.entity, software_name)
         if sw is None:
             # all hosts have software
             sw = Software(parent.entity, software_name)
             parent.entity.add_component(sw)
-        self.sw: Software = sw
-        self.parent = parent
+        return cls(parent, sw)
+
+    @classmethod
+    def from_entity(cls, parent: NodeBackend, software: Software) -> 'SoftwareBackend':
+        """Create a software backend for a deserialized software"""
+        return cls(parent, software)
 
     def updates_from(self, source: Union[ConnectionBuilder, ServiceBuilder, HostBuilder]) -> Self:
         host = self.parent.entity
@@ -690,8 +713,12 @@ class ProtocolBackend:
             self.service_port = self.port_range.get_low_port()
             self.port_to_name = False
             self.service_name = f"{self.service_name}:{self.port_range.get_name()}"
-        s = ServiceBackend(parent,
-                           parent.new_service_(self.service_name, self.service_port if self.port_to_name else -1))
+        s = ServiceBackend(
+            parent,
+            parent.new_service_(self.service_name, self.service_port if self.port_to_name else -1)
+        )
+        s.entity.match_priority = 10
+        s.entity.external_activity = parent.entity.external_activity
         s.entity.host_type = self.host_type
         s.entity.con_type = self.con_type
         s.entity.port_range = self.port_range
@@ -765,6 +792,7 @@ class DHCPBackend(ProtocolBackend):
 
     def _create_service(self, parent: HostBackend) -> ServiceBackend:
         host_s = ServiceBackend(parent, DHCPService(parent.entity))
+        host_s.entity.match_priority = 10
         assert self.external_activity, "external activity was None"
         host_s.entity.external_activity = self.external_activity
 
@@ -792,6 +820,7 @@ class DNSBackend(ProtocolBackend):
         dns_s = DNSService(parent.entity)
         dns_s.captive_portal = self.captive_portal
         s = ServiceBackend(parent, dns_s)
+        s.entity.match_priority = 10
         assert self.external_activity, "external activity was None"
         s.entity.external_activity = self.external_activity
         return s

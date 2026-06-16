@@ -10,13 +10,13 @@ from toolsaf.common.verdict import Verdict
 
 
 def test_sbom_no_input():
-    sb = SoftwareBackend(MagicMock(), "test")
+    sb = SoftwareBackend.new(MagicMock(), "test")
     with pytest.raises(ConfigurationException):
         sb.sbom()
 
 
 def test_sbom_components_list():
-    sb = SoftwareBackend(MagicMock(), "test")
+    sb = SoftwareBackend.new(MagicMock(), "test")
     sb.sbom(["c1", "c2"])
     assert len(sb.sw.components) == 2
     assert len(sb.sw.properties) == 2
@@ -29,7 +29,7 @@ def test_sbom_components_list():
 
 
 def test_sbom_file():
-    sb = SoftwareBackend(MagicMock(), "test")
+    sb = SoftwareBackend.new(MagicMock(), "test")
 
     with pytest.raises(ConfigurationException):
         sb.sbom(file_path="test.json") # No file found
