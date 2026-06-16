@@ -51,6 +51,7 @@ class SystemBackend(SystemBuilder):
         self.system = IoTSystem(name)
         self.hosts_by_name: Dict[str, 'HostBackend'] = {}
         self.entity_by_address: Dict[AddressAtNetwork, 'NodeBackend'] = {}
+        self.backends_by_entity: Dict[Entity, Any] = {}
         self.diagram = DiagramVisualizer(self)
         self.protocols: Dict[Any, 'ProtocolBackend'] = {}
         self.ignore_backend = IgnoreRulesBackend()
@@ -213,6 +214,21 @@ class SystemBackend(SystemBuilder):
         #             exp = f"Authentication by {auth.name} (implicit)"
         #             prop_v = Properties.AUTHENTICATION_DATA.value(explanation=exp)
         #             prop_v[0].set(s.properties, prop_v[1])
+
+    def get_backend(self, system_address: str) -> Optional[Any]:
+        """Get entity backend by system address"""
+        for entity, backend in self.backends_by_entity.items():
+            if entity.get_system_address().get_parseable_value() == system_address:
+                return backend
+        return None
+
+    def get_host_backend(self, host_name: str) -> Optional['HostBackend']:
+        """Get host backend by host name"""
+        return self.hosts_by_name.get(host_name)
+
+    def host_backends(self) -> List['HostBackend']:
+        """Get all host backends"""
+        return list(self.hosts_by_name.values())
 
     def changed(self, entity: Entity | Network) -> None:
         """Add entity to changed set"""
