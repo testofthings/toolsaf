@@ -1039,7 +1039,7 @@ class IgnoreRulesBackend(IgnoreRulesBuilder):
 class SystemBackendRunner(SystemBackend):
     """Backend for system builder"""
 
-    def _parse_arguments(self) -> argparse.Namespace:
+    def _parse_arguments(self, custom_arguments: Optional[List[str]] = None) -> argparse.Namespace:
         """Parse command line arguments"""
         parser = argparse.ArgumentParser()
         parser.add_argument("--read", "-r", action="append",
@@ -1076,14 +1076,14 @@ class SystemBackendRunner(SystemBackend):
         parser.add_argument(
             "--log-events", action="store_true", help="Log events")
 
-        args = parser.parse_args()
+        args = parser.parse_args(custom_arguments)
         logging.basicConfig(format='%(message)s', level=getattr(
             logging, args.log_level or 'INFO'))
         return args
 
-    def run(self) -> None:
+    def run(self, custom_arguments: Optional[List[str]] = None) -> None:
         """Model is ready, run the checks, return data for programmatic caller"""
-        args = self._parse_arguments()
+        args = self._parse_arguments(custom_arguments)
 
         events = []
 
