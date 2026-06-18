@@ -57,6 +57,16 @@ class SystemBackend(SystemBuilder):
         self.ignore_backend = IgnoreRulesBackend()
         self._changes: Set[Entity | Network] = set()
 
+    @classmethod
+    def from_entity(cls, system: IoTSystem) -> 'SystemBackend':
+        """Create a system backend for a deserialized system"""
+        sb = cls()
+        sb.system = system
+        sb.backends_by_entity[system] = sb
+        sb.ignore_backend.ignore_rules = system.ignore_rules
+        sb._reconstruct_from_system()
+        return sb
+
     def network(self, subnet: str="", ip_mask: Optional[str] = None) -> 'NetworkBuilder':
         if subnet:
             nb = NetworkBackend(self, subnet)
@@ -222,14 +232,6 @@ class SystemBackend(SystemBuilder):
                 return backend
         return None
 
-    def get_host_backend(self, host_name: str) -> Optional['HostBackend']:
-        """Get host backend by host name"""
-        return self.hosts_by_name.get(host_name)
-
-    def host_backends(self) -> List['HostBackend']:
-        """Get all host backends"""
-        return list(self.hosts_by_name.values())
-
     def changed(self, entity: Entity | Network) -> None:
         """Add entity to changed set"""
         self._changes.add(entity)
@@ -245,6 +247,36 @@ class SystemBackend(SystemBuilder):
         self._changes = set()
         return result
 
+    def _reconstruct_from_system(self) -> None:
+        """Reconstruct backends from IoTSystem entities and populate bookkeeping"""
+        for h in self.system.get_hosts():
+            hb = HostBackend.from_entity(h, self)
+            hb.register_existing_addresses()
+            self._link_services_to_hosts(hb, h)
+            self._build_component_backends(hb)
+
+        for c in self.system.get_connections(relevant_only=False):
+            ends = (self.backends_by_entity[c.source], self.backends_by_entity[c.target])
+            self.backends_by_entity[c] = ConnectionBackend(c, ends)
+
+    def _link_services_to_hosts(self, hb: 'HostBackend', parent_entity: Addressable) -> None:
+        """Link ServiceBackends to HostBackends via service_builders"""
+        for child in parent_entity.children:
+            if not isinstance(child, Service):
+                continue
+            sb = ServiceBackend.from_entity(hb, child)
+            key = ProtocolBackend.service_key_from_entity(child)
+            hb.service_builders[key] = sb
+            self._link_services_to_hosts(hb, child)
+
+    def _build_component_backends(self, nb: 'NodeBackend') -> None:
+        """Build component backends and link to NodeBackend via .from_entity or __init__"""
+        for c in nb.entity.components:
+            if isinstance(c, Software):
+                SoftwareBackend.from_entity(nb, c)
+            elif isinstance(c, Cookies) and isinstance(nb, HostBackend):
+                CookieBackend(nb)
+
 
 class NodeBackend(NodeBuilder):
     """Node building backend"""
@@ -252,6 +284,7 @@ class NodeBackend(NodeBuilder):
     def __init__(self, entity: Addressable, system: SystemBackend) -> None:
         super().__init__(system)
         self.system: SystemBackend = system
+        self.system.backends_by_entity[entity] = self
         self.entity = entity
         self.parent: Optional[NodeBackend] = None
         self.sw: Dict[str, SoftwareBackend] = {}
@@ -340,6 +373,13 @@ class NodeBackend(NodeBuilder):
     def __repr__(self) -> str:
         return self.entity.__repr__()
 
+    def register_existing_addresses(self) -> None:
+        """Register existing addresses to SystemBackend bookkeeping"""
+        for address in self.entity.addresses:
+            if not address.is_tag():
+                for network in self.entity.get_networks_for(address):
+                    self.system.entity_by_address[AddressAtNetwork(address, network)] = self
+
 
 class ServiceBackend(NodeBackend, ServiceBuilder):
     """Service builder backend"""
@@ -355,7 +395,10 @@ class ServiceBackend(NodeBackend, ServiceBuilder):
     @classmethod
     def from_entity(cls, host: 'HostBackend', service: Service) -> 'ServiceBackend':
         """Create a service backend for a deserialized service"""
-        return cls(host, service)
+        sb = cls(host, service)
+        if isinstance(service, DHCPService):
+            sb.source_fixer = DHCPBackend.dhcp_client_source
+        return sb
 
     def type(self, value: ConnectionType) -> 'ServiceBackend':
         self.entity.con_type = value
@@ -539,6 +582,7 @@ class ConnectionBackend(ConnectionBuilder):
     def __init__(self, connection: Connection, ends: Tuple[NodeBackend, ServiceBackend]) -> None:
         self.connection = connection
         self.ends = ends
+        ends[0].system.backends_by_entity[connection] = self
 
     def logical_only(self) -> Self:
         self.connection.con_type = ConnectionType.LOGICAL
@@ -569,6 +613,7 @@ class SoftwareBackend(SoftwareBuilder):
     def __init__(self, parent: NodeBackend, software: Software) -> None:
         self.parent = parent
         self.sw = software
+        parent.system.backends_by_entity[software] = self
 
     @classmethod
     def new(cls, parent: NodeBackend, software_name: str) -> 'SoftwareBackend':
@@ -583,7 +628,9 @@ class SoftwareBackend(SoftwareBuilder):
     @classmethod
     def from_entity(cls, parent: NodeBackend, software: Software) -> 'SoftwareBackend':
         """Create a software backend for a deserialized software"""
-        return cls(parent, software)
+        sb = cls(parent, software)
+        parent.sw[software.name] = sb
+        return sb
 
     def updates_from(self, source: Union[ConnectionBuilder, ServiceBuilder, HostBuilder]) -> Self:
         host = self.parent.entity
@@ -651,6 +698,7 @@ class CookieBackend(CookieBuilder):
     def __init__(self, builder: HostBackend) -> None:
         self.builder = builder
         self.component = Cookies.cookies_for(builder.entity)
+        self.builder.system.backends_by_entity[self.component] = self
 
     def set(self, cookies: Dict[str, Tuple[str, str, str]]) -> Self:
         for name, p in cookies.items():
@@ -719,6 +767,22 @@ class ProtocolBackend:
             parent.use_data(SensitiveDataBackend(
                 parent.system, self.critical_parameter))
         return b
+
+    @staticmethod
+    def service_key_from_entity(service: Service) -> Tuple[str, PortRange, Protocol, int]:
+        """Build a key from service"""
+        protocol_and_port = None
+        for address in service.addresses:
+            protocol_and_port = address.get_protocol_port()
+            if protocol_and_port:
+                break
+        assert protocol_and_port, "Service must have an address with protocol and port"
+        transport, port = protocol_and_port
+        if service.port_range is not None or service.protocol in {Protocol.EAPOL, Protocol.ICMP}:
+            port = -1
+        port_range = service.port_range or NULL_PORT_RANGE
+        mc = service.multicast_target.get_parseable_value() if service.multicast_target else ""
+        return (mc, port_range, transport, port)
 
     def _create_service(self, parent: HostBackend) -> ServiceBackend:
         if self.port_range:
@@ -806,21 +870,24 @@ class DHCPBackend(ProtocolBackend):
         # DHCP requests go to broadcast, thus the reply looks like request
         self.external_activity = ExternalActivity.UNLIMITED
 
+    @staticmethod
+    def dhcp_client_source(host: 'HostBackend') -> ServiceBackend:
+        """Create a source fixer for DHCP"""
+        # DHCP client uses specific port 68 for requests
+        src = UDP(port=68, name="DHCP")
+        cs = host / src
+        cs.entity.host_type = HostType.ADMINISTRATIVE
+        cs.entity.con_type = ConnectionType.ADMINISTRATIVE
+        cs.entity.client_side = True
+        return cs
+
     def _create_service(self, parent: HostBackend) -> ServiceBackend:
         host_s = ServiceBackend(parent, DHCPService(parent.entity))
         host_s.entity.match_priority = 10
         assert self.external_activity, "external activity was None"
         host_s.entity.external_activity = self.external_activity
 
-        def create_source(host: HostBackend) -> ServiceBackend:
-            # DHCP client uses specific port 68 for requests
-            src = UDP(port=68, name="DHCP")
-            cs = host / src
-            cs.entity.host_type = HostType.ADMINISTRATIVE
-            cs.entity.con_type = ConnectionType.ADMINISTRATIVE
-            cs.entity.client_side = True
-            return cs
-        host_s.source_fixer = create_source
+        host_s.source_fixer = DHCPBackend.dhcp_client_source
         return host_s
 
 
