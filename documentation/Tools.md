@@ -56,7 +56,6 @@ In the following list you can find the tools and formats Toolsaf supports. Short
 |------|-------------|--------------|
 | [apktool](Tools.md#android-manifest) | .xml | Inspect application permissions from Android APK packages
 | [certmitm](Tools.md#certmitm) | .zip | Attempt to break TLS encryption by Man-In-The-Middle attacks
-| [GitHub Releases](Tools.md#github-releases) | .json | Read release history from GitHub
 | [HAR](Tools.md#har) | .json | Inspect browsing session HAR-capture, even when encrypted
 | [nmap](Tools.md#nmap) | .xml | Scan network to detect hosts and services
 | [Wireshark / tcpdump](Tools.md#pcap) | .pcap | Detect hosts, services, and connections between them from network captures.
@@ -149,28 +148,6 @@ Example metafile `00meta.json`:
 }
 ```
 To properly process certmitm results, IP addresses for the hosts present in the output need to be provided in the metafile.
-
-### Github releases
-
-> 🌐 https://github.com
-
-Data files are release json-files fetched from GitHub and named as `<component>.json` where `<component>` is the name of the SW component.
-Example metafile `00meta.json`:
-
-```json
-{
-    "file_type": "github-releases"
-}
-```
-
-Suitable data files can be obtained from the Github API with the following command:
-```bash
-curl -L \
-  -H "Accept: application/vnd.github+json" \
-  -H "Authorization: Bearer <YOUR-TOKEN>" \
-  -H "X-GitHub-Api-Version: 2022-11-28" \
-  https://api.github.com/repos/OWNER/REPO/releases > NODE SW.json
-```
 
 ### HAR
 

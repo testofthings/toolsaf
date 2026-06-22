@@ -1,5 +1,4 @@
 """Tool factory"""
-
 from typing import Dict, List, Optional, Type, Union
 from toolsaf.adapters.android_manifest_scan import AndroidManifestScan
 from toolsaf.adapters.censys_scan import CensysScan
@@ -8,7 +7,6 @@ from toolsaf.adapters.certmitm_reader import CertMITMReader
 from toolsaf.adapters.nmap_scan import NMAPScan
 from toolsaf.adapters.pcap_reader import PCAPReader
 from toolsaf.adapters.ping_command import PingCommand
-from toolsaf.adapters.github_releases import GithubReleaseReader
 from toolsaf.adapters.setup_reader import SetupCSVReader
 from toolsaf.adapters.shodan_scan import ShodanScan
 from toolsaf.adapters.spdx_reader import SPDXReader
@@ -79,7 +77,6 @@ class ToolFinderImplementation:
         self.http = ToolDepiction("http", WebChecker, extension="http")
         self.certmitm = ToolDepiction("certmitm", CertMITMReader, extension="zip")
         self.nmap = ToolDepiction("nmap", NMAPScan, extension="xml")
-        self.github_releases = ToolDepiction("github-releases", GithubReleaseReader)
         self.ping = ToolDepiction("ping", PingCommand, extension="log")
         self.pcap = ToolDepiction(["capture", ""], PCAPReader, extension="pcap")  # Default tool - file_type ""
         self.pcap = ToolDepiction("capture-json", TSharkReader, extension="json")
@@ -94,8 +91,9 @@ class ToolFinderImplementation:
 
     def by_file_type(self, file_type: str) -> ToolDepiction:
         """Get tool by name"""
-        cl = ToolDepiction.ToolsByType.get(file_type)
-        if cl is None:
+        if file_type in {"github-releases"}:
+            raise DeprecationWarning(f"File type '{file_type}' is deprecated")
+        if (cl := ToolDepiction.ToolsByType.get(file_type)) is None:
             raise ValueError(f"Unknown file_type '{file_type}'")
         return cl
 

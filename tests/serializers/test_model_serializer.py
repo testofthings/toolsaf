@@ -128,7 +128,6 @@ def test_service_dto():
         "type": "service",
         "protocol": Protocol.HTTP.value,
         "con_type": ConnectionType.UNKNOWN.value,
-        "authentication": False,
         "client_side": False,
         "multicast_target": None,
         "port_range": None,
@@ -143,7 +142,6 @@ def test_service_dto():
     assert new_service.name == service.name
     assert new_service.protocol == service.protocol
     assert new_service.con_type == service.con_type
-    assert new_service.authentication == service.authentication
     assert new_service.client_side == service.client_side
     assert new_service.reply_from_other_address == service.reply_from_other_address
     assert new_service.multicast_target == service.multicast_target
@@ -178,7 +176,6 @@ def test_dhcp_service_dto():
         "type": "dhcp-service",
         "protocol": None,
         "con_type": ConnectionType.ADMINISTRATIVE.value,
-        "authentication": False,
         "client_side": False,
         "multicast_target": None,
         "port_range": None,
@@ -194,7 +191,6 @@ def test_dhcp_service_dto():
     assert new_service.description == service.description
     assert new_service.protocol == service.protocol
     assert new_service.con_type == service.con_type
-    assert new_service.authentication == service.authentication
     assert new_service.client_side == service.client_side
     assert new_service.reply_from_other_address == service.reply_from_other_address
     assert new_service.multicast_target == service.multicast_target
@@ -229,7 +225,6 @@ def test_dns_service_dto():
         "type": "dns-service",
         "protocol": None,
         "con_type": ConnectionType.ADMINISTRATIVE.value,
-        "authentication": False,
         "client_side": False,
         "multicast_target": None,
         "port_range": None,
@@ -245,7 +240,6 @@ def test_dns_service_dto():
     assert new_service.description == service.description
     assert new_service.protocol == service.protocol
     assert new_service.con_type == service.con_type
-    assert new_service.authentication == service.authentication
     assert new_service.client_side == service.client_side
     assert new_service.reply_from_other_address == service.reply_from_other_address
     assert new_service.multicast_target == service.multicast_target

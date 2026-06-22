@@ -57,16 +57,8 @@ class SystemBuilder:
         """Document online resource"""
         raise NotImplementedError()
 
-    def attach_file(self, file_path: str, relative_to: Optional[str] = None) -> Self:
-        """Attach a file to the model"""
-        raise NotImplementedError()
-
     def diagram_visualizer(self) -> 'DiagramVisualizer':
         """Security statement visualization"""
-        raise NotImplementedError()
-
-    def load(self) -> 'EvidenceBuilder':
-        """Load built-in evidence"""
         raise NotImplementedError()
 
     def ignore(self, file_type: str) -> 'IgnoreRulesBuilder':
@@ -116,10 +108,6 @@ class ServiceBuilder(NodeBuilder):
     """Service builder"""
     def type(self, value: ConnectionType) -> Self:
         """Configure connection type"""
-        raise NotImplementedError()
-
-    def authenticated(self, flag: bool) -> Self:
-        """Is this service authenticated?"""
         raise NotImplementedError()
 
     def __truediv__(self, protocol: ProtocolType) -> 'ServiceGroupBuilder':
@@ -235,22 +223,11 @@ class SoftwareBuilder:
         """Update mechanism"""
         raise NotImplementedError()
 
-    def first_release(self, date: str) -> Self:
-        """First release as YYYY-MM-DD"""
-        raise NotImplementedError()
-
-    def supported_until(self, date: str) -> Self:
-        """Support end time YYYY-MM-DD"""
-        raise NotImplementedError()
-
-    def update_frequency(self, days: int) -> Self:
-        """Target update frequency, days"""
-        raise NotImplementedError()
-
     def sbom(self, components: Optional[List[str]]=None, file_path: str="") -> Self:
         """Add an SBOM from given list or SPDX JSON file.
            file_path is relative to the statement"""
         raise NotImplementedError()
+
 
 class CookieBuilder:
     """Cookies in a browser"""

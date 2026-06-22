@@ -1,10 +1,10 @@
-from toolsaf.common.address import Addresses, DNSName, EndpointAddress, Protocol
+from toolsaf.common.address import Addresses, DNSName, EndpointAddress, Protocol, HWAddress, IPAddress
 from toolsaf.common.verdict import Verdict
 from toolsaf.builder_backend import SystemBackend
 from toolsaf.core.event_interface import PropertyAddressEvent, PropertyEvent
 from toolsaf.core.event_logger import LoggingEvent
 from toolsaf.main import DNS, TLS
-from toolsaf.common.property import Properties, PropertyKey
+from toolsaf.common.property import Properties, PropertyKey, PropertyVerdictValue
 from toolsaf.core.services import NameEvent
 from toolsaf.common.traffic import Evidence, EvidenceSource, IPFlow
 
@@ -14,53 +14,26 @@ def test_property_event():
     dev0 = sb.device()
     evi = Evidence(EvidenceSource("Source A"))
 
-    entities = {
-        dev0.entity: 1,
-    }
-    ent_reverse = {v: k for k, v in entities.items()}
-
     p = PropertyEvent(evi, dev0.entity, PropertyKey("prop-a").verdict(Verdict.PASS))
-    js = p.get_data_json(entities.get)
-    assert js == {
-        'entity': 1,
-        'key': 'prop-a',
-        'verdict': 'Pass'
-    }
-
-    p2 = PropertyEvent.decode_data_json(evi, js, ent_reverse.get)
-    assert p2.get_verdict() == Verdict.PASS
-    assert p == p2
+    assert p.evidence == evi
+    assert p.entity == dev0.entity
+    assert p.key_value == (PropertyKey("prop-a"), PropertyVerdictValue(Verdict.PASS))
+    assert p.get_verdict() == Verdict.PASS
 
 
 def test_property_address_event():
-    sb = SystemBackend()
-    dev0 = sb.device()
     evi = Evidence(EvidenceSource("Source A"))
 
     p = PropertyAddressEvent(evi, Addresses.parse_address("1.2.3.4"), PropertyKey("prop-a").verdict(Verdict.FAIL))
-    js = p.get_data_json(lambda x: None)
-    assert js == {
-        'address': "1.2.3.4",
-        'key': 'prop-a',
-        'verdict': 'Fail'
-    }
-
-    p2 = PropertyAddressEvent.decode_data_json(evi, js, lambda x: None)
-    assert p2.get_verdict() == Verdict.FAIL
-    assert p == p2
+    assert p.address == Addresses.parse_address("1.2.3.4")
+    assert p.key_value == (PropertyKey("prop-a"), PropertyVerdictValue(Verdict.FAIL))
+    assert p.get_verdict() == Verdict.FAIL
 
     p = PropertyAddressEvent(evi, EndpointAddress.hw("6:5:4:3:2:1", Protocol.UDP, 9090),
                              PropertyKey("prop-a").verdict(Verdict.FAIL))
-    js = p.get_data_json(lambda x: None)
-    assert js == {
-        'address': "06:05:04:03:02:01|hw/udp:9090",
-        'key': 'prop-a',
-        'verdict': 'Fail'
-    }
-
-    p2 = PropertyAddressEvent.decode_data_json(evi, js, lambda x: None)
-    assert p2.get_verdict() == Verdict.FAIL
-    assert p == p2
+    assert p.address == EndpointAddress.hw("6:5:4:3:2:1", Protocol.UDP, 9090)
+    assert p.key_value == (PropertyKey("prop-a"), PropertyVerdictValue(Verdict.FAIL))
+    assert p.get_verdict() == Verdict.FAIL
 
 
 def test_name_event():
@@ -69,46 +42,26 @@ def test_name_event():
     service = dev0 / DNS
     evi = Evidence(EvidenceSource("Source A"))
 
-    entities = {
-        dev0.entity: 1,
-        service.entity: 12,
-    }
-    ent_reverse = {v: k for k, v in entities.items()}
-
     p = NameEvent(evi, service.entity, name=DNSName("www.example.com"))
-    js = p.get_data_json(entities.get)
-    assert js == {
-        'service': 12,
-        'name': 'www.example.com'
-    }
-
-    p2 = NameEvent.decode_data_json(evi, js, ent_reverse.get)
-    assert p2.service == service.entity
-    assert p2.name == DNSName("www.example.com")
-    assert p == p2
+    assert p.service == service.entity
+    assert p.name == DNSName("www.example.com")
+    assert p.tag is None
+    assert p.address is None
+    assert p.peers == []
+    assert p.timestamp is None
 
 
 def test_ipflow_event():
     p = IPFlow.UDP("1:0:0:0:0:1", "192.168.0.1", 1100) >> ("1:0:0:0:0:2", "192.168.0.2", 1234)
     Properties.MITM.put_verdict(p.properties, Verdict.PASS)
 
-    js = p.get_data_json(lambda x: None)
-    assert js == {
-        'protocol': 'udp',
-        'source_hw': '01:00:00:00:00:01',
-        'source': '192.168.0.1',
-        'source_port': 1100,
-        'target_hw': '01:00:00:00:00:02',
-        'target': '192.168.0.2',
-        'target_port': 1234,
-        'properties': {
-            'check:mitm': {'verdict': 'Pass'}
-        }
-    }
-
-    evi = Evidence(EvidenceSource("Source A"))
-    p2 = IPFlow.decode_data_json(evi, js, lambda x: None)
-    assert p == p2
+    assert p.protocol == Protocol.UDP
+    assert p.network is None
+    assert p.reply is False
+    assert p.timestamp is None
+    assert p.properties == {Properties.MITM: PropertyVerdictValue(Verdict.PASS)}
+    assert p.source == (HWAddress.new("1:0:0:0:0:1"), IPAddress.new("192.168.0.1"), 1100)
+    assert p.target == (HWAddress.new("1:0:0:0:0:2"), IPAddress.new("192.168.0.2"), 1234)
 
 
 def test_ipflow_log_event_verdict():

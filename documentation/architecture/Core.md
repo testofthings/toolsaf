@@ -34,7 +34,6 @@ Enables the creation of _IgnoreRules_ for masking false positive security tool f
 The event interface is the base class for classes that receive and process _events_.
 Implementations are in the following files:
 
-  * File [`registry.py`](../../toolsaf/core/registry.py) implements entity identities and local storage of events.
   * File [`event_logger.py`](../../toolsaf/core/event_logger.py) creates logs of events to assign them to property changes.
   * File [`inspector.py`](../../toolsaf/core/inspector.py) processes events and updates the model accordingly, including the creation of unexpected nodes and services, and verdict assignment. Takes _IgnoreRules_ into account.
 
@@ -47,21 +46,9 @@ This code is subject to refactoring.
 
 The matcher is a complex module for matching different _events_ to hosts, services, and connections.
 
-## Files [`entity_selector.py`](../../toolsaf/core/entity_selector.py) and [`selector.py`](../../toolsaf/core/selector.py)
-
-These files implement _selectors_ that allow selecting some model entities, e.g., "select all hosts which are not expected."
-The class `Select` contains factory methods for all selectors.
-
-The class `Finder` implements reading and writing of JSON data to pinpoint individual entities.
-**NOTE:** This class should be retired in favor of _addresses_ once they can be used to identify any entity.
-
 ## File [`result.py`](../../toolsaf/core/result.py)
 
 This file implements the result printout of Toolsaf.
-
-## File [`main_tools.py`](../../toolsaf/core/main_tools.py)
-
-This file provides some core classes for the Toolsaf DSL interface and implementation.
 
 ## File [`online_resources.py`](../../toolsaf/core/online_resources.py)
 

@@ -9,6 +9,7 @@ from toolsaf.common.basics import Status
 from toolsaf.common.traffic import Flow, IPFlow
 from toolsaf.core.model import Addressable, Connection, Host, IoTSystem, Service
 
+
 class MatcherEngine:
     """Matcher engine for matching connections and endpoints"""
     def __init__(self, system: IoTSystem):
@@ -202,10 +203,6 @@ class MatchingState:
         self.engine = engine
         self.values: Dict[Any, StateValue] = {}
 
-    def get_if(self, item: Any) -> Optional['StateValue']:
-        """Get deduction value for item"""
-        return self.values.get(item)
-
     def get(self, item: Any) -> 'StateValue':
         """Get deduction value for item"""
         return self.values.setdefault(item, StateValue())
@@ -219,6 +216,7 @@ class MatchingState:
         for key, value in sorted(self.values.items(), key=lambda kv: -kv[1].weight):
             r.append(f"{value.weight:<3} {key} # {value.reference}")
         return "\n".join(r)
+
 
 class StateValue:
     """Matching state value"""

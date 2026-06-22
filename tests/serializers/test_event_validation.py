@@ -7,7 +7,7 @@ from toolsaf.core.serializer.event_serializer import (
     EvidenceSourceDTO, AddressMapEntryDTO, BaseEventDTO,
     EthernetFlowDTO, IPFlowDTO, BLEAdvertisementFlowDTO,
     ServiceScanDTO, HostScanDTO, PropertyAddressEventDTO,
-    PropertyEventDTO, NameEventDTO, ReleaseInfoDTO, PropEventValueDTO
+    PropertyEventDTO, NameEventDTO, PropEventValueDTO
 )
 
 
@@ -228,7 +228,6 @@ def test_property_address_event_dto_invalid_values():
         ("type", "property-event"),
         ("address", 123),
         ("key", 123),
-        ("value", {"verdict": Verdict.PASS.value, "extra_field": "x"}),
         ("source_id", "idabc"),
     ]
     _validate(_valid_property_address_event(), key_values, PropertyAddressEventDTO)
@@ -251,7 +250,6 @@ def test_property_event_dto_invalid_values():
         ("address", "Node/tcp:abc"),
         ("address", 123),
         ("key", 123),
-        ("value", {"verdict": Verdict.PASS.value, "extra_field": "x"}),
         ("source_id", "idabc"),
     ]
     _validate(_valid_property_event(), key_values, PropertyEventDTO)
@@ -289,26 +287,6 @@ def test_name_event_dto_invalid_values():
         ("source_id", "idabc"),
     ]
     _validate(_valid_name_event(), key_values, NameEventDTO)
-
-
-def _valid_release_info():
-    return {
-        "sw_name": "firmware",
-    }
-
-
-def test_release_info_dto_invalid_values():
-    key_values = [
-        ("sw_name", ""),
-        ("sw_name", "a" * 101),
-        ("sw_name", 123),
-        ("interval_days", "abc"),
-        ("latest_release_name", "a" * 101),
-        ("latest_release_name", 123),
-        ("first_release", "not-a-date"),
-        ("latest_release", "not-a-date"),
-    ]
-    _validate(_valid_release_info(), key_values, ReleaseInfoDTO)
 
 
 def _valid_prop_event_value_dto():

@@ -3,16 +3,23 @@ from toolsaf.core.inspector import Inspector
 
 from toolsaf.core.model import IoTSystem
 from toolsaf.adapters.pcap_reader import PCAPReader
-from toolsaf.core.registry import Registry
-from toolsaf.common.traffic import IPFlow, EvidenceSource
+from toolsaf.core.event_logger import EventLogger
+from toolsaf.common.traffic import IPFlow, EvidenceSource, Flow
 from toolsaf.common.address import IPAddress
 from tests.test_model import Setup
 
 
 def test_pcap():
-    m = Registry(Inspector(IoTSystem()))
-    pcap = PCAPReader.inspect(pathlib.Path("tests/samples/pcap/deltaco-setup.pcap"), m)
-    cs = m.logging.collect_flows()
+    m = EventLogger(Inspector(IoTSystem()))
+    PCAPReader.inspect(pathlib.Path("tests/samples/pcap/deltaco-setup.pcap"), m)
+    cs = {}
+    for c in m.inspector.system.get_connections():
+        cs[c] = []
+    for lo in m.logs:
+        if isinstance(lo.event, Flow) or not lo.property_value:
+            if not lo.entity in cs:
+                cs[lo.entity] = []
+            cs[lo.entity].append((lo.event.get_source_address(), lo.event.get_target_address(), lo.event))
 
     # FIXME: External connections are not filtered ou
 

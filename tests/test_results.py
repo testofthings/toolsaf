@@ -6,7 +6,7 @@ from colored import Fore
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.property import Properties, PropertyVerdictValue
 from toolsaf.main import HTTP, TLS
-from toolsaf.core.registry import Registry
+from toolsaf.core.event_logger import EventLogger
 from toolsaf.common.basics import ConnectionType
 from toolsaf.core.result import *
 from tests.test_model import Setup
@@ -26,7 +26,7 @@ def _get_pvv(verdict: Verdict) -> PropertyVerdictValue:
     ]
 )
 def test_use_color(use_color_flag, is_piped, expected):
-    report = Report(Registry(Setup().get_inspector()))
+    report = Report(EventLogger(Setup().get_inspector()))
     report.use_color_flag = use_color_flag
     sys.stdout.isatty = MagicMock(return_value=is_piped)
     assert report.use_color is expected
@@ -42,7 +42,7 @@ def test_use_color(use_color_flag, is_piped, expected):
     ]
 )
 def test_get_system_verdict(cache: Dict, expected: Verdict):
-    report = Report(Registry(Setup().get_inspector()))
+    report = Report(EventLogger(Setup().get_inspector()))
     assert report.get_system_verdict(cache) == expected
 
 
@@ -63,7 +63,7 @@ def test_get_system_verdict(cache: Dict, expected: Verdict):
     ]
 )
 def test_get_verdict_color(verdict, expected):
-    report = Report(Registry(Setup().get_inspector()))
+    report = Report(EventLogger(Setup().get_inspector()))
     report.use_color_flag = True
     assert report.get_verdict_color(verdict) == expected
 
@@ -84,10 +84,10 @@ def _get_mock_events(values: List):
     ]
 )
 def test_get_sources(values: List, source_count: int, expected: List):
-    report = Report(Registry(Setup().get_inspector()))
+    report = Report(EventLogger(Setup().get_inspector()))
     report.source_count = source_count
-    report.registry = MagicMock()
-    report.registry.logging.get_log.return_value = _get_mock_events(values)
+    report.event_logger = MagicMock()
+    report.event_logger.get_log.return_value = _get_mock_events(values)
     assert report._get_sources(None) == expected
 
 
@@ -123,13 +123,13 @@ def test_get_sources(values: List, source_count: int, expected: List):
 def test_get_properties_to_print(properties: Dict, show: List[str], expected: Tuple):
     entity = MagicMock()
     entity.properties = properties
-    report = Report(Registry(Setup().get_inspector()))
+    report = Report(EventLogger(Setup().get_inspector()))
     report.show = show
     assert report.get_properties_to_print(entity) == expected
 
 
 def test_get_addresses():
-    report = Report(Registry(Setup().get_inspector()))
+    report = Report(EventLogger(Setup().get_inspector()))
     entity = MagicMock()
     entity.name = "test"
     entity.addresses = ["a", "test", "b"]
@@ -137,7 +137,7 @@ def test_get_addresses():
 
 
 def test_get_text():
-    report = Report(Registry(Setup().get_inspector()))
+    report = Report(EventLogger(Setup().get_inspector()))
     key = MagicMock()
     key.get_value_string.return_value = "test:value"
     key.get_explanation.return_value = "comment"
@@ -154,7 +154,7 @@ def test_get_text():
 
 
 def test_get_properties():
-    report = Report(Registry(Setup().get_inspector()))
+    report = Report(EventLogger(Setup().get_inspector()))
     report._get_sources = MagicMock(return_value=["test1", "test2"])
     entity = MagicMock()
     entity.properties = {Properties.MITM: _get_pvv(Verdict.PASS)}
@@ -173,7 +173,7 @@ def test_get_properties():
 
 
 def test_crop_text():
-    report = Report(Registry(Setup().get_inspector()))
+    report = Report(EventLogger(Setup().get_inspector()))
     report.width = 10
 
     assert report._crop_text("0123456789", "", 0)    == "0123456789"
@@ -191,7 +191,7 @@ def _mock_writer() -> MagicMock:
 
 
 def test_print_text():
-    report = Report(Registry(Setup().get_inspector()))
+    report = Report(EventLogger(Setup().get_inspector()))
     writer = _mock_writer()
     report.bold = "B"
     report.reset = "R"
@@ -211,7 +211,7 @@ def test_print_text():
 
 
 def test_get_sub_structure():
-    report = Report(Registry(Setup().get_inspector()))
+    report = Report(EventLogger(Setup().get_inspector()))
     report._get_sources = MagicMock(return_value=[1, 2])
     report._get_addresses = MagicMock(return_value=".fi, .com")
     report._get_properties = MagicMock(return_value = {"test1": {"a": 1}, "test2": {"b": 2}})
@@ -238,7 +238,7 @@ def test_get_sub_structure():
 
 def test_build_host_structure():
     setup = Setup()
-    report = Report(Registry(setup.get_inspector()))
+    report = Report(EventLogger(setup.get_inspector()))
     report.show = "properties"
     report._get_sources = MagicMock(return_value=["@1", "@2"])
 
@@ -271,7 +271,7 @@ def test_build_host_structure():
 
 
 def test_print_host_structure():
-    report = Report(Registry(Setup().get_inspector()))
+    report = Report(EventLogger(Setup().get_inspector()))
     structure = {
         "Mobile App": {
             "srcs": [], "address": "Mobile_App", "verdict": "Expected/Pass",
@@ -320,7 +320,7 @@ def test_print_host_structure():
     ]
 )
 def test_get_connection_status(connection_type: ConnectionType, connection_status: str, verdict: Verdict, expected: str):
-    report = Report(Registry(Setup().get_inspector()))
+    report = Report(EventLogger(Setup().get_inspector()))
     connection = MagicMock()
     connection.con_type = connection_type
     connection.status.value = connection_status
@@ -330,7 +330,7 @@ def test_get_connection_status(connection_type: ConnectionType, connection_statu
 
 def test_build_connection_structure():
     setup = Setup()
-    report = Report(Registry(setup.get_inspector()))
+    report = Report(EventLogger(setup.get_inspector()))
     report.show = "properties"
     report.get_connection_status = MagicMock(return_value="Expected/Pass")
 
@@ -364,7 +364,7 @@ def test_build_connection_structure():
 
 
 def test_print_connection_structure():
-    report = Report(Registry(Setup().get_inspector()))
+    report = Report(EventLogger(Setup().get_inspector()))
     structure = {
         "connections": [
             {

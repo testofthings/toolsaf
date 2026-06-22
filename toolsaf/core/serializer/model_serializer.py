@@ -212,7 +212,6 @@ class SystemSerializer:
             "type": "service",
             "protocol": obj.protocol.value if obj.protocol else None,
             "con_type": obj.con_type.value,
-            "authentication": obj.authentication,
             "client_side": obj.client_side,
             "multicast_target": obj.multicast_target.get_parseable_value() if obj.multicast_target else None,
             "port_range": obj.port_range.get_parseable_value() if obj.port_range else None,
@@ -295,7 +294,7 @@ class BaseDTO(BaseModel):
     """Base DTO"""
     model_config = ConfigDict(
         from_attributes=True,
-        extra="forbid",
+        extra="ignore",
         str_strip_whitespace=True
     )
 
@@ -350,8 +349,6 @@ class NetworkNodeDTO(EntityDTO):
         model.external_activity = self.external_activity
         for key, property_dto in self.properties.items():
             property_dto.populate(model, key)
-        if not isinstance(model, IoTSystem):
-            model.get_system().originals.add(model)
         model_map[self.address] = model
 
 
@@ -430,7 +427,6 @@ class ServiceDTO(AddressableDTO):
     type: Literal["service"] = "service"
     protocol: Optional[Protocol]
     con_type: ConnectionType
-    authentication: bool
     client_side: bool
     multicast_target: Optional[MulticastTarget] = None
     port_range: Optional[PortRange] = None
@@ -442,7 +438,6 @@ class ServiceDTO(AddressableDTO):
         assert isinstance(model, Service)
         model.protocol = self.protocol
         model.con_type = self.con_type
-        model.authentication = self.authentication
         model.client_side = self.client_side
         model.multicast_target = self.multicast_target
         model.port_range = self.port_range

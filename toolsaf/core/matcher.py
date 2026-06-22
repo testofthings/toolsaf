@@ -1,6 +1,6 @@
 """Match events into system model"""
 
-from typing import Optional, Self, Tuple, Dict
+from typing import Optional, Tuple, Dict
 
 from dataclasses import dataclass
 
@@ -18,12 +18,6 @@ class SystemMatcher(ModelListener):
         self.system = system
         self.contexts: Dict[EvidenceSource, MatchingContext] = {}
         system.model_listeners.append(self)
-
-    def reset(self) -> Self:
-        """Reset the model"""
-        self.contexts.clear()
-        self.system.reset()
-        return self
 
     def address_change(self, host: Host) -> None:
         for ctx in self.contexts.values():
@@ -151,7 +145,6 @@ class MatchingContext:
         e = self.system.system.get_endpoint(address)
         self.engine.add_host(e)
         return e
-
 
     def new_endpoint(self, flow: Flow, target: bool) -> Tuple[Addressable, AnyAddress]:
         """Create a new endpoint host"""

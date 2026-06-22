@@ -25,10 +25,6 @@ Main components in the architecture diagram are the following:
    `EventInterface` class. These consume _Events_ (see [`common`](Common.md) sub-module), process them, and
    finally update the system model.
 
-   * **Registry**: Provides short-term event storage in a database.
-     Allows users to reload stored events. (DB is now obsolete.)
-     Main class: `Registry`.
-
    * **Event logger**: Stores events and the properties they change
      so that the reason for property changes can be retrieved later.
      Main class: `EventLogger`.

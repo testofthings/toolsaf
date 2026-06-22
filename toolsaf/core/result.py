@@ -13,14 +13,14 @@ from toolsaf.common.entity import Entity
 from toolsaf.common.verdict import Verdict
 from toolsaf.core.model import Host, Connection, Addressable, NodeComponent, IoTSystem
 from toolsaf.common.property import Properties, PropertyKey, PropertyVerdictValue
-from toolsaf.core.registry import Registry
+from toolsaf.core.event_logger import EventLogger
 
 
 class Report:
     """Report of the system status"""
-    def __init__(self, registry: Registry):
-        self.registry = registry
-        self.system = registry.system
+    def __init__(self, event_logger: EventLogger) -> None:
+        self.event_logger = event_logger
+        self.system = event_logger.get_system()
         self.source_count = 3
         self.show: List[str] = []
         self.no_truncate = False
@@ -111,7 +111,7 @@ class Report:
             return []
         sources = set(filter(None, [
             event.event.evidence.get_reference()
-            for event in self.registry.logging.get_log(entity, key)
+            for event in self.event_logger.get_log(entity, key)
         ]))
 
         return list(sources)[:self.source_count]

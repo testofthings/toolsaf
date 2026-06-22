@@ -3,7 +3,6 @@
 from dataclasses import dataclass
 from typing import Iterable, List, Optional, Dict, Set
 
-from toolsaf.common.release_info import ReleaseInfo
 from toolsaf.core.model import IoTSystem, NodeComponent, Connection, NetworkNode, Host, SensitiveData, Addressable
 
 
@@ -12,7 +11,6 @@ class Software(NodeComponent):
     def __init__(self, entity: NetworkNode, name: str = "") -> None:
         super().__init__(entity, name if name else self.default_name(entity))
         self.concept_name = "software"
-        self.info = ReleaseInfo(self.name)
         self.components: Dict[str, SoftwareComponent] = {}
         self.permissions: Set[str] = set()
         self.update_connections: List[Connection] = []
@@ -23,22 +21,7 @@ class Software(NodeComponent):
         return f"{entity.long_name()} SW"
 
     def __repr__(self) -> str:
-        return f"{self.name}\n{self.info_string()}"
-
-    def reset(self) -> None:
-        super().reset()
-        self.info = ReleaseInfo(self.name)
-
-    def info_string(self) -> str:
-        s = []
-        i = self.info
-        if i.latest_release:
-            s.append(f"Latest release {ReleaseInfo.print_time(i.latest_release)} {i.latest_release_name}")
-        if i.first_release:
-            s.append(f"First release {ReleaseInfo.print_time(i.first_release)}")
-        if i.interval_days:
-            s.append(f"Mean update interval {i.interval_days} days")
-        return "\n".join(s)
+        return f"{self.name}"
 
     def get_host(self) -> Optional[Host]:
         """Software always has host"""

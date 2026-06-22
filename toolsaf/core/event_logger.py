@@ -2,8 +2,7 @@
 
 from logging import Logger
 import logging
-from typing import Any, List, Set, Tuple, Dict, Optional, cast
-from toolsaf.common.address import AnyAddress
+from typing import Any, List, Set, Tuple, Optional
 from toolsaf.common.verdict import Verdict, Verdictable
 
 from toolsaf.common.entity import Entity
@@ -12,7 +11,7 @@ from toolsaf.core.inspector import Inspector
 from toolsaf.core.model import IoTSystem, Connection, Host, ModelListener, Service
 from toolsaf.common.property import Properties, PropertyDict, PropertyKey, PropertySetValue
 from toolsaf.core.services import NameEvent
-from toolsaf.common.traffic import Evidence, EvidenceSource, HostScan, ServiceScan, Flow, Event
+from toolsaf.common.traffic import HostScan, ServiceScan, Flow, Event
 
 
 class LoggingEvent:
@@ -117,11 +116,6 @@ class EventLogger(EventInterface, ModelListener):
         self.current = ev
         return ev
 
-    def reset(self) -> None:
-        """Reset the log"""
-        self.logs.clear()
-        self.inspector.reset()
-
     def get_system(self) -> IoTSystem:
         return self.inspector.system
 
@@ -190,21 +184,6 @@ class EventLogger(EventInterface, ModelListener):
         self.current = None
         return e
 
-    def collect_flows(self) -> Dict[Connection, List[Tuple[AnyAddress, AnyAddress, Flow]]]:
-        """Collect relevant connection flows"""
-        r: Dict[Connection, List[Tuple[AnyAddress, AnyAddress, Flow]]] = {}
-        for c in self.inspector.system.get_connections():
-            r[c] = []  # expected connections without flows
-        for lo in self.logs:
-            event = lo.event
-            if not isinstance(event, Flow) or lo.property_value:
-                continue  # only collect pure flows, not property updates
-            c = cast(Connection, lo.entity)
-            cs = r.setdefault(c, [])
-            s, t = event.get_source_address(), event.get_target_address()
-            cs.append((s, t, event))
-        return r
-
     def get_log(self, entity: Optional[Entity] = None, key: Optional[PropertyKey] = None) \
             -> List[LoggingEvent]:
         """Get log, possibly filtered by entity and key"""
@@ -224,46 +203,4 @@ class EventLogger(EventInterface, ModelListener):
             if key is not None and key not in lo.get_properties():
                 continue
             r.append(lo)
-        return r
-
-    def get_property_sources(self, entity: Entity, keys: Set[PropertyKey]) -> Dict[PropertyKey, EvidenceSource]:
-        """Get property sources for an entity and set of properties"""
-        r = {}
-        for lo in self.logs:
-            if lo.entity != entity:
-                continue
-            ps = lo.get_properties().intersection(keys)
-            for p in ps:
-                r[p] = lo.event.evidence.source
-        return r
-
-    def get_all_property_sources(self) -> Dict[PropertyKey, Dict[EvidenceSource, List[Entity]]]:
-        """Get all property sources"""
-        r: Dict[PropertyKey, Dict[EvidenceSource, List[Entity]]] = {}
-        for lo in self.logs:
-            for p in lo.get_properties():
-                if lo.entity:
-                    r.setdefault(p, {}).setdefault(lo.event.evidence.source, []).append(lo.entity)
-        return r
-
-    def collect_evidence_log_data(self, source: EvidenceSource) -> Dict[Evidence, List[LoggedData]]:
-        """Collect batch log data"""
-        r: Dict[Evidence, List[LoggedData]] = {}
-        for lo in self.logs:
-            if lo.event.evidence.source != source:
-                continue
-            data = LoggedData(lo.resolve_verdict(), lo.event.get_info())
-            data.properties = sorted(lo.get_properties())
-            r.setdefault(lo.event.evidence, []).append(data)
-        return r
-
-    def collect_entity_log_data(self, source: EvidenceSource) -> Dict[Entity, List[LoggedData]]:
-        """Collect entity log data"""
-        r: Dict[Entity, List[LoggedData]] = {}
-        for lo in self.logs:
-            if lo.event.evidence.source != source or not lo.entity:
-                continue
-            data = LoggedData(lo.resolve_verdict(), lo.event.get_info())
-            data.properties = sorted(lo.get_properties())
-            r.setdefault(lo.entity, []).append(data)
         return r
