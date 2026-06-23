@@ -46,4 +46,11 @@ def test_multicast_range():
     parsed = MulticastTarget.parse_address_range(mc.get_parseable_value())
     assert parsed == mc
 
-
+    mc = MulticastTarget(address_range=AddressRange.parse_range("100-110.255.255.255"))
+    assert not mc.is_match(IPAddress.new("99.255.255.255"))
+    assert mc.is_match(IPAddress.new("100.255.255.255"))
+    assert mc.is_match(IPAddress.new("105.255.255.255"))
+    assert not mc.is_match(IPAddress.new("105.255.255.254"))
+    assert mc.is_match(IPAddress.new("110.255.255.255"))
+    assert not mc.is_match(IPAddress.new("111.255.255.255"))
+    assert not mc.is_match(IPAddress.new("255.255.255.255"))

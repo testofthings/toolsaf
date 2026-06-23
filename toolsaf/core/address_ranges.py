@@ -25,6 +25,14 @@ class AddressRange:
         for part in parts:
             if part == "*":
                 range_parts.append((0, 255))
+            elif "-" in part:
+                start_str, end_str = part.split("-", 1)
+                start, end = int(start_str), int(end_str)
+                if not (0 <= start <= 255 and 0 <= end <= 255):
+                    raise ValueError(f"Invalid address range: '{part}'")
+                if start > end:
+                    raise ValueError(f"Invalid address range: '{part}'")
+                range_parts.append((start, end))
             else:
                 octet = int(part)
                 if not 0 <= octet <= 255:
