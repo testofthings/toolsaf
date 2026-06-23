@@ -1,5 +1,7 @@
 """Test multicast and its address range handling"""
 
+import pytest
+
 from toolsaf.common.address import IPAddress
 from toolsaf.core.address_ranges import AddressRange, MulticastTarget
 
@@ -54,3 +56,17 @@ def test_multicast_range():
     assert mc.is_match(IPAddress.new("110.255.255.255"))
     assert not mc.is_match(IPAddress.new("111.255.255.255"))
     assert not mc.is_match(IPAddress.new("255.255.255.255"))
+
+
+def test_multicast_parsing_errors():
+    with pytest.raises(ValueError, match="Expected 4-part address, got '255.255.255'"):
+        AddressRange.parse_range("255.255.255")
+
+    with pytest.raises(ValueError, match="Non-integer in segment 'x' in '255.x.255.255'"):
+        AddressRange.parse_range("255.x.255.255")
+
+    with pytest.raises(ValueError, match="Invalid segment '5-1' in '255.5-1.255.255'"):
+        AddressRange.parse_range("255.5-1.255.255")
+
+    with pytest.raises(ValueError, match="Invalid segment '1-300' in '255.1-300.255.255'"):
+        AddressRange.parse_range("255.1-300.255.255")
