@@ -502,6 +502,13 @@ class Builder:
         return SystemBackendRunner(name)
 
     @classmethod
+    def load(cls, file_path: str) -> SystemBuilder:
+        """Load a serialized security statement from a file"""
+        # avoid circular import
+        from toolsaf.builder_backend import SystemBackendRunner  # pylint: disable=import-outside-toplevel
+        return SystemBackendRunner.load(file_path)
+
+    @classmethod
     def UDP(cls, source_hw: str, source_ip: str, port: int) -> 'FlowBuilder':  # pylint: disable=invalid-name
         """Create a new UDP flow"""
         return FlowBuilder("UDP", (HWAddress.new(source_hw), IPAddress.new(source_ip), port))

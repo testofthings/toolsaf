@@ -3,10 +3,10 @@
 import argparse
 import ipaddress
 import logging
-import pathlib
 import sys
 import inspect
 import json
+from pathlib import Path
 
 from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union, cast, Set
 
@@ -246,6 +246,23 @@ class SystemBackend(SystemBuilder):
         result = serializer.serialize_set(self._changes)
         self._changes = set()
         return result
+
+    @staticmethod
+    def read_serialized_statement(file_path: Path) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        """
+        Read serialized statement from given file path and return entities and events separately
+        """
+        serialized_statement = json.loads(file_path.read_text(encoding='utf-8'))
+        serializer_version = next(iter(serialized_statement))
+        records = serialized_statement[serializer_version]
+
+        split_index = next(
+            (idx for idx, entry in enumerate(records) if entry.get("type") == "source"),
+            len(records)
+        )
+        system_data = records[:split_index]
+        source_data = records[split_index:]
+        return system_data, source_data
 
     def _reconstruct_from_system(self) -> None:
         """Reconstruct backends from IoTSystem entities and populate bookkeeping"""
@@ -658,7 +675,7 @@ class SoftwareBackend(SoftwareBuilder):
             key = PropertyKey("component", c)
             self.sw.properties[key] = PropertyVerdictValue(Verdict.INCON)
 
-    def __sbom_from_file(self, statement_file_path: pathlib.Path, file_path: str) -> None:
+    def __sbom_from_file(self, statement_file_path: Path, file_path: str) -> None:
         try:
             with (statement_file_path / file_path).resolve().open("rb") as f:
                 for c in SPDXJson(f).read():
@@ -680,7 +697,7 @@ class SoftwareBackend(SoftwareBuilder):
         if components:
             self.__sbom_from_list(components)
         else:
-            statement_file_path = pathlib.Path(inspect.stack()[1].filename).parent
+            statement_file_path = Path(inspect.stack()[1].filename).parent
             self.__sbom_from_file(statement_file_path, file_path)
 
         return self
@@ -1175,13 +1192,13 @@ class SystemBackendRunner(SystemBackend):
                             help="File name for created diagram. Default is the system's name")
         parser.add_argument("-l", "--log", dest="log_level", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                             help="Set the logging level", default=None)
-        parser.add_argument("-W", "--write-statement", type=pathlib.Path,
+        parser.add_argument("-W", "--write-statement", type=Path,
                             help="Dump JSON serialized security statement to given file")
-        parser.add_argument("-R", "--read-statement", type=pathlib.Path,
+        parser.add_argument("-R", "--read-statement", type=Path,
                             help="Read JSON serialized security statement from file. Use only with Toolsaf main.py")
         parser.add_argument("-u", "--upload", action="store_true",
                             help="Upload statement.")
-        parser.add_argument("--key-path", type=pathlib.Path,
+        parser.add_argument("--key-path", type=Path,
                             help="Custom path to API key file")
         parser.add_argument("--insecure", action="store_true",
                             help="Allow insecure server connections")
@@ -1192,6 +1209,14 @@ class SystemBackendRunner(SystemBackend):
         logging.basicConfig(format='%(message)s', level=getattr(
             logging, args.log_level or 'INFO'))
         return args
+
+    @classmethod
+    def load(cls, file_path: str) -> 'SystemBackendRunner':
+        """Load a serialized security statement from a file"""
+        system_data, _ = cls.read_serialized_statement(Path(file_path))
+        serializer = SystemSerializer()
+        serializer.deserialize_list(system_data)
+        return cast('SystemBackendRunner', cls.from_entity(serializer.model_map[""]))
 
     def run(self, custom_arguments: Optional[List[str]] = None) -> None:
         """Model is ready, run the checks, return data for programmatic caller"""
@@ -1206,19 +1231,10 @@ class SystemBackendRunner(SystemBackend):
             assert len(self.system.children) == 0, "System is not empty"
 
             # Read serialized security statement
-            json_path = cast(pathlib.Path, args.read_statement)
+            json_path = cast(Path, args.read_statement)
 
             print(f"Reading security statement from {json_path}")
-            json_data = json.loads(json_path.read_text())
-            serializer_version = list(json_data.keys())[0]
-
-            records = json_data[serializer_version]
-            split_index = next(
-                (idx for idx, entry in enumerate(records) if entry.get("type") == "source"),
-                len(records)
-            )
-            system_data = json_data[serializer_version][:split_index]
-            event_data = json_data[serializer_version][split_index:]
+            system_data, event_data = self.read_serialized_statement(json_path)
 
             # Deserialize the security statement
             system_serializer = SystemSerializer()
@@ -1248,7 +1264,7 @@ class SystemBackendRunner(SystemBackend):
         # load file batches, if defined
         batch_import = BatchImporter(event_logger, label_filter=label_filter)
         for in_file in args.read or []:
-            batch_import.import_batch(pathlib.Path(in_file))
+            batch_import.import_batch(Path(in_file))
 
         if args.help_tools:
             # print help and exit
