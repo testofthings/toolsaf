@@ -17,18 +17,32 @@ class AddressRange:
     def parse_range(cls, specification: str, delimiter: str = ".") -> 'AddressRange':
         """Parse address range with * as wildcard matching any octet"""
 
+        # pylint: disable=raise-missing-from
+
         # Delimiter '.' is used for IPv4 addresses
         parts = specification.split(delimiter)
         if len(parts) != 4:
-            raise ValueError(f"Invalid address range: '{specification}'")
+            raise ValueError(f"Expected 4-part address, got '{specification}'")
         range_parts: List[Tuple[int, int]] = []
         for part in parts:
             if part == "*":
                 range_parts.append((0, 255))
+            elif "-" in part:
+                start_str, end_str = part.split("-", 1)
+                try:
+                    start, end = int(start_str), int(end_str)
+                except ValueError:
+                    raise ValueError(f"Non-integer in segment '{part}' in '{specification}'")
+                if not (0 <= start <= 255 and 0 <= end <= 255) or start > end:
+                    raise ValueError(f"Invalid segment '{part}' in '{specification}'")
+                range_parts.append((start, end))
             else:
-                octet = int(part)
+                try:
+                    octet = int(part)
+                except ValueError:
+                    raise ValueError(f"Non-integer in segment '{part}' in '{specification}'")
                 if not 0 <= octet <= 255:
-                    raise ValueError(f"Invalid octet in address range: '{part}'")
+                    raise ValueError(f"Invalid segment '{part}' in '{specification}'")
                 range_parts.append((octet, octet))
         return cls(range_parts)
 
