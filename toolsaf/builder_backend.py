@@ -43,6 +43,10 @@ from toolsaf.diagram_visualizer import DiagramVisualizer
 from toolsaf.core.ignore_rules import IgnoreRules
 from toolsaf.core.uploader import Uploader
 
+Backend = Union[
+    'SystemBackend', 'NodeBackend', 'ConnectionBackend', 'ServiceBackend',
+    'SoftwareBackend', 'NetworkBackend', 'CookieBackend'
+]
 
 class SystemBackend(SystemBuilder):
     """System model builder"""
@@ -51,7 +55,7 @@ class SystemBackend(SystemBuilder):
         self.system = IoTSystem(name)
         self.hosts_by_name: Dict[str, 'HostBackend'] = {}
         self.entity_by_address: Dict[AddressAtNetwork, 'NodeBackend'] = {}
-        self.backends_by_entity: Dict[Entity, Any] = {}
+        self.backends_by_entity: Dict[Entity, Backend] = {}
         self.diagram = DiagramVisualizer(self)
         self.protocols: Dict[Any, 'ProtocolBackend'] = {}
         self.ignore_backend = IgnoreRulesBackend()
@@ -225,7 +229,7 @@ class SystemBackend(SystemBuilder):
         #             prop_v = Properties.AUTHENTICATION_DATA.value(explanation=exp)
         #             prop_v[0].set(s.properties, prop_v[1])
 
-    def get_backend(self, system_address: str) -> Optional[Any]:
+    def get_backend(self, system_address: str) -> Optional[Backend]:
         """Get entity backend by system address"""
         for entity, backend in self.backends_by_entity.items():
             if entity.get_system_address().get_parseable_value() == system_address:
@@ -273,7 +277,10 @@ class SystemBackend(SystemBuilder):
             self._build_component_backends(hb)
 
         for c in self.system.get_connections(relevant_only=False):
-            ends = (self.backends_by_entity[c.source], self.backends_by_entity[c.target])
+            ends = cast(
+                Tuple[NodeBackend, ServiceBackend],
+                (self.backends_by_entity[c.source], self.backends_by_entity[c.target])
+            )
             self.backends_by_entity[c] = ConnectionBackend(c, ends)
 
     def _link_services_to_hosts(self, hb: 'HostBackend', parent_entity: Addressable) -> None:
