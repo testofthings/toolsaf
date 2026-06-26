@@ -206,7 +206,6 @@ class SystemBackend(SystemBuilder):
                 raise ConfigurationException(f'Entity: {entity} does not have a unique system address!')
             addresses.add(sys_addr)
 
-
         # We want to have a authenticator related to each authenticated service
         # NOTE: Not ready to go into this level now...
         # auth_map = DataUsage.map_authenticators(self.system, {})
