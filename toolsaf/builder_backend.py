@@ -199,6 +199,14 @@ class SystemBackend(SystemBuilder):
             host_names.add(h.name)
             self._check_unique_under_parent(h)
 
+        # Ensure all system addresses are unique
+        addresses = set()
+        for entity in self.system.iterate():
+            if (sys_addr := entity.get_system_address().get_parseable_value()) in addresses:
+                raise ConfigurationException(f'Entity: {entity} does not have a unique system address!')
+            addresses.add(sys_addr)
+
+
         # We want to have a authenticator related to each authenticated service
         # NOTE: Not ready to go into this level now...
         # auth_map = DataUsage.map_authenticators(self.system, {})
