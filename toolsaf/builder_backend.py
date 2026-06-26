@@ -3,10 +3,10 @@
 import argparse
 import ipaddress
 import logging
-import pathlib
 import sys
 import inspect
 import json
+from pathlib import Path
 
 from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union, cast, Set
 
@@ -43,6 +43,10 @@ from toolsaf.diagram_visualizer import DiagramVisualizer
 from toolsaf.core.ignore_rules import IgnoreRules
 from toolsaf.core.uploader import Uploader
 
+Backend = Union[
+    'SystemBackend', 'NodeBackend', 'ConnectionBackend', 'ServiceBackend',
+    'SoftwareBackend', 'NetworkBackend', 'CookieBackend'
+]
 
 class SystemBackend(SystemBuilder):
     """System model builder"""
@@ -51,10 +55,21 @@ class SystemBackend(SystemBuilder):
         self.system = IoTSystem(name)
         self.hosts_by_name: Dict[str, 'HostBackend'] = {}
         self.entity_by_address: Dict[AddressAtNetwork, 'NodeBackend'] = {}
+        self.backends_by_entity: Dict[Entity, Backend] = {}
         self.diagram = DiagramVisualizer(self)
         self.protocols: Dict[Any, 'ProtocolBackend'] = {}
         self.ignore_backend = IgnoreRulesBackend()
         self._changes: Set[Entity | Network] = set()
+
+    @classmethod
+    def from_entity(cls, system: IoTSystem) -> 'SystemBackend':
+        """Create a system backend for a deserialized system"""
+        sb = cls()
+        sb.system = system
+        sb.backends_by_entity[system] = sb
+        sb.ignore_backend.ignore_rules = system.ignore_rules
+        sb._reconstruct_from_system()
+        return sb
 
     def network(self, subnet: str="", ip_mask: Optional[str] = None) -> 'NetworkBuilder':
         if subnet:
@@ -151,7 +166,7 @@ class SystemBackend(SystemBuilder):
             h = Host(self.system, name, tag=EntityTag.new(name))  # tag is not renamed, name can be
             h.description = description
             h.match_priority = 10
-            hb = HostBackend(h, self)
+            hb = HostBackend.new(h, self)
         self.changed(hb.entity)
         return hb
 
@@ -214,6 +229,13 @@ class SystemBackend(SystemBuilder):
         #             prop_v = Properties.AUTHENTICATION_DATA.value(explanation=exp)
         #             prop_v[0].set(s.properties, prop_v[1])
 
+    def get_backend(self, system_address: str) -> Optional[Backend]:
+        """Get entity backend by system address"""
+        for entity, backend in self.backends_by_entity.items():
+            if entity.get_system_address().get_parseable_value() == system_address:
+                return backend
+        return None
+
     def changed(self, entity: Entity | Network) -> None:
         """Add entity to changed set"""
         self._changes.add(entity)
@@ -229,6 +251,56 @@ class SystemBackend(SystemBuilder):
         self._changes = set()
         return result
 
+    @staticmethod
+    def read_serialized_statement(file_path: Path) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        """
+        Read serialized statement from given file path and return entities and events separately
+        """
+        serialized_statement = json.loads(file_path.read_text(encoding='utf-8'))
+        serializer_version = next(iter(serialized_statement))
+        records = serialized_statement[serializer_version]
+
+        split_index = next(
+            (idx for idx, entry in enumerate(records) if entry.get("type") == "source"),
+            len(records)
+        )
+        system_data = records[:split_index]
+        source_data = records[split_index:]
+        return system_data, source_data
+
+    def _reconstruct_from_system(self) -> None:
+        """Reconstruct backends from IoTSystem entities and populate bookkeeping"""
+        for h in self.system.get_hosts():
+            hb = HostBackend.from_entity(h, self)
+            hb.register_existing_addresses()
+            self._link_services_to_hosts(hb, h)
+            self._build_component_backends(hb)
+
+        for c in self.system.get_connections(relevant_only=False):
+            ends = cast(
+                Tuple[NodeBackend, ServiceBackend],
+                (self.backends_by_entity[c.source], self.backends_by_entity[c.target])
+            )
+            self.backends_by_entity[c] = ConnectionBackend(c, ends)
+
+    def _link_services_to_hosts(self, hb: 'HostBackend', parent_entity: Addressable) -> None:
+        """Link ServiceBackends to HostBackends via service_builders"""
+        for child in parent_entity.children:
+            if not isinstance(child, Service):
+                continue
+            sb = ServiceBackend.from_entity(hb, child)
+            key = ProtocolBackend.service_key_from_entity(child)
+            hb.service_builders[key] = sb
+            self._link_services_to_hosts(hb, child)
+
+    def _build_component_backends(self, nb: 'NodeBackend') -> None:
+        """Build component backends and link to NodeBackend via .from_entity or __init__"""
+        for c in nb.entity.components:
+            if isinstance(c, Software):
+                SoftwareBackend.from_entity(nb, c)
+            elif isinstance(c, Cookies) and isinstance(nb, HostBackend):
+                CookieBackend(nb)
+
 
 class NodeBackend(NodeBuilder):
     """Node building backend"""
@@ -236,6 +308,7 @@ class NodeBackend(NodeBuilder):
     def __init__(self, entity: Addressable, system: SystemBackend) -> None:
         super().__init__(system)
         self.system: SystemBackend = system
+        self.system.backends_by_entity[entity] = self
         self.entity = entity
         self.parent: Optional[NodeBackend] = None
         self.sw: Dict[str, SoftwareBackend] = {}
@@ -281,7 +354,7 @@ class NodeBackend(NodeBuilder):
             name = Software.default_name(self.entity)
         sb = self.sw.get(name)
         if sb is None:
-            sb = SoftwareBackend(self, name)
+            sb = SoftwareBackend.new(self, name)
             self.sw[name] = sb
         self.system.changed(sb.sw)
         return sb
@@ -324,6 +397,13 @@ class NodeBackend(NodeBuilder):
     def __repr__(self) -> str:
         return self.entity.__repr__()
 
+    def register_existing_addresses(self) -> None:
+        """Register existing addresses to SystemBackend bookkeeping"""
+        for address in self.entity.addresses:
+            if not address.is_tag():
+                for network in self.entity.get_networks_for(address):
+                    self.system.entity_by_address[AddressAtNetwork(address, network)] = self
+
 
 class ServiceBackend(NodeBackend, ServiceBuilder):
     """Service builder backend"""
@@ -332,12 +412,17 @@ class ServiceBackend(NodeBackend, ServiceBuilder):
         NodeBackend.__init__(self, service, host.system)
         ServiceBuilder.__init__(self, host.system)
         self.entity: Service = service
-        self.entity.match_priority = 10
-        self.entity.external_activity = host.entity.external_activity
         self.parent: HostBackend = host
         self.multicast_protocol: Optional[ProtocolConfigurer] = None  # in broadcast 'source' services
-        self.source_fixer: Optional[Callable[[
-            'HostBackend'], 'ServiceBackend']] = None
+        self.source_fixer: Optional[Callable[['HostBackend'], 'ServiceBackend']] = None
+
+    @classmethod
+    def from_entity(cls, host: 'HostBackend', service: Service) -> 'ServiceBackend':
+        """Create a service backend for a deserialized service"""
+        sb = cls(host, service)
+        if isinstance(service, DHCPService):
+            sb.source_fixer = DHCPBackend.dhcp_client_source
+        return sb
 
     def type(self, value: ConnectionType) -> 'ServiceBackend':
         self.entity.con_type = value
@@ -403,12 +488,23 @@ class HostBackend(NodeBackend, HostBuilder):
         NodeBackend.__init__(self, entity, system)
         HostBuilder.__init__(self, system)
         self.entity: Host = entity
-        system.system.children.append(entity)
-        entity.status = Status.EXPECTED
         system.hosts_by_name[entity.name] = self
-        if DNSName.looks_like(entity.name):
-            self.name(entity.name)
         self.service_builders: Dict[Tuple[str, PortRange, Protocol, int], ServiceBackend] = {}
+
+    @classmethod
+    def new(cls, entity: Host, system: SystemBackend) -> 'HostBackend':
+        """New host backend"""
+        host_backend = cls(entity, system)
+        entity.status = Status.EXPECTED
+        system.system.children.append(entity)
+        if DNSName.looks_like(entity.name):
+            host_backend.name(entity.name)
+        return host_backend
+
+    @classmethod
+    def from_entity(cls, entity: Host, system: SystemBackend) -> 'HostBackend':
+        """Create a host backend for a deserialized host"""
+        return cls(entity, system)
 
     def hw(self, address: str) -> Self:
         self.new_address_(HWAddress.new(address))
@@ -510,6 +606,7 @@ class ConnectionBackend(ConnectionBuilder):
     def __init__(self, connection: Connection, ends: Tuple[NodeBackend, ServiceBackend]) -> None:
         self.connection = connection
         self.ends = ends
+        ends[0].system.backends_by_entity[connection] = self
 
     def logical_only(self) -> Self:
         self.connection.con_type = ConnectionType.LOGICAL
@@ -537,14 +634,27 @@ class NetworkBackend(NetworkBuilder):
 class SoftwareBackend(SoftwareBuilder):
     """Software builder backend"""
 
-    def __init__(self, parent: NodeBackend, software_name: str) -> None:
+    def __init__(self, parent: NodeBackend, software: Software) -> None:
+        self.parent = parent
+        self.sw = software
+        parent.system.backends_by_entity[software] = self
+
+    @classmethod
+    def new(cls, parent: NodeBackend, software_name: str) -> 'SoftwareBackend':
+        """New software backend"""
         sw = Software.get_software(parent.entity, software_name)
         if sw is None:
             # all hosts have software
             sw = Software(parent.entity, software_name)
             parent.entity.add_component(sw)
-        self.sw: Software = sw
-        self.parent = parent
+        return cls(parent, sw)
+
+    @classmethod
+    def from_entity(cls, parent: NodeBackend, software: Software) -> 'SoftwareBackend':
+        """Create a software backend for a deserialized software"""
+        sb = cls(parent, software)
+        parent.sw[software.name] = sb
+        return sb
 
     def updates_from(self, source: Union[ConnectionBuilder, ServiceBuilder, HostBuilder]) -> Self:
         host = self.parent.entity
@@ -572,7 +682,7 @@ class SoftwareBackend(SoftwareBuilder):
             key = PropertyKey("component", c)
             self.sw.properties[key] = PropertyVerdictValue(Verdict.INCON)
 
-    def __sbom_from_file(self, statement_file_path: pathlib.Path, file_path: str) -> None:
+    def __sbom_from_file(self, statement_file_path: Path, file_path: str) -> None:
         try:
             with (statement_file_path / file_path).resolve().open("rb") as f:
                 for c in SPDXJson(f).read():
@@ -594,7 +704,7 @@ class SoftwareBackend(SoftwareBuilder):
         if components:
             self.__sbom_from_list(components)
         else:
-            statement_file_path = pathlib.Path(inspect.stack()[1].filename).parent
+            statement_file_path = Path(inspect.stack()[1].filename).parent
             self.__sbom_from_file(statement_file_path, file_path)
 
         return self
@@ -612,6 +722,7 @@ class CookieBackend(CookieBuilder):
     def __init__(self, builder: HostBackend) -> None:
         self.builder = builder
         self.component = Cookies.cookies_for(builder.entity)
+        self.builder.system.backends_by_entity[self.component] = self
 
     def set(self, cookies: Dict[str, Tuple[str, str, str]]) -> Self:
         for name, p in cookies.items():
@@ -681,6 +792,22 @@ class ProtocolBackend:
                 parent.system, self.critical_parameter))
         return b
 
+    @staticmethod
+    def service_key_from_entity(service: Service) -> Tuple[str, PortRange, Protocol, int]:
+        """Build a key from service"""
+        protocol_and_port = None
+        for address in service.addresses:
+            protocol_and_port = address.get_protocol_port()
+            if protocol_and_port:
+                break
+        assert protocol_and_port, "Service must have an address with protocol and port"
+        transport, port = protocol_and_port
+        if service.port_range is not None or service.protocol in {Protocol.EAPOL, Protocol.ICMP}:
+            port = -1
+        port_range = service.port_range or NULL_PORT_RANGE
+        mc = service.multicast_target.get_parseable_value() if service.multicast_target else ""
+        return (mc, port_range, transport, port)
+
     def _create_service(self, parent: HostBackend) -> ServiceBackend:
         if self.port_range:
             # Port range instead of single port number
@@ -690,8 +817,12 @@ class ProtocolBackend:
             self.service_port = self.port_range.get_low_port()
             self.port_to_name = False
             self.service_name = f"{self.service_name}:{self.port_range.get_name()}"
-        s = ServiceBackend(parent,
-                           parent.new_service_(self.service_name, self.service_port if self.port_to_name else -1))
+        s = ServiceBackend(
+            parent,
+            parent.new_service_(self.service_name, self.service_port if self.port_to_name else -1)
+        )
+        s.entity.match_priority = 10
+        s.entity.external_activity = parent.entity.external_activity
         s.entity.host_type = self.host_type
         s.entity.con_type = self.con_type
         s.entity.port_range = self.port_range
@@ -763,20 +894,24 @@ class DHCPBackend(ProtocolBackend):
         # DHCP requests go to broadcast, thus the reply looks like request
         self.external_activity = ExternalActivity.UNLIMITED
 
+    @staticmethod
+    def dhcp_client_source(host: 'HostBackend') -> ServiceBackend:
+        """Create a source fixer for DHCP"""
+        # DHCP client uses specific port 68 for requests
+        src = UDP(port=68, name="DHCP")
+        cs = host / src
+        cs.entity.host_type = HostType.ADMINISTRATIVE
+        cs.entity.con_type = ConnectionType.ADMINISTRATIVE
+        cs.entity.client_side = True
+        return cs
+
     def _create_service(self, parent: HostBackend) -> ServiceBackend:
         host_s = ServiceBackend(parent, DHCPService(parent.entity))
+        host_s.entity.match_priority = 10
         assert self.external_activity, "external activity was None"
         host_s.entity.external_activity = self.external_activity
 
-        def create_source(host: HostBackend) -> ServiceBackend:
-            # DHCP client uses specific port 68 for requests
-            src = UDP(port=68, name="DHCP")
-            cs = host / src
-            cs.entity.host_type = HostType.ADMINISTRATIVE
-            cs.entity.con_type = ConnectionType.ADMINISTRATIVE
-            cs.entity.client_side = True
-            return cs
-        host_s.source_fixer = create_source
+        host_s.source_fixer = DHCPBackend.dhcp_client_source
         return host_s
 
 
@@ -792,6 +927,7 @@ class DNSBackend(ProtocolBackend):
         dns_s = DNSService(parent.entity)
         dns_s.captive_portal = self.captive_portal
         s = ServiceBackend(parent, dns_s)
+        s.entity.match_priority = 10
         assert self.external_activity, "external activity was None"
         s.entity.external_activity = self.external_activity
         return s
@@ -1063,13 +1199,13 @@ class SystemBackendRunner(SystemBackend):
                             help="File name for created diagram. Default is the system's name")
         parser.add_argument("-l", "--log", dest="log_level", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                             help="Set the logging level", default=None)
-        parser.add_argument("-W", "--write-statement", type=pathlib.Path,
+        parser.add_argument("-W", "--write-statement", type=Path,
                             help="Dump JSON serialized security statement to given file")
-        parser.add_argument("-R", "--read-statement", type=pathlib.Path,
+        parser.add_argument("-R", "--read-statement", type=Path,
                             help="Read JSON serialized security statement from file. Use only with Toolsaf main.py")
         parser.add_argument("-u", "--upload", action="store_true",
                             help="Upload statement.")
-        parser.add_argument("--key-path", type=pathlib.Path,
+        parser.add_argument("--key-path", type=Path,
                             help="Custom path to API key file")
         parser.add_argument("--insecure", action="store_true",
                             help="Allow insecure server connections")
@@ -1080,6 +1216,14 @@ class SystemBackendRunner(SystemBackend):
         logging.basicConfig(format='%(message)s', level=getattr(
             logging, args.log_level or 'INFO'))
         return args
+
+    @classmethod
+    def load(cls, file_path: str) -> 'SystemBackendRunner':
+        """Load a serialized security statement from a file"""
+        system_data, _ = cls.read_serialized_statement(Path(file_path))
+        serializer = SystemSerializer()
+        serializer.deserialize_list(system_data)
+        return cast('SystemBackendRunner', cls.from_entity(serializer.model_map[""]))
 
     def run(self, custom_arguments: Optional[List[str]] = None) -> None:
         """Model is ready, run the checks, return data for programmatic caller"""
@@ -1094,19 +1238,10 @@ class SystemBackendRunner(SystemBackend):
             assert len(self.system.children) == 0, "System is not empty"
 
             # Read serialized security statement
-            json_path = cast(pathlib.Path, args.read_statement)
+            json_path = cast(Path, args.read_statement)
 
             print(f"Reading security statement from {json_path}")
-            json_data = json.loads(json_path.read_text())
-            serializer_version = list(json_data.keys())[0]
-
-            records = json_data[serializer_version]
-            split_index = next(
-                (idx for idx, entry in enumerate(records) if entry.get("type") == "source"),
-                len(records)
-            )
-            system_data = json_data[serializer_version][:split_index]
-            event_data = json_data[serializer_version][split_index:]
+            system_data, event_data = self.read_serialized_statement(json_path)
 
             # Deserialize the security statement
             system_serializer = SystemSerializer()
@@ -1136,7 +1271,7 @@ class SystemBackendRunner(SystemBackend):
         # load file batches, if defined
         batch_import = BatchImporter(event_logger, label_filter=label_filter)
         for in_file in args.read or []:
-            batch_import.import_batch(pathlib.Path(in_file))
+            batch_import.import_batch(Path(in_file))
 
         if args.help_tools:
             # print help and exit
