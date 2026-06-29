@@ -223,9 +223,12 @@ class SoftwareBuilder:
         """Update mechanism"""
         raise NotImplementedError()
 
-    def sbom(self, components: Optional[List[str]]=None, file_path: str="") -> Self:
-        """Add an SBOM from given list or SPDX JSON file.
-           file_path is relative to the statement"""
+    def sbom(self, components: List[str | Tuple[str,str]] | None =None, file_path: str="") -> Self:
+        """
+        Add an SBOM from given list or SPDX JSON file.
+        components can be [name, name (name, version), ...].
+        file_path is relative to the statement
+        """
         raise NotImplementedError()
 
 

@@ -676,9 +676,14 @@ class SoftwareBackend(SoftwareBuilder):
         self.sw.update_connections.extend(cs)
         return self
 
-    def __sbom_from_list(self, components: List[str]) -> None:
+    def __sbom_from_list(
+        self, components: List[str | Tuple[str,str]]
+    ) -> None:
         for c in components:
-            self.sw.components.append(SoftwareComponent(self.sw, c, version=""))
+            if isinstance(c, tuple):
+                self.sw.components.append(SoftwareComponent(self.sw, c[0], version=c[1]))
+            else:
+                self.sw.components.append(SoftwareComponent(self.sw, c, version=""))
 
     def __sbom_from_file(self, statement_file_path: Path, file_path: str) -> None:
         try:
@@ -688,9 +693,10 @@ class SoftwareBackend(SoftwareBuilder):
         except FileNotFoundError as e:
             raise ConfigurationException(f"Could not find SBOM file {e.filename}") from e
 
-    def sbom(self, components: Optional[List[str]]=None, file_path: str="") -> Self:
-        """Add an SBOM from given list or SPDX JSON file.
-           file_path is relative to statement"""
+    def sbom(
+        self, components: List[str | Tuple[str,str]] | None = None,
+        file_path: str=""
+    ) -> Self:
         if not components and not file_path:
             raise ConfigurationException("Provide either components list of file")
         if file_path and not file_path.endswith(".json"):
