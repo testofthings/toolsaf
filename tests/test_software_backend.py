@@ -19,13 +19,8 @@ def test_sbom_components_list():
     sb = SoftwareBackend.new(MagicMock(), "test")
     sb.sbom(["c1", "c2"])
     assert len(sb.sw.components) == 2
-    assert len(sb.sw.properties) == 2
-    assert sb.sw.properties[
-        PropertyKey("component", "c1")
-    ].verdict == Verdict.INCON
-    assert sb.sw.properties[
-        PropertyKey("component", "c2")
-    ].verdict == Verdict.INCON
+    assert sb.sw.get_component("c1") is not None
+    assert sb.sw.get_component("c2") is not None
 
 
 def test_sbom_file():
@@ -48,13 +43,5 @@ def test_sbom_file():
 
         sb.sbom(file_path=tmp.name)
         assert len(sb.sw.components) == 2
-        assert sb.sw.components["package-1"].version == "1.0"
-        assert sb.sw.components["package-2"].version == "2.1.0"
-
-        assert len(sb.sw.properties) == 2
-        assert sb.sw.properties[
-            PropertyKey("component", "package-1")
-        ].verdict == Verdict.INCON
-        assert sb.sw.properties[
-            PropertyKey("component", "package-2")
-        ].verdict == Verdict.INCON
+        assert sb.sw.get_component("package-1").version == "1.0"
+        assert sb.sw.get_component("package-2").version == "2.1.0"

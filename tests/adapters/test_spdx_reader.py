@@ -29,7 +29,7 @@ def test_spdx_json_read():
         ]
         _write_spdx_json(packages, tmp)
 
-        components = SPDXJson(file=tmp).read()
+        components = SPDXJson(file=tmp).read(Software(MagicMock()))
         assert len(components) == 3
         assert components[0].name == packages[0]["name"]
         assert components[0].version == packages[0]["versionInfo"]
@@ -47,7 +47,7 @@ def test_spdx_json_read_apk_kludge():
         ]
         _write_spdx_json(packages, tmp)
 
-        components = SPDXJson(file=tmp).read()
+        components = SPDXJson(file=tmp).read(Software(MagicMock()))
         assert len(components) == 1
         assert components[0].name == packages[1]["name"]
         assert components[0].version == packages[1]["versionInfo"]
@@ -61,7 +61,7 @@ def test_spdx_json_read_incorrect_json():
         tmp.seek(0)
 
         with pytest.raises(ConfigurationException):
-            SPDXJson(file=tmp).read()
+            SPDXJson(file=tmp).read(Software(MagicMock()))
 
     with tempfile.NamedTemporaryFile(delete=True, mode="w+") as tmp:
         json.dump({
@@ -70,7 +70,7 @@ def test_spdx_json_read_incorrect_json():
         tmp.seek(0)
 
         with pytest.raises(ConfigurationException):
-            SPDXJson(file=tmp).read()
+            SPDXJson(file=tmp).read(Software(MagicMock()))
 
 
 def _get_json_data(packages: list[dict]) -> io.BytesIO:
@@ -87,8 +87,8 @@ def test_process_component():
     reader = SPDXReader(setup.get_system())
 
     sw = Software(MagicMock())
-    sw.components["c1"] = SoftwareComponent("c1", "1.0")
-    sw.components["c2"] = SoftwareComponent("c2", "1.0")
+    sw.get_or_create_component("c1", "1.0")
+    sw.get_or_create_component("c2", "1.0")
 
     data = _get_json_data(packages=[
         {"name": "c1", "versionInfo": "1.0"},
@@ -96,8 +96,8 @@ def test_process_component():
     ])
 
     reader.process_component(sw, data, setup.get_inspector(), MagicMock())
-    assert sw.properties[PropertyKey("component", "c1")].verdict == Verdict.PASS
-    assert sw.properties[PropertyKey("component", "c2")].verdict == Verdict.PASS
+    assert sw.get_component("c1").status_string() == "Expected/Pass"
+    assert sw.get_component("c2").status_string() == "Expected/Pass"
 
 
 def test_process_component_in_statement_not_in_data():
@@ -105,12 +105,12 @@ def test_process_component_in_statement_not_in_data():
     reader = SPDXReader(setup.get_system())
 
     sw = Software(MagicMock())
-    sw.components["c1"] = SoftwareComponent("c1", "1.0")
+    sw.get_or_create_component("c1", "1.0")
 
     data = _get_json_data(packages=[])
 
     reader.process_component(sw, data, setup.get_inspector(), MagicMock())
-    assert sw.properties[PropertyKey("component", "c1")].verdict == Verdict.FAIL
+    assert sw.get_component("c1").status_string() == "Expected/Fail"
 
 
 def test_process_component_not_in_statement_in_data():
@@ -124,4 +124,6 @@ def test_process_component_not_in_statement_in_data():
     ])
 
     reader.process_component(sw, data, setup.get_inspector(), MagicMock())
-    assert sw.properties[PropertyKey("component", "c1")].verdict == Verdict.FAIL
+    c1 = sw.get_component("c1")
+    assert c1 is not None
+    assert c1.status_string() == "Unexpected/Fail"

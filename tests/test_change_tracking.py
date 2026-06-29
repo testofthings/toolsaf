@@ -333,14 +333,14 @@ def test_add_sbom():
     assert len(serialized) == 1
     assert serialized[0]["type"] == "sw"
     assert {
-        "key": "sw1",
         "name": "sw1",
         "version": "",
+        "status": "Expected",
     } in serialized[0]["components"]
     assert {
-        "key": "sw2",
         "name": "sw2",
         "version": "",
+        "status": "Expected",
     } in serialized[0]["components"]
     assert serialized[0]["address"] == "Test_Device&software=Test_Device_SW"
     assert serialized[0]["parent_address"] == "Test_Device"

@@ -7,7 +7,7 @@ from toolsaf.common.verdict import Verdict
 from toolsaf.common.property import Properties, PropertyVerdictValue
 from toolsaf.main import HTTP, TLS
 from toolsaf.core.event_logger import EventLogger
-from toolsaf.common.basics import ConnectionType
+from toolsaf.common.basics import ConnectionType, Status
 from toolsaf.core.result import *
 from tests.test_model import Setup
 
@@ -268,6 +268,54 @@ def test_build_host_structure():
             "HTTP:80": {"srcs": ["@1", "@2"], "address": "", "verdict": "Expected"},
         }
     }
+
+
+def test_build_host_structure_software_components():
+    """Software components are nested under the software with their own status/verdict"""
+    setup = Setup()
+    report = Report(EventLogger(setup.get_inspector()))
+    report.show = "properties"
+    report._get_sources = MagicMock(return_value=[])
+
+    device = setup.system.device("Device")
+    sw = device.software("Device SW").sw
+    # Declared in Statement and found from SBOM by adapter -> Expected/Pass
+    declared = sw.get_or_create_component("openssl", "3.0.2")
+    declared.set_property(Properties.EXPECTED.verdict(Verdict.PASS))
+    # Found by adapter but not in Statement -> Unexpected/Fail
+    undeclared = sw.get_or_create_component("telnetd")
+    undeclared.status = Status.UNEXPECTED
+    undeclared.set_property(Properties.EXPECTED.verdict(Verdict.FAIL))
+
+    structure = report.build_host_structure(setup.system.system.get_hosts())
+
+    assert structure["Device"]["Device SW [Component]"] == {
+        "srcs": [], "address": "", "verdict": "Expected/Fail",
+        "openssl - 3.0.2": {"srcs": [], "address": "", "verdict": "Expected/Pass"},
+        "telnetd": {"srcs": [], "address": "", "verdict": "Unexpected/Fail"},
+    }
+
+
+def test_print_host_structure_software_components():
+    """Nested software components render with their own [verdict] tags"""
+    report = Report(EventLogger(Setup().get_inspector()))
+    structure = {
+        "Device": {
+            "srcs": [], "address": "Device", "verdict": "Expected/Fail",
+            "Device SW [Component]": {
+                "srcs": [], "address": "", "verdict": "Expected/Fail",
+                "openssl - 3.0.2": {"srcs": [], "address": "", "verdict": "Expected/Pass"},
+                "telnetd": {"srcs": [], "address": "", "verdict": "Unexpected/Fail"},
+            },
+        }
+    }
+
+    writer = _mock_writer()
+    report._print_host_structure(0, structure, writer, "│  ", False)
+
+    assert any("[Expected/Fail]" in line and "Device SW [Component]" in line for line in writer.output)
+    assert any("[Expected/Pass]" in line and "openssl - 3.0.2" in line for line in writer.output)
+    assert any("[Unexpected/Fail]" in line and "telnetd" in line for line in writer.output)
 
 
 def test_print_host_structure():

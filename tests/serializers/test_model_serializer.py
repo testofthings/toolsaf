@@ -252,10 +252,10 @@ def test_software_dto():
     setup = Setup()
     device = setup.system.device("Device 1")
     software = device.software("Test Software").sw
-    software.components = {
-        "tc": SoftwareComponent("test-component", "1.0"),
-        "tc2": SoftwareComponent("test-component2", "2.0"),
-    }
+    software.components = [
+        SoftwareComponent(software, "test-component", "1.0"),
+        SoftwareComponent(software, "test-component2", "2.0"),
+    ]
     software.permissions.add(MobilePermissions.CALLS.value)
 
     serializer = SystemSerializer()
@@ -268,8 +268,8 @@ def test_software_dto():
         "parent_address": "Device_1",
         "type": "sw",
         "components": [
-            {"key": "tc", "name": "test-component", "version": "1.0"},
-            {"key": "tc2", "name": "test-component2", "version": "2.0"},
+            {"name": "test-component", "version": "1.0", "status": "Expected"},
+            {"name": "test-component2", "version": "2.0", "status": "Expected"},
         ],
         "permissions": [MobilePermissions.CALLS.value]
     }
@@ -280,7 +280,8 @@ def test_software_dto():
 
     assert isinstance(new_software, Software)
     assert new_software.name == software.name
-    assert new_software.components == software.components
+    assert [(c.name, c.version, c.status) for c in new_software.components] == \
+           [(c.name, c.version, c.status) for c in software.components]
     assert new_software.permissions == software.permissions
     assert new_software.entity == new_host
 

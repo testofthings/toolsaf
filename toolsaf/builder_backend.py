@@ -678,18 +678,13 @@ class SoftwareBackend(SoftwareBuilder):
 
     def __sbom_from_list(self, components: List[str]) -> None:
         for c in components:
-            self.sw.components[c] = SoftwareComponent(c, version="")
-            key = PropertyKey("component", c)
-            self.sw.properties[key] = PropertyVerdictValue(Verdict.INCON)
+            self.sw.components.append(SoftwareComponent(self.sw, c, version=""))
 
     def __sbom_from_file(self, statement_file_path: Path, file_path: str) -> None:
         try:
             with (statement_file_path / file_path).resolve().open("rb") as f:
-                for c in SPDXJson(f).read():
-                    self.sw.components[c.name] = c
-                    key = PropertyKey("component", c.name)
-                    self.sw.properties[key] =\
-                        PropertyVerdictValue(Verdict.INCON, explanation=f"version {c.version}")
+                for c in SPDXJson(f).read(self.sw):
+                    self.sw.components.append(c)
         except FileNotFoundError as e:
             raise ConfigurationException(f"Could not find SBOM file {e.filename}") from e
 

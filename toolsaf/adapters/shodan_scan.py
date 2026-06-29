@@ -14,6 +14,7 @@ from toolsaf.adapters.tools import SystemWideTool, IncorrectBatchFileExcpetion, 
 from toolsaf.core.model import IoTSystem, Service
 from toolsaf.core.components import Software, SoftwareComponent
 from toolsaf.core.event_interface import EventInterface, PropertyEvent
+from toolsaf.common.basics import Status
 from toolsaf.common.traffic import EvidenceSource, Evidence, ServiceScan
 from toolsaf.common.address import IPAddress, Protocol, EndpointAddress
 from toolsaf.common.property import Properties, PropertyKey
@@ -85,14 +86,15 @@ class ShodanScan(SystemWideTool):
             prop_event = PropertyEvent(self._evidence, service, key.verdict(verdict, comment))
             self._interface.property_update(prop_event)
 
-    def parse_cpe23(self, cpe23: str) -> Tuple[str, Optional[str]]:
-        """Extracts the product and version number (if included) from a given CPE 2.3 string.
-            CPE 2.3 parts are cpe:2.3:<part>:<vendor>:<product>:<version>:...
+    def parse_cpe23(self, parent_sw: Software, cpe23: str) -> SoftwareComponent:
+        """
+        Extracts the product and version number (if included) from a given CPE 2.3 string.
+        CPE 2.3 parts are cpe:2.3:<part>:<vendor>:<product>:<version>:...
         """
         components = cpe23.split(":")
         product = components[4]
-        version = components[5] if len(components) > 5 and components[5] else None
-        return product, version
+        version = components[5] if len(components) > 5 and components[5] else ""
+        return SoftwareComponent(parent_sw, product, version)
 
     def add_cpes(self, cpe23_items: List[str], service: Service) -> None:
         """Add Common Platform Enumeration info to SW component and assign verdict based on statement SBOM"""
@@ -100,15 +102,33 @@ class ShodanScan(SystemWideTool):
         assert parent, f"{service} parent was None"
         if len(parent.components) > 0:
             parent_sw = cast(Software, parent.components[0])
-            for entry in cpe23_items:
-                product, version = self.parse_cpe23(entry)
-                software = SoftwareComponent(product)
-                verdict = Verdict.PASS if software in parent_sw.components.values() else Verdict.FAIL
-                key = PropertyKey("component", product)
-                comment = f"v{version}, Shodan CPE 2.3" if version else "Shodan CPE 2.3"
-                self._interface.property_update(
-                    PropertyEvent(self._evidence, parent_sw, key.verdict(verdict, comment))
-                )
+            parent_sw.set_seen_now()
+
+            for cpe23 in cpe23_items:
+                found = self.parse_cpe23(parent_sw, cpe23)
+                existing = parent_sw.get_component(found.name)
+                explanation = f"version {found.version}, Shodan CPE 2.3" if found.version else "Shodan CPE 2.3"
+                if existing is not None:
+                    if existing.status == Status.EXPECTED:
+                        self._interface.property_update(PropertyEvent(
+                            self._evidence, existing, Properties.EXPECTED.verdict(Verdict.PASS, explanation)
+                        ))
+
+                elif not self.load_baseline:
+                    found.status = Status.UNEXPECTED
+                    parent_sw.components.append(found)
+                    if self.send_events:
+                        found.set_seen_now()
+                        self._interface.property_update(PropertyEvent(
+                            self._evidence, found,
+                            Properties.EXPECTED.verdict(Verdict.FAIL, explanation="Found by Shodan but not declared")
+                        ))
+
+                else:
+                    parent_sw.components.append(found)
+
+                # Components in the statement but not found in scans will be left with status EXPECTED and no verdict
+
 
     @handle_incorrect_batch_file
     def process_file(self, data: BufferedReader, file_name: str,

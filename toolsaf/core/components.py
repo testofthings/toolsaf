@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Iterable, List, Optional, Dict, Set
 
 from toolsaf.core.model import IoTSystem, NodeComponent, Connection, NetworkNode, Host, SensitiveData, Addressable
+from toolsaf.common.entity import Entity
 
 
 class Software(NodeComponent):
@@ -11,7 +12,7 @@ class Software(NodeComponent):
     def __init__(self, entity: NetworkNode, name: str = "") -> None:
         super().__init__(entity, name if name else self.default_name(entity))
         self.concept_name = "software"
-        self.components: Dict[str, SoftwareComponent] = {}
+        self.components: List['SoftwareComponent'] = []
         self.permissions: Set[str] = set()
         self.update_connections: List[Connection] = []
 
@@ -19,6 +20,21 @@ class Software(NodeComponent):
     def default_name(cls, entity: NetworkNode) -> str:
         """Default SW name"""
         return f"{entity.long_name()} SW"
+
+    def get_children(self) -> Iterable['Entity']:
+        return self.components
+
+    def get_component(self, name: str) -> Optional['SoftwareComponent']:
+        """Get a software component by name"""
+        return next((c for c in self.components if c.name == name), None)
+
+    def get_or_create_component(self, name: str, version: str="") -> 'SoftwareComponent':
+        """Get or create a software component by name"""
+        if (component := self.get_component(name)):
+            return component
+        component = SoftwareComponent(self, name, version)
+        self.components.append(component)
+        return component
 
     def __repr__(self) -> str:
         return f"{self.name}"
@@ -80,11 +96,13 @@ class Cookies(NodeComponent):
         return c
 
 
-@dataclass
-class SoftwareComponent:
+class SoftwareComponent(NodeComponent):
     """Software component"""
-    name: str
-    version: str = ""
+    def __init__(self, software: Software, name: str, version: str = "") -> None:
+        super().__init__(software.entity, name)
+        self.concept_name = "software-component"
+        self.software = software
+        self.version = version
 
 
 class OperatingSystem(NodeComponent):

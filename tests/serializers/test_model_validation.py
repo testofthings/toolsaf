@@ -270,22 +270,21 @@ def test_node_component_dto_invalid_values():
 
 def _valid_software_component():
     return {
-        "key": "sw-key",
         "name": "Software",
         "version": "1.0",
+        "status": Status.EXPECTED.value,
     }
 
 
 def test_software_component_dto_invalid_values():
     key_values = [
-        ("key", ""),
-        ("key", "a"*101),
-        ("key", 123),
         ("name", ""),
         ("name", "a"*101),
         ("name", 123),
         ("version", "a"*101),
         ("version", 123),
+        ("status", "unknown"),
+        ("status", 1),
     ]
     _validate(_valid_software_component(), key_values, SoftwareComponentDTO)
 

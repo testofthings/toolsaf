@@ -244,10 +244,10 @@ class SystemSerializer:
         data.update({
             "type": "sw",
             "components": [{
-                "key": key,
                 "name": component.name,
-                "version": component.version
-            } for key, component in obj.components.items()],
+                "version": component.version,
+                "status": component.status.value
+            } for component in obj.components],
             "permissions": list(obj.permissions)
         })
 
@@ -497,19 +497,18 @@ class SoftwareDTO(NodeComponentDTO):
         model = Software(entity=model_map[self.parent_address], name=self.name)
         super().populate(model, model_map)
         for component_dto in self.components:
-            model.components[component_dto.key] = SoftwareComponent(
-                name=component_dto.name,
-                version=component_dto.version
-            )
+            component = SoftwareComponent(model, component_dto.name, component_dto.version)
+            component.status = component_dto.status
+            model.components.append(component)
         model.permissions = {p.value for p in self.permissions}
         return model
 
 
 class SoftwareComponentDTO(BaseDTO):
     """DTO for SoftwareComponent"""
-    key: NameType
     name: NameType
-    version: str = Field("", max_length=50)
+    version: str = Field("", max_length=100)
+    status: Status
 
 
 class CookieDTO(NodeComponentDTO):

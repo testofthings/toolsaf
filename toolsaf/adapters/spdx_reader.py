@@ -8,10 +8,11 @@ from toolsaf.main import ConfigurationException
 from toolsaf.core.components import Software, SoftwareComponent
 from toolsaf.core.event_interface import PropertyEvent, EventInterface
 from toolsaf.core.model import IoTSystem, NodeComponent
-from toolsaf.common.property import Properties, PropertyKey
 from toolsaf.adapters.tools import NodeComponentTool
+from toolsaf.common.basics import Status
 from toolsaf.common.traffic import EvidenceSource, Evidence
 from toolsaf.common.verdict import Verdict
+from toolsaf.common.property import Properties
 
 
 class SPDXJson:
@@ -19,7 +20,7 @@ class SPDXJson:
     def __init__(self, file: BufferedReader) -> None:
         self.file = json.load(file)
 
-    def read(self) -> list[SoftwareComponent]:
+    def read(self, software: Software) -> list[SoftwareComponent]:
         """Read list of SoftwareComponents"""
         components = []
         try:
@@ -30,7 +31,7 @@ class SPDXJson:
                     continue # NOTE A kludge to clean away opened APK itself
                 if "property 'version'" in version:
                     version = ""  # NOTE: Kludging a bug in BlackDuck
-                components.append(SoftwareComponent(name, version))
+                components.append(SoftwareComponent(software, name, version))
             return components
         except KeyError as e:
             raise ConfigurationException(f"Field {e} missing from SPDX JSON") from e
@@ -45,36 +46,41 @@ class SPDXReader(NodeComponentTool):
     def filter_component(self, component: NodeComponent) -> bool:
         return isinstance(component, Software)
 
-    def process_component(self, component: NodeComponent, data_file: BufferedReader, interface: EventInterface,
-                       source: EvidenceSource) -> None:
+    def process_component(
+        self, component: NodeComponent, data_file: BufferedReader, interface: EventInterface,
+        source: EvidenceSource
+    ) -> None:
         software = cast(Software, component)
         evidence = Evidence(source)
-        properties = set()
 
-        components = SPDXJson(data_file).read()
-        for c in software.components.values():
-            if c not in components and self.send_events:
-                key = PropertyKey("component", c.name)
-                ev = PropertyEvent(evidence, software, key.verdict(Verdict.FAIL, explanation=f"{c.name} {c.version}"))
-                interface.property_update(ev)
-
-        for c in components:
-            key = PropertyKey("component", c.name)
-            properties.add(key)
-            old_sc = software.components.get(c.name)
-            verdict = Verdict.PASS
-
-            if self.load_baseline:
-                software.components[c.name] = c
-
-            if not old_sc and not self.load_baseline:
-                verdict = Verdict.FAIL
-                software.components[c.name] = c
-
-            if self.send_events:
-                ev = PropertyEvent(evidence, software, key.verdict(verdict, explanation=f"{c.name} {c.version}"))
-                interface.property_update(ev)
+        found_components = SPDXJson(data_file).read(software)
+        found_names = {c.name for c in found_components}
 
         if self.send_events:
-            ev = PropertyEvent(evidence, software, Properties.COMPONENTS.value_set(properties))
-            interface.property_update(ev)
+            software.set_seen_now()
+
+        for stated in software.components:
+            if stated.name not in found_names and self.send_events:
+                interface.property_update(PropertyEvent(
+                    evidence, stated,
+                    Properties.EXPECTED.verdict(Verdict.FAIL, explanation="Component not found in SBOM")
+                ))
+
+        for found in found_components:
+            existing = software.get_component(found.name)
+            if existing and self.send_events:
+                interface.property_update(PropertyEvent(
+                    evidence, existing, Properties.EXPECTED.verdict(Verdict.PASS)
+                ))
+
+            else:
+                if not self.load_baseline:
+                    found.status = Status.UNEXPECTED
+                software.components.append(found)
+
+                if self.send_events:
+                    found.set_seen_now()
+                    interface.property_update(PropertyEvent(
+                        evidence, found,
+                        Properties.EXPECTED.verdict(Verdict.FAIL, explanation="Component in SBOM but not declared")
+                    ))

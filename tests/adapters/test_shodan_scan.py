@@ -11,8 +11,10 @@ from toolsaf.main import ConfigurationException, HTTP
 from toolsaf.common.address import IPAddress, Protocol, EndpointAddress
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.property import PropertyKey
+from toolsaf.common.basics import Status
 from toolsaf.common.traffic import ServiceScan
 from toolsaf.core.model import Service
+from toolsaf.core.components import Software
 from tests.test_model import Setup
 
 
@@ -121,35 +123,45 @@ def test_add_heartbleed(opts, exp_verdict, exp_comment):
     "cpe23, exp_product, exp_version",
     [
         ("cpe:2.3:a:example:software:1.0", "software", "1.0"),
-        ("cpe:2.3:a:example:software:", "software", None),
-        ("cpe:2.3:a:example:software", "software", None),
+        ("cpe:2.3:a:example:software:", "software", ""),
+        ("cpe:2.3:a:example:software", "software", ""),
         ("cpe:2.3:a:example:software:2.0:extra", "software", "2.0"),
     ]
 )
 def test_parse_cpe23(cpe23, exp_product, exp_version):
     scan = ShodanScan(Setup().get_system())
-    product, version = scan.parse_cpe23(cpe23)
-    assert product == exp_product
-    assert version == exp_version
+    sw = Software(MagicMock())
+    component = scan.parse_cpe23(sw, cpe23)
+    assert component.name == exp_product
+    assert component.version == exp_version
+    assert component.software == sw
 
 
-@pytest.mark.parametrize(
-    "cpe23, exp_verdict, exp_comment",
-    [
-        (["cpe:2.3:a:example:software:1.0"], Verdict.FAIL, ["v1.0, Shodan CPE 2.3"]),
-        (["cpe:2.3:a:example:software:1.0", "cpe:2.3:a:example:software2:2.0"], Verdict.FAIL, ["v1.0, Shodan CPE 2.3", "v2.0, Shodan CPE 2.3"]),
-        (["cpe:2.3:a:example:software3"], Verdict.PASS, ["Shodan CPE 2.3"]),
-    ]
-)
-def test_add_cpes(cpe23, exp_verdict, exp_comment):
+def test_add_cpes_declared_component_passes():
     scan, service, backend = _mock_system()
     backend.software("test sw").sbom(["software3"])
+    parent_sw = service.parent.components[0]
 
-    scan.add_cpes(cpe23, service)
-    for i, entry in enumerate(cpe23):
-        product, _ = scan.parse_cpe23(entry)
-        assert service.parent.components[0].properties[PropertyKey("component", product)].verdict == exp_verdict
-        assert service.parent.components[0].properties[PropertyKey("component", product)].explanation == exp_comment[i]
+    scan.add_cpes(["cpe:2.3:a:example:software3"], service)
+
+    declared = parent_sw.get_component("software3")
+    assert declared.status == Status.EXPECTED
+    assert declared.status_string() == "Expected/Pass"
+
+
+def test_add_cpes_undeclared_component_fails():
+    scan, service, backend = _mock_system()
+    backend.software("test sw").sbom(["software3"])
+    parent_sw = service.parent.components[0]
+
+    scan.add_cpes(["cpe:2.3:a:example:software:1.0"], service)
+
+    found = parent_sw.get_component("software")
+    assert found is not None
+    assert found.version == "1.0"
+    assert found.status == Status.UNEXPECTED
+    assert found.status_string() == "Unexpected/Fail"
+    assert parent_sw.get_component("software3").status_string() == "Expected"
 
 
 def test_process_file():

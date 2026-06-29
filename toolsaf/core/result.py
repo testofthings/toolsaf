@@ -11,8 +11,9 @@ from colored import Fore, Style
 from toolsaf.common.basics import ConnectionType
 from toolsaf.common.entity import Entity
 from toolsaf.common.verdict import Verdict
-from toolsaf.core.model import Host, Connection, Addressable, NodeComponent, IoTSystem
 from toolsaf.common.property import Properties, PropertyKey, PropertyVerdictValue
+from toolsaf.core.components import Software
+from toolsaf.core.model import Host, Connection, Addressable, NodeComponent, IoTSystem
 from toolsaf.core.event_logger import EventLogger
 
 
@@ -207,7 +208,13 @@ class Report:
                 structure[entity.name][child.name] = self._get_sub_structure(child)
 
             for component in entity.components:
-                structure[entity.name][component.name + " [Component]"] = self._get_sub_structure(component)
+                key = component.name + " [Component]"
+                structure[entity.name][key] = self._get_sub_structure(component)
+
+                if isinstance(component, Software):
+                    for sw_component in component.components:
+                        sub_key = sw_component.name + (f" - {sw_component.version}" if sw_component.version else "")
+                        structure[entity.name][key][sub_key] = self._get_sub_structure(sw_component)
 
         return structure
 

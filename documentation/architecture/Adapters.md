@@ -43,7 +43,7 @@ Tool output applied to network nodes.
 
 NodeComponentTool applies tool output to node components.
 
-**Input file name:** Sample data files need to be named after components. For example, if we want to apply tool output to Mobile_App's SW component, the file name must be Mobile_App_SW + `data_file_suffix`
+**Input file name:** Sample data files need to be named after components. For example, if we want to apply tool output to Mobile_App's SW component, the file name must be Mobile App SW + `data_file_suffix` (no underscores)
 
 ---
 ## Writing new tool adapters
