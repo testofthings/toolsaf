@@ -3,11 +3,12 @@ from unittest.mock import MagicMock
 from typing import List, Tuple, Dict
 from colored import Fore
 
+from toolsaf.main import HTTP, TLS
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.property import Properties, PropertyVerdictValue
-from toolsaf.main import HTTP, TLS
-from toolsaf.core.event_logger import EventLogger
 from toolsaf.common.basics import ConnectionType, Status
+from toolsaf.core.event_logger import EventLogger
+from toolsaf.core.components import SoftwareComponent
 from toolsaf.core.result import *
 from tests.test_model import Setup
 
@@ -280,12 +281,13 @@ def test_build_host_structure_software_components():
     device = setup.system.device("Device")
     sw = device.software("Device SW").sw
     # Declared in Statement and found from SBOM by adapter -> Expected/Pass
-    declared = sw.get_or_create_component("openssl", "3.0.2")
-    declared.set_property(Properties.EXPECTED.verdict(Verdict.PASS))
+    sw.components.append(SoftwareComponent(sw, "openssl", "3.0.2"))
+
+    sw.components[0].set_property(Properties.EXPECTED.verdict(Verdict.PASS))
     # Found by adapter but not in Statement -> Unexpected/Fail
-    undeclared = sw.get_or_create_component("telnetd")
-    undeclared.status = Status.UNEXPECTED
-    undeclared.set_property(Properties.EXPECTED.verdict(Verdict.FAIL))
+    sw.components.append(SoftwareComponent(sw, "telnetd"))
+    sw.components[1].status = Status.UNEXPECTED
+    sw.components[1].set_property(Properties.EXPECTED.verdict(Verdict.FAIL))
 
     structure = report.build_host_structure(setup.system.system.get_hosts())
 

@@ -28,14 +28,6 @@ class Software(NodeComponent):
         """Get a software component by name"""
         return next((c for c in self.components if c.name == name), None)
 
-    def get_or_create_component(self, name: str, version: str="") -> 'SoftwareComponent':
-        """Get or create a software component by name"""
-        if (component := self.get_component(name)):
-            return component
-        component = SoftwareComponent(self, name, version)
-        self.components.append(component)
-        return component
-
     def __repr__(self) -> str:
         return f"{self.name}"
 

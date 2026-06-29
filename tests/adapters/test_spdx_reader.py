@@ -6,9 +6,7 @@ from unittest.mock import MagicMock
 
 from toolsaf.adapters.spdx_reader import SPDXJson, SPDXReader
 from toolsaf.core.components import Software, SoftwareComponent
-from toolsaf.common.property import PropertyKey
 from toolsaf.main import ConfigurationException
-from toolsaf.common.verdict import Verdict
 from tests.test_model import Setup
 
 
@@ -87,8 +85,8 @@ def test_process_component():
     reader = SPDXReader(setup.get_system())
 
     sw = Software(MagicMock())
-    sw.get_or_create_component("c1", "1.0")
-    sw.get_or_create_component("c2", "1.0")
+    sw.components.append(SoftwareComponent(sw, "c1", "1.0"))
+    sw.components.append(SoftwareComponent(sw, "c2", "1.0"))
 
     data = _get_json_data(packages=[
         {"name": "c1", "versionInfo": "1.0"},
@@ -105,7 +103,7 @@ def test_process_component_in_statement_not_in_data():
     reader = SPDXReader(setup.get_system())
 
     sw = Software(MagicMock())
-    sw.get_or_create_component("c1", "1.0")
+    sw.components.append(SoftwareComponent(sw, "c1", "1.0"))
 
     data = _get_json_data(packages=[])
 
