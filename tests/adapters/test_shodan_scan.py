@@ -156,7 +156,7 @@ def test_add_cpes_undeclared_component_fails():
 
     scan.add_cpes(["cpe:2.3:a:example:software:1.0"], service)
 
-    found = parent_sw.get_component("software")
+    found = parent_sw.get_component("software", "1.0")
     assert found is not None
     assert found.version == "1.0"
     assert found.status == Status.UNEXPECTED

@@ -7,12 +7,21 @@ from toolsaf.core.model import IoTSystem, NodeComponent, Connection, NetworkNode
 from toolsaf.common.entity import Entity
 
 
+class SoftwareComponent(NodeComponent):
+    """Software component"""
+    def __init__(self, software: 'Software', name: str, version: str = "") -> None:
+        super().__init__(software.entity, name)
+        self.concept_name = "software-component"
+        self.software = software
+        self.version = version
+
+
 class Software(NodeComponent):
     """Software, firmware, etc. Each real host has one or more software components."""
     def __init__(self, entity: NetworkNode, name: str = "") -> None:
         super().__init__(entity, name if name else self.default_name(entity))
         self.concept_name = "software"
-        self.components: List['SoftwareComponent'] = []
+        self.components: List[SoftwareComponent] = []
         self.permissions: Set[str] = set()
         self.update_connections: List[Connection] = []
 
@@ -24,9 +33,10 @@ class Software(NodeComponent):
     def get_children(self) -> Iterable['Entity']:
         return self.components
 
-    def get_component(self, name: str) -> Optional['SoftwareComponent']:
+    def get_component(self, name: str, version: str="") -> SoftwareComponent | None:
         """Get a software component by name"""
-        return next((c for c in self.components if c.name == name), None)
+        #return next((c for c in self.components if c.name == name), None)
+        return next((c for c in self.components if c.name == name and c.version == version), None)
 
     def __repr__(self) -> str:
         return f"{self.name}"
@@ -86,15 +96,6 @@ class Cookies(NodeComponent):
         c = Cookies(entity)
         entity.add_component(c)
         return c
-
-
-class SoftwareComponent(NodeComponent):
-    """Software component"""
-    def __init__(self, software: Software, name: str, version: str = "") -> None:
-        super().__init__(software.entity, name)
-        self.concept_name = "software-component"
-        self.software = software
-        self.version = version
 
 
 class OperatingSystem(NodeComponent):

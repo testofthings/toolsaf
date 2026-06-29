@@ -67,11 +67,14 @@ class SPDXReader(NodeComponentTool):
                 ))
 
         for found in found_components:
-            existing = software.get_component(found.name)
+            existing = software.get_component(found.name, found.version)
             if existing and self.send_events:
                 interface.property_update(PropertyEvent(
                     evidence, existing, Properties.EXPECTED.verdict(Verdict.PASS)
                 ))
+
+            elif self.load_baseline and not existing:
+                software.components.append(found)
 
             else:
                 if not self.load_baseline:

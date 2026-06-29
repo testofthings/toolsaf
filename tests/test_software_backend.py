@@ -43,5 +43,5 @@ def test_sbom_file():
 
         sb.sbom(file_path=tmp.name)
         assert len(sb.sw.components) == 2
-        assert sb.sw.get_component("package-1").version == "1.0"
-        assert sb.sw.get_component("package-2").version == "2.1.0"
+        assert sb.sw.get_component("package-1", "1.0").version == "1.0"
+        assert sb.sw.get_component("package-2", "2.1.0").version == "2.1.0"

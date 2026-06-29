@@ -94,8 +94,8 @@ def test_process_component():
     ])
 
     reader.process_component(sw, data, setup.get_inspector(), MagicMock())
-    assert sw.get_component("c1").status_string() == "Expected/Pass"
-    assert sw.get_component("c2").status_string() == "Expected/Pass"
+    assert sw.get_component("c1", "1.0").status_string() == "Expected/Pass"
+    assert sw.get_component("c2", "1.0").status_string() == "Expected/Pass"
 
 
 def test_process_component_in_statement_not_in_data():
@@ -108,7 +108,7 @@ def test_process_component_in_statement_not_in_data():
     data = _get_json_data(packages=[])
 
     reader.process_component(sw, data, setup.get_inspector(), MagicMock())
-    assert sw.get_component("c1").status_string() == "Expected/Fail"
+    assert sw.get_component("c1", "1.0").status_string() == "Expected/Fail"
 
 
 def test_process_component_not_in_statement_in_data():
@@ -122,6 +122,6 @@ def test_process_component_not_in_statement_in_data():
     ])
 
     reader.process_component(sw, data, setup.get_inspector(), MagicMock())
-    c1 = sw.get_component("c1")
+    c1 = sw.get_component("c1", "1.0")
     assert c1 is not None
     assert c1.status_string() == "Unexpected/Fail"
