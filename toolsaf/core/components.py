@@ -35,7 +35,6 @@ class Software(NodeComponent):
 
     def get_component(self, name: str, version: str="") -> SoftwareComponent | None:
         """Get a software component by name"""
-        #return next((c for c in self.components if c.name == name), None)
         return next((c for c in self.components if c.name == name and c.version == version), None)
 
     def __repr__(self) -> str:
