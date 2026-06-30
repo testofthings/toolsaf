@@ -224,8 +224,11 @@ class SoftwareBuilder:
         raise NotImplementedError()
 
     def sbom(self, components: Optional[List[str]]=None, file_path: str="") -> Self:
-        """Add an SBOM from given list or SPDX JSON file.
-           file_path is relative to the statement"""
+        """
+        Add an SBOM from given list or SPDX JSON file.
+        The components array does not accept version information.
+        file_path is relative to the statement
+        """
         raise NotImplementedError()
 
 
