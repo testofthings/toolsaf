@@ -45,8 +45,10 @@ class SPDXReader(NodeComponentTool):
     def filter_component(self, component: NodeComponent) -> bool:
         return isinstance(component, Software)
 
-    def process_component(self, component: NodeComponent, data_file: BufferedReader, interface: EventInterface,
-                       source: EvidenceSource) -> None:
+    def process_component(
+        self, component: NodeComponent, data_file: BufferedReader, interface: EventInterface,
+        source: EvidenceSource
+    ) -> None:
         software = cast(Software, component)
         evidence = Evidence(source)
         properties = set()
@@ -55,25 +57,27 @@ class SPDXReader(NodeComponentTool):
         for c in software.components.values():
             if c not in components and self.send_events:
                 key = PropertyKey("component", c.name)
-                ev = PropertyEvent(evidence, software, key.verdict(Verdict.FAIL, explanation=f"{c.name} {c.version}"))
-                interface.property_update(ev)
+                interface.property_update(PropertyEvent(
+                    evidence, software,
+                    key.verdict(Verdict.FAIL,explanation="Declared in statement but not found in SBOM")
+                ))
 
         for c in components:
             key = PropertyKey("component", c.name)
             properties.add(key)
             old_sc = software.components.get(c.name)
-            verdict = Verdict.PASS
 
-            if self.load_baseline:
-                software.components[c.name] = c
-
-            if not old_sc and not self.load_baseline:
-                verdict = Verdict.FAIL
+            if self.load_baseline or not old_sc:
                 software.components[c.name] = c
 
             if self.send_events:
-                ev = PropertyEvent(evidence, software, key.verdict(verdict, explanation=f"{c.name} {c.version}"))
-                interface.property_update(ev)
+                if old_sc or self.load_baseline:
+                    interface.property_update(PropertyEvent(evidence, software, key.verdict(Verdict.PASS)))
+                else:
+                    interface.property_update(PropertyEvent(
+                        evidence, software,
+                        key.verdict(Verdict.FAIL, explanation="Declared in SBOM but not declared in statement")
+                    ))
 
         if self.send_events:
             ev = PropertyEvent(evidence, software, Properties.COMPONENTS.value_set(properties))
