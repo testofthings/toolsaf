@@ -125,6 +125,11 @@ class Report:
 
         result = []
         for key, value in property_items:
+            # Always display SBOM (components) and mobile app permissions
+            if key.segments[0] in ["component", "permission"]:
+                result += [(key, value)]
+                continue
+
             if (is_instance:=isinstance(value, PropertyVerdictValue)) and (
                 value.verdict == Verdict.FAIL or
                 value.verdict == Verdict.IGNORE and "ignored" in self.show or
