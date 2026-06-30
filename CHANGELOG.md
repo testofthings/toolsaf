@@ -1,4 +1,20 @@
 # Changelog
+## 0.7.0
+### Added
+- Made deserialized statements editable. This feature can be used through `system = Builder.load("<file_path>")`
+- Added a new lazy loading statement deserialization variant, `SystemSerializer.deserialize_list()`, to support the deserialization of out-of-order statement data.
+- Multiple DNS names can now be supplied to a single `dns()` call, e.g. `backend.dns("example.com", "example.org")`
+- Re-added `Network` serialization. However, only an `IoTSystem's` local `Network` is (de)serialized
+
+### Fixed
+- It was possible to create security statements where multiple entities had the same system address. Known cases fixed.
+- Documentation stated that address ranges and wildcards were usable with `multicast()`. This was actually not the case, fixed!
+- Software components provided with `sbom()` and Android mobile application permissions supplied with `set_permissions` were not displayed by default when running statements. Now they are always displayed.
+- Explanations for failure verdicts created by the `SPDXReader` adapter were not descriptive at all, now they are.
+
+### Documentation
+- Updated `Tools.md` instructions on Android Manifest files, nmap and Shodan scanning.
+- Updated instructions on `NodeComponentTool` tool data file naming conventions.
 
 ## 0.6.0
 - Replaced the `SerializerStream`-based security statement (de)serialization approach with the new `SystemSerializer` and `EventSerializer`. Deserialization now utilizes Pydantic.
