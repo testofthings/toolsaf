@@ -4,7 +4,7 @@
 - Made deserialized statements editable. This feature can be used through `system = Builder.load("<file_path>")`
 - Added a new lazy loading statement deserialization variant, `SystemSerializer.deserialize_list()`, to support the deserialization of out-of-order statement data.
 - Multiple DNS names can now be supplied to a single `dns()` call, e.g. `backend.dns("example.com", "example.org")`
-- Re-added Network serialization. However, only an IoTSystem's local Network is (de)serialized
+- Re-added `Network` serialization. However, only an `IoTSystem's` local `Network` is (de)serialized
 
 ### Fixed
 - It was possible to create security statements where multiple entities had the same system address. Known cases fixed.
