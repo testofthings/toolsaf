@@ -4,7 +4,7 @@ from typing import List, Tuple, Dict
 from colored import Fore
 
 from toolsaf.common.verdict import Verdict
-from toolsaf.common.property import Properties, PropertyVerdictValue
+from toolsaf.common.property import Properties, PropertyKey, PropertyVerdictValue
 from toolsaf.main import HTTP, TLS
 from toolsaf.core.event_logger import EventLogger
 from toolsaf.common.basics import ConnectionType
@@ -117,6 +117,19 @@ def test_get_sources(values: List, source_count: int, expected: List):
             {Properties.MITM: _get_pvv(Verdict.PASS), Properties.FUZZ: _get_pvv(Verdict.IGNORE)},
             ["properties", "ignored"],
             [(Properties.MITM, _get_pvv(Verdict.PASS)), (Properties.FUZZ, _get_pvv(Verdict.IGNORE))]
+        ),
+        (
+            {PropertyKey("component", "openssl"): _get_pvv(Verdict.INCON)},
+            [], [(PropertyKey("component", "openssl"), _get_pvv(Verdict.INCON))]
+        ),
+        (
+            {PropertyKey("permission", "LOCATION"): _get_pvv(Verdict.INCON)},
+            [], [(PropertyKey("permission", "LOCATION"), _get_pvv(Verdict.INCON))]
+        ),
+        # Components/permissions show while other non-FAIL properties stay hidden by default
+        (
+            {PropertyKey("component", "openssl"): _get_pvv(Verdict.PASS), Properties.MITM: _get_pvv(Verdict.PASS)},
+            [], [(PropertyKey("component", "openssl"), _get_pvv(Verdict.PASS))]
         )
     ]
 )

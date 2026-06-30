@@ -228,6 +228,8 @@ Example metafile `00meta.json`:
 
 SPDX file import is tested with files downloaded from Black Duck service. You can also use open-source SBOM generators to create `.json` format SPDX files.
 
+**Note:** SPDX file must be renamed to match the SW name defined in your security statement. For example, if you want to add a SBOM to `Mobile App` the file name must be `Mobile App SW.json` (no underscores).
+
 ### Ssh-audit
 
 > 🌐 [Ssh-audit](https://github.com/jtesta/ssh-audit)

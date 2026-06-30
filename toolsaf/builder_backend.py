@@ -701,8 +701,6 @@ class SoftwareBackend(SoftwareBuilder):
             raise ConfigurationException(f"Could not find SBOM file {e.filename}") from e
 
     def sbom(self, components: Optional[List[str]]=None, file_path: str="") -> Self:
-        """Add an SBOM from given list or SPDX JSON file.
-           file_path is relative to statement"""
         if not components and not file_path:
             raise ConfigurationException("Provide either components list of file")
         if file_path and not file_path.endswith(".json"):
