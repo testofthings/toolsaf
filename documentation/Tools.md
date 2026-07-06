@@ -242,7 +242,11 @@ Example metafile `00meta.json`:
 }
 ```
 
-See the tool manual for how to save scanning data.
+See the tool manual for how to save scanning data. Or try this with Docker:
+```shell
+docker run --rm positronsecurity/ssh-audit -j <target_ip> > <target_url>.tcp.22.json
+```
+As an example, the output file name could be `example.com.tcp.22.json`.
 
 ### Testssl.sh
 
