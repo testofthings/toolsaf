@@ -1017,6 +1017,9 @@ class MQTTBackend(ProtocolBackend):
 
     def __init__(self, configurer: MQTT) -> None:
         super().__init__(Protocol.TCP, port=configurer.port, protocol=Protocol.MQTT, name=configurer.name)
+        if configurer.tls:
+            self.authentication = True
+            self.con_type = ConnectionType.ENCRYPTED
 
 
 class TLSBackend(ProtocolBackend):

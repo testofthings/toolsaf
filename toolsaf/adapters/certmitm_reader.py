@@ -5,10 +5,11 @@ from zipfile import ZipFile
 from io import BufferedReader
 from typing import Set, Tuple, Dict, Any, cast
 
-from toolsaf.common.address import HWAddresses, DNSName, Protocol
-from toolsaf.core.event_interface import EventInterface, PropertyEvent
 from toolsaf.adapters.tools import SystemWideTool
+from toolsaf.core.event_interface import EventInterface, PropertyEvent
 from toolsaf.core.model import IoTSystem, Host, Service
+from toolsaf.common.basics import ConnectionType
+from toolsaf.common.address import HWAddresses, DNSName, AnyAddress, Protocol
 from toolsaf.common.traffic import EvidenceSource, Evidence, IPFlow
 from toolsaf.common.property import PropertyKey
 from toolsaf.common.verdict import Verdict
@@ -26,7 +27,7 @@ class CertMITMReader(SystemWideTool):
         """Read log file"""
         evidence = Evidence(source)
         connections: Set[Tuple[str, str, str]] = set()
-        dns_names: Set[DNSName] = set()
+        seen_addresses: Set[AnyAddress] = set()
 
         # certmitm stores found issues in JSON format to errors.txt
         with ZipFile(data) as zip_file:
@@ -52,19 +53,22 @@ class CertMITMReader(SystemWideTool):
         with ZipFile(data) as zip_file:
             for file in zip_file.filelist:
                 if "certificates" in file.filename and not file.filename.endswith("/"):
-                    dns_name = DNSName(file.filename.split("/")[-1].split("_")[0])
-                    DNSName.validate(dns_name.name)
-                    if dns_name in dns_names:
+                    identifier = file.filename.split("/")[-1].split("_")[0]
+                    address = DNSName.name_or_ip(identifier)
+                    if isinstance(address, DNSName):
+                        DNSName.validate(identifier)
+                    if address in seen_addresses:
                         continue
-                    dns_names.add(dns_name)
-                    if (endpoint := self.system.find_endpoint(dns_name)):
+                    seen_addresses.add(address)
+                    if (endpoint := self.system.find_endpoint(address)):
                         if not isinstance(endpoint, Host):
                             continue
                         for endpoint_connection in endpoint.connections:
                             if not isinstance(endpoint_connection.target, Service):
                                 continue
                             key = PropertyKey(self.tool_label)
-                            if endpoint_connection.target.protocol == Protocol.TLS \
+                            if endpoint_connection.con_type == ConnectionType.ENCRYPTED \
+                            and endpoint_connection.target.protocol != Protocol.SSH \
                             and key not in endpoint_connection.properties:
                                 ev = PropertyEvent(evidence, endpoint_connection, key.verdict(Verdict.PASS))
                                 interface.property_update(ev)
