@@ -381,9 +381,10 @@ class IP(ProtocolConfigurer):
 
 class MQTT(ProtocolConfigurer):
     """MQTT Configurer"""
-    def __init__(self, port: int=1883) -> None:
+    def __init__(self, port: int=1883, tls: bool=False) -> None:
         ProtocolConfigurer.__init__(self, "MQTT")
         self.port = port
+        self.tls = tls
 
 
 class TLS(ProtocolConfigurer):

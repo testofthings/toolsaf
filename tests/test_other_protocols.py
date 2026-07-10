@@ -2,9 +2,9 @@ from toolsaf.common.address import EndpointAddress, HWAddress, Protocol, HWAddre
 from toolsaf.common.verdict import Verdict
 from toolsaf.builder_backend import SystemBackend
 from toolsaf.core.inspector import Inspector
-from toolsaf.main import ICMP, UDP, ARP, EAPOL
+from toolsaf.main import ICMP, UDP, ARP, EAPOL, MQTT
 from toolsaf.common.traffic import IPFlow, EthernetFlow, NO_EVIDENCE
-from toolsaf.common.basics import Status
+from toolsaf.common.basics import Status, ConnectionType
 
 
 def test_icmp():
@@ -93,3 +93,14 @@ def test_eapol_name():
     assert s.entity.name == "EAPOL"
 
 
+def test_mqtt_tls():
+    sb = SystemBackend()
+    dev1 = sb.device().hw("01:02:03:04:05:06")
+
+    plain = dev1 / MQTT
+    assert plain.entity.protocol == Protocol.MQTT
+    assert plain.entity.con_type == ConnectionType.UNKNOWN
+
+    encrypted = dev1 / MQTT(port=8883, tls=True)
+    assert encrypted.entity.protocol == Protocol.MQTT
+    assert encrypted.entity.con_type == ConnectionType.ENCRYPTED
