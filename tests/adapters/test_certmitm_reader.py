@@ -3,7 +3,7 @@ import zipfile
 
 from toolsaf.adapters.certmitm_reader import CertMITMReader
 from toolsaf.common.traffic import EvidenceSource
-from toolsaf.main import TLS
+from toolsaf.main import TLS, MQTT
 from toolsaf.common.property import Properties, PropertyKey
 from toolsaf.common.verdict import Verdict
 from tests.test_model import Setup
@@ -23,7 +23,9 @@ def test_process_file():
                                 ("certificates/", io.BytesIO(b'')),
                                 ("certificates/BE1.com", io.BytesIO(b'test')),
                                 ("certificates/BE2.com", io.BytesIO(b'test')),
-                                ("certificates/BE3.com", io.BytesIO(b'test'))]):
+                                ("certificates/BE3.com", io.BytesIO(b'test')),
+                                ("certificates/BE4.com", io.BytesIO(b'test')),
+                                ("certificates/BE5.com", io.BytesIO(b'test'))]):
             zip_file.writestr(file_name, data.getvalue())
 
     setup = Setup()
@@ -34,25 +36,34 @@ def test_process_file():
     backend_1 = system.backend("BE1").ip("10.10.10.10").dns("BE1.com")
     backend_2 = system.backend("BE2").ip("11.11.11.11").dns("BE2.com")
     backend_3 = system.backend("BE3").ip("12.12.12.12").dns("BE3.com")
+    backend_4 = system.backend("BE4").ip("13.13.13.13").dns("BE4.com")
+    backend_5 = system.backend("BE5").ip("14.14.14.14").dns("BE5.com")
 
-    device_1 >> backend_1 / TLS             # Should fail
-    device_1 >> backend_2 / TLS(port=444)   # Should fail
-    device_1 >> backend_3 / TLS             # Should pass
-    device_2 >> backend_3 / TLS             # Should fail
+    device_1 >> backend_1 / TLS                     # Should fail
+    device_1 >> backend_2 / TLS(port=444)           # Should fail
+    device_1 >> backend_3 / TLS                     # Should pass
+    device_2 >> backend_3 / TLS                     # Should fail
+    device_1 >> backend_4 / MQTT(port=8883, tls=True)  # Encrypted MQTT, should pass
+    device_1 >> backend_5 / MQTT(port=1883)         # Plaintext MQTT, no verdict
 
     reader = CertMITMReader(setup.get_system())
     source = EvidenceSource(name="")
     reader.process_file(zip_buffer, "", setup.get_inspector(), source)
 
-    assert len(system.system.get_connections()) == 4
+    connections = system.system.get_connections()
+    assert len(connections) == 6
 
-    expected_sources = ["D1"]*3 + ["D2"]
-    expected_targets = ["BE1", "BE2", "BE3", "BE3"]
-    for i, conn in enumerate(system.system.get_connections()):
-        assert conn.source.name == expected_sources[i] and conn.target.parent.name == expected_targets[i]
-        if conn.source.name == "D1" and conn.target.parent.name == "BE3":
-            # No fail
-            assert conn.properties[PropertyKey("certmitm")].verdict == Verdict.PASS
+    key = PropertyKey("certmitm")
+    # Connections (by source, backend) that were tested but not intercepted -> PASS
+    should_pass = {("D1", "BE3"), ("D1", "BE4")}
+    # Encryption unknown (plaintext) -> certmitm does not apply a verdict
+    no_verdict = {("D1", "BE5")}
+    for conn in connections:
+        pair = (conn.source.name, conn.target.parent.name)
+        if pair in no_verdict:
+            assert key not in conn.properties
+        elif pair in should_pass:
+            assert conn.properties[key].verdict == Verdict.PASS
         else:
-            assert conn.properties[PropertyKey("certmitm")].verdict == Verdict.FAIL
+            assert conn.properties[key].verdict == Verdict.FAIL
 
