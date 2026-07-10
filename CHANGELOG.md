@@ -1,11 +1,11 @@
 # Changelog
 ## 0.7.1
 ### Added
-- It is now possible to mark MQTT connections as encrypted through the DSL `MQTT(tls=true)`
+- It is now possible to mark MQTT connections as encrypted through the DSL `MQTT(tls=True)`
 
 ### Fixed
-- `CertmitmReader` adapter was not able to assign `PASS` verdicts based on certificates with an IP address in their name, fixed.
-- `CertmitmReader` would only assign `PASS` verdicts to connections with the `TLS` protocol. It now assigns based on `ConnectionType`.
+- `CertMITMReader` adapter was not able to assign `PASS` verdicts based on certificates with an IP address in their name, fixed.
+- `CertMITMReader` would only assign `PASS` verdicts to connections with the `TLS` protocol. It now assigns based on `ConnectionType`.
 
 ## 0.7.0
 ### Added
