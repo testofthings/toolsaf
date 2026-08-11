@@ -200,6 +200,8 @@ class ShodanScanner:
 
     def dns_lookup(self, max_ips: Optional[int] = None) -> None:
         """Perform DNS lookup on given domain names, optionally limiting IP lookups to max_ips"""
+        if max_ips is not None and max_ips < 0:
+            raise ConfigurationException("--max-ips must be >= 0")
         self._setup_base_dir()
         for domain in self.addresses:
             #Domain sanitization to prevent path traversal
@@ -221,14 +223,13 @@ class ShodanScanner:
             ]
 
             if max_ips is not None:
-                if max_ips < 0:
-                    raise ConfigurationException("--max-ips must be >= 0")
                 subset_ips = sample(valid_ips, min(max_ips, len(valid_ips)))
             else:
                 subset_ips = valid_ips
 
             for ip in subset_ips:
                 self._get_info_on_ip(ip, file_prefix="dns")
+
 
 
     def _get_info_on_ip(self, ip: str, file_prefix: str="") -> None:
