@@ -165,7 +165,7 @@ class ShodanScanner:
                                 help="Command to use. iplookup = Host IP lookup, " +
                                 "dnslookup = IP lookup based on DNS info, credits = Show remaining credits")
         arg_parser.add_argument("-n", "--max-ips", type=int, default=None,
-                                help="maximum number of IPs to lookup")
+                                help="Maximum number of IPs to look up")
         arg_parser.add_argument("address", nargs="*", help="IP Address to scan using Shodan")
         args = arg_parser.parse_args()
 
@@ -186,10 +186,7 @@ class ShodanScanner:
             case "iplookup":
                 self.ip_lookup()
             case "dnslookup":
-                if self.max_ips is None:
-                    self.dns_lookup()
-                else:
-                    self.rand_dns_lookup(self.max_ips)
+                self.dns_lookup(self.max_ips)
             case "credits":
                 self.display_remaining_credits()
             case _:
@@ -201,27 +198,18 @@ class ShodanScanner:
         for address in self.addresses:
             self._get_info_on_ip(address, file_prefix="ip")
 
-    def dns_lookup(self) -> None:
-        """Perform DNS lookup on given domain names"""
+    def dns_lookup(self, max_ips: Optional[int] = None) -> None:
+        """Perform DNS lookup on given domain names, optionally limiting IP lookups to max_ips"""
         self._setup_base_dir()
         for domain in self.addresses:
-            domain_info = cast(Dict[str, Any], self.api.dns.domain_info(domain))
-            domain_file = self.base_dir / f"domain-{domain}.json"
-            with domain_file.open("w") as file_obj:
-                json.dump(domain_info, file_obj, indent=4)
+            #Domain sanitization to prevent path traversal
+            safe_domain = "".join(c for c in domain if c.isalnum() or c in ".-_")
+            if not safe_domain:
+                print(f"Skipping invalid domain: {domain}")
+                continue
 
-            record: Dict[str, Any]
-            for record in domain_info.get("data", []):
-                if record["type"] == "A" and (ip:=record.get("value", "")):
-                    # Record type is Address and IP included in data
-                    self._get_info_on_ip(ip, file_prefix="dns")
-
-    def rand_dns_lookup(self, max_ips: int = 10) -> None:
-        """Perform DNS lookup on given domain names, limiting IP lookups to max_ips"""
-        self._setup_base_dir()
-        for domain in self.addresses:
             domain_info = cast(Dict[str, Any], self.api.dns.domain_info(domain))
-            domain_file = self.base_dir / f"domain-{domain}.json"
+            domain_file = self.base_dir / f"domain-{safe_domain}.json"
 
             with domain_file.open("w") as file_obj:
                 json.dump(domain_info, file_obj, indent=4)
@@ -232,9 +220,16 @@ class ShodanScanner:
                 if record.get("type") == "A" and record.get("value")
             ]
 
-            subset_ips = sample(valid_ips, min(max_ips, len(valid_ips)))
+            if max_ips is not None:
+                if max_ips < 0:
+                    raise ConfigurationException("--max-ips must be >= 0")
+                subset_ips = sample(valid_ips, min(max_ips, len(valid_ips)))
+            else:
+                subset_ips = valid_ips
+
             for ip in subset_ips:
                 self._get_info_on_ip(ip, file_prefix="dns")
+
 
     def _get_info_on_ip(self, ip: str, file_prefix: str="") -> None:
         """Fetch information on given IP address and save to JSON"""

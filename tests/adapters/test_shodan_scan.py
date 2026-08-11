@@ -245,20 +245,26 @@ def test_perform_command():
     scanner.ip_lookup = MagicMock()
     scanner.dns_lookup = MagicMock()
     scanner.display_remaining_credits = MagicMock()
-    scanner.rand_dns_lookup = MagicMock()
 
     for cmd, method in ARGS:
         scanner.command = cmd
         if method:
             scanner.perform_command()
-            getattr(scanner, method).assert_called_once()
+            if cmd == "dnslookup":
+                getattr(scanner, method).assert_called_once_with(None)
+            else:
+                getattr(scanner, method).assert_called_once()
         else:
             with pytest.raises(ConfigurationException):
                 scanner.perform_command()
+
+    # Test the max_ips behavior branch
     scanner.command = "dnslookup"
     scanner.max_ips = 5
     scanner.perform_command()
-    scanner.rand_dns_lookup.assert_called_once_with(5)
+
+    # Assert it was called a second time, this time with 5
+    scanner.dns_lookup.assert_called_with(5)
 
 
 def test_display_remaining_credits():
@@ -360,12 +366,16 @@ def test_dns_lookup_writes_domain_and_calls_get_info_on_ip(tmp_path, monkeypatch
         assert "domain_info:example.com" in called
         assert "get_info:1.2.3.4:dns" in called
 
-def test_rand_dns_lookup_limits_ips(tmp_path):
+
+def test_dns_lookup_with_max_ips_and_sanitization(tmp_path):
     from toolsaf.adapters.shodan_scan import ShodanScanner
     scanner = ShodanScanner("api_key")
     scanner.base_dir = tmp_path
-    scanner.addresses = ["example.com"]
 
+    # Input sanitization test
+    scanner.addresses = ["../example.com"]
+
+    # Mock DNS response with 3 A records and 1 CNAME
     fake_domain_info = {
         "data": [
             {"type": "A", "value": "1.1.1.1"},
@@ -381,15 +391,24 @@ def test_rand_dns_lookup_limits_ips(tmp_path):
     scanner._get_info_on_ip = MagicMock()
 
     with patch("json.dump") as mock_dump:
-        scanner.rand_dns_lookup(max_ips=2)
+        # Request a maximum of 2 IPs
+        scanner.dns_lookup(max_ips=2)
 
         scanner._setup_base_dir.assert_called_once()
-        scanner.api.dns.domain_info.assert_called_once_with("example.com")
 
+        # Verify the API was called with the raw domain
+        scanner.api.dns.domain_info.assert_called_once_with("../example.com")
+
+        # Verify the JSON dump happened
         assert mock_dump.called
 
-        assert scanner._get_info_on_ip.call_count == 2
+        # Verify the path traversal characters were stripped from the file name
+        # ../example.com should become .example.com
+        domain_file = tmp_path / "domain-.example.com.json"
+        assert domain_file.name == "domain-.example.com.json"
 
+        # Verify it only looked up 2 IPs because of our max_ips limit
+        assert scanner._get_info_on_ip.call_count == 2
 
 def test_display_remaining_credits_prints(monkeypatch):
     from toolsaf.adapters.shodan_scan import ShodanScanner
