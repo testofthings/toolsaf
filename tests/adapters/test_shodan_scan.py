@@ -213,10 +213,12 @@ def test_get_api_key():
 @pytest.mark.parametrize(
     "argv, exp",
     [
-        (["", ARGS[0][0]], (Path("shodan"), ARGS[0][0], [])),
-        (["", ARGS[1][0]], (Path("shodan"), ARGS[1][0], [])),
-        (["", ARGS[2][0], "ip1", "ip2"], (Path("shodan"), ARGS[2][0], ["ip1", "ip2"])),
-        (["", "--base-dir", "test", ARGS[0][0], "ip1", "ip2"], (Path("test"), ARGS[0][0], ["ip1", "ip2"])),
+        (["", ARGS[0][0]], (Path("shodan"), ARGS[0][0], [], None)),
+        (["", ARGS[1][0]], (Path("shodan"), ARGS[1][0], [], None)),
+        (["", ARGS[2][0], "ip1", "ip2"], (Path("shodan"), ARGS[2][0], ["ip1", "ip2"], None)),
+        (["", "--base-dir", "test", ARGS[0][0], "ip1", "ip2"], (Path("test"), ARGS[0][0], ["ip1", "ip2"], None)),
+        (["", "-n", "5", "dnslookup", "example.com"], (Path("shodan"), "dnslookup", ["example.com"], 5)),
+        (["", "--max-ips", "10", "dnslookup", "example.com"], (Path("shodan"), "dnslookup", ["example.com"], 10)),
     ])
 def test_get_args(argv, exp):
     scanner = ShodanScanner("api_key")
@@ -225,6 +227,7 @@ def test_get_args(argv, exp):
         assert scanner.base_dir == exp[0]
         assert scanner.command == exp[1]
         assert scanner.addresses == exp[2]
+        assert scanner.max_ips == exp[3]
 
 
 def test_setup_base_dir(tmp_path):
@@ -242,6 +245,7 @@ def test_perform_command():
     scanner.ip_lookup = MagicMock()
     scanner.dns_lookup = MagicMock()
     scanner.display_remaining_credits = MagicMock()
+    scanner.rand_dns_lookup = MagicMock()
 
     for cmd, method in ARGS:
         scanner.command = cmd
@@ -251,6 +255,10 @@ def test_perform_command():
         else:
             with pytest.raises(ConfigurationException):
                 scanner.perform_command()
+    scanner.command = "dnslookup"
+    scanner.max_ips = 5
+    scanner.perform_command()
+    scanner.rand_dns_lookup.assert_called_once_with(5)
 
 
 def test_display_remaining_credits():
@@ -351,6 +359,36 @@ def test_dns_lookup_writes_domain_and_calls_get_info_on_ip(tmp_path, monkeypatch
         assert called[0] == "setup"
         assert "domain_info:example.com" in called
         assert "get_info:1.2.3.4:dns" in called
+
+def test_rand_dns_lookup_limits_ips(tmp_path):
+    from toolsaf.adapters.shodan_scan import ShodanScanner
+    scanner = ShodanScanner("api_key")
+    scanner.base_dir = tmp_path
+    scanner.addresses = ["example.com"]
+
+    fake_domain_info = {
+        "data": [
+            {"type": "A", "value": "1.1.1.1"},
+            {"type": "A", "value": "2.2.2.2"},
+            {"type": "A", "value": "3.3.3.3"},
+            {"type": "CNAME", "value": "alias.example.com"}
+        ]
+    }
+
+    scanner.api = MagicMock()
+    scanner.api.dns.domain_info.return_value = fake_domain_info
+    scanner._setup_base_dir = MagicMock()
+    scanner._get_info_on_ip = MagicMock()
+
+    with patch("json.dump") as mock_dump:
+        scanner.rand_dns_lookup(max_ips=2)
+
+        scanner._setup_base_dir.assert_called_once()
+        scanner.api.dns.domain_info.assert_called_once_with("example.com")
+
+        assert mock_dump.called
+
+        assert scanner._get_info_on_ip.call_count == 2
 
 
 def test_display_remaining_credits_prints(monkeypatch):
