@@ -212,6 +212,10 @@ export SHODAN_API_KEY=your-api-key
 python3 toolsaf.adapters.shodan_scan.py iplookup 8.8.8.8 # Results for one IP
 # OR
 python3 toolsaf.adapters.shodan_scan.py dnslookup ruuvi.com # Results for multiple IPs under a given domain
+# OR
+python3 toolsaf.adapters.shodan_scan.py dnslookup ruuvi.com -n 10 # Results for up to 10 IP addresses under a given domain
+# OR
+python3 toolsaf.adapters.shodan_scan.py dnslookup ruuvi.com --max-ips 10 # Results for up to 10 IP addresses under a given domain (alternative flag)
 ```
 
 ### SPDX
