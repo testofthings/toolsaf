@@ -204,7 +204,7 @@ class ShodanScanner:
             raise ConfigurationException("--max-ips must be >= 0")
         self._setup_base_dir()
         for domain in self.addresses:
-            #Domain sanitization to prevent path traversal
+            # Domain sanitization to prevent path traversal
             safe_domain = "".join(c for c in domain if c.isalnum() or c in ".-_")
             if not safe_domain:
                 print(f"Skipping invalid domain: {domain}")
@@ -229,7 +229,6 @@ class ShodanScanner:
 
             for ip in subset_ips:
                 self._get_info_on_ip(ip, file_prefix="dns")
-
 
 
     def _get_info_on_ip(self, ip: str, file_prefix: str="") -> None:

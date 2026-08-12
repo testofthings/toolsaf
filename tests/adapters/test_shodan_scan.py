@@ -258,12 +258,9 @@ def test_perform_command():
             with pytest.raises(ConfigurationException):
                 scanner.perform_command()
 
-    # Test the max_ips behavior branch
     scanner.command = "dnslookup"
     scanner.max_ips = 5
     scanner.perform_command()
-
-    # Assert it was called a second time, this time with 5
     scanner.dns_lookup.assert_called_with(5)
 
 
@@ -372,10 +369,7 @@ def test_dns_lookup_with_max_ips_and_sanitization(tmp_path):
     scanner = ShodanScanner("api_key")
     scanner.base_dir = tmp_path
 
-    # Input sanitization test
     scanner.addresses = ["../example.com"]
-
-    # Mock DNS response with 3 A records and 1 CNAME
     fake_domain_info = {
         "data": [
             {"type": "A", "value": "1.1.1.1"},
@@ -391,23 +385,12 @@ def test_dns_lookup_with_max_ips_and_sanitization(tmp_path):
     scanner._get_info_on_ip = MagicMock()
 
     with patch("json.dump") as mock_dump:
-        # Request a maximum of 2 IPs
         scanner.dns_lookup(max_ips=2)
-
         scanner._setup_base_dir.assert_called_once()
-
-        # Verify the API was called with the raw domain
         scanner.api.dns.domain_info.assert_called_once_with("../example.com")
-
-        # Verify the JSON dump happened
         assert mock_dump.called
-
-        # Verify the path traversal characters were stripped from the file name
-        # ../example.com should become .example.com
         domain_file = tmp_path / "domain-.example.com.json"
         assert domain_file.name == "domain-.example.com.json"
-
-        # Verify it only looked up 2 IPs because of our max_ips limit
         assert scanner._get_info_on_ip.call_count == 2
 
 def test_display_remaining_credits_prints(monkeypatch):
