@@ -4,6 +4,7 @@ import os
 import json
 import argparse
 from io import BufferedReader
+from random import sample
 from pathlib import Path
 from typing import List, Dict, Tuple, Optional, Any, Set, cast
 from shodan.client import Shodan
@@ -153,6 +154,7 @@ class ShodanScanner:
         self.base_dir: Path
         self.command: str
         self.addresses: List[str]
+        self.max_ips: Optional[int] = None
 
     def get_args(self) -> None:
         """Parse command line arguments"""
@@ -162,12 +164,15 @@ class ShodanScanner:
         arg_parser.add_argument("command", choices=["iplookup", "dnslookup", "credits"],
                                 help="Command to use. iplookup = Host IP lookup, " +
                                 "dnslookup = IP lookup based on DNS info, credits = Show remaining credits")
+        arg_parser.add_argument("-n", "--max-ips", type=int, default=None,
+                                help="Maximum number of IPs to look up")
         arg_parser.add_argument("address", nargs="*", help="IP Address to scan using Shodan")
         args = arg_parser.parse_args()
 
         self.base_dir = args.base_dir
         self.command = args.command
         self.addresses = args.address
+        self.max_ips = args.max_ips
 
     def _setup_base_dir(self) -> None:
         """Create base directory for output files if it does not already exist"""
@@ -181,7 +186,7 @@ class ShodanScanner:
             case "iplookup":
                 self.ip_lookup()
             case "dnslookup":
-                self.dns_lookup()
+                self.dns_lookup(self.max_ips)
             case "credits":
                 self.display_remaining_credits()
             case _:
@@ -193,20 +198,38 @@ class ShodanScanner:
         for address in self.addresses:
             self._get_info_on_ip(address, file_prefix="ip")
 
-    def dns_lookup(self) -> None:
-        """Perform DNS lookup on given domain names"""
+    def dns_lookup(self, max_ips: Optional[int] = None) -> None:
+        """Perform DNS lookup on given domain names, optionally limiting IP lookups to max_ips"""
+        if max_ips is not None and max_ips < 0:
+            raise ConfigurationException("--max-ips must be >= 0")
         self._setup_base_dir()
         for domain in self.addresses:
+            # Domain sanitization to prevent path traversal
+            safe_domain = "".join(c for c in domain if c.isalnum() or c in ".-_")
+            if not safe_domain:
+                print(f"Skipping invalid domain: {domain}")
+                continue
+
             domain_info = cast(Dict[str, Any], self.api.dns.domain_info(domain))
-            domain_file = self.base_dir / f"domain-{domain}.json"
+            domain_file = self.base_dir / f"domain-{safe_domain}.json"
+
             with domain_file.open("w") as file_obj:
                 json.dump(domain_info, file_obj, indent=4)
 
-            record: Dict[str, Any]
-            for record in domain_info.get("data", []):
-                if record["type"] == "A" and (ip:=record.get("value", "")):
-                    # Record type is Address and IP included in data
-                    self._get_info_on_ip(ip, file_prefix="dns")
+            valid_ips = [
+                record.get("value")
+                for record in domain_info.get("data", [])
+                if record.get("type") == "A" and record.get("value")
+            ]
+
+            if max_ips is not None:
+                subset_ips = sample(valid_ips, min(max_ips, len(valid_ips)))
+            else:
+                subset_ips = valid_ips
+
+            for ip in subset_ips:
+                self._get_info_on_ip(ip, file_prefix="dns")
+
 
     def _get_info_on_ip(self, ip: str, file_prefix: str="") -> None:
         """Fetch information on given IP address and save to JSON"""
