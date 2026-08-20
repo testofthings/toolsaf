@@ -1,4 +1,8 @@
 # Changelog
+## 0.8.0
+### Changed
+- **Minimum Python version bumped to 3.12.** This is required because our dependency, [packet-framing](https://github.com/testofthings/packet-framing), now relies on typing features introduced in Python 3.12.
+
 ## 0.7.1
 ### Added
 - It is now possible to mark MQTT connections as encrypted through the DSL `MQTT(tls=True)`
