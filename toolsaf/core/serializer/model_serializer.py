@@ -36,7 +36,6 @@ class SystemSerializer:
     """Serialize and deserialize IoT systems and their contents"""
     def __init__(self) -> None:
         self.model_map: Dict[str, Any] = {} # sys_addr, model object
-        self.verdict_map: Dict[Any, Verdict] = {} # entity, verdict
         self.serializer_map: Dict[type, Callable[..., None]] = {
             IoTSystem: self._serialize_iot_system,
             Host: self._serialize_host,
@@ -132,7 +131,6 @@ class SystemSerializer:
     def _serialize_network_node(self, obj: NetworkNode, data: Dict[str, Any]) -> None:
         """Serialize network node"""
         self._serialize_entity(obj, data)
-        verdict = obj.get_verdict(self.verdict_map)
         data.update({
             "name": obj.name,
             "description": obj.description,
@@ -140,9 +138,11 @@ class SystemSerializer:
             "address": obj.get_system_address().get_parseable_value(),
             "host_type": obj.host_type,
             "status": obj.status.value,
-            "verdict": verdict.value,
             "external_activity": obj.external_activity.value,
-            "properties": {k.get_name(): k.get_value_json(v, {}) for k, v in obj.properties.items()}
+            "properties": {
+                # Only serialize persisten properties
+                k.get_name(): k.get_value_json(v, {}) for k, v in obj.properties.items() if k.model
+            }
         })
 
         for child in obj.children:
@@ -276,7 +276,9 @@ class SystemSerializer:
             "target_address": obj.target.get_system_address().get_parseable_value(),
             "con_type": obj.con_type.value,
             "status": obj.status.value,
-            "properties": {k.get_name(): k.get_value_json(v, {}) for k, v in obj.properties.items()}
+            "properties": {
+                k.get_name(): k.get_value_json(v, {}) for k, v in obj.properties.items() if k.model
+            }
         })
 
     def _serialize_network(self, obj: Network, data: Dict[str, Any]) -> None:
@@ -335,7 +337,6 @@ class NetworkNodeDTO(EntityDTO):
     address: SystemAddressType
     host_type: HostType
     status: Status
-    verdict: Optional[Verdict] = None
     external_activity: ExternalActivity
     properties: Dict[PropertyKey, PropertyDTO]
 

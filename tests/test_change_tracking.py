@@ -53,7 +53,6 @@ def test_add_hosts():
         "properties": {},
         "status": "Expected",
         "type": "host",
-        "verdict": "Incon",
     } in serialized
 
 

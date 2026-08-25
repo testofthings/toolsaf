@@ -89,7 +89,6 @@ def _valid_network_node():
         "address": "Node",
         "host_type": HostType.DEVICE.value,
         "status": Status.EXTERNAL.value,
-        "verdict": Verdict.PASS.value,
         "external_activity": ExternalActivity.BANNED.value,
         "properties": _valid_properties()
     }
@@ -112,8 +111,6 @@ def test_network_node_dto_invalid_values():
         ("host_type", 1),
         ("status", "unknown"),
         ("status", 1),
-        ("verdict", "unknown"),
-        ("verdict", 1),
         ("external_activity", "abc"),
         ("external_activity", 100),
     ]
