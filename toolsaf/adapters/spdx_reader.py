@@ -45,6 +45,11 @@ class SPDXReader(NodeComponentTool):
     def filter_component(self, component: NodeComponent) -> bool:
         return isinstance(component, Software)
 
+    def _get_component_name(self, component: SoftwareComponent) -> str:
+        if component.version:
+            return f"{component.name} {component.version}"
+        return component.name
+
     def process_component(
         self, component: NodeComponent, data_file: BufferedReader, interface: EventInterface,
         source: EvidenceSource
@@ -57,9 +62,10 @@ class SPDXReader(NodeComponentTool):
         for c in software.components.values():
             if c not in components and self.send_events:
                 key = PropertyKey("component", c.name)
+                component_name = self._get_component_name(c)
                 interface.property_update(PropertyEvent(
                     evidence, software,
-                    key.verdict(Verdict.FAIL,explanation="Declared in statement but not found in SBOM")
+                    key.verdict(Verdict.FAIL, f"{component_name} declared in statement but not found in SBOM")
                 ))
 
         for c in components:
@@ -71,12 +77,15 @@ class SPDXReader(NodeComponentTool):
                 software.components[c.name] = c
 
             if self.send_events:
+                component_name = self._get_component_name(c)
                 if old_sc or self.load_baseline:
-                    interface.property_update(PropertyEvent(evidence, software, key.verdict(Verdict.PASS)))
+                    interface.property_update(PropertyEvent(
+                        evidence, software, key.verdict(Verdict.PASS, component_name))
+                    )
                 else:
                     interface.property_update(PropertyEvent(
                         evidence, software,
-                        key.verdict(Verdict.FAIL, explanation="Declared in SBOM but not declared in statement")
+                        key.verdict(Verdict.FAIL, f"{component_name} declared in SBOM but not in statement")
                     ))
 
         if self.send_events:
