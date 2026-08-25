@@ -10,7 +10,7 @@ from toolsaf.builder_backend import HostBackend
 from toolsaf.main import ConfigurationException, HTTP
 from toolsaf.common.address import IPAddress, Protocol, EndpointAddress
 from toolsaf.common.verdict import Verdict
-from toolsaf.common.property import PropertyKey
+from toolsaf.common.property import PropertyKey, Properties
 from toolsaf.common.traffic import ServiceScan
 from toolsaf.core.model import Service
 from tests.test_model import Setup
@@ -84,6 +84,7 @@ def test_add_http_status(protocol, entry, exp_status_code, exp_verdict):
     scan.add_http_status(protocol, entry, service)
     key_part = "http" if protocol == Protocol.HTTP else "https"
     assert service.properties[PropertyKey(scan.tool_label, key_part, "status", exp_status_code)].verdict == exp_verdict
+    assert service.properties[PropertyKey(scan.tool_label, key_part, "status", exp_status_code)].explanation == f"HTTP(S) status {exp_status_code}"
 
 
 @pytest.mark.parametrize(
@@ -173,6 +174,7 @@ def test_process_file():
             scan.process_file(file, "test-1.2.3.4.json", scan._interface, MagicMock())
             service = scan.system.children[0]
             assert len(service.children[0].properties) > 2
+            assert service.children[0].properties[Properties.VULNERABILITIES].explanation == "No vulnerabilities"
 
 
 def test_process_file_incorrect_filename():
