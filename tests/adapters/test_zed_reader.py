@@ -25,7 +25,7 @@ def test_process_file_no_alerts():
         assert len(props) == 3
         assert PropertyKey("check", "web") in props
         assert PropertyKey("check", "protocol", "http", "best-practices") in props
-        props[PropertyKey("check", "protocol", "http", "best-practices")].explanation == "Best practices"
+        assert props[PropertyKey("check", "protocol", "http", "best-practices")].explanation == "Best practices"
         assert backend.entity.get_verdict({}) == Verdict.PASS
 
 
