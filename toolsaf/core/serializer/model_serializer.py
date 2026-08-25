@@ -140,7 +140,7 @@ class SystemSerializer:
             "status": obj.status.value,
             "external_activity": obj.external_activity.value,
             "properties": {
-                # Only serialize persisten properties
+                # Only serialize persistent properties
                 k.get_name(): k.get_value_json(v, {}) for k, v in obj.properties.items() if k.model
             }
         })
@@ -306,6 +306,7 @@ class PropertyDTO(BaseDTO):
     verdict: Optional[Verdict] = None
     set: List[PropertyKey] = []
     exp: DescriptionType
+    persistent: bool
 
     @field_validator("set", mode="after")
     @classmethod
@@ -318,6 +319,7 @@ class PropertyDTO(BaseDTO):
 
     def populate(self, model: NetworkNode | Connection | Flow, key: PropertyKey) -> None:
         """Populate a model's properties from this DTO"""
+        key.model = self.persistent
         if self.verdict:
             model.properties[key] = PropertyVerdictValue(self.verdict, self.exp)
         else:

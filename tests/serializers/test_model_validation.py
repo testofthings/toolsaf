@@ -20,6 +20,14 @@ def _validate(valid_data, key_values, dto_class):
             dto_class(**{**valid_data, key: value})
 
 
+def _valid_property():
+    return {
+        "verdict": Verdict.FAIL.value,
+        "exp": "exp",
+        "persistent": False
+    }
+
+
 def test_property_dto_invalid_values():
     key_values = [
         ("verdict", "unknown"),
@@ -28,8 +36,9 @@ def test_property_dto_invalid_values():
         ("set", ["a"*101]),
         ("exp", -1),
         ("exp", "a"*4001),
+        ("persistent", "abc"),
     ]
-    _validate({}, key_values, PropertyDTO)
+    _validate(_valid_property(), key_values, PropertyDTO)
 
 
 def test_entity_dto_invalid_values():
@@ -72,12 +81,7 @@ def test_ignore_rules_dto_invalid_values():
 
 
 def _valid_properties():
-    return {
-        "check:vunlz": {
-            "verdict": Verdict.FAIL.value,
-            "exp": "exp"
-        }
-    }
+    return {"check:vunlz": _valid_property()}
 
 
 def _valid_network_node():

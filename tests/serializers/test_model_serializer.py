@@ -23,6 +23,12 @@ def _add_properties(entity):
     return persistent
 
 
+def _assert_properties(entity, expected):
+    assert entity.properties == expected
+    for key in entity.properties:
+        assert key.model, f"Property key {key} is not persistent"
+
+
 def test_iot_system_dto():
     setup = Setup()
     setup.system.system.name = "Test System"
@@ -46,7 +52,10 @@ def test_iot_system_dto():
         "host_type": HostType.GENERIC.value,
         "status": "Expected",
         "external_activity": ExternalActivity.BANNED.value,
-        "properties": {"verdict:key": {"verdict": Verdict.PASS.value}, "set:key": {"set": ["sub:key"]}},
+        "properties": {
+            "verdict:key": {"verdict": Verdict.PASS.value, "persistent": True},
+            "set:key": {"set": ["sub:key"], "persistent": True},
+        },
         "type": "system",
         "upload_tag": "test-tag"
     }
@@ -65,7 +74,7 @@ def test_iot_system_dto():
     assert iot_system.name == setup.system.system.name
     assert iot_system.upload_tag == setup.system.system.upload_tag
     assert setup.system.system.ignore_rules == iot_system.ignore_rules
-    assert iot_system.properties == expected_properties
+    _assert_properties(iot_system, expected_properties)
 
 
 def test_host_dto():
@@ -90,7 +99,10 @@ def test_host_dto():
         "host_type": HostType.DEVICE.value,
         "status": "Expected",
         "external_activity": ExternalActivity.PASSIVE.value,
-        "properties": {"verdict:key": {"verdict": Verdict.PASS.value}, "set:key": {"set": ["sub:key"]}},
+        "properties": {
+            "verdict:key": {"verdict": Verdict.PASS.value, "persistent": True},
+            "set:key": {"set": ["sub:key"], "persistent": True},
+        },
         "addresses": ["Device_1"],
         "parent_address": "",
         "any_host": False,
@@ -105,7 +117,7 @@ def test_host_dto():
     assert new_host.ignore_name_requests == host.ignore_name_requests
     assert new_host.parent == new_system
     assert new_host in new_system.children
-    assert new_host.properties == expected_properties
+    _assert_properties(new_host, expected_properties)
 
 
 def test_service_dto():
@@ -125,7 +137,10 @@ def test_service_dto():
         "host_type": HostType.GENERIC.value,
         "status": "Expected",
         "external_activity": ExternalActivity.PASSIVE.value,
-        "properties": {"verdict:key": {"verdict": Verdict.PASS.value}, "set:key": {"set": ["sub:key"]}},
+        "properties": {
+            "verdict:key": {"verdict": Verdict.PASS.value, "persistent": True},
+            "set:key": {"set": ["sub:key"], "persistent": True},
+        },
         "addresses": ["*/tcp:80"],
         "parent_address": "Device_1",
         "any_host": False,
@@ -151,7 +166,7 @@ def test_service_dto():
     assert new_service.multicast_target == service.multicast_target
     assert new_service.port_range == service.port_range
     assert new_service.parent == new_host
-    assert new_service.properties == expected_properties
+    _assert_properties(new_service, expected_properties)
 
 
 def test_dhcp_service_dto():
@@ -171,7 +186,10 @@ def test_dhcp_service_dto():
         "host_type": HostType.ADMINISTRATIVE.value,
         "status": "Expected",
         "external_activity": ExternalActivity.UNLIMITED.value,
-        "properties": {"verdict:key": {"verdict": Verdict.PASS.value}, "set:key": {"set": ["sub:key"]}},
+        "properties": {
+            "verdict:key": {"verdict": Verdict.PASS.value, "persistent": True},
+            "set:key": {"set": ["sub:key"], "persistent": True},
+        },
         "addresses": ["*/udp:67"],
         "parent_address": "Device_1",
         "any_host": False,
@@ -198,7 +216,7 @@ def test_dhcp_service_dto():
     assert new_service.multicast_target == service.multicast_target
     assert new_service.port_range == service.port_range
     assert new_service.parent == new_host
-    assert new_service.properties == expected_properties
+    _assert_properties(new_service, expected_properties)
 
 
 def test_dns_service_dto():
@@ -218,7 +236,10 @@ def test_dns_service_dto():
         "host_type": HostType.ADMINISTRATIVE.value,
         "status": "Expected",
         "external_activity": ExternalActivity.OPEN.value,
-        "properties": {"verdict:key": {"verdict": Verdict.PASS.value}, "set:key": {"set": ["sub:key"]}},
+        "properties": {
+            "verdict:key": {"verdict": Verdict.PASS.value, "persistent": True},
+            "set:key": {"set": ["sub:key"], "persistent": True},
+        },
         "addresses": ["*/udp:53"],
         "parent_address": "Device_1",
         "any_host": False,
@@ -245,7 +266,7 @@ def test_dns_service_dto():
     assert new_service.multicast_target == service.multicast_target
     assert new_service.port_range == service.port_range
     assert new_service.parent == new_host
-    assert new_service.properties == expected_properties
+    _assert_properties(new_service, expected_properties)
 
 
 def test_software_dto():
@@ -336,7 +357,10 @@ def test_connection_dto():
         "target_address": "Device_2/tcp:80",
         "con_type": ConnectionType.UNKNOWN.value,
         "status": "Expected",
-        "properties": {"verdict:key": {"verdict": Verdict.PASS.value}, "set:key": {"set": ["sub:key"]}},
+        "properties": {
+            "verdict:key": {"verdict": Verdict.PASS.value, "persistent": True},
+            "set:key": {"set": ["sub:key"], "persistent": True},
+        },
     }
 
     deserialized = [serializer.deserialize(record) for record in records]
@@ -345,7 +369,7 @@ def test_connection_dto():
     assert new_connection.con_type == connection.con_type
     assert new_connection.source == deserialized[1]
     assert new_connection.target == deserialized[3]
-    assert new_connection.properties == expected_properties
+    _assert_properties(new_connection, expected_properties)
 
 
 def test_network_dto():

@@ -100,6 +100,7 @@ class PropertyKey:
                 json_data["exp"] = value.explanation
         else:
             json_data["value"] = f"{value}"
+        json_data["persistent"] = self.model
         return json_data
 
     #

@@ -431,7 +431,7 @@ def test_add_properties():
     serialized = sb.serialize_statement_changes()
     assert len(serialized) == 1
     assert serialized[0]["type"] == "host"
-    assert serialized[0]["properties"] == {"test:abc": {"verdict": "Incon"}}
+    assert serialized[0]["properties"] == {"test:abc": {"verdict": "Incon", "persistent": True}}
 
 
 def test_add_online_resource():
