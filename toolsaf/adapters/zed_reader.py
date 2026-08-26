@@ -41,7 +41,7 @@ class ZEDReader(SystemWideTool):
             interface.property_address_update(ev)
             # also HTTP best practice
             http_key = Properties.PROTOCOL.append_key(Protocol.HTTP.value).append_key("best-practices")
-            ev = PropertyAddressEvent(evidence, ep, http_key.value_set({web_key}))
+            ev = PropertyAddressEvent(evidence, ep, http_key.value_set({web_key}, "Best practices"))
             interface.property_address_update(ev)
 
         return True
