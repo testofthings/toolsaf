@@ -67,8 +67,11 @@ def test_process_endpoint():
     sw = mobile_app.get_software()
     assert len(sw.properties) == 4 # Three permissions and 1 check
     assert sw.properties[PropertyKey("permission", "Network")].verdict == Verdict.FAIL
+    assert sw.properties[PropertyKey("permission", "Network")].explanation == "INTERNET (Network) not in statement"
     assert sw.properties[PropertyKey("permission", "Recording")].verdict == Verdict.PASS
+    assert sw.properties[PropertyKey("permission", "Recording")].explanation == "CAMERA (Recording)"
     assert sw.properties[PropertyKey("permission", "Storage")].verdict == Verdict.FAIL # Not in manifest
+    assert sw.properties[PropertyKey("permission", "Storage")].explanation == "Storage not in manifest"
 
 
 def test_process_endpoint_with_load_baseline():
