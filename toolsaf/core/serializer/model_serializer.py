@@ -306,7 +306,7 @@ class PropertyDTO(BaseDTO):
     verdict: Optional[Verdict] = None
     set: List[PropertyKey] = []
     exp: DescriptionType
-    persistent: bool
+    persistent: bool = False
 
     @field_validator("set", mode="after")
     @classmethod

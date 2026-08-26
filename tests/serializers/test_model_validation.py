@@ -24,7 +24,6 @@ def _valid_property():
     return {
         "verdict": Verdict.FAIL.value,
         "exp": "exp",
-        "persistent": False
     }
 
 
@@ -39,6 +38,7 @@ def test_property_dto_invalid_values():
         ("persistent", "abc"),
     ]
     _validate(_valid_property(), key_values, PropertyDTO)
+    assert PropertyDTO(**_valid_property()).persistent is False # is optional
 
 
 def test_entity_dto_invalid_values():
