@@ -1,4 +1,9 @@
 # Changelog
+## 0.8.1
+### Fixed
+- Toolsaf was not able to properly parse .pcap files / packets that were missing ethernet frames, fixed.
+- The adapters `AndroidManifestScan`, `ShodanScan`, `SPDXReader`, and `ZEDReader` were missing explanations from some of the events they produced, fixed.
+
 ## 0.8.0
 ### Changed
 - **Minimum Python version bumped to 3.12.** This is required because our dependency, [packet-framing](https://github.com/testofthings/packet-framing), now relies on typing features introduced in Python 3.12.
