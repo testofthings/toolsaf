@@ -12,6 +12,15 @@ from toolsaf.common.verdict import Verdict
 from tests.test_model import Setup
 
 
+def test_get_component_name():
+    reader = SPDXReader(MagicMock())
+    component = SoftwareComponent("c1", "1.0")
+    assert reader._get_component_name(component) == "c1 1.0"
+
+    component = SoftwareComponent("c2", "")
+    assert reader._get_component_name(component) == "c2"
+
+
 def _write_spdx_json(packages: dict, tmp: tempfile) -> None:
     json.dump({
         "spdxVersion": "SPDX-2.3",
@@ -97,6 +106,7 @@ def test_process_component():
 
     reader.process_component(sw, data, setup.get_inspector(), MagicMock())
     assert sw.properties[PropertyKey("component", "c1")].verdict == Verdict.PASS
+    assert sw.properties[PropertyKey("component", "c1")].explanation == "c1 1.0"
     assert sw.properties[PropertyKey("component", "c2")].verdict == Verdict.PASS
 
 
@@ -111,6 +121,7 @@ def test_process_component_in_statement_not_in_data():
 
     reader.process_component(sw, data, setup.get_inspector(), MagicMock())
     assert sw.properties[PropertyKey("component", "c1")].verdict == Verdict.FAIL
+    assert sw.properties[PropertyKey("component", "c1")].explanation == "c1 1.0 declared in statement but not found in SBOM"
 
 
 def test_process_component_not_in_statement_in_data():
@@ -125,3 +136,4 @@ def test_process_component_not_in_statement_in_data():
 
     reader.process_component(sw, data, setup.get_inspector(), MagicMock())
     assert sw.properties[PropertyKey("component", "c1")].verdict == Verdict.FAIL
+    assert sw.properties[PropertyKey("component", "c1")].explanation == "c1 1.0 declared in SBOM but not in statement"
