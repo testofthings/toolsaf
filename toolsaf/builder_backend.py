@@ -48,6 +48,19 @@ Backend = Union[
     'SoftwareBackend', 'NetworkBackend', 'CookieBackend'
 ]
 
+# The loopback network is well-known: the name and the IP mask always imply each other
+LOOPBACK_NETWORK_NAME = "loopback"
+LOOPBACK_IP_MASK = ipaddress.ip_network("127.0.0.0/8")
+
+
+def parse_ip_mask(mask: str) -> ipaddress.IPv4Network | ipaddress.IPv6Network:
+    """Parse the IP mask of a network. Can raise ConfigurationException"""
+    try:
+        return ipaddress.ip_network(mask.strip())
+    except ValueError as e:
+        raise ConfigurationException(f"Bad network IP mask '{mask}'") from e
+
+
 class SystemBackend(SystemBuilder):
     """System model builder"""
 
@@ -72,15 +85,13 @@ class SystemBackend(SystemBuilder):
         return sb
 
     def network(self, subnet: str="", ip_mask: Optional[str] = None) -> 'NetworkBuilder':
-        if ip_mask == "127.0.0.0/8":
-            if subnet and subnet != "loopback":
-                raise ConfigurationException("Loopback network must be named 'loopback'")
-            subnet = "loopback"  # well-known name
-        elif ip_mask and ip_mask.startswith("127."):
-            raise ConfigurationException("Loopback network must have mask 127.0.0.0/8")
+        if ip_mask and parse_ip_mask(ip_mask).is_loopback:
+            subnet = subnet or LOOPBACK_NETWORK_NAME # Well-known mask implies the well-known name
         nb = NetworkBackend(self, subnet) if subnet else NetworkBackend(self)
+        if not ip_mask and nb.network.name == LOOPBACK_NETWORK_NAME:
+            ip_mask = str(LOOPBACK_IP_MASK) # Well-known name implies the well-known mask
         if ip_mask:
-            nb.mask(ip_mask)
+            nb.mask(ip_mask) # Validates the mask, and the name that goes with it
         self.changed(nb.network)
         return nb
 
@@ -635,7 +646,17 @@ class NetworkBackend(NetworkBuilder):
         self.name = name
 
     def mask(self, mask: str) -> Self:
-        self.network.ip_network = ipaddress.ip_network(mask)
+        ip_network = parse_ip_mask(mask)
+        loopback_name = self.network.name == LOOPBACK_NETWORK_NAME
+        if ip_network.is_loopback or loopback_name:
+            # The loopback network is well-known, its name and IP mask must match each other
+            if ip_network != LOOPBACK_IP_MASK:
+                raise ConfigurationException(
+                    f"Loopback network must have IP mask {LOOPBACK_IP_MASK}, got '{mask}'")
+            if not loopback_name:
+                raise ConfigurationException(
+                    f"Loopback network must be named '{LOOPBACK_NETWORK_NAME}', not '{self.network.name}'")
+        self.network.ip_network = ip_network
         return self
 
     def __repr__(self) -> str:
