@@ -201,6 +201,14 @@ class Report:
             **self._get_properties(entity)
         }
 
+    def _get_child_name(self, child: Addressable) -> str:
+        """Get child name"""
+        name = child.name
+        networks = ", ".join(network.name for network in child.networks)
+        if networks:
+            name += f" [{networks}]"
+        return name
+
     def build_host_structure(self, entities: List[Host]) -> Dict[str, Dict[str, Any]]:
         """Build printable host and service tree structure"""
         structure = {}
@@ -209,7 +217,8 @@ class Report:
             structure[entity.name] = self._get_sub_structure(entity)
 
             for child in entity.children:
-                structure[entity.name][child.name] = self._get_sub_structure(child)
+                child_name = self._get_child_name(child)
+                structure[entity.name][child_name] = self._get_sub_structure(child)
 
             for component in entity.components:
                 structure[entity.name][component.name + " [Component]"] = self._get_sub_structure(component)
