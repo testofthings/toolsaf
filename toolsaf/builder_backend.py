@@ -72,6 +72,12 @@ class SystemBackend(SystemBuilder):
         return sb
 
     def network(self, subnet: str="", ip_mask: Optional[str] = None) -> 'NetworkBuilder':
+        if ip_mask == "127.0.0.0/8":
+            if subnet and subnet != "loopback":
+                raise ConfigurationException("Loopback network must be named 'loopback'")
+            subnet = "loopback"  # well-known name
+        elif ip_mask and ip_mask.startswith("127."):
+            raise ConfigurationException("Loopback network must have mask 127.0.0.0/8")
         if subnet:
             nb = NetworkBackend(self, subnet)
         else:
