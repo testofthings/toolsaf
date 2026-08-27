@@ -2,7 +2,7 @@
 
 from logging import Logger
 import logging
-from typing import Any, List, Set, Tuple, Optional
+from typing import Any, Dict, List, Set, Tuple, Optional
 from toolsaf.common.verdict import Verdict, Verdictable
 
 from toolsaf.common.entity import Entity
@@ -118,6 +118,12 @@ class EventLogger(EventInterface, ModelListener):
 
     def get_system(self) -> IoTSystem:
         return self.inspector.system
+
+    def entities_replaced(self, entities: Dict[Entity, Entity]) -> None:
+        # keep logged events pointing to entities still remaining in the model
+        for log in self.logs:
+            if log.entity is not None and log.entity in entities:
+                log.entity = entities[log.entity]
 
     def property_change(self, entity: Entity, value: Tuple[PropertyKey, Any]) -> None:
         if self.current is None:

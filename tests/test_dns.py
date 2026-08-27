@@ -6,10 +6,12 @@ from toolsaf.common.address import EntityTag, IPAddress, DNSName, Protocol
 from toolsaf.common.verdict import Verdict
 from toolsaf.builder_backend import SystemBackend
 from toolsaf.core.inspector import Inspector
-from toolsaf.main import DNS
+from toolsaf.main import DNS, TLS
 from toolsaf.core.matcher import SystemMatcher
+from toolsaf.core.components import Cookies
+from toolsaf.core.services import NameEvent
 from toolsaf.adapters.pcap_reader import PCAPReader
-from toolsaf.common.traffic import IPFlow
+from toolsaf.common.traffic import NO_EVIDENCE, IPFlow
 from toolsaf.common.basics import Status
 
 
@@ -26,6 +28,45 @@ def test_dns():
 
     assert f1 == c1.connection
     assert dev1.entity.addresses == {EntityTag("Device"), IPAddress.new("1.0.0.1"), DNSName("name1.local")}
+
+
+def test_dns_name_learned_after_traffic():
+    # Test that a host known only by IP is medged after DNS tells that the address belongs to a known host
+    sb = SystemBackend()
+    dev = sb.device().ip("192.168.0.5")
+    backend = sb.backend().dns("gtm.example.com")
+    c1 = dev >> backend / TLS
+    m = Inspector(sb.system)
+    system = sb.system
+    ip = IPAddress.new("35.195.159.201")
+
+    conn = m.connection(IPFlow.TCP("1:0:0:0:0:1", "192.168.0.5", 12345) >> ("2:0:0:0:0:2", "35.195.159.201", 443))
+    assert conn is not None and conn != c1.connection
+    ghost = system.get_endpoint(ip)
+    assert ghost.addresses == {ip}
+    assert conn.target.get_parent_host() == ghost
+
+    m.connection(IPFlow.TCP("1:0:0:0:0:1", "192.168.0.5", 12345) << ("2:0:0:0:0:2", "35.195.159.201", 443))
+    assert [c.name for c in ghost.children] == ["TCP:443"]
+    assert c1.connection.status_verdict() == (Status.EXPECTED, Verdict.INCON)  # not seen yet
+    Cookies.cookies_for(ghost)  # a tool can also learn other things about the host
+
+    m.name(NameEvent(NO_EVIDENCE, None, name=DNSName("gtm.example.com"), address=ip))
+
+    assert ghost not in system.children
+    assert [h.name for h in system.get_hosts()] == ["Device", "Backend"]
+    assert ip in backend.entity.addresses
+
+    # Check that merge worked
+    assert [c.name for c in backend.entity.children] == ["TLS:443"]
+    assert [c.name for c in backend.entity.components] == ["Cookies"]
+    assert system.get_connections(relevant_only=False) == [c1.connection]
+    assert c1.connection.status_verdict() == (Status.EXPECTED, Verdict.PASS)
+
+    # Check that no host is left without addresses and system addresses remain unique
+    assert all(h.addresses for h in system.get_hosts())
+    addresses = [e.get_system_address().get_parseable_value() for e in system.iterate(relevant_only=False)]
+    assert len(addresses) == len(set(addresses))
 
 
 def test_add_dns_names():

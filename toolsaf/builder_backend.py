@@ -201,6 +201,14 @@ class SystemBackend(SystemBuilder):
                 raise ConfigurationException(f"Name {child.name} used more than once for {host.name}")
             child_names.add(child.name)
 
+    def _check_system_addresses(self) -> None:
+        """Check that all entities have unique system addresses"""
+        addresses: Set[str] = set()
+        for entity in self.system.iterate(relevant_only=False):
+            if (sys_addr := entity.get_system_address().get_parseable_value()) in addresses:
+                raise ConfigurationException(f'Entity: {entity} does not have a unique system address!')
+            addresses.add(sys_addr)
+
     def finish_(self) -> None:
         """Finish the model"""
         host_names: Set[str] = set()
@@ -213,13 +221,6 @@ class SystemBackend(SystemBuilder):
                 raise ConfigurationException(f"Name {h.name} used more than once")
             host_names.add(h.name)
             self._check_unique_under_parent(h)
-
-        # Ensure all system addresses are unique
-        addresses = set()
-        for entity in self.system.iterate():
-            if (sys_addr := entity.get_system_address().get_parseable_value()) in addresses:
-                raise ConfigurationException(f'Entity: {entity} does not have a unique system address!')
-            addresses.add(sys_addr)
 
         # We want to have a authenticator related to each authenticated service
         # NOTE: Not ready to go into this level now...
@@ -1279,6 +1280,8 @@ class SystemBackendRunner(SystemBackend):
         batch_import = BatchImporter(event_logger, label_filter=label_filter)
         for in_file in args.read or []:
             batch_import.import_batch(Path(in_file))
+
+        self._check_system_addresses() # on the complete model
 
         if args.help_tools:
             # print help and exit

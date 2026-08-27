@@ -251,8 +251,10 @@ def test_host_merging():
     assert sb.system.connections[key] == cs
     assert cs.status == Status.UNEXPECTED
     assert cs.source.name == "Device 1"
-    # FIXME: Connection redirection removed, matcher etc. not keeping up with it
-    # assert cs.target.name == "target.org"
+    assert cs.target.name == "target.org"  # connection redirected to the host we know
+    # Check that the host known only by the IP address is merged into the named host
+    assert [h.name for h in sb.system.get_hosts()] == ["Device 1", "target.org", "Device 2"]
+    assert all(h.addresses for h in sb.system.get_hosts())
 
 
 def test_unknown_multicast():

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from toolsaf.common.address import AnyAddress, EndpointAddress, IPAddress
 from toolsaf.common.basics import ExternalActivity, Status
+from toolsaf.common.entity import Entity
 from toolsaf.core.matcher_engine import FlowMatcher, MatcherEngine
 from toolsaf.core.model import IoTSystem, Connection, Host, Addressable, Service, EvidenceNetworkSource, ModelListener
 from toolsaf.common.traffic import NO_EVIDENCE, Flow, EvidenceSource
@@ -22,6 +23,9 @@ class SystemMatcher(ModelListener):
     def address_change(self, host: Host) -> None:
         for ctx in self.contexts.values():
             ctx.engine.update_host(host)
+
+    def entities_replaced(self, entities: Dict[Entity, Entity]) -> None:
+        self.contexts.clear()
 
     def connection(self, flow: Flow) -> Connection:
         """Find the connection matching the given flow"""

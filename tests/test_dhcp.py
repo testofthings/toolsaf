@@ -71,6 +71,24 @@ def test_dhcp():
     assert h3.name == "192.168.0.1 2"
 
 
+def test_learn_ip_address_of_host_known_by_address_only():
+    # Ensure that a host known only by IP is merged after the address is learned
+    # and the dangling host is removed
+    sb = SystemBackend()
+    dev1 = sb.device().hw("a:0:0:0:0:1")
+    system = sb.system
+    ip = IPAddress.new("192.168.0.1")
+
+    scanned = system.get_endpoint(ip)
+    assert scanned.addresses == {ip}
+
+    system.learn_ip_address(dev1.entity, ip)
+
+    assert scanned not in system.children
+    assert dev1.entity.addresses == {EntityTag("Device"), HWAddress.new("a:0:0:0:0:1"), ip}
+    assert all(h.addresses for h in system.get_hosts())
+
+
 def test_unexpected_dhcp_matching():
     sb = SystemBackend()
     dhcp = sb.any() / DHCP

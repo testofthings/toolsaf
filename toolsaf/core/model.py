@@ -10,7 +10,7 @@ from toolsaf.common.address import AnyAddress, Addresses, EndpointAddress, Entit
     DNSName, AddressSequence
 from toolsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status
 from toolsaf.common.entity import Entity
-from toolsaf.common.property import PropertyKey
+from toolsaf.common.property import Properties, PropertyKey
 from toolsaf.common.traffic import Flow, EvidenceSource
 from toolsaf.common.verdict import Verdict
 from toolsaf.core.online_resources import OnlineResource
@@ -600,16 +600,123 @@ class IoTSystem(NetworkNode):
             return named, True  # new address
 
         if len(named.addresses) == 1:
-            # named host has no IP addresses, remove it and use the other
-            self.children.remove(named)
-            add.addresses.add(name)
+            # named host has no IP addresses, it is the same host as the addressed one
+            self.merge_host(named, add)
             return add, True
+
+        if add.addresses == {address}:
+            # the addressed host is only known by this address, it is the same host as the named one
+            self.merge_host(add, named)
+            return named, True
 
         # IP address shared by two hosts, use the latest as things change between captures
         if address:
             add.addresses.remove(address)
             named.addresses.add(address)
         return named, True
+
+    def merge_host(self, source: Host, target: Host) -> None:
+        """Merge the source host into the target host, and remove the source"""
+        assert source is not target, "Cannot merge a host into itself"
+        assert source.get_tag() is None, f"Cannot merge away tagged host {source.name}"
+
+        replaced: Dict[Entity, Entity] = {source: target}
+
+        target.addresses.update(source.addresses)
+        source.addresses.clear()
+
+        for service in list(source.children):
+            replaced[service] = self._merge_service(service, source, target)
+
+        for component in source.components:
+            same = next((c for c in target.components
+                         if c.tag == component.tag and c.concept_name == component.concept_name), None)
+            if same is None:
+                component.entity = target
+                target.components.append(component)
+                replaced[component] = component
+                continue
+            # Only properties are merged, component-specific content is left to the target
+            self._merge_properties(component, same)
+            replaced[component] = same
+        source.components.clear()
+
+        for connection in self.get_connections(relevant_only=False):
+            new_source = replaced.get(connection.source, connection.source)
+            new_target = replaced.get(connection.target, connection.target)
+            if new_source is connection.source and new_target is connection.target:
+                continue  # not touched by the merge
+            assert isinstance(new_source, Addressable) and isinstance(new_target, Addressable)
+            use = self._merge_connection(connection, new_source, new_target)
+            if use is not None:
+                replaced[connection] = use
+
+        self.children.remove(source)
+        self.call_listeners(lambda ln: ln.address_change(target))
+        self.call_listeners(lambda ln: ln.entities_replaced(replaced))
+
+    def _merge_service(self, service: Addressable, source: Host, target: Host) -> Addressable:
+        """Merge a service into the target host, return the service to use from now on"""
+        end_add = next((a for a in service.addresses if a.get_protocol_port()), None)
+        use = target.find_endpoint(end_add.change_host(Addresses.ANY)) if end_add else None
+        source.children.remove(service)
+        if isinstance(use, Service) and use is not service:
+            # the target serves the same protocol and port, keep what we have learned about it
+            self._merge_properties(service, use)
+            return use
+        # move the service to the target as it is
+        service.name = target.free_child_name(service.name)
+        service.parent = target
+        target.children.append(service)
+        return service
+
+    def _merge_connection(
+        self, connection: Connection, source: Addressable, target: Addressable
+    ) -> Optional[Connection]:
+        """Point a connection to new endpoints, return the connection to use from now on, if any"""
+        old_source, old_target = connection.source.get_parent_host(), connection.target.get_parent_host()
+        at_source = connection in old_source.connections
+        at_target = connection in old_target.connections
+        if at_source:
+            old_source.connections.remove(connection)
+        if at_target:
+            old_target.connections.remove(connection)
+
+        source_host, target_host = source.get_parent_host(), target.get_parent_host()
+        use: Optional[Connection] = None
+        if source_host is not target_host:
+            use = source_host.find_connection(target)
+            if use is None or use is connection:
+                # the target does not have this connection, keep on using this one
+                connection.source, connection.target = source, target
+                if at_source:
+                    source_host.connections.append(connection)
+                if at_target:
+                    target_host.connections.append(connection)
+                self.call_listeners(lambda ln: ln.connection_change(connection))
+                return connection
+
+        for key, c in list(self.connections.items()):
+            if c is connection:
+                if use is None:
+                    del self.connections[key]
+                else:
+                    self.connections[key] = use
+        if use is not None:
+            self._merge_properties(connection, use)
+            if at_target and use not in target_host.connections:
+                target_host.connections.append(use)  # the traffic has been replied to
+            self.call_listeners(lambda ln: ln.connection_change(use))
+        return use
+
+    def _merge_properties(self, source: Entity, target: Entity) -> None:
+        """Move the properties learned about an entity into the entity which replaces it"""
+        for key, value in source.properties.items():
+            if key == Properties.EXPECTED:
+                continue
+            target.properties.setdefault(key, value)
+        if Properties.EXPECTED.get_verdict(source.properties) is not None:
+            target.set_seen_now()
 
     def learn_ip_address(self, host: Host, ip_address: IPAddress) -> None:
         """Learn IP address of a host. Remove the IP address from other hosts, if any"""
@@ -623,9 +730,13 @@ class IoTSystem(NetworkNode):
         self.call_listeners(lambda ln: ln.address_change(host))
 
         for h in self.get_hosts():
-            if h != host and ip_address in h.addresses:
-                h.addresses.discard(ip_address)
-                self.call_listeners(lambda ln: ln.address_change(h))  # pylint: disable=cell-var-from-loop
+            if h == host or ip_address not in h.addresses:
+                continue
+            if h.addresses == {ip_address}:
+                self.merge_host(h, host)
+                continue
+            h.addresses.discard(ip_address)
+            self.call_listeners(lambda ln: ln.address_change(h))  # pylint: disable=cell-var-from-loop
 
     def get_system(self) -> Self:
         return self
@@ -757,6 +868,9 @@ class ModelListener:
 
     def service_change(self, service: Service) -> None:
         """Service created or changed"""
+
+    def entities_replaced(self, entities: Dict[Entity, Entity]) -> None:
+        """Entities were replaced by other entities and removed from the model"""
 
     def property_change(self, entity: Entity, value: Tuple[PropertyKey, Any]) -> None:
         """Property changed. Not all changes create events, just the 'important' ones"""
