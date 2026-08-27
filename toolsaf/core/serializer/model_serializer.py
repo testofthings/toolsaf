@@ -5,7 +5,7 @@ from typing import (
 import logging
 import ipaddress
 from pydantic import (
-    BaseModel, ConfigDict, Field, TypeAdapter, field_validator,
+    BaseModel, ConfigDict, Field, TypeAdapter, field_validator, model_validator,
     IPvAnyNetwork
 )
 
@@ -25,11 +25,17 @@ from toolsaf.core.ignore_rules import IgnoreRules, IgnoreRule
 from toolsaf.core.services import DHCPService, DNSService
 from toolsaf.core.components import Software, SoftwareComponent, Cookies, CookieData
 from toolsaf.core.serializer.types import (
-    LongNameType, NameType, DescriptionType, MatchPriorityType, SystemAddressType, UploadTagType,
-    validate_property_keys
+    LongNameType, NameType, DescriptionType, MatchPriorityType, NetworkAddressType, SystemAddressType,
+    UploadTagType, NETWORK_ADDRESS_PREFIX, validate_property_keys
 )
 
 LOGGER = logging.getLogger(__name__)
+
+
+def get_network_address(network_name: str) -> str:
+    """Get the record address of a network. Networks are identified by their name, which is
+       prefixed with the keyword 'network=' to separate networks from entities"""
+    return f"{NETWORK_ADDRESS_PREFIX}{network_name}"
 
 
 class SystemSerializer:
@@ -55,7 +61,11 @@ class SystemSerializer:
 
     def serialize(self, obj: Any) -> List[Dict[str, Any]]:
         """Serialize an object and its children to JSON"""
-        result, stack = [], [obj]
+        result: List[Dict[str, Any]] = []
+        if isinstance(obj, NetworkNode):
+            # Networks first, network nodes refer to them by name
+            result.extend(self._serialize_networks(obj))
+        stack = [obj]
         while stack:
             self._queue = []
             obj = stack.pop()
@@ -117,6 +127,8 @@ class SystemSerializer:
             self._deserialize(dto.source_address)
         if hasattr(dto, "target_address"):
             self._deserialize(dto.target_address)
+        for network_name in getattr(dto, "networks", []):
+            self._deserialize(get_network_address(network_name))
 
         model = dto.to_model(self.model_map)
         self.model_map[address] = model # Ensure everything ends up here
@@ -144,20 +156,15 @@ class SystemSerializer:
             "external_activity": obj.external_activity.value,
             "properties": {k.get_name(): k.get_value_json(v, {}) for k, v in obj.properties.items()}
         })
+        if obj.networks:
+            # No networks means 'same as parent', the field is then left out
+            data["networks"] = [n.name for n in obj.networks]
 
         for child in obj.children:
             self._queue.append(child)
 
         for component in obj.components:
             self._queue.append(component)
-
-        if obj.networks:
-            if not isinstance(obj, IoTSystem):
-                LOGGER.warning("Only IoTSystem's networks are currently supported for serialization")
-            else:
-                for network in obj.networks:
-                    if network.name == "local":
-                        self._queue.append(network)
 
     def _serialize_addressable(self, obj: Addressable, data: Dict[str, Any]) -> None:
         """Serialize addressable"""
@@ -281,13 +288,35 @@ class SystemSerializer:
 
     def _serialize_network(self, obj: Network, data: Dict[str, Any]) -> None:
         """Serialize network"""
-        if obj.ip_network:
-            data.update({
-                "type": "network",
-                "name": obj.name,
-                "address": f"network={obj.ip_network.exploded}",
-                "parent_address": "" # Currently only the serialization of the IoTSystem's network is supported
-            })
+        data.update({
+            "type": "network",
+            "name": obj.name,
+            "address": get_network_address(obj.name),
+            "ip_mask": obj.ip_network.exploded if obj.ip_network else None
+        })
+
+    def _serialize_networks(self, node: NetworkNode) -> List[Dict[str, Any]]:
+        """Serialize all networks used by a network node and its children"""
+        networks: Dict[str, Network] = {}
+        self._collect_networks(node, networks)
+        result = []
+        for network in networks.values():
+            data: Dict[str, Any] = {}
+            self._serialize_network(network, data)
+            result.append(data)
+        return result
+
+    def _collect_networks(self, node: NetworkNode, into: Dict[str, Network]) -> None:
+        """Collect networks of a network node and its children, by network address"""
+        for network in node.networks:
+            address = get_network_address(network.name)
+            if (old := into.get(address)) is None:
+                into[address] = network
+            elif old.ip_network != network.ip_network:
+                LOGGER.warning("Networks named '%s' have different IP masks, using %s",
+                               network.name, old.ip_network)
+        for child in node.children:
+            self._collect_networks(child, into)
 
 
 class BaseDTO(BaseModel):
@@ -338,6 +367,7 @@ class NetworkNodeDTO(EntityDTO):
     verdict: Optional[Verdict] = None
     external_activity: ExternalActivity
     properties: Dict[PropertyKey, PropertyDTO]
+    networks: List[NameType] = [] # Names of the networks, no networks means 'same as parent'
 
     def populate(self, model: NetworkNode, model_map: Dict[str, Any]) -> None:
         """Populate a network node model from this DTO"""
@@ -349,6 +379,12 @@ class NetworkNodeDTO(EntityDTO):
         model.external_activity = self.external_activity
         for key, property_dto in self.properties.items():
             property_dto.populate(model, key)
+        if self.networks:
+            # No networks means 'same as parent', keep the defaults the model was created with
+            try:
+                model.networks = [model_map[get_network_address(n)] for n in self.networks]
+            except KeyError as e:
+                raise ValueError(f"Network {e} must be deserialized before node '{self.address}'") from e
         model_map[self.address] = model
 
 
@@ -570,25 +606,47 @@ class ConnectionDTO(BaseDTO):
 class NetworkDTO(BaseDTO):
     """DTO for Networks"""
     type: Literal["network"] = "network"
-    name: Literal["local"] = "local" # Currently only the IoTSystem's local network is supported
-    parent_address: Literal[""] = ""
-    address: IPvAnyNetwork
+    name: NameType
+    address: NetworkAddressType
+    ip_mask: Optional[IPvAnyNetwork] = None # No mask means that the network covers all addresses
+    parent_address: Optional[SystemAddressType] = None # Legacy format only, the IoTSystem of the network
 
-    @field_validator("address", mode="before")
+    @model_validator(mode="before")
     @classmethod
-    def parse_address(cls, value: str) -> str:
-        """Strip "network=" prefix from address"""
-        if isinstance(value, str) and value.startswith("network="):
-            return value.removeprefix("network=")
-        return value
+    def convert_legacy_address(cls, data: Any) -> Any:
+        """Convert legacy network records, they named the IP mask, not the network, in the address"""
+        if not isinstance(data, dict):
+            return data
+        address, name = data.get("address"), data.get("name")
+        if not isinstance(address, str) or not isinstance(name, str):
+            return data
+        if address == get_network_address(name):
+            return data
+        ip_mask = address.removeprefix(NETWORK_ADDRESS_PREFIX)
+        try:
+            ipaddress.ip_network(ip_mask)
+        except ValueError:
+            return data # Not a legacy address, the mismatch with the name is reported below
+        return data | {
+            "address": get_network_address(name),
+            "ip_mask": data.get("ip_mask") or ip_mask
+        }
 
-    def to_model(self, model_map: Dict[str, Any]) -> Network: # pylint: disable=unused-argument
-        """Create a Network from this DTO"""
-        ip_network = ipaddress.ip_network(self.address) if self.address else None
-        network = Network(name=self.name, ip_network=ip_network)
-        if isinstance(parent := model_map[self.parent_address], IoTSystem):
-            parent.networks = [network]
-        # Network never applied anywhere if the parent was not an IoTSystem
+    @model_validator(mode="after")
+    def validate_address(self) -> "NetworkDTO":
+        """Check that the address matches the name, networks are identified by their name"""
+        if self.address != get_network_address(self.name):
+            raise ValueError(f"Network address must be '{NETWORK_ADDRESS_PREFIX}<name>'")
+        return self
+
+    def to_model(self, model_map: Dict[str, Any]) -> Network:
+        """Create a Network from this DTO. Network nodes refer to it by name"""
+        network = Network(name=self.name, ip_network=self.ip_mask)
+        model_map[self.address] = network
+        if self.parent_address is not None:
+            # Legacy format, the network belongs to the IoTSystem it names as its parent
+            if isinstance(parent := model_map.get(self.parent_address), IoTSystem):
+                parent.networks = [n for n in parent.networks if n != network] + [network]
         return network
 
 

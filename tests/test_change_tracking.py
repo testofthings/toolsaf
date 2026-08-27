@@ -127,16 +127,44 @@ def test_modify_system_network():
 
     serialized = sb.serialize_statement_changes()
     assert len(serialized) == 1
-    assert serialized[0]["type"] == "network"
-    assert serialized[0]["name"] == "local"
-    assert serialized[0]["address"] == "network=10.42.0.0/16"
+    assert serialized[0] == {
+        "type": "network",
+        "name": "local",
+        "address": "network=local",
+        "ip_mask": "10.42.0.0/16"
+    }
 
 
-def test_non_local_network_not_serialized():
+def test_add_non_local_network():
     sb = SystemBackend()
-    sb.network("Subnet", ip_mask="10.42.0.0/16").network
+    network = sb.network("Subnet", ip_mask="10.42.0.0/16").network
 
-    assert len(sb._changes) == 0
+    assert len(sb._changes) == 1
+    assert network in sb._changes
+
+    serialized = sb.serialize_statement_changes()
+    assert len(serialized) == 1
+    assert serialized[0] == {
+        "type": "network",
+        "name": "Subnet",
+        "address": "network=Subnet",
+        "ip_mask": "10.42.0.0/16"
+    }
+
+
+def test_set_node_networks():
+    sb = SystemBackend()
+    subnet = sb.network("Subnet", ip_mask="10.42.0.0/16")
+    device = sb.device("Test Device")
+    sb._changes = set()
+
+    device.in_networks(subnet)
+    assert sb._changes == {device.entity}
+
+    serialized = sb.serialize_statement_changes()
+    assert len(serialized) == 1
+    assert serialized[0]["type"] == "host"
+    assert serialized[0]["networks"] == ["Subnet"]
 
 
 def test_add_mobile_permissions():

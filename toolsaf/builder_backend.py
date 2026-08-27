@@ -78,13 +78,10 @@ class SystemBackend(SystemBuilder):
             subnet = "loopback"  # well-known name
         elif ip_mask and ip_mask.startswith("127."):
             raise ConfigurationException("Loopback network must have mask 127.0.0.0/8")
-        if subnet:
-            nb = NetworkBackend(self, subnet)
-        else:
-            nb = NetworkBackend(self)
-            self.changed(nb.network) # Track only local network for now
+        nb = NetworkBackend(self, subnet) if subnet else NetworkBackend(self)
         if ip_mask:
             nb.mask(ip_mask)
+        self.changed(nb.network)
         return nb
 
     def device(self, name: str="") -> 'HostBackend':
@@ -360,6 +357,7 @@ class NodeBackend(NodeBuilder):
         if any(a.get_ip_address() for a in self.entity.addresses):
             raise ConfigurationException(f"Cannot set network after IP addresses for {self.entity.name}")
         self.entity.networks = [n.network for n in network]
+        self.system.changed(self.entity)
         return self
 
     def software(self, name: Optional[str] = None) -> 'SoftwareBackend':
