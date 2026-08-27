@@ -14,7 +14,7 @@ from toolsaf.adapters.ssh_audit_scan import SSHAuditScan
 from toolsaf.adapters.testsslsh_scan import TestSSLScan
 from toolsaf.adapters.tools import ToolAdapter, SimpleFlowTool
 from toolsaf.adapters.tshark_reader import TSharkReader
-from toolsaf.adapters.vulnerability_reader import VulnerabilityReader
+from toolsaf.adapters.vulnerability_reader import VulnerabilityReader, OpenVEXReader
 from toolsaf.adapters.web_checker import WebChecker
 from toolsaf.adapters.zed_reader import ZEDReader
 from toolsaf.core.model import IoTSystem
@@ -87,6 +87,7 @@ class ToolFinderImplementation:
         self.ssh_audit = ToolDepiction("ssh-audit", SSHAuditScan)
         self.testssl = ToolDepiction("testssl", TestSSLScan)
         self.vulnerabilities = ToolDepiction("blackduck-vulnerabilities", VulnerabilityReader)
+        self.openvex = ToolDepiction("openvex", OpenVEXReader, extension="json")
         self.zap = ToolDepiction("zap", ZEDReader, extension="json")
 
     def by_file_type(self, file_type: str) -> ToolDepiction:
