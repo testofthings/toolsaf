@@ -6,7 +6,7 @@ from toolsaf.common.verdict import Verdict
 from toolsaf.common.address import Protocol
 from toolsaf.common.android import MobilePermissions
 from toolsaf.core.serializer.model_serializer import (
-    PropertyDTO, EntityDTO, NetworkNodeDTO,
+    EntityDTO, NetworkNodeDTO,
     IgnoreRuleDTO, IgnoreRulesDTO, IoTSystemDTO,
     AddressableDTO, HostDTO, ServiceDTO, DHCPServiceDTO, DNSServiceDTO,
     NodeComponentDTO, SoftwareComponentDTO, SoftwareDTO,
@@ -18,27 +18,6 @@ def _validate(valid_data, key_values, dto_class):
     for key, value in key_values:
         with pytest.raises(ValidationError):
             dto_class(**{**valid_data, key: value})
-
-
-def _valid_property():
-    return {
-        "verdict": Verdict.FAIL.value,
-        "exp": "exp",
-    }
-
-
-def test_property_dto_invalid_values():
-    key_values = [
-        ("verdict", "unknown"),
-        ("set", "abc"),
-        ("set", [123]),
-        ("set", ["a"*101]),
-        ("exp", -1),
-        ("exp", "a"*4001),
-        ("persistent", "abc"),
-    ]
-    _validate(_valid_property(), key_values, PropertyDTO)
-    assert PropertyDTO(**_valid_property()).persistent is False # is optional
 
 
 def test_entity_dto_invalid_values():
@@ -80,10 +59,6 @@ def test_ignore_rules_dto_invalid_values():
     _validate({}, key_values, IgnoreRulesDTO)
 
 
-def _valid_properties():
-    return {"check:vunlz": _valid_property()}
-
-
 def _valid_network_node():
     return {
         "long_name": "Node",
@@ -94,7 +69,6 @@ def _valid_network_node():
         "host_type": HostType.DEVICE.value,
         "status": Status.EXTERNAL.value,
         "external_activity": ExternalActivity.BANNED.value,
-        "properties": _valid_properties()
     }
 
 
@@ -359,7 +333,6 @@ def _valid_connection():
         "target_address": "Node_2/tcp:80",
         "con_type": ConnectionType.ENCRYPTED.value,
         "status": Status.EXTERNAL.value,
-        "properties": _valid_properties()
     }
 
 
