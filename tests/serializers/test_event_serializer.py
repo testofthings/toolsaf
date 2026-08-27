@@ -118,7 +118,7 @@ def test_ethernet_flow():
         "payload": 5,
         "timestamp": "2025-01-01T00:00:00+00:00",
         "tail_ref": ":12",
-        "properties": {"eth-key": {"verdict": "Pass", "exp": "eth test", "persistent": False}}
+        "properties": {"eth-key": {"verdict": "Pass", "exp": "eth test"}}
     }
 
     new_ethernet_flow = _get_deserialized_object(ethernet_flow)
@@ -146,9 +146,8 @@ def test_ip_flow():
 
     serialized = _get_serialized_event(ip_flow)
     props = serialized.pop("properties")
-    assert props["test-key"] == {"verdict": "Pass", "exp": "test", "persistent": False}
+    assert props["test-key"] == {"verdict": "Pass", "exp": "test"}
     assert props["test-key2"]["exp"] == "test2"
-    assert props["test-key2"]["persistent"] is False
     assert "1" in props["test-key2"]["set"] and "2" in props["test-key2"]["set"]
 
     assert serialized == {
@@ -191,7 +190,7 @@ def test_ble_advertisement_flow():
         "event_type": 3,
         "timestamp": "2025-01-01T00:00:00+00:00",
         "tail_ref": ":34",
-        "properties": {"ble-key": {"verdict": "Pass", "exp": "ble test", "persistent": False}}
+        "properties": {"ble-key": {"verdict": "Pass", "exp": "ble test"}}
     }
 
     new_ble_flow = _get_deserialized_object(ble_flow)
