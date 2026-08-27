@@ -147,7 +147,7 @@ def test_edit_deserialized_and_serialize():
     cloud = cast(HostBackend, sb.get_backend("Cloud"))
     assert len(sb._changes) == 0
 
-    dev.set_property("edited", "ok")
+    dev.ip("1.2.3.4")
     assert len(sb._changes) == 1
     assert sb._changes.pop() is dev.entity
 
