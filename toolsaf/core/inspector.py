@@ -212,6 +212,7 @@ class Inspector(EventInterface):
             self.logger.debug("Value for model property %s ignored, as it is not in model", key)
             return None
         val = self.ignore_rules.update_based_on_rules(update.evidence.source.label, key, val, s)
+        update.key_value = (key, val)
         key.update(s.properties, val)
         # call listeners
         self.system.call_listeners(lambda ln: ln.property_change(s, (key, val)))
@@ -226,10 +227,11 @@ class Inspector(EventInterface):
             # no properties for placeholders or unexpected entities
             return s
         key, val = update.key_value
-        val = self.ignore_rules.update_based_on_rules(update.evidence.source.label, key, val, s)
         if key.model and key not in s.properties:
             self.logger.debug("Value for model property %s ignored, as it is not in model", key)
             return s
+        val = self.ignore_rules.update_based_on_rules(update.evidence.source.label, key, val, s)
+        update.key_value = (key, val)
         key.update(s.properties, val)
         # call listeners
         self.system.call_listeners(lambda ln: ln.property_change(s, (key, val)))

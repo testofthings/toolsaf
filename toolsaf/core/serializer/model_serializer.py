@@ -10,11 +10,9 @@ from pydantic import (
 )
 
 from toolsaf.common.entity import Entity
-from toolsaf.common.traffic import Flow
 from toolsaf.common.basics import Status, ExternalActivity, HostType, ConnectionType
-from toolsaf.common.verdict import Verdict
 from toolsaf.common.address import Protocol, DNSName, Network, AnyAddress
-from toolsaf.common.property import PropertyKey, PropertyVerdictValue, PropertySetValue
+from toolsaf.common.property import PropertyKey
 from toolsaf.common.android import MobilePermissions
 from toolsaf.core.model import (
     NetworkNode, IoTSystem, Addressable, Host, Service,
@@ -36,7 +34,6 @@ class SystemSerializer:
     """Serialize and deserialize IoT systems and their contents"""
     def __init__(self) -> None:
         self.model_map: Dict[str, Any] = {} # sys_addr, model object
-        self.verdict_map: Dict[Any, Verdict] = {} # entity, verdict
         self.serializer_map: Dict[type, Callable[..., None]] = {
             IoTSystem: self._serialize_iot_system,
             Host: self._serialize_host,
@@ -132,7 +129,6 @@ class SystemSerializer:
     def _serialize_network_node(self, obj: NetworkNode, data: Dict[str, Any]) -> None:
         """Serialize network node"""
         self._serialize_entity(obj, data)
-        verdict = obj.get_verdict(self.verdict_map)
         data.update({
             "name": obj.name,
             "description": obj.description,
@@ -140,9 +136,7 @@ class SystemSerializer:
             "address": obj.get_system_address().get_parseable_value(),
             "host_type": obj.host_type,
             "status": obj.status.value,
-            "verdict": verdict.value,
-            "external_activity": obj.external_activity.value,
-            "properties": {k.get_name(): k.get_value_json(v, {}) for k, v in obj.properties.items()}
+            "external_activity": obj.external_activity.value
         })
 
         for child in obj.children:
@@ -275,8 +269,7 @@ class SystemSerializer:
             "source_address": obj.source.get_system_address().get_parseable_value(),
             "target_address": obj.target.get_system_address().get_parseable_value(),
             "con_type": obj.con_type.value,
-            "status": obj.status.value,
-            "properties": {k.get_name(): k.get_value_json(v, {}) for k, v in obj.properties.items()}
+            "status": obj.status.value
         })
 
     def _serialize_network(self, obj: Network, data: Dict[str, Any]) -> None:
@@ -299,29 +292,6 @@ class BaseDTO(BaseModel):
     )
 
 
-class PropertyDTO(BaseDTO):
-    """DTO for a single property"""
-    verdict: Optional[Verdict] = None
-    set: List[PropertyKey] = []
-    exp: DescriptionType
-
-    @field_validator("set", mode="after")
-    @classmethod
-    def validate_set(cls, set_list: List[PropertyKey]) -> List[PropertyKey]:
-        """Validate length of each PropertyKey"""
-        for key in set_list:
-            if len(str(key)) > 100:
-                raise ValueError("Property key too long")
-        return set_list
-
-    def populate(self, model: NetworkNode | Connection | Flow, key: PropertyKey) -> None:
-        """Populate a model's properties from this DTO"""
-        if self.verdict:
-            model.properties[key] = PropertyVerdictValue(self.verdict, self.exp)
-        else:
-            model.properties[key] = PropertySetValue(set(self.set), self.exp)
-
-
 class EntityDTO(BaseDTO):
     """DTO for Entity"""
     long_name: LongNameType
@@ -335,9 +305,7 @@ class NetworkNodeDTO(EntityDTO):
     address: SystemAddressType
     host_type: HostType
     status: Status
-    verdict: Optional[Verdict] = None
     external_activity: ExternalActivity
-    properties: Dict[PropertyKey, PropertyDTO]
 
     def populate(self, model: NetworkNode, model_map: Dict[str, Any]) -> None:
         """Populate a network node model from this DTO"""
@@ -347,8 +315,6 @@ class NetworkNodeDTO(EntityDTO):
         model.host_type = self.host_type
         model.status = self.status
         model.external_activity = self.external_activity
-        for key, property_dto in self.properties.items():
-            property_dto.populate(model, key)
         model_map[self.address] = model
 
 
@@ -547,7 +513,6 @@ class ConnectionDTO(BaseDTO):
     target_address: SystemAddressType
     con_type: ConnectionType
     status: Status
-    properties: Dict[PropertyKey, PropertyDTO]
 
     def to_model(self, model_map: Dict[str, Any]) -> Connection:
         """Create a Connection from this DTO"""
@@ -560,8 +525,6 @@ class ConnectionDTO(BaseDTO):
 
         connection.status = self.status
         connection.con_type = self.con_type
-        for key, property_dto in self.properties.items():
-            property_dto.populate(connection, key)
 
         model_map[self.address] = connection
         return connection

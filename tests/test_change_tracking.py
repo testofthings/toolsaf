@@ -50,10 +50,8 @@ def test_add_hosts():
         "match_priority": 10,
         "name": "Test Device",
         "parent_address": "",
-        "properties": {},
         "status": "Expected",
         "type": "host",
-        "verdict": "Incon",
     } in serialized
 
 
@@ -418,21 +416,6 @@ def test_add_hw_address():
     assert serialized[0]["type"] == "host"
     assert serialized[0]["address"] == "Test_Device"
     assert "aa:bb:cc:dd:ee:ff|hw" in serialized[0]["addresses"]
-
-
-def test_add_properties():
-    sb = SystemBackend()
-    dev = sb.device("Test Device")
-    sb._changes = set()
-
-    dev.set_property("test:abc")
-    assert len(sb._changes) == 1
-    assert dev.entity in sb._changes
-
-    serialized = sb.serialize_statement_changes()
-    assert len(serialized) == 1
-    assert serialized[0]["type"] == "host"
-    assert serialized[0]["properties"] == {"test:abc": {"verdict": "Incon"}}
 
 
 def test_add_online_resource():

@@ -1,8 +1,12 @@
 from unittest.mock import MagicMock
 
 from toolsaf.core.ignore_rules import IgnoreRules
+from toolsaf.core.inspector import Inspector
+from toolsaf.core.event_interface import PropertyAddressEvent, PropertyEvent
 from toolsaf.builder_backend import IgnoreRulesBackend
+from toolsaf.common.address import IPAddress
 from toolsaf.common.property import PropertyKey, PropertyVerdictValue
+from toolsaf.common.traffic import Evidence, EvidenceSource
 from toolsaf.common.verdict import Verdict
 from toolsaf.main import TCP, SSH
 from test_model import Setup
@@ -107,3 +111,24 @@ def test_update_based_on_rules():
     new_pvv = system.ignore_backend.get_rules().update_based_on_rules("test-type3", key, pvv, entity)
     assert new_pvv.verdict == Verdict.IGNORE
     assert new_pvv.explanation == "Failed"
+
+
+def test_rules_applied_to_events():
+    system = Setup().system
+    device = system.device().ip("1.2.3.4")
+    system.ignore("test-type").properties("abc:efg").at(device).because("test reason")
+    inspector = Inspector(system.system, system.ignore_backend.get_rules())
+    key = PropertyKey("abc", "efg")
+    failed = PropertyVerdictValue(Verdict.FAIL, "Failed")
+    ignored = PropertyVerdictValue(Verdict.IGNORE, "test reason")
+
+    for label, expected in [("test-type", ignored), ("other-type", failed)]:
+        evidence = Evidence(EvidenceSource("Source", label=label))
+
+        event = PropertyEvent(evidence, device.entity, (key, failed))
+        inspector.property_update(event)
+        assert event.key_value == (key, expected)
+
+        address_event = PropertyAddressEvent(evidence, IPAddress.new("1.2.3.4"), (key, failed))
+        inspector.property_address_update(address_event)
+        assert address_event.key_value == (key, expected)

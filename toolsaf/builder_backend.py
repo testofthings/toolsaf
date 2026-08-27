@@ -566,7 +566,6 @@ class HostBackend(NodeBackend, HostBuilder):
     def set_property(self, *key: str) -> Self:
         p = PropertyKey.create(key).persistent()
         self.entity.set_property(p.verdict())  # inconclusive
-        self.system.changed(self.entity)
         return self
 
     def set_permissions(self, *permissions: MobilePermissions) -> Self:
