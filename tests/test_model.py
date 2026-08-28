@@ -8,6 +8,7 @@ from toolsaf.core.matcher import SystemMatcher
 from toolsaf.common.basics import ExternalActivity
 from toolsaf.common.traffic import IPFlow
 from toolsaf.common.basics import Status
+from toolsaf.common.property import Properties
 from toolsaf.core.components import Software
 
 
@@ -254,6 +255,29 @@ def test_host_merging():
     assert cs.target.name == "target.org"  # connection redirected to the host we know
     # Check that the host known only by the IP address is merged into the named host
     assert [h.name for h in sb.system.get_hosts()] == ["Device 1", "target.org", "Device 2"]
+    assert all(h.addresses for h in sb.system.get_hosts())
+
+
+def test_host_merging_by_tag():
+    sb = simple_setup_1()
+    dev3 = sb.system.get_entity("Device 3")
+    assert dev3 and dev3.addresses == {EntityTag("Device_3")}
+    m = SystemMatcher(sb.system)
+
+    # traffic to an address we know nothing about
+    cs = m.connection(IPFlow.UDP("a:0:0:0:0:1", "192.168.0.1", 1100) >> ("a:0:0:0:0:3", "1.0.0.3", 1234))
+    unknown = sb.system.get_endpoint(IPAddress.new("1.0.0.3"))
+    assert unknown.addresses == {IPAddress.new("1.0.0.3")}
+    unknown.set_property(Properties.MITM.verdict(Verdict.FAIL))  # a tool learns something about it
+
+    # ...then e.g. a setup file tells the address belongs to the device
+    host, _ = sb.system.learn_named_address(EntityTag("Device_3"), IPAddress.new("1.0.0.3"))
+
+    assert host == dev3  # the tagged host is kept, the other one merged into it
+    assert unknown not in sb.system.children
+    assert dev3.addresses == {EntityTag("Device_3"), IPAddress.new("1.0.0.3")}
+    assert Properties.MITM.get_verdict(dev3.properties) == Verdict.FAIL
+    assert cs.target.get_parent_host() == dev3
     assert all(h.addresses for h in sb.system.get_hosts())
 
 

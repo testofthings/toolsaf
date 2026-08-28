@@ -599,13 +599,14 @@ class IoTSystem(NetworkNode):
                 named.addresses.add(address)
             return named, True  # new address
 
-        if len(named.addresses) == 1:
-            # named host has no IP addresses, it is the same host as the addressed one
+        if len(named.addresses) == 1 and named.get_tag() is None:
+            # named host is known by the name only, it is the same host as the addressed one
             self.merge_host(named, add)
             return add, True
 
         if add.addresses == {address}:
-            # the addressed host is only known by this address, it is the same host as the named one
+            # the addressed host is only known by this address, it is the same host as the named one.
+            # NOTE: A host known by a tag only is kept by this branch, as tagged hosts are not merged
             self.merge_host(add, named)
             return named, True
 
@@ -624,6 +625,7 @@ class IoTSystem(NetworkNode):
 
         target.addresses.update(source.addresses)
         source.addresses.clear()
+        self._merge_properties(source, target)
 
         for service in list(source.children):
             replaced[service] = self._merge_service(service, source, target)
