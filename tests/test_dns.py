@@ -31,7 +31,7 @@ def test_dns():
 
 
 def test_dns_name_learned_after_traffic():
-    # Test that a host known only by IP is medged after DNS tells that the address belongs to a known host
+    # Test that a host known only by IP is merged after DNS tells that the address belongs to a known host
     sb = SystemBackend()
     dev = sb.device().ip("192.168.0.5")
     backend = sb.backend().dns("gtm.example.com")
