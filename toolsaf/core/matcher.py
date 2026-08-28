@@ -108,7 +108,7 @@ class MatchingContext:
             match = ConnectionMatch(conn, source_add, target_add, flow_matcher.reverse)
             if not conn.target.is_service() and flow_matcher.reverse:
                 # Reply to unexpected connection
-                self.create_unknown_service(match)
+                match = self.create_unknown_service(match)
             if match.connection.status == Status.PLACEHOLDER:
                 # this is an UNEXPECTED connection found after reset
                 self.set_connection_status(match.connection, (conn.source, source_add), (conn.target, target_add))
@@ -229,8 +229,8 @@ class MatchingContext:
                 set_external(c.target)
         return c
 
-    def create_unknown_service(self, match: ConnectionMatch) -> None:
-        """Create an unknown service due observing reply from it"""
+    def create_unknown_service(self, match: ConnectionMatch) -> ConnectionMatch:
+        """Create an unknown service due observing reply from it, return the match to use"""
         system = self.system.system
         conn = match.connection
         target_host = conn.target
@@ -243,6 +243,10 @@ class MatchingContext:
         new_service = target_host.get_endpoint(service_address)  # NOTE: Network not specified - how can there be many?
         assert new_service is not None
         assert isinstance(new_service, Service)
+
+        old = self.find_connection(conn.source, new_service)
+        if old is not None:
+            return ConnectionMatch(old, match.source, match.target, match.reply)
         self.engine.add_addressable(new_service)
 
         if target_host.external_activity >= ExternalActivity.UNLIMITED and conn.status == Status.EXTERNAL \
@@ -263,11 +267,10 @@ class MatchingContext:
                 if new_c is None:
                     new_source = conn.source, o_m.source
                     new_target = target_host, o_m.target
-                    new_c = system.new_connection(new_source, new_target)
-                    self.engine.add_connection(new_c)
-                    self.set_connection_status(new_c, new_source, new_target)
+                    new_c = self.new_connection(new_source, new_target).connection
                 else:
                     system.connections[o_m.source, o_m.target] = new_c
                 new_m = ConnectionMatch(new_c, o_m.source, o_m.target, o_m.reply)
                 new_obs[o_flow] = new_m
         self.observed.update(new_obs)
+        return match

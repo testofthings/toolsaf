@@ -1,12 +1,12 @@
 from toolsaf.common.address import EndpointAddress, EntityTag, Protocol, DNSName, IPAddress, HWAddress, AddressSequence, Addresses
 from toolsaf.core.inspector import Inspector
-from toolsaf.core.model import Host, IoTSystem
+from toolsaf.core.model import EvidenceNetworkSource, Host, IoTSystem
 from toolsaf.common.verdict import Verdict
 from toolsaf.builder_backend import SystemBackend
 from toolsaf.main import TCP, UDP, SSH, DHCP, BLEAdvertisement
 from toolsaf.core.matcher import SystemMatcher
 from toolsaf.common.basics import ExternalActivity
-from toolsaf.common.traffic import IPFlow
+from toolsaf.common.traffic import Evidence, IPFlow
 from toolsaf.common.basics import Status
 from toolsaf.common.property import Properties
 from toolsaf.core.components import Software
@@ -161,6 +161,32 @@ def test_match_mix_unknown():
     assert cs1 not in dev_s.get_parent_host().connections
     assert cs2 in dev_s.get_parent_host().connections  # replied
     assert cs7 not in dev_s.get_parent_host().connections
+
+
+def test_reply_to_connected_service():
+    # Check that a connection is not pointed to a service which the source is connected to already
+    sb = SystemBackend()
+    dev1 = sb.device().ip("10.0.0.1")
+    dev1 / UDP(port=20002)
+    sb.device().ip("10.0.0.2")
+    system = sb.system
+    m = Inspector(system)
+
+    for label in ["pcap-1", "pcap-2"]:  # each evidence source is matched separately
+        ev = Evidence(EvidenceNetworkSource("test", label=label))
+        # traffic to two ports, only one of them replies
+        f1 = IPFlow.UDP("a:0:0:0:0:1", "10.0.0.1", 20002) >> ("a:0:0:0:0:2", "10.0.0.2", 38751)
+        f2 = IPFlow.UDP("a:0:0:0:0:1", "10.0.0.1", 20002) >> ("a:0:0:0:0:2", "10.0.0.2", 41423)
+        f3 = IPFlow.UDP("a:0:0:0:0:1", "10.0.0.1", 20002) << ("a:0:0:0:0:2", "10.0.0.2", 41423)
+        for flow in [f1, f2, f3]:
+            m.connection(flow.set_evidence(ev))
+
+    # the replying port has a service, the rest of the traffic is towards the host
+    conns = system.get_connections(relevant_only=False)
+    assert [c.long_name() for c in conns] == ["Device 1 UDP:20002 => Device 2 UDP:41423",
+                                              "Device 1 UDP:20002 => Device 2"]
+    addresses = [c.get_system_address().get_parseable_value() for c in conns]
+    assert len(addresses) == len(set(addresses))
 
 
 def test_match_overlap_unknowns():
