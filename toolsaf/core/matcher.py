@@ -170,12 +170,24 @@ class MatchingContext:
 
     def new_connection(self, source: Tuple[Addressable, AnyAddress], target: Tuple[Addressable, AnyAddress]) \
         -> ConnectionMatch:
-        """Create new unexpected connection"""
+        """Create new unexpected connection, unless we have one between the same endpoints"""
         system = self.system.system
+        old = self.find_connection(source[0], target[0])
+        if old is not None:
+            self.engine.add_connection(old)
+            return ConnectionMatch(old, source[1], target[1])
         c = system.new_connection(source, target)
         self.set_connection_status(c, source, target)
         self.engine.add_connection(c)
         return ConnectionMatch(c, source[1], target[1])
+
+    @classmethod
+    def find_connection(cls, source: Addressable, target: Addressable) -> Optional[Connection]:
+        """Find existing connection between the given endpoints"""
+        for c in source.get_parent_host().connections:
+            if c.source == source and c.target == target:
+                return c
+        return None
 
     def set_connection_status(self, connection: Connection, source: Tuple[Addressable, AnyAddress],
                               target: Tuple[Addressable, AnyAddress]) -> Connection:

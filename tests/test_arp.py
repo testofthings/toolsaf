@@ -1,9 +1,10 @@
-from toolsaf.common.address import Protocol
+from toolsaf.common.address import HWAddress, Protocol
 from toolsaf.builder_backend import SystemBackend
 from toolsaf.core.inspector import Inspector
 from toolsaf.main import ARP
 from toolsaf.common.basics import ExternalActivity
-from toolsaf.common.traffic import EthernetFlow
+from toolsaf.common.traffic import Evidence, EthernetFlow
+from toolsaf.core.model import EvidenceNetworkSource
 from toolsaf.common.basics import Status
 
 
@@ -42,3 +43,26 @@ def test_serve_arp():
     # dev1 has ARP
     f1 = m.connection(EthernetFlow.new(Protocol.ARP, "a:0:0:0:0:4") << "a:0:0:0:0:1")
     assert f1.status == Status.EXPECTED
+
+
+def test_arp_to_self_only_one_connection():
+    sb = SystemBackend()
+    dev = sb.device().ip("10.42.0.138").serve(ARP)
+    system = sb.system
+    m = Inspector(system)
+
+    hw = HWAddress.new("38:2c:e5:0f:31:89")
+    conn = None
+    for label in ["pcap-1", "pcap-2"]:  # each evidence source is matched separately
+        source = EvidenceNetworkSource("test", label=label, address_map={hw: dev.entity})
+        # second flow is the connection we already know
+        conn = m.connection(EthernetFlow(Evidence(source), hw, hw, protocol=Protocol.ARP)) or conn
+    assert conn is not None
+
+    # the ARP announcement is one connection, in addition to the ARP broadcast from the DSL
+    conns = system.get_connections(relevant_only=False)
+    assert [c.long_name() for c in conns] == ["Device ARP => ff:ff:ff:ff:ff:ff ARP",
+                                              "Device ARP => 38:2c:e5:0f:31:89"]
+    assert conn in conns
+    addresses = [c.get_system_address().get_parseable_value() for c in conns]
+    assert len(addresses) == len(set(addresses))
