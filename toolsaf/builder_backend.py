@@ -203,8 +203,11 @@ class SystemBackend(SystemBuilder):
 
     def _check_system_addresses(self) -> None:
         """Check that all entities have unique system addresses"""
+        checked: Dict[int, Entity] = {id(e): e for e in self.system.iterate(relevant_only=False)}
+        for connection in self.system.get_connections(relevant_only=False):
+            checked.setdefault(id(connection), connection)
         addresses: Set[str] = set()
-        for entity in self.system.iterate(relevant_only=False):
+        for entity in checked.values():
             if (sys_addr := entity.get_system_address().get_parseable_value()) in addresses:
                 raise ConfigurationException(f'Entity: {entity} does not have a unique system address!')
             addresses.add(sys_addr)

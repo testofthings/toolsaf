@@ -1,8 +1,12 @@
+import pytest
+
 from toolsaf.common.address import IPAddress
-from toolsaf.common.verdict import Verdict
 from toolsaf.builder_backend import SystemBackend
-from toolsaf.main import UDP, HTTP
-from toolsaf.common.basics import Status
+from toolsaf.core.matcher import SystemMatcher
+from toolsaf.core.model import Connection
+from toolsaf.main import ConfigurationException, UDP, HTTP
+from toolsaf.common.basics import ExternalActivity, Status
+from toolsaf.common.traffic import IPFlow
 
 
 def test_just_host():
@@ -38,4 +42,21 @@ def test_hosts():
 
 def test_address():
     assert not IPAddress.new("1.0.0.1").is_multicast()
+
+
+def test_check_system_addresses():
+    sb = SystemBackend()
+    sb.device().hw("a:0:0:0:0:1").external_activity(ExternalActivity.UNLIMITED)
+    m = SystemMatcher(sb.system)
+
+    cs = m.connection(IPFlow.UDP("a:0:0:0:0:1", "192.168.0.1", 1100) >> ("a:0:0:0:0:2", "1.0.0.2", 1234))
+    assert cs.status == Status.EXTERNAL
+    assert not sb.system.get_connections()
+    sb._check_system_addresses()
+
+    duplicate = Connection(cs.source, cs.target)
+    duplicate.status = Status.EXTERNAL
+    cs.source.get_parent_host().connections.append(duplicate)
+    with pytest.raises(ConfigurationException, match="does not have a unique system address"):
+        sb._check_system_addresses()
 
