@@ -58,10 +58,10 @@ def test_broadcast_ip_address_matching():
 
     # Assertion below fails before we moved detection of broadcast address to use
     # HW address and not IP address (MatchingContext.new_endpoint)
-    # - Detecting broadcast IP address depends on netmask, which the logic currenty does not know
-    # - Without detecting the broadcast, the unexpedcted connection endpoint is created with
-    #   target address ff:ff:ff:ff:ff:Ff
-    # - However, this HW address is not properly matches on subsequent time, leading creation
+    # - Detecting broadcast IP address depends on netmask, which the logic currently does not know
+    # - Without detecting the broadcast, the unexpected connection endpoint is created with
+    #   target address ff:ff:ff:ff:ff:ff
+    # - However, this HW address is not properly matched subsequently, leading to creation
     #   of another unexpected connection -> assertion fails
 
     flow = IPFlow.UDP("8:0:0:0:0:1", "10.0.0.1", 2001) >> ("ff:ff:ff:ff:ff:ff", "192.168.255.255", 30000)
