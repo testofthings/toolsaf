@@ -81,17 +81,17 @@ def test_same_unexpected_connection_many_sources():
     m = Inspector(system)
 
     conn = None
-    for round in [1, 2]:
-        flow = IPFlow.UDP("8:0:0:0:0:1", "10.0.0.1", 2000 + round) >> ("8:0:0:0:0:2", "10.0.0.2", 30000)
-        flow.evidence = Evidence(EvidenceNetworkSource("test", label=f"label-{round}"))
+    for num in [1, 2]:
+        flow = IPFlow.UDP("8:0:0:0:0:1", "10.0.0.1", 2000 + num) >> ("8:0:0:0:0:2", "10.0.0.2", 30000)
+        flow.evidence = Evidence(EvidenceNetworkSource("test", label=f"label-{num}"))
         c = m.connection(flow) or conn
         assert conn is None or conn == c, "Many unexpected connections created"
         conn = c
 
     conn = None
-    for round in [1, 2, 3]:
-        flow = IPFlow.UDP("8:0:0:0:0:1", "10.0.0.1", 20002) >> ("8:0:0:0:0:2", f"11.0.0.{round}", 30000)
-        flow.evidence = Evidence(EvidenceNetworkSource("test", label=f"label-{round}"))
+    for num in [1, 2, 3]:
+        flow = IPFlow.UDP("8:0:0:0:0:1", "10.0.0.1", 20002) >> ("8:0:0:0:0:2", f"11.0.0.{num}", 30000)
+        flow.evidence = Evidence(EvidenceNetworkSource("test", label=f"label-{num}"))
         c = m.connection(flow) or conn
         assert conn != c, "Expected all connections different"
         conn = c
