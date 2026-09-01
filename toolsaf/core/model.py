@@ -610,11 +610,11 @@ class IoTSystem(NetworkNode):
             add.addresses.remove(address)
             named.addresses.add(address)
             if not add.addresses:
-              # must not have host without any addresses
-              # - insert entity tag, usually unexpected do not have these, but cooking one from the address
-              # - there should not be any with the same tag (nobody had the address)
-              # - assuming this is not serialized and stored - we now change its system address
-              add.addresses.add(EntityTag.new(address.get_parseable_value()))
+                # must not have host without any addresses
+                # - insert entity tag, usually unexpected do not have these, but cooking one from the address
+                # - there should not be any with the same tag (nobody had the address)
+                # - assuming this is not serialized and stored - we now change its system address
+                add.addresses.add(EntityTag.new(address.get_parseable_value()))
         return named, True
 
     def learn_ip_address(self, host: Host, ip_address: IPAddress) -> None:
