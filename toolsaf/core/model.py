@@ -614,7 +614,9 @@ class IoTSystem(NetworkNode):
                 # - insert entity tag, usually unexpected do not have these, but cooking one from the address
                 # - there should not be any with the same tag (nobody had the address)
                 # - assuming this is not serialized and stored - we now change its system address
-                add.addresses.add(EntityTag.new(address.get_parseable_value()))
+                tag = EntityTag.new(address.get_parseable_value())
+                assert self.find_endpoint(tag) is None, f"Did not expect host with tag: {tag}"
+                add.addresses.add(tag)
         return named, True
 
     def learn_ip_address(self, host: Host, ip_address: IPAddress) -> None:
