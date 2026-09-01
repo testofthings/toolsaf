@@ -153,8 +153,8 @@ class MatchingContext:
         use_ad = stack[0]
         for ad in stack[1:]:
             if isinstance(ad, IPAddress):
-                if system.is_external(ad) or ad.is_multicast():
-                    use_ad = ad  # must use the IP address
+                if system.is_external(ad) or use_ad.is_multicast():
+                    use_ad = ad  # must use the IP address, if external or HW is multicast
                     break
             if use_ad.is_null() and not ad.is_null():
                 use_ad = ad  # prefer non-null address
