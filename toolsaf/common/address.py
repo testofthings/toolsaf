@@ -206,7 +206,7 @@ class Addresses:
 
     @classmethod
     def get_prioritized(cls, addresses: Iterable[AnyAddress]) -> AnyAddress:
-        """Get address with higest priority"""
+        """Get address with highest priority"""
         add = None
         for a in addresses:
             if add is None or add.priority() < a.priority():
