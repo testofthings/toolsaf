@@ -214,9 +214,15 @@ class SystemBackend(SystemBuilder):
             host_names.add(h.name)
             self._check_unique_under_parent(h)
 
-        # Ensure all system addresses are unique
-        addresses = set()
-        for entity in self.system.iterate():
+
+    def _check_system_addresses(self) -> None:
+        """Check that all entities have unique system addresses"""
+        entities_to_check = set(self.system.iterate(relevant_only=False))
+        for connection in self.system.get_connections(relevant_only=False):
+            entities_to_check.add(connection)
+
+        addresses: Set[str] = set()
+        for entity in entities_to_check:
             if (sys_addr := entity.get_system_address().get_parseable_value()) in addresses:
                 raise ConfigurationException(f'Entity: {entity} does not have a unique system address!')
             addresses.add(sys_addr)
@@ -1279,6 +1285,8 @@ class SystemBackendRunner(SystemBackend):
         batch_import = BatchImporter(event_logger, label_filter=label_filter)
         for in_file in args.read or []:
             batch_import.import_batch(Path(in_file))
+
+        self._check_system_addresses()
 
         if args.help_tools:
             # print help and exit
