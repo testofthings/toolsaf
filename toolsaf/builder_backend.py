@@ -214,33 +214,6 @@ class SystemBackend(SystemBuilder):
             host_names.add(h.name)
             self._check_unique_under_parent(h)
 
-    def _check_system_addresses(self) -> None:
-        """Check that all entities have unique system addresses"""
-        entities_to_check = set(self.system.iterate(relevant_only=False))
-        for connection in self.system.get_connections(relevant_only=False):
-            entities_to_check.add(connection)
-
-        addresses: Set[str] = set()
-        for entity in entities_to_check:
-            if (sys_addr := entity.get_system_address().get_parseable_value()) in addresses:
-                raise ConfigurationException(f'Entity: {entity} does not have a unique system address!')
-            addresses.add(sys_addr)
-
-        # We want to have a authenticator related to each authenticated service
-        # NOTE: Not ready to go into this level now...
-        # auth_map = DataUsage.map_authenticators(self.system, {})
-        # for hb in self.hosts_by_name.values():
-        #     for sb in hb.service_builders.values():
-        #         s = sb.entity
-        #         if s not in auth_map and s.authentication:
-        #             auth = PieceOfData(f"Auth-{s.name}")  # default authenticator
-        #             auth.authenticator_for.append(s)
-        #             hb.use_data(DataPieceBuilder(self, [auth]))
-        #             # property to link from service to authentication
-        #             exp = f"Authentication by {auth.name} (implicit)"
-        #             prop_v = Properties.AUTHENTICATION_DATA.value(explanation=exp)
-        #             prop_v[0].set(s.properties, prop_v[1])
-
     def get_backend(self, system_address: str) -> Optional[Backend]:
         """Get entity backend by system address"""
         for entity, backend in self.backends_by_entity.items():
@@ -1285,7 +1258,7 @@ class SystemBackendRunner(SystemBackend):
         for in_file in args.read or []:
             batch_import.import_batch(Path(in_file))
 
-        self._check_system_addresses()
+        self.system.check_unique_system_addresses()  # after loading and inspecting data
 
         if args.help_tools:
             # print help and exit

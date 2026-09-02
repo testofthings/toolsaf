@@ -748,6 +748,20 @@ class IoTSystem(NetworkNode):
     def get_system_address(self) -> AddressSequence:
         return AddressSequence((), )  # empty sequence
 
+    def check_unique_system_addresses(self) -> None:
+        """Check that all entities have unique system addresses"""
+        entities = set(self.iterate(relevant_only=False))
+        for connection in self.get_connections(relevant_only=False):
+            entities.add(connection)
+
+        addresses: Dict[str, Entity] = {}
+        for entity in entities:
+            sys_addr = entity.get_system_address().get_parseable_value()
+            other = addresses.get(sys_addr)
+            if other:
+                raise ValueError(f'Entity: {entity} shares system address with {other}: {sys_addr}')
+            addresses[sys_addr] = entity
+
     def __repr__(self) -> str:
         s = [self.long_name()]
         for h in self.get_hosts():

@@ -18,6 +18,8 @@ class SystemMatcher(ModelListener):
         self.system = system
         self.contexts: Dict[EvidenceSource, MatchingContext] = {}
         system.model_listeners.append(self)
+        # validate system
+        system.check_unique_system_addresses()
 
     def address_change(self, host: Host) -> None:
         for ctx in self.contexts.values():
