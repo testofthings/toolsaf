@@ -191,22 +191,22 @@ class NetworkNode(Entity):
 
     def free_child_name(self, name_base: str) -> str:
         """Get free child name, rename existing if required"""
-        names: Dict[str | AnyAddress, Any] = {}
+        used: Dict[str | AnyAddress, Any] = {}
         for child in self.children:
-            names[child.name] = child
+            used[child.name] = child
             for ad in child.addresses:
                 if ad.is_tag():
-                    names[ad] = child  # entity tag created from name
+                    used[ad] = child  # entity tag created from name
         c = 1
         n = f"{name_base} {c}"
-        if name_base in names:
-            # reusing name base, add numbers to _all_ of them
-            old = names[name_base]
+        if name_base in used:
+            # reusing name base, add numbers to _all_ named entities
+            old = used[name_base]
             old.name = n
-            names[n] = old  # 2nd reference to the host
-        elif n not in names:
+            used[n] = old  # 2nd reference to the host
+        elif n not in used and EntityTag.new(n) not in used:
             return name_base  # name is free
-        while n in names or EntityTag.new(n) in names:
+        while n in used or EntityTag.new(n) in used:
             c += 1
             n = f"{name_base} {c}"
         return n
