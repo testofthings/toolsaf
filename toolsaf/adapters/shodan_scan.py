@@ -64,7 +64,9 @@ class ShodanScan(SystemWideTool):
             status_code = str(entry["http"]["status"])
             key_part = "http" if protocol == Protocol.HTTP else "https"
             key = PropertyKey(self.tool_label, key_part, "status", status_code)
-            prop_event = PropertyEvent(self._evidence, service, key.verdict(Verdict.IGNORE))
+            prop_event = PropertyEvent(
+                self._evidence, service, key.verdict(Verdict.IGNORE, f"HTTP(S) status {status_code}")
+            )
             self._interface.property_update(prop_event)
 
     def add_vulnerabilities(self, vulnerabilities: Dict[str, Any], service: Service) -> None:
@@ -140,7 +142,9 @@ class ShodanScan(SystemWideTool):
             self.add_cpes(entry.get("cpe23", []), service)
 
             if self.send_events and self._key_set:
-                prop_event = PropertyEvent(self._evidence, service, Properties.VULNERABILITIES.value_set(self._key_set))
+                prop_event = PropertyEvent(
+                    self._evidence, service, Properties.VULNERABILITIES.value_set(self._key_set, "No vulnerabilities")
+                )
                 interface.property_update(prop_event)
 
         return True

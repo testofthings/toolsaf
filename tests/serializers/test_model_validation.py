@@ -6,7 +6,7 @@ from toolsaf.common.verdict import Verdict
 from toolsaf.common.address import Protocol
 from toolsaf.common.android import MobilePermissions
 from toolsaf.core.serializer.model_serializer import (
-    PropertyDTO, EntityDTO, NetworkNodeDTO,
+    EntityDTO, NetworkNodeDTO,
     IgnoreRuleDTO, IgnoreRulesDTO, IoTSystemDTO,
     AddressableDTO, HostDTO, ServiceDTO, DHCPServiceDTO, DNSServiceDTO,
     NodeComponentDTO, SoftwareComponentDTO, SoftwareDTO,
@@ -18,18 +18,6 @@ def _validate(valid_data, key_values, dto_class):
     for key, value in key_values:
         with pytest.raises(ValidationError):
             dto_class(**{**valid_data, key: value})
-
-
-def test_property_dto_invalid_values():
-    key_values = [
-        ("verdict", "unknown"),
-        ("set", "abc"),
-        ("set", [123]),
-        ("set", ["a"*101]),
-        ("exp", -1),
-        ("exp", "a"*4001),
-    ]
-    _validate({}, key_values, PropertyDTO)
 
 
 def test_entity_dto_invalid_values():
@@ -71,15 +59,6 @@ def test_ignore_rules_dto_invalid_values():
     _validate({}, key_values, IgnoreRulesDTO)
 
 
-def _valid_properties():
-    return {
-        "check:vunlz": {
-            "verdict": Verdict.FAIL.value,
-            "exp": "exp"
-        }
-    }
-
-
 def _valid_network_node():
     return {
         "long_name": "Node",
@@ -89,9 +68,7 @@ def _valid_network_node():
         "address": "Node",
         "host_type": HostType.DEVICE.value,
         "status": Status.EXTERNAL.value,
-        "verdict": Verdict.PASS.value,
         "external_activity": ExternalActivity.BANNED.value,
-        "properties": _valid_properties(),
         "networks": ["local"]
     }
 
@@ -113,8 +90,6 @@ def test_network_node_dto_invalid_values():
         ("host_type", 1),
         ("status", "unknown"),
         ("status", 1),
-        ("verdict", "unknown"),
-        ("verdict", 1),
         ("external_activity", "abc"),
         ("external_activity", 100),
         ("networks", "local"),
@@ -363,7 +338,6 @@ def _valid_connection():
         "target_address": "Node_2/tcp:80",
         "con_type": ConnectionType.ENCRYPTED.value,
         "status": Status.EXTERNAL.value,
-        "properties": _valid_properties()
     }
 
 

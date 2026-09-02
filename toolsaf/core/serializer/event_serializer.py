@@ -2,7 +2,7 @@
 import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Annotated, Union, Literal, Tuple
-from pydantic import Field, TypeAdapter
+from pydantic import Field, TypeAdapter, field_validator
 
 from toolsaf.common.address import (
     AnyAddress, Addresses, EndpointAddress, Protocol,
@@ -16,7 +16,7 @@ from toolsaf.common.traffic import (
 from toolsaf.common.verdict import Verdict
 from toolsaf.core.event_interface import PropertyAddressEvent, PropertyEvent
 from toolsaf.core.model import IoTSystem, Addressable, EvidenceNetworkSource
-from toolsaf.core.serializer.model_serializer import BaseDTO, PropertyDTO
+from toolsaf.core.serializer.model_serializer import BaseDTO
 from toolsaf.core.services import NameEvent, DNSService
 from toolsaf.core.serializer.types import (
     SourceIdType, NameType, DescriptionType, SystemAddressType
@@ -235,6 +235,29 @@ class EventSerializer:
         if event.timestamp:
             data["timestamp"] = event.timestamp.isoformat()
         return data
+
+
+class PropertyDTO(BaseDTO):
+    """DTO for a single property"""
+    verdict: Optional[Verdict] = None
+    set: List[PropertyKey] = []
+    exp: DescriptionType
+
+    @field_validator("set", mode="after")
+    @classmethod
+    def validate_set(cls, set_list: List[PropertyKey]) -> List[PropertyKey]:
+        """Validate length of each PropertyKey"""
+        for key in set_list:
+            if len(str(key)) > 100:
+                raise ValueError("Property key too long")
+        return set_list
+
+    def populate(self, model: Flow, key: PropertyKey) -> None:
+        """Populate a model's properties from this DTO"""
+        if self.verdict:
+            model.properties[key] = PropertyVerdictValue(self.verdict, self.exp)
+        else:
+            model.properties[key] = PropertySetValue(set(self.set), self.exp)
 
 
 class PropEventValueDTO(BaseDTO):

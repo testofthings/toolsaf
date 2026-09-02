@@ -25,8 +25,6 @@ def test_iot_system_dto():
     setup.system.ignore("pcap-0").at(device).properties("verdict:key", "verdict:key2").because("exp1")
     setup.system.ignore("pcap-1").properties("verdict:key3").because("exp2")
     setup.system.system.ignore_rules = setup.system.ignore_backend.get_rules()
-    setup.system.system.properties[PropertyKey.parse("verdict:key")] = PropertyVerdictValue(Verdict.PASS)
-    setup.system.system.properties[PropertyKey.parse("set:key")] = PropertySetValue({PropertyKey.parse("sub:key")})
 
     records = SystemSerializer().serialize(setup.system.system)
     serialized = records[1]
@@ -39,9 +37,7 @@ def test_iot_system_dto():
         "address": "",
         "host_type": HostType.GENERIC.value,
         "status": "Expected",
-        "verdict": Verdict.INCON.value,
         "external_activity": ExternalActivity.BANNED.value,
-        "properties": {"verdict:key": {"verdict": Verdict.PASS.value}, "set:key": {"set": ["sub:key"]}},
         "networks": ["local"],
         "type": "system",
         "upload_tag": "test-tag"
@@ -63,7 +59,6 @@ def test_iot_system_dto():
     assert iot_system.name == setup.system.system.name
     assert iot_system.upload_tag == setup.system.system.upload_tag
     assert setup.system.system.ignore_rules == iot_system.ignore_rules
-    assert iot_system.properties == setup.system.system.properties
 
 
 def test_host_dto():
@@ -72,8 +67,6 @@ def test_host_dto():
     host = device.entity
     host.ignore_name_requests.add(DNSName("test.com"))
     host.ignore_name_requests.add(DNSName("test2.com"))
-    host.properties[PropertyKey.parse("verdict:key")] = PropertyVerdictValue(Verdict.PASS)
-    host.properties[PropertyKey.parse("set:key")] = PropertySetValue({PropertyKey.parse("sub:key")})
 
     serializer = SystemSerializer()
     records = serializer.serialize(setup.system.system)
@@ -88,9 +81,7 @@ def test_host_dto():
         "address": "Device_1",
         "host_type": HostType.DEVICE.value,
         "status": "Expected",
-        "verdict": Verdict.INCON.value,
         "external_activity": ExternalActivity.PASSIVE.value,
-        "properties": {"verdict:key": {"verdict": Verdict.PASS.value}, "set:key": {"set": ["sub:key"]}},
         "addresses": ["Device_1"],
         "parent_address": "",
         "any_host": False,
@@ -106,15 +97,12 @@ def test_host_dto():
     assert new_host.ignore_name_requests == host.ignore_name_requests
     assert new_host.parent == new_system
     assert new_host in new_system.children
-    assert new_host.properties == host.properties
 
 
 def test_service_dto():
     setup = Setup()
     device = setup.system.device("Device 1")
     service = (device / HTTP).entity
-    service.properties[PropertyKey.parse("verdict:key")] = PropertyVerdictValue(Verdict.PASS)
-    service.properties[PropertyKey.parse("set:key")] = PropertySetValue({PropertyKey.parse("sub:key")})
 
     serializer = SystemSerializer()
     records = serializer.serialize(setup.system.system)
@@ -126,9 +114,7 @@ def test_service_dto():
         "address": "Device_1/tcp:80",
         "host_type": HostType.GENERIC.value,
         "status": "Expected",
-        "verdict": Verdict.INCON.value,
         "external_activity": ExternalActivity.PASSIVE.value,
-        "properties": {"verdict:key": {"verdict": Verdict.PASS.value}, "set:key": {"set": ["sub:key"]}},
         "addresses": ["*/tcp:80"],
         "parent_address": "Device_1",
         "any_host": False,
@@ -154,15 +140,12 @@ def test_service_dto():
     assert new_service.multicast_target == service.multicast_target
     assert new_service.port_range == service.port_range
     assert new_service.parent == new_host
-    assert new_service.properties == service.properties
 
 
 def test_dhcp_service_dto():
     setup = Setup()
     device = setup.system.device("Device 1")
     service = (device / DHCP).entity
-    service.properties[PropertyKey.parse("verdict:key")] = PropertyVerdictValue(Verdict.PASS)
-    service.properties[PropertyKey.parse("set:key")] = PropertySetValue({PropertyKey.parse("sub:key")})
 
     serializer = SystemSerializer()
     records = serializer.serialize(setup.system.system)
@@ -174,9 +157,7 @@ def test_dhcp_service_dto():
         "address": "Device_1/udp:67",
         "host_type": HostType.ADMINISTRATIVE.value,
         "status": "Expected",
-        "verdict": Verdict.INCON.value,
         "external_activity": ExternalActivity.UNLIMITED.value,
-        "properties": {"verdict:key": {"verdict": Verdict.PASS.value}, "set:key": {"set": ["sub:key"]}},
         "addresses": ["*/udp:67"],
         "parent_address": "Device_1",
         "any_host": False,
@@ -203,15 +184,12 @@ def test_dhcp_service_dto():
     assert new_service.multicast_target == service.multicast_target
     assert new_service.port_range == service.port_range
     assert new_service.parent == new_host
-    assert new_service.properties == service.properties
 
 
 def test_dns_service_dto():
     setup = Setup()
     device = setup.system.device("Device 1")
     service = (device / DNS).entity
-    service.properties[PropertyKey.parse("verdict:key")] = PropertyVerdictValue(Verdict.PASS)
-    service.properties[PropertyKey.parse("set:key")] = PropertySetValue({PropertyKey.parse("sub:key")})
 
     serializer = SystemSerializer()
     records = serializer.serialize(setup.system.system)
@@ -223,9 +201,7 @@ def test_dns_service_dto():
         "address": "Device_1/udp:53",
         "host_type": HostType.ADMINISTRATIVE.value,
         "status": "Expected",
-        "verdict": Verdict.INCON.value,
         "external_activity": ExternalActivity.OPEN.value,
-        "properties": {"verdict:key": {"verdict": Verdict.PASS.value}, "set:key": {"set": ["sub:key"]}},
         "addresses": ["*/udp:53"],
         "parent_address": "Device_1",
         "any_host": False,
@@ -252,7 +228,6 @@ def test_dns_service_dto():
     assert new_service.multicast_target == service.multicast_target
     assert new_service.port_range == service.port_range
     assert new_service.parent == new_host
-    assert new_service.properties == service.properties
 
 
 def test_software_dto():
@@ -329,8 +304,6 @@ def test_connection_dto():
     device1 = setup.system.device("Device 1")
     device2 = setup.system.device("Device 2")
     connection = (device1 >> device2 / HTTP).connection
-    connection.properties[PropertyKey.parse("verdict:key")] = PropertyVerdictValue(Verdict.PASS)
-    connection.properties[PropertyKey.parse("set:key")] = PropertySetValue({PropertyKey.parse("sub:key")})
 
     serializer = SystemSerializer()
     records = serializer.serialize(setup.system.system)
@@ -344,7 +317,6 @@ def test_connection_dto():
         "target_address": "Device_2/tcp:80",
         "con_type": ConnectionType.UNKNOWN.value,
         "status": "Expected",
-        "properties": {"verdict:key": {"verdict": Verdict.PASS.value}, "set:key": {"set": ["sub:key"]}},
     }
 
     deserialized = [serializer.deserialize(record) for record in records]
@@ -353,8 +325,6 @@ def test_connection_dto():
     assert new_connection.con_type == connection.con_type
     assert new_connection.source == deserialized[2]
     assert new_connection.target == deserialized[4]
-    assert new_connection.properties == connection.properties
-
 
 def test_network_dto():
     setup = Setup()

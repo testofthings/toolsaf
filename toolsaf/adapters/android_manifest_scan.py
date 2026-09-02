@@ -57,14 +57,19 @@ class AndroidManifestScan(EndpointTool):
             key = PropertyKey("permission", category.value)
             key_set.add(key)
 
+            explanation = f"{name} ({category.value})"
             if self.load_baseline:
                 software.permissions.add(category.value)
                 ver = Verdict.PASS
             else:
-                ver = Verdict.PASS if category.value in software.permissions else Verdict.FAIL
+                if category.value in software.permissions:
+                    ver = Verdict.PASS
+                else:
+                    ver = Verdict.FAIL
+                    explanation = f"{explanation} not in statement"
 
             if self.send_events:
-                ev = PropertyEvent(evidence, software, key.verdict(ver))
+                ev = PropertyEvent(evidence, software, key.verdict(ver, explanation=explanation))
                 interface.property_update(ev)
 
         # Set verdict for permissions that were only present in the statement
@@ -73,7 +78,7 @@ class AndroidManifestScan(EndpointTool):
             if key not in key_set:
                 key_set.add(key)
                 ver = Verdict.FAIL if not self.load_baseline else Verdict.PASS
-                ev = PropertyEvent(evidence, software, key.verdict(ver))
+                ev = PropertyEvent(evidence, software, key.verdict(ver, f"{permission} not in manifest"))
                 interface.property_update(ev)
 
         if self.send_events:
