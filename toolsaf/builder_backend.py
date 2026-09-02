@@ -214,7 +214,6 @@ class SystemBackend(SystemBuilder):
             host_names.add(h.name)
             self._check_unique_under_parent(h)
 
-
     def _check_system_addresses(self) -> None:
         """Check that all entities have unique system addresses"""
         entities_to_check = set(self.system.iterate(relevant_only=False))
