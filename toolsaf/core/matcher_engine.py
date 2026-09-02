@@ -275,9 +275,11 @@ class AddressClue:
         status = self.entity.status
         match status:
             case Status.EXPECTED if is_service and not wildcard:
-                w = 128 # expected address + service match
+                w = 512 # expected address + service match
             case Status.EXPECTED if is_service and multicast_match:
-                w = 128 # expected multicast address + service match
+                w = 256 # expected multicast address + service match
+            case _ if is_service and not wildcard and self.entity.get_parent_host().status == Status.EXPECTED:
+                w = 128 # any service in expected parent, better than the parent
             case Status.EXPECTED if not wildcard:
                 w = 64  # expected address match
             case Status.EXPECTED if is_service:
