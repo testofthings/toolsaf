@@ -2,6 +2,7 @@
 
 from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
+from toolsaf.common.entity import Entity
 from toolsaf.core.address_ranges import MulticastTarget, PortRange
 from toolsaf.common.address import AddressAtNetwork, Addresses, AnyAddress, EndpointAddress, EntityTag, \
     Network, Protocol
@@ -197,13 +198,15 @@ class MatcherEngine:
         return "\n".join(r)
 
 
+MatchKey = Entity | Tuple[bool, Connection]
+
 class MatchingState:
     """Matching state"""
     def __init__(self, engine: MatcherEngine) -> None:
         self.engine = engine
-        self.values: Dict[Any, StateValue] = {}
+        self.values: Dict[MatchKey, StateValue] = {}
 
-    def get(self, item: Any) -> 'StateValue':
+    def get(self, item: MatchKey) -> 'StateValue':
         """Get deduction value for item"""
         return self.values.setdefault(item, StateValue())
 
@@ -214,7 +217,13 @@ class MatchingState:
     def __repr__(self) -> str:
         r = []
         for key, value in sorted(self.values.items(), key=lambda kv: -kv[1].weight):
-            r.append(f"{value.weight:<3} {key} # {value.reference}")
+            match key:
+                case Entity():
+                    key_s = str(key)
+                case _:
+                    key_s = ("target: " if key[0] else "source: ") + str(key[1])
+
+            r.append(f"{value.weight:<3} {key_s} # {value.reference}")
         return "\n".join(r)
 
 
@@ -513,4 +522,4 @@ class FlowMatcher:
         return source_address, target_address
 
     def __repr__(self) -> str:
-        return f"{self.flow}\n{self.sources}\n---\n{self.targets}"
+        return f"{self.flow}\nBY FLOW SOURCE:\n{self.sources}\n---\nBY FLOW TARGET:\n{self.targets}"
