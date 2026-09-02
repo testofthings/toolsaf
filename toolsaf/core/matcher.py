@@ -14,12 +14,13 @@ from toolsaf.common.verdict import Verdict
 
 class SystemMatcher(ModelListener):
     """Match system model"""
-    def __init__(self, system: IoTSystem) -> None:
+    def __init__(self, system: IoTSystem, validate_system: bool = True) -> None:
         self.system = system
         self.contexts: Dict[EvidenceSource, MatchingContext] = {}
         system.model_listeners.append(self)
-        # validate system
-        system.check_unique_system_addresses()
+        if validate_system:
+            # validate system
+            system.check_unique_system_addresses()
 
     def address_change(self, host: Host) -> None:
         for ctx in self.contexts.values():

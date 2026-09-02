@@ -18,9 +18,10 @@ from toolsaf.common.verdict import Verdict
 
 class Inspector(EventInterface):
     """Inspector"""
-    def __init__(self, system: IoTSystem, ignore_rules: Optional[IgnoreRules]=None) -> None:
+    def __init__(self, system: IoTSystem, ignore_rules: Optional[IgnoreRules]=None,
+                 validate_system: bool = True) -> None:
         super().__init__()
-        self.matcher = SystemMatcher(system)
+        self.matcher = SystemMatcher(system, validate_system=validate_system)
         self.system = system
         self.ignore_rules = ignore_rules if ignore_rules else IgnoreRules()
         self.logger = logging.getLogger("inspector")
