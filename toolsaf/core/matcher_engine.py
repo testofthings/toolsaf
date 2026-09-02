@@ -221,7 +221,7 @@ class MatchingState:
                 case Entity():
                     key_s = str(key)
                 case _:
-                    key_s = ("target: " if key[0] else "source: ") + str(key[1])
+                    key_s = str(key[1]) + ("" if key[0] else " (reverse)")
 
             r.append(f"{value.weight:<3} {key_s} # {value.reference}")
         return "\n".join(r)
