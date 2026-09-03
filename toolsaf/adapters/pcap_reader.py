@@ -10,7 +10,7 @@ from framing.backends import RawFrame
 from framing.frame_types import dns_frames
 from framing.frame_types.ethernet_frames import EthernetII
 from framing.frame_types.ipv4_frames import IPv4
-from framing.frame_types.ipv6_frames import IPReassembler
+from framing.frame_types.ipv6_frames import IPReassembler, IPv6, IPx
 from framing.frame_types.pcap_frames import PCAPFile, FileHeader, PacketRecord, frame_for_link_type
 from framing.frame_types.tcp_frames import TCP, TCPFlag
 from framing.frame_types.udp_frames import UDP
@@ -80,7 +80,8 @@ class PCAPReader(SystemWideTool):
                 top_frame = frame_for_link_type(link_type, PacketRecord.Packet_Data[rec])
                 Frames.process(top_frame, {
                     EthernetII: self._ethernet_frame,
-                    IPv4: lambda f: self._ip_frame(f, HWAddresses.NULL, HWAddresses.NULL)
+                    IPv4: lambda f: self._ip_frame(f, HWAddresses.NULL, HWAddresses.NULL),
+                    IPv6: lambda f: self._ip_frame(f, HWAddresses.NULL, HWAddresses.NULL),
                 })
             except ValueError as e:
                 # seen with DNS traffic
@@ -95,6 +96,7 @@ class PCAPReader(SystemWideTool):
         dst_hw = HWAddress.new(EthernetII.destination[frame].as_hw_address())
         EthernetII.data.process_frame(frame, {
             IPv4: lambda f: self._ip_frame(f, src_hw, dst_hw),
+            IPv6: lambda f: self._ip_frame(f, src_hw, dst_hw),
             RawFrame: lambda _: self._other_ethernet_frame(frame),
         })
 
@@ -125,8 +127,8 @@ class PCAPReader(SystemWideTool):
         # ts = int(delta.total_seconds() * 1000)
         # self.interface.flow_data_update(fl, [ts, le])
 
-    def _ip_frame(self, ip: IPv4, src_hw: HWAddress, dst_hw: HWAddress) -> None:
-        """Parse IPv4 frame"""
+    def _ip_frame(self, ip: IPx, src_hw: HWAddress, dst_hw: HWAddress) -> None:
+        """Parse IP frame"""
         pl = self.ip_reassembler.push_frame(ip)
         Frames.process(pl, {
             UDP: lambda f: self._udp_frame(ip, f, src_hw, dst_hw),
@@ -136,13 +138,22 @@ class PCAPReader(SystemWideTool):
 
     @classmethod
     def ip_flow_ends(
-        cls, ip: IPv4, source_port: int, destination_port: int, src_hw: Any, dst_hw: Any
+        cls, ip: IPx, source_port: int, destination_port: int, src_hw: Any, dst_hw: Any
     ) -> Tuple[Tuple[Any, Any, Any], Tuple[Any, Any, Any]]:
         """Resolve ends for IP flow object"""
-        return  (src_hw, IPAddress(IPv4.Source_IP[ip].as_ip_address()), source_port), \
-                (dst_hw, IPAddress(IPv4.Destination_IP[ip].as_ip_address()), destination_port)
+        match ip:
+            case IPv4():
+                return \
+                    (src_hw, IPAddress(IPv4.Source_IP[ip].as_ip_address()), source_port), \
+                    (dst_hw, IPAddress(IPv4.Destination_IP[ip].as_ip_address()), destination_port)
+            case IPv6():
+                return \
+                    (src_hw, IPAddress(IPv6.Source_address[ip].as_ip_address()), source_port), \
+                    (dst_hw, IPAddress(IPv6.Destination_address[ip].as_ip_address()), destination_port)
+            case _:
+                raise ValueError(f"Unexpected IP frame: {ip}")
 
-    def _udp_frame(self, ip: IPv4, frame: UDP, src_hw: Any, dst_hw: Any) -> None:
+    def _udp_frame(self, ip: IPx, frame: UDP, src_hw: Any, dst_hw: Any) -> None:
         """Parse UDP frame"""
         assert self.source, "Source is not set"
         assert self.interface, "Interface is not set"
@@ -216,7 +227,7 @@ class PCAPReader(SystemWideTool):
         for e in events:
             self.interface.name(e)
 
-    def _tcp_frame(self, ip: IPv4, frame: TCP, src_hw: Any, dst_hw: Any) -> None:
+    def _tcp_frame(self, ip: IPx, frame: TCP, src_hw: Any, dst_hw: Any) -> None:
         """Parse TCP frame"""
         assert self.source, "Source is not set"
         assert self.interface, "Interface is not set"
@@ -228,11 +239,17 @@ class PCAPReader(SystemWideTool):
             flow.timestamp = self.timestamp
             self.interface.connection(flow)
 
-    def _other_ip_frame(self, ip: IPv4, src_hw: Any, dst_hw: Any) -> None:
+    def _other_ip_frame(self, ip: IPx, src_hw: Any, dst_hw: Any) -> None:
         assert self.source, "Source is not set"
         assert self.interface, "Interface is not set"
 
-        proto = IPv4.Protocol[ip]
+        match ip:
+            case IPv4():
+                proto = IPv4.Protocol[ip]
+            case IPv6():
+                proto = IPv6.Next_header[ip]
+            case _:
+                raise ValueError(f"Unexpected IP frame: {ip}")
         s, d = self.ip_flow_ends(ip, proto, proto, src_hw, dst_hw)
         flow = IPFlow(Evidence(self.source, f":{self.frame_number}"), s, d, Protocol.IP)
         flow.timestamp = self.timestamp
