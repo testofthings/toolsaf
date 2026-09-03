@@ -239,6 +239,7 @@ def test_host_merging():
     assert cs.status == Status.UNEXPECTED
     assert cs.source.name == "Device 1"
     assert cs.target.name == "1.0.0.2"
+    assert cs.target.addresses == {IPAddress.new("1.0.0.2")}
 
     key = EndpointAddress(HWAddress.new("a:0:0:0:0:1"), Protocol.UDP, 1100), \
         EndpointAddress.ip("1.0.0.2", Protocol.UDP, 1234)
@@ -251,8 +252,7 @@ def test_host_merging():
     assert sb.system.connections[key] == cs
     assert cs.status == Status.UNEXPECTED
     assert cs.source.name == "Device 1"
-    # FIXME: Connection redirection removed, matcher etc. not keeping up with it
-    # assert cs.target.name == "target.org"
+    assert cs.target.addresses == {EntityTag("_1_0_0_2")}
 
 
 def test_unknown_multicast():

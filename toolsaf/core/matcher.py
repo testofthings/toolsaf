@@ -14,10 +14,12 @@ from toolsaf.common.verdict import Verdict
 
 class SystemMatcher(ModelListener):
     """Match system model"""
-    def __init__(self, system: IoTSystem) -> None:
+    def __init__(self, system: IoTSystem, validate_system: bool = True) -> None:
         self.system = system
         self.contexts: Dict[EvidenceSource, MatchingContext] = {}
         system.model_listeners.append(self)
+        if validate_system:
+            system.check_unique_system_addresses()
 
     def address_change(self, host: Host) -> None:
         for ctx in self.contexts.values():
@@ -153,8 +155,8 @@ class MatchingContext:
         use_ad = stack[0]
         for ad in stack[1:]:
             if isinstance(ad, IPAddress):
-                if system.is_external(ad) or ad.is_multicast():
-                    use_ad = ad  # must use the IP address
+                if system.is_external(ad) or use_ad.is_multicast():
+                    use_ad = ad  # must use the IP address, if external or HW is multicast
                     break
             if use_ad.is_null() and not ad.is_null():
                 use_ad = ad  # prefer non-null address

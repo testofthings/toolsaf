@@ -191,17 +191,22 @@ class NetworkNode(Entity):
 
     def free_child_name(self, name_base: str) -> str:
         """Get free child name, rename existing if required"""
-        names = {c.name: c for c in self.children}
+        used: Dict[str | AnyAddress, Any] = {}
+        for child in self.children:
+            used[child.name] = child
+            for ad in child.addresses:
+                if ad.is_tag():
+                    used[ad] = child  # entity tag created from name
         c = 1
         n = f"{name_base} {c}"
-        if name_base in names:
-            # reusing name base, add numbers to _all_ of them
-            old = names[name_base]
+        if name_base in used:
+            # reusing name base, add numbers to _all_ named entities
+            old = used[name_base]
             old.name = n
-            names[n] = old  # 2nd reference to the host
-        elif n not in names:
+            used[n] = old  # 2nd reference to the host
+        elif n not in used and EntityTag.new(n) not in used:
             return name_base  # name is free
-        while n in names:
+        while n in used or EntityTag.new(n) in used:
             c += 1
             n = f"{name_base} {c}"
         return n
@@ -609,6 +614,14 @@ class IoTSystem(NetworkNode):
         if address:
             add.addresses.remove(address)
             named.addresses.add(address)
+            if not add.addresses:
+                # must not have host without any addresses
+                # - insert entity tag, usually unexpected do not have these, but cooking one from the address
+                # - there should not be any with the same tag (nobody had the address)
+                # - assuming this is not serialized and stored - we now change its system address
+                tag = EntityTag.new(address.get_parseable_value())
+                assert self.find_endpoint(tag) is None, f"Did not expect host with tag: {tag}"
+                add.addresses.add(tag)
         return named, True
 
     def learn_ip_address(self, host: Host, ip_address: IPAddress) -> None:
@@ -734,6 +747,20 @@ class IoTSystem(NetworkNode):
 
     def get_system_address(self) -> AddressSequence:
         return AddressSequence((), )  # empty sequence
+
+    def check_unique_system_addresses(self) -> None:
+        """Check that all entities have unique system addresses"""
+        entities = set(self.iterate(relevant_only=False))
+        for connection in self.get_connections(relevant_only=False):
+            entities.add(connection)
+
+        addresses: Dict[str, Entity] = {}
+        for entity in entities:
+            sys_addr = entity.get_system_address().get_parseable_value()
+            other = addresses.get(sys_addr)
+            if other:
+                raise ValueError(f'Entity: {entity} shares system address with {other}: {sys_addr}')
+            addresses[sys_addr] = entity
 
     def __repr__(self) -> str:
         s = [self.long_name()]

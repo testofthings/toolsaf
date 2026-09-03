@@ -9,7 +9,7 @@ from toolsaf.common.basics import ExternalActivity, Status
 def test_source_ip():
     sb = SystemBackend()
     dev0 = sb.device().ip("12.0.0.1")
-    assert Addresses.get_prioritized(dev0.entity.addresses).is_global()
+    assert Addresses.get_prioritized(dev0.entity.addresses).is_tag()
 
     m = SystemMatcher(sb.system)
     flow = IPFlow.UDP("1:0:0:0:0:1", "12.0.0.1", 1100) >> ("1:0:0:0:0:2", "12.0.0.2", 1234)
@@ -52,7 +52,7 @@ def test_source_ip_2():
 def test_target_ip():
     sb = SystemBackend()
     dev0 = sb.device().ip("12.0.0.2").external_activity(ExternalActivity.BANNED)
-    assert Addresses.get_prioritized(dev0.entity.addresses).is_global()
+    assert Addresses.get_prioritized(dev0.entity.addresses).is_tag()
 
     m = SystemMatcher(sb.system)
     flow = IPFlow.UDP("1:0:0:0:0:1", "12.0.0.1", 1100) >> ("1:0:0:0:0:2", "12.0.0.2", 1234)
