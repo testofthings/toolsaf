@@ -159,12 +159,6 @@ class PCAPReader(SystemWideTool):
             }[proto]
             proc() # type: ignore [no-untyped-call]
 
-        # We used to track packets
-        # le = UDP.Data[frame].byte_length()
-        # delta = self.timestamp - flow.timestamp
-        # ts = int(delta.total_seconds() * 1000)
-        # self.interface.flow_data_update(flow, [ts, le])
-
     def _dns_message(self, peers: List[Addressable], udp: UDP, connection: Connection) -> None:
         """Parse DNS message"""
         assert self.source, "Source is not set"
@@ -233,17 +227,6 @@ class PCAPReader(SystemWideTool):
             flow = IPFlow(Evidence(self.source, f":{self.frame_number}"), s, d, Protocol.TCP)
             flow.timestamp = self.timestamp
             self.interface.connection(flow)
-        # We used to track packets
-        # else:
-            # key = self.ip_flow_ends(ethernet, ip, TCP.Source_port[frame], TCP.Destination_port[frame])
-            # flow = self.flows.get(key)
-            # if flow:
-            #     le = TCP.Data[frame].byte_length()
-            #     # NOTE: We could make fewer calls and pack more to the list
-            #     if le > 0:
-            #         delta = self.timestamp - flow.timestamp
-            #         ts = int(delta.total_seconds() * 1000)
-            #         self.interface.flow_data_update(flow, [ts, le])
 
     def _other_ip_frame(self, ip: IPv4, src_hw: Any, dst_hw: Any) -> None:
         assert self.source, "Source is not set"
@@ -254,12 +237,6 @@ class PCAPReader(SystemWideTool):
         flow = IPFlow(Evidence(self.source, f":{self.frame_number}"), s, d, Protocol.IP)
         flow.timestamp = self.timestamp
         self.interface.connection(flow)
-
-        # We used to track packets
-        # le = IPv4.Payload[ip].byte_length()
-        # delta = self.timestamp - flow.timestamp
-        # ts = int(delta.total_seconds() * 1000)
-        # self.interface.flow_data_update(flow, [ts, le])
 
     def __repr__(self) -> str:
         base_ref = (self.source.base_ref if self.source else "") or "PCAP"
