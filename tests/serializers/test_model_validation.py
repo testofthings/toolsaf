@@ -69,7 +69,7 @@ def _valid_network_node():
         "host_type": HostType.DEVICE.value,
         "status": Status.EXTERNAL.value,
         "external_activity": ExternalActivity.BANNED.value,
-        "networks": ["local"]
+        "networks": ["default"]
     }
 
 
@@ -92,7 +92,7 @@ def test_network_node_dto_invalid_values():
         ("status", 1),
         ("external_activity", "abc"),
         ("external_activity", 100),
-        ("networks", "local"),
+        ("networks", "default"),
         ("networks", [""]),
         ("networks", ["a"*101]),
         ("networks", [1]),
@@ -402,8 +402,8 @@ def test_network_dto_valid_values():
 
 def test_network_dto_legacy_values():
     """Legacy network records named the IP mask in the address, not the network"""
-    network = NetworkDTO(type="network", name="local", address="network=10.10.0.0/24", parent_address="")
-    assert network.name == "local"
-    assert network.address == "network=local"
+    network = NetworkDTO(type="network", name="default", address="network=10.10.0.0/24", parent_address="")
+    assert network.name == "default"
+    assert network.address == "network=default"
     assert str(network.ip_mask) == "10.10.0.0/24"
     assert network.parent_address == ""

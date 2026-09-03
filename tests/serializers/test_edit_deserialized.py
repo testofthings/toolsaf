@@ -185,7 +185,7 @@ def test_networks_of_loaded_statement():
     assert sb.system.get_default_network().ip_network == ipaddress.ip_network("10.0.0.0/16")
 
     host = cast(HostBackend, sb.get_backend("Device_1"))
-    assert [n.name for n in host.entity.networks] == ["local", "loopback"]
+    assert [n.name for n in host.entity.networks] == ["default", "loopback"]
     assert host.entity.networks[0].ip_network == ipaddress.ip_network("10.0.0.0/16")
     assert host.entity.networks[1].ip_network == ipaddress.ip_network("127.0.0.0/8")
 

@@ -590,6 +590,9 @@ class NetworkDTO(BaseDTO):
             ipaddress.ip_network(ip_mask)
         except ValueError:
             return data # Not a legacy address, the mismatch with the name is reported below
+        # now we use 'default' and not 'local' for the default network
+        if name == "local":
+            name = "default"
         return data | {
             "address": get_network_address(name),
             "ip_mask": data.get("ip_mask") or ip_mask

@@ -47,7 +47,7 @@ def test_networks():
     sb = SystemBackend()
     default = sb.network().network
     assert default is sb.system.get_default_network()
-    assert (default.name, str(default.ip_network)) == ("local", "192.168.0.0/16")
+    assert (default.name, str(default.ip_network)) == ("default", "192.168.0.0/16")
 
     subnet = sb.network("VPN", ip_mask="169.254.0.0/16").network
     assert (subnet.name, str(subnet.ip_network)) == ("VPN", "169.254.0.0/16")
@@ -102,7 +102,7 @@ def test_loopback_network_errors():
                        match=r"Loopback network must have IP mask 127.0.0.0/8, got '10.0.0.0/8'"):
         SystemBackend().network(ip_mask="127.0.0.0/8").mask("10.0.0.0/8")
     with pytest.raises(ConfigurationException,
-                       match="Loopback network must be named 'loopback', not 'local'"):
+                       match="Loopback network must be named 'loopback', not 'default'"):
         SystemBackend().network().mask("127.0.0.0/8")
 
 

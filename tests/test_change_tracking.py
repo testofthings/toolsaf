@@ -127,8 +127,8 @@ def test_modify_system_network():
     assert len(serialized) == 1
     assert serialized[0] == {
         "type": "network",
-        "name": "local",
-        "address": "network=local",
+        "name": "default",
+        "address": "network=default",
         "ip_mask": "10.42.0.0/16"
     }
 

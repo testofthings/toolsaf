@@ -38,7 +38,7 @@ def test_iot_system_dto():
         "host_type": HostType.GENERIC.value,
         "status": "Expected",
         "external_activity": ExternalActivity.BANNED.value,
-        "networks": ["local"],
+        "networks": ["default"],
         "type": "system",
         "upload_tag": "test-tag"
     }
@@ -53,7 +53,7 @@ def test_iot_system_dto():
     assert ignore_rules["rules"]["pcap-1"][0]["properties"] == ["verdict:key3"]
 
     deserializer = SystemSerializer()
-    deserializer.deserialize(records[0]) # The local network, referred to by the system
+    deserializer.deserialize(records[0]) # The default network, referred to by the system
     iot_system = deserializer.deserialize(serialized | {"ignore_rules": ignore_rules})
     assert isinstance(iot_system, IoTSystem)
     assert iot_system.name == setup.system.system.name
@@ -89,7 +89,7 @@ def test_host_dto():
     }
     assert sorted(ignore_name_reqs) == ["test.com", "test2.com"]
 
-    serializer.deserialize(records[0]) # The local network
+    serializer.deserialize(records[0]) # The default network
     new_system = serializer.deserialize(s_system)
     new_host = serializer.deserialize(s_host | {"ignore_name_requests": ignore_name_reqs})
     assert isinstance(new_host, Host)
@@ -334,8 +334,8 @@ def test_network_dto():
     s_network = records[0] # Networks are serialized first
     assert s_network == {
         "type": "network",
-        "name": "local",
-        "address": "network=local",
+        "name": "default",
+        "address": "network=default",
         "ip_mask": "10.42.0.0/16"
     }
 
@@ -371,9 +371,9 @@ def test_network_dto_without_ip_mask():
 
 def test_non_iot_system_networks():
     setup = Setup()
-    local = setup.system.network(ip_mask="10.42.0.0/16")
+    default = setup.system.network(ip_mask="10.42.0.0/16")
     vpn = setup.system.network("VPN", ip_mask="10.43.0.0/16")
-    device = setup.system.device("Device 1").in_networks(local, vpn)
+    device = setup.system.device("Device 1").in_networks(default, vpn)
     service = (device / SSH).entity
     service.networks = [vpn.network]
 
@@ -381,20 +381,20 @@ def test_non_iot_system_networks():
     records = serializer.serialize(setup.system.system)
 
     # All networks of the model are serialized, before the entities referring to them
-    assert [r["address"] for r in records if r["type"] == "network"] == ["network=local", "network=VPN"]
-    assert records[2]["address"] == "" and records[2]["networks"] == ["local"]
+    assert [r["address"] for r in records if r["type"] == "network"] == ["network=default", "network=VPN"]
+    assert records[2]["address"] == "" and records[2]["networks"] == ["default"]
     assert records[3]["address"] == "Device_1"
-    assert records[3]["networks"] == ["local", "VPN"]
+    assert records[3]["networks"] == ["default", "VPN"]
     assert records[4]["address"] == "Device_1/tcp:22"
     assert records[4]["networks"] == ["VPN"]
 
     serializer.deserialize_list(records)
-    new_local = serializer.model_map["network=local"]
+    new_default = serializer.model_map["network=default"]
     new_vpn = serializer.model_map["network=VPN"]
-    assert new_local.ip_network == local.network.ip_network
+    assert new_default.ip_network == default.network.ip_network
     assert new_vpn.ip_network == vpn.network.ip_network
-    assert serializer.model_map[""].networks == [new_local]
-    assert serializer.model_map["Device_1"].networks == [new_local, new_vpn]
+    assert serializer.model_map[""].networks == [new_default]
+    assert serializer.model_map["Device_1"].networks == [new_default, new_vpn]
     assert serializer.model_map["Device_1/tcp:22"].networks == [new_vpn]
     # Networks are shared between the entities referring to them
     assert serializer.model_map["Device_1"].networks[1] is new_vpn
@@ -402,9 +402,9 @@ def test_non_iot_system_networks():
 
 def test_networks_of_reserialized_model():
     setup = Setup()
-    local = setup.system.network(ip_mask="10.42.0.0/16")
+    default = setup.system.network(ip_mask="10.42.0.0/16")
     loopback = setup.system.network(ip_mask="127.0.0.0/8")
-    setup.system.device("Device 1").in_networks(local, loopback) / SSH
+    setup.system.device("Device 1").in_networks(default, loopback) / SSH
 
     serializer = SystemSerializer()
     records = serializer.serialize(setup.system.system)
@@ -433,7 +433,7 @@ def test_node_networks_missing_network_record():
     serializer = SystemSerializer()
     records = serializer.serialize(setup.system.system)
     s_host = [r for r in records if r["type"] == "host"][0]
-    serializer.deserialize(records[0]) # The local network
+    serializer.deserialize(records[0]) # The default network
     serializer.deserialize([r for r in records if r["type"] == "system"][0])
     with pytest.raises(ValueError, match="Network 'network=VPN' must be deserialized before node 'Device_1'"):
         serializer.deserialize(s_host)
@@ -457,7 +457,7 @@ def test_lazy_load_deserialization():
     deserialized = serializer.deserialize_list(out_of_order)
     assert len(deserialized) == len(records)
     expected = {
-        "network=local": Network,
+        "network=default": Network,
         "": IoTSystem,
         "Device_1": Host,
         "Device_2": Host,
@@ -493,7 +493,7 @@ def _legacy_records():
             "any_host": False, "type": "host", "ignore_name_requests": []
         },
         {
-            "type": "network", "name": "local", "address": "network=10.10.0.0/24", "parent_address": ""
+            "type": "network", "name": "default", "address": "network=10.10.0.0/24", "parent_address": ""
         }
     ]
 
@@ -504,20 +504,20 @@ def test_deserialize_legacy_networks():
     system, host, network = deserialized
 
     assert isinstance(network, Network)
-    assert network.name == "local"
+    assert network.name == "default"
     assert network.ip_network == ipaddress.ip_network("10.10.0.0/24")
     # The legacy network is the network of the system it names as its parent
     assert system.networks == [network]
     assert system.get_default_network() is network
     assert host.networks == [] # Follows the system
-    assert serializer.model_map["network=local"] is network
+    assert serializer.model_map["network=default"] is network
 
 
 def test_deserialize_list_legacy_networks():
     serializer = SystemSerializer()
     serializer.deserialize_list(_legacy_records())
     system = serializer.model_map[""]
-    network = serializer.model_map["network=local"]
+    network = serializer.model_map["network=default"]
 
     assert isinstance(network, Network)
     assert network.ip_network == ipaddress.ip_network("10.10.0.0/24")
@@ -533,17 +533,17 @@ def test_reserialize_legacy_networks():
     # Networks of a legacy statement are serialized in the current format
     assert records[0] == {
         "type": "network",
-        "name": "local",
-        "address": "network=local",
+        "name": "default",
+        "address": "network=default",
         "ip_mask": "10.10.0.0/24"
     }
-    assert records[1]["type"] == "system" and records[1]["networks"] == ["local"]
+    assert records[1]["type"] == "system" and records[1]["networks"] == ["default"]
     # Nodes without networks of their own follow their parent, no field is written for them
     assert records[2]["type"] == "host" and "networks" not in records[2]
 
 
 def test_deserialize_network_with_unknown_address():
     serializer = SystemSerializer()
-    record = {"type": "network", "name": "local", "address": "network=not-an-ip-mask"}
+    record = {"type": "network", "name": "default", "address": "network=not-an-ip-mask"}
     with pytest.raises(ValidationError, match="Network address must be 'network=<name>'"):
         serializer.deserialize(record)
