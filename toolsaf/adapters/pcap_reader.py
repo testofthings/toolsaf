@@ -80,8 +80,8 @@ class PCAPReader(SystemWideTool):
                 top_frame = frame_for_link_type(link_type, PacketRecord.Packet_Data[rec])
                 Frames.process(top_frame, {
                     EthernetII: self._ethernet_frame,
-                    IPv4: lambda f: self._ip_frame(f, HWAddresses.NULL, HWAddresses.NULL),
-                    IPv6: lambda f: self._ip_frame(f, HWAddresses.NULL, HWAddresses.NULL),
+                    IPv4: lambda f: self._ipv4_frame(f, HWAddresses.NULL, HWAddresses.NULL),
+                    IPv6: lambda f: self._ipv6_frame(f, HWAddresses.NULL, HWAddresses.NULL),
                 })
             except ValueError as e:
                 # seen with DNS traffic
@@ -95,8 +95,8 @@ class PCAPReader(SystemWideTool):
         src_hw = HWAddress.new(EthernetII.source[frame].as_hw_address())
         dst_hw = HWAddress.new(EthernetII.destination[frame].as_hw_address())
         EthernetII.data.process_frame(frame, {
-            IPv4: lambda f: self._ip_frame(f, src_hw, dst_hw),
-            IPv6: lambda f: self._ip_frame(f, src_hw, dst_hw),
+            IPv4: lambda f: self._ipv4_frame(f, src_hw, dst_hw),
+            IPv6: lambda f: self._ipv6_frame(f, src_hw, dst_hw),
             RawFrame: lambda _: self._other_ethernet_frame(frame),
         })
 
@@ -121,14 +121,17 @@ class PCAPReader(SystemWideTool):
         fl.timestamp = self.timestamp
         self.interface.connection(fl)
 
-        # We used to track packets
-        # le = EthernetII.data[frame].byte_length()
-        # delta = self.timestamp - fl.timestamp
-        # ts = int(delta.total_seconds() * 1000)
-        # self.interface.flow_data_update(fl, [ts, le])
+    def _ipv4_frame(self, ip: IPv4, src_hw: HWAddress, dst_hw: HWAddress) -> None:
+        """Parse IPv4 frame"""
+        pl = self.ip_reassembler.push_frame(ip)
+        Frames.process(pl, {
+            UDP: lambda f: self._udp_frame(ip, f, src_hw, dst_hw),
+            TCP: lambda f: self._tcp_frame(ip, f, src_hw, dst_hw),
+            RawFrame: lambda _: self._other_ip_frame(ip, src_hw, dst_hw)
+        })
 
-    def _ip_frame(self, ip: IPx, src_hw: HWAddress, dst_hw: HWAddress) -> None:
-        """Parse IP frame"""
+    def _ipv6_frame(self, ip: IPv6, src_hw: HWAddress, dst_hw: HWAddress) -> None:
+        """Parse IPv6 frame"""
         pl = self.ip_reassembler.push_frame(ip)
         Frames.process(pl, {
             UDP: lambda f: self._udp_frame(ip, f, src_hw, dst_hw),
