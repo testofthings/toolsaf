@@ -1,6 +1,7 @@
+import ipaddress
 from typing import cast
 from tests.test_model import Setup
-from toolsaf.main import TLS, HTTP, DHCP, DNS, UDP, NTP, MQTT, TCP
+from toolsaf.main import TLS, HTTP, DHCP, DNS, UDP, NTP, MQTT, TCP, SSH
 from toolsaf.common.address import Protocol, IPAddress, AddressAtNetwork, DNSName
 from toolsaf.core.serializer.model_serializer import SystemSerializer
 from toolsaf.core.address_ranges import NULL_PORT_RANGE, PortRange
@@ -165,3 +166,35 @@ def test_edit_deserialized_and_serialize():
 
     entities = SystemSerializer().serialize(sb.system)
     assert len(entities) == 19
+
+
+def test_networks_of_loaded_statement():
+    system = Setup().system
+    local = system.network(ip_mask="10.0.0.0/16")
+    loopback = system.network(ip_mask="127.0.0.0/8")
+    dev = system.device("Device 1").in_networks(local, loopback)
+    dev / SSH().in_network(loopback)
+    dev.ip("10.0.0.5")
+
+    s = SystemSerializer()
+    s.deserialize_list(s.serialize(system.system))
+    sb = SystemBackend.from_entity(s.model_map[""])
+
+    # Only the local network belongs to the system itself
+    assert sb.system.networks == [local.network]
+    assert sb.system.get_default_network().ip_network == ipaddress.ip_network("10.0.0.0/16")
+
+    host = cast(HostBackend, sb.get_backend("Device_1"))
+    assert [n.name for n in host.entity.networks] == ["default", "loopback"]
+    assert host.entity.networks[0].ip_network == ipaddress.ip_network("10.0.0.0/16")
+    assert host.entity.networks[1].ip_network == ipaddress.ip_network("127.0.0.0/8")
+
+    ssh = cast(ServiceBackend, sb.get_backend("Device_1/tcp:22"))
+    assert [n.name for n in ssh.entity.networks] == ["loopback"]
+    # The same network object is shared by all entities using it
+    assert ssh.entity.networks[0] is host.entity.networks[1]
+
+    # Host addresses are registered at the networks they belong to
+    assert AddressAtNetwork(IPAddress.new("10.0.0.5"), host.entity.networks[0]) in sb.entity_by_address
+    assert AddressAtNetwork(IPAddress.new("10.0.0.5"), host.entity.networks[1]) not in sb.entity_by_address
+    assert len(sb._changes) == 0

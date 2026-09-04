@@ -69,6 +69,7 @@ def _valid_network_node():
         "host_type": HostType.DEVICE.value,
         "status": Status.EXTERNAL.value,
         "external_activity": ExternalActivity.BANNED.value,
+        "networks": ["default"]
     }
 
 
@@ -91,6 +92,10 @@ def test_network_node_dto_invalid_values():
         ("status", 1),
         ("external_activity", "abc"),
         ("external_activity", 100),
+        ("networks", "default"),
+        ("networks", [""]),
+        ("networks", ["a"*101]),
+        ("networks", [1]),
     ]
     _validate(_valid_network_node(), key_values, NetworkNodeDTO)
 
@@ -363,9 +368,9 @@ def test_connection_dto_invalid_values():
 def _valid_network():
     return {
         "type": "network",
-        "name": "local",
-        "address": "network=127.0.0.1",
-        "parent_address": ""
+        "name": "loopback",
+        "address": "network=loopback",
+        "ip_mask": "127.0.0.0/8"
     }
 
 
@@ -375,10 +380,30 @@ def test_network_dto_invalid_values():
         ("name", ""),
         ("name", "a"*101),
         ("name", 123),
-        ("address", "Node/fake_proto:80"),
-        ("address", "Node/tcp:abc"),
-        ("parent_address", "Node/fake_proto:80"),
-        ("parent_address", "Node/tcp:abc"),
-        ("parent_address", 123),
+        ("name", "other"), # Does not match the address
+        ("address", "loopback"),
+        ("address", "network="),
+        ("address", "network=other"), # Does not match the name
+        ("address", 123),
+        ("ip_mask", "abc"),
+        ("ip_mask", "127.0.0.0/33"),
     ]
     _validate(_valid_network(), key_values, NetworkDTO)
+
+
+def test_network_dto_valid_values():
+    network = NetworkDTO(**_valid_network())
+    assert network.name == "loopback"
+    assert network.address == "network=loopback"
+    assert str(network.ip_mask) == "127.0.0.0/8"
+    # An IP mask is optional
+    assert NetworkDTO(**(_valid_network() | {"ip_mask": None})).ip_mask is None
+
+
+def test_network_dto_legacy_values():
+    """Legacy network records named the IP mask in the address, not the network"""
+    network = NetworkDTO(type="network", name="default", address="network=10.10.0.0/24", parent_address="")
+    assert network.name == "default"
+    assert network.address == "network=default"
+    assert str(network.ip_mask) == "10.10.0.0/24"
+    assert network.parent_address == ""
