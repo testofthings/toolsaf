@@ -7,7 +7,7 @@ from tests.test_model import Setup, simple_setup_1
 class Setup_1(Setup):
     def __init__(self):
         super().__init__()
-        self.device1 = self.system.device().hw("1:0:0:0:0:1")
+        self.device1 = self.system.device().hw("2:0:0:0:0:1")
 
 
 def test_import_batch_a():

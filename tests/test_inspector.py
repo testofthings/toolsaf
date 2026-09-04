@@ -208,7 +208,7 @@ def test_multicast_many_addresses():
     cast_c = dev1 >> dev0 / UDP(port=5000).broadcast()
     cast_d = dev1 >> dev0 / UDP(port=5001).broadcast()
 
-    i = Inspector(sb.system)
+    i = Inspector(sb.system, validate_system=False)  # NOTE: Broadcast system address conflicts
     c1 = i.connection(IPFlow.UDP(
         "4:0:0:0:0:1", "192.168.0.1", 1100) >> ("ff:ff:ff:ff:ff:ff", "226.1.2.3", 5000))
     c2 = i.connection(IPFlow.UDP(

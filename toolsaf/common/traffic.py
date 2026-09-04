@@ -157,6 +157,10 @@ class Flow(Event):
         """Get target top address"""
         raise NotImplementedError()
 
+    def is_to_itself(self) -> bool:
+        """Is flow from itself to itself?"""
+        return False
+
     def __hash__(self) -> int:
         return self.protocol.__hash__() ^ hash(self.properties)
 
@@ -186,6 +190,9 @@ class EthernetFlow(Flow):
 
     def get_target_address(self) -> AnyAddress:
         return self.target
+
+    def is_to_itself(self) -> bool:
+        return self.source == self.target
 
     @classmethod
     def new(cls, protocol: Protocol, address: str) -> 'EthernetFlow':
@@ -288,6 +295,9 @@ class IPFlow(Flow):
 
     def get_target_address(self) -> AnyAddress:
         return self.target[0] if self.target[1].is_null() else self.target[1]
+
+    def is_to_itself(self) -> bool:
+        return self.source == self.target
 
     def __rshift__(self, target: Tuple[str, str, int]) -> 'IPFlow':
         self.target = HWAddress.new(target[0]), IPAddress.new(target[1]), target[2]
