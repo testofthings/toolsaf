@@ -140,7 +140,7 @@ class EntityTag(AnyAddress):
         return True
 
     def priority(self) -> int:
-        return 3
+        return 40
 
     def get_parseable_value(self) -> str:
         return f"{self.tag}"  # tag is the default
@@ -178,7 +178,7 @@ class PseudoAddress(AnyAddress):
         return self.multicast
 
     def priority(self) -> int:
-        return 3
+        return 50
 
     def get_parseable_value(self) -> str:
         return f"{self.name}|{self.address_type}" if self.address_type else self.name
@@ -205,19 +205,10 @@ class Addresses:
     BLE_Ad = PseudoAddress("BLE_Ad", multicast=True, hardware=True, address_type="hw")
 
     @classmethod
-    def get_prioritized(cls, addresses: Iterable[AnyAddress],ip: bool=True,
-                        hw: bool=True, dns: bool=True) -> AnyAddress:
-        """Get prioritized address"""
+    def get_prioritized(cls, addresses: Iterable[AnyAddress]) -> AnyAddress:
+        """Get address with highest priority"""
         add = None
         for a in addresses:
-            if a.is_tag():
-                continue
-            if not ip and isinstance(a, IPAddress):
-                continue
-            if not hw and isinstance(a, HWAddress):
-                continue
-            if not dns and isinstance(a, DNSName):
-                continue
             if add is None or add.priority() < a.priority():
                 add = a
         return add or IPAddresses.NULL
@@ -339,7 +330,7 @@ class HWAddress(AnyAddress):
         return (first_byte & 1) == 1
 
     def priority(self) -> int:
-        return 1 if not self.is_multicast() else 11
+        return 11 if self.is_multicast() else 10
 
     def get_parseable_value(self) -> str:
         return f"{self.data}|hw"
@@ -410,7 +401,7 @@ class IPAddress(AnyAddress):
         return self.data.is_global
 
     def priority(self) -> int:
-        return 2
+        return 20
 
     def get_parseable_value(self) -> str:
         return f"{self.data}"  # IP address is unambiguous
@@ -475,7 +466,7 @@ class DNSName(AnyAddress):
         return False
 
     def priority(self) -> int:
-        return 3
+        return 30
 
     def get_parseable_value(self) -> str:
         return f"{self.name}|name"
