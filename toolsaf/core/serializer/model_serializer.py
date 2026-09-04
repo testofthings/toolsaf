@@ -591,18 +591,22 @@ class NetworkDTO(BaseDTO):
         except ValueError:
             return data # Not a legacy address, the mismatch with the name is reported below
         # now we use 'default' and not 'local' for the default network
+        # - change only made for legacy network format, new ones should use proper name
         if name == "local":
             name = "default"
         return data | {
             "address": get_network_address(name),
+            'name': name,  # match name
             "ip_mask": data.get("ip_mask") or ip_mask
         }
 
     @model_validator(mode="after")
     def validate_address(self) -> "NetworkDTO":
         """Check that the address matches the name, networks are identified by their name"""
-        if self.address != get_network_address(self.name):
-            raise ValueError(f"Network address must be '{NETWORK_ADDRESS_PREFIX}<name>'")
+        # Address format can be either 'network=name' or just 'name', latter being legacy
+        address = self.address.removeprefix(NETWORK_ADDRESS_PREFIX)
+        if address != self.name:
+            raise ValueError(f"Network address must match name '{self.name}'")
         return self
 
     def to_model(self, model_map: Dict[str, Any]) -> Network:

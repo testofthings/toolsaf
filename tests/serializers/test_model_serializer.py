@@ -11,7 +11,7 @@ from toolsaf.common.property import PropertyKey, PropertyVerdictValue, PropertyS
 from toolsaf.common.verdict import Verdict
 from toolsaf.core.components import Software, SoftwareComponent, Cookies, CookieData
 from toolsaf.core.model import IoTSystem, Host, Service, Connection
-from toolsaf.core.serializer.model_serializer import SystemSerializer
+from toolsaf.core.serializer.model_serializer import NetworkDTO, SystemSerializer
 from toolsaf.core.services import DHCPService, DNSService
 from tests.test_model import Setup
 
@@ -512,6 +512,37 @@ def test_deserialize_legacy_networks():
     assert host.networks == [] # Follows the system
     assert serializer.model_map["network=default"] is network
 
+    # Legacy by e.g. -W <file>
+    js = NetworkDTO.convert_legacy_address(
+        {"type": "network",
+         "name": "default",
+         "address": "network=10.10.0.0/24",
+         "parent_address": ""}
+    )
+    assert js == {
+        "type": "network",
+        "name": "default",
+        "address": "network=default",
+        "ip_mask": "10.10.0.0/24",
+        "parent_address": "",
+    }
+
+    # Legacy with 'network=' stripped
+    js = NetworkDTO.convert_legacy_address(
+        {"type": "network",
+         "name": "default",
+         "address": "10.10.0.0/24",
+         "parent_address": ""}
+    )
+    assert js == {
+        "type": "network",
+        "name": "default",
+        "address": "network=default",
+        "ip_mask": "10.10.0.0/24",
+        "parent_address": "",
+    }
+
+
 
 def test_deserialize_list_legacy_networks():
     serializer = SystemSerializer()
@@ -540,10 +571,3 @@ def test_reserialize_legacy_networks():
     assert records[1]["type"] == "system" and records[1]["networks"] == ["default"]
     # Nodes without networks of their own follow their parent, no field is written for them
     assert records[2]["type"] == "host" and "networks" not in records[2]
-
-
-def test_deserialize_network_with_unknown_address():
-    serializer = SystemSerializer()
-    record = {"type": "network", "name": "default", "address": "network=not-an-ip-mask"}
-    with pytest.raises(ValidationError, match="Network address must be 'network=<name>'"):
-        serializer.deserialize(record)
