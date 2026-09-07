@@ -306,8 +306,8 @@ class SystemSerializer:
             if (old := into.get(address)) is None:
                 into[address] = network
             elif old.ip_network != network.ip_network:
-                LOGGER.warning("Networks named '%s' have different IP masks, using %s",
-                               network.name, old.ip_network)
+                raise ValueError(
+                    f"Two networks named '{network.name}', ip masks {old.ip_network} and {network.ip_network}")
         for child in node.children:
             self._collect_networks(child, into)
 
