@@ -915,6 +915,7 @@ class DHCPBackend(ProtocolBackend):
     def _create_service(self, parent: HostBackend) -> ServiceBackend:
         host_s = ServiceBackend(parent, DHCPService(parent.entity))
         host_s.entity.match_priority = 10
+        host_s.entity.networks = self.networks
         assert self.external_activity, "external activity was None"
         host_s.entity.external_activity = self.external_activity
 
@@ -935,6 +936,7 @@ class DNSBackend(ProtocolBackend):
         dns_s.captive_portal = self.captive_portal
         s = ServiceBackend(parent, dns_s)
         s.entity.match_priority = 10
+        s.entity.networks = self.networks
         assert self.external_activity, "external activity was None"
         s.entity.external_activity = self.external_activity
         return s
@@ -986,6 +988,7 @@ class ICMPBackend(ProtocolBackend):
     def _create_service(self, parent: HostBackend) -> ServiceBackend:
         s = super()._create_service(parent)
         s.entity.name = "ICMP"  # a bit of hack...
+        s.entity.networks = self.networks
         s.entity.host_type = HostType.ADMINISTRATIVE
         s.entity.con_type = ConnectionType.ADMINISTRATIVE
         # ICMP can be a service for other hosts
