@@ -48,7 +48,7 @@ Backend = Union[
     'SoftwareBackend', 'NetworkBackend', 'CookieBackend'
 ]
 
-# The loopback network is well-known: the name and the IP mask always imply each other
+# The loopback network is well-known, name and IP mask always imply each other
 LOOPBACK_NETWORK_NAME = "loopback"
 LOOPBACK_IP_MASK = ipaddress.ip_network("127.0.0.0/8")
 
@@ -86,12 +86,12 @@ class SystemBackend(SystemBuilder):
 
     def network(self, subnet: str="", ip_mask: Optional[str] = None) -> 'NetworkBuilder':
         if ip_mask and parse_ip_mask(ip_mask).is_loopback:
-            subnet = subnet or LOOPBACK_NETWORK_NAME # Well-known mask implies the well-known name
+            subnet = subnet or LOOPBACK_NETWORK_NAME
         nb = NetworkBackend(self, subnet) if subnet else NetworkBackend(self)
         if not ip_mask and nb.network.name == LOOPBACK_NETWORK_NAME:
-            ip_mask = str(LOOPBACK_IP_MASK) # Well-known name implies the well-known mask
+            ip_mask = str(LOOPBACK_IP_MASK)
         if ip_mask:
-            nb.mask(ip_mask) # Validates the mask, and the name that goes with it
+            nb.mask(ip_mask)
         self.changed(nb.network)
         return nb
 

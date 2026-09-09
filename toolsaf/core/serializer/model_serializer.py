@@ -31,8 +31,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def get_network_address(network_name: str) -> str:
-    """Get the record address of a network. Networks are identified by their name, which is
-       prefixed with the keyword 'network=' to separate networks from entities"""
+    """Get a "system address" for a network"""
     return f"{NETWORK_ADDRESS_PREFIX}{network_name}"
 
 
@@ -151,7 +150,6 @@ class SystemSerializer:
             "external_activity": obj.external_activity.value
         })
         if obj.networks:
-            # No networks means 'same as parent', the field is then left out
             data["networks"] = [n.name for n in obj.networks]
 
         for child in obj.children:
@@ -335,7 +333,7 @@ class NetworkNodeDTO(EntityDTO):
     host_type: HostType
     status: Status
     external_activity: ExternalActivity
-    networks: List[NameType] = [] # Names of the networks, no networks means 'same as parent'
+    networks: List[NameType] = []
 
     def populate(self, model: NetworkNode, model_map: Dict[str, Any]) -> None:
         """Populate a network node model from this DTO"""
@@ -572,12 +570,12 @@ class NetworkDTO(BaseDTO):
     name: NameType
     address: NetworkAddressType
     ip_mask: Optional[IPvAnyNetwork] = None # No mask means that the network covers all addresses
-    parent_address: Optional[SystemAddressType] = None # Legacy format only, the IoTSystem of the network
+    parent_address: Optional[SystemAddressType] = None
 
     @model_validator(mode="before")
     @classmethod
     def convert_legacy_address(cls, data: Any) -> Any:
-        """Convert legacy network records, they named the IP mask, not the network, in the address"""
+        """Convert legacy network records"""
         if not isinstance(data, dict):
             return data
         address, name = data.get("address"), data.get("name")
@@ -589,9 +587,8 @@ class NetworkDTO(BaseDTO):
         try:
             ipaddress.ip_network(ip_mask)
         except ValueError:
-            return data # Not a legacy address, the mismatch with the name is reported below
-        # now we use 'default' and not 'local' for the default network
-        # - change only made for legacy network format, new ones should use proper name
+            return data # Not a legacy address
+        # Change legacy name local to default
         if name == "local":
             name = "default"
         return data | {
@@ -614,7 +611,7 @@ class NetworkDTO(BaseDTO):
         network = Network(name=self.name, ip_network=self.ip_mask)
         model_map[self.address] = network
         if self.parent_address is not None:
-            # Legacy format, the network belongs to the IoTSystem it names as its parent
+            # Legacy format, the network belongs to the IoTSystem
             if isinstance(parent := model_map.get(self.parent_address), IoTSystem):
                 parent.networks = [n for n in parent.networks if n != network] + [network]
         return network

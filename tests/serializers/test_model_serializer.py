@@ -53,7 +53,7 @@ def test_iot_system_dto():
     assert ignore_rules["rules"]["pcap-1"][0]["properties"] == ["verdict:key3"]
 
     deserializer = SystemSerializer()
-    deserializer.deserialize(records[0]) # The default network, referred to by the system
+    deserializer.deserialize(records[0])
     iot_system = deserializer.deserialize(serialized | {"ignore_rules": ignore_rules})
     assert isinstance(iot_system, IoTSystem)
     assert iot_system.name == setup.system.system.name
@@ -433,7 +433,7 @@ def test_node_networks_missing_network_record():
     serializer = SystemSerializer()
     records = serializer.serialize(setup.system.system)
     s_host = [r for r in records if r["type"] == "host"][0]
-    serializer.deserialize(records[0]) # The default network
+    serializer.deserialize(records[0])
     serializer.deserialize([r for r in records if r["type"] == "system"][0])
     with pytest.raises(ValueError, match="Network 'network=VPN' must be deserialized before node 'Device_1'"):
         serializer.deserialize(s_host)
@@ -506,10 +506,10 @@ def test_deserialize_legacy_networks():
     assert isinstance(network, Network)
     assert network.name == "default"
     assert network.ip_network == ipaddress.ip_network("10.10.0.0/24")
-    # The legacy network is the network of the system it names as its parent
+    # Legacy network is the network of the IoTSystem
     assert system.networks == [network]
     assert system.get_default_network() is network
-    assert host.networks == [] # Follows the system
+    assert host.networks == []
     assert serializer.model_map["network=default"] is network
 
     # Legacy by e.g. -W <file>
@@ -561,7 +561,6 @@ def test_reserialize_legacy_networks():
     serializer.deserialize_list(_legacy_records())
     records = SystemSerializer().serialize(serializer.model_map[""])
 
-    # Networks of a legacy statement are serialized in the current format
     assert records[0] == {
         "type": "network",
         "name": "default",
@@ -569,5 +568,4 @@ def test_reserialize_legacy_networks():
         "ip_mask": "10.10.0.0/24"
     }
     assert records[1]["type"] == "system" and records[1]["networks"] == ["default"]
-    # Nodes without networks of their own follow their parent, no field is written for them
     assert records[2]["type"] == "host" and "networks" not in records[2]

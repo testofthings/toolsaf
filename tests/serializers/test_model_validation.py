@@ -396,12 +396,10 @@ def test_network_dto_valid_values():
     assert network.name == "loopback"
     assert network.address == "network=loopback"
     assert str(network.ip_mask) == "127.0.0.0/8"
-    # An IP mask is optional
     assert NetworkDTO(**(_valid_network() | {"ip_mask": None})).ip_mask is None
 
 
 def test_network_dto_legacy_values():
-    """Legacy network records named the IP mask in the address, not the network"""
     network = NetworkDTO(type="network", name="default", address="network=10.10.0.0/24", parent_address="")
     assert network.name == "default"
     assert network.address == "network=default"
