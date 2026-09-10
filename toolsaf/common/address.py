@@ -625,21 +625,34 @@ class EndpointAddress(AnyAddress):
         )
 
 
+# IPv4 or v6 network
+IPxNetwork = IPv4Network | IPv6Network
+
+# IPv6 link-local (RFC 4291) and Unique Local Address (RFC 4193) ranges - always local, regardless
+# of configured network masks, same spirit as multicast/null addresses
+IPV6_LINK_LOCAL = IPv6Network("fe80::/10")
+IPV6_UNIQUE_LOCAL = IPv6Network("fc00::/7")
+
+
 class Network:
     """Network"""
-    def __init__(self, name: str, ip_network: Optional[IPv4Network | IPv6Network] = None) -> None:
+    def __init__(self, name: str, ip_network: Optional[IPxNetwork] = None) -> None:
         self.name = name
         # NOTE: Equality etc. is only evaluated by name
-        self.ip_network = ip_network
+        self.ip_network: List[IPxNetwork] = [ip_network] if ip_network else []
 
     def is_local(self, address: 'AnyAddress') -> bool:
         """Is local address for this network?"""
         h = address.get_host()
         if h.is_multicast() or h.is_null() or not isinstance(h, IPAddress):
             return True
-        if self.ip_network and h.data in self.ip_network:
+        if isinstance(h.data, IPv6Address) and (
+            h.data in IPV6_LINK_LOCAL or h.data in IPV6_UNIQUE_LOCAL
+        ):
             return True
-        # FIXME: Broadcast for IPv6 not implemented  pylint: disable=fixme
+        for ipn in self.ip_network:
+            if h.data in ipn:
+                return True
         return False
 
     def __eq__(self, other: object ) -> bool:

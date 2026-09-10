@@ -212,8 +212,8 @@ class NetworkBuilder:
     def __init__(self, network: Network) -> None:
         self.network = network
 
-    def mask(self, mask: str) -> Self:
-        """Set network mask(s)"""
+    def mask(self, mask: str, append: bool=False) -> Self:
+        """Set network mask. Replaces any existing mask of the same IP version, unless append is True"""
         raise NotImplementedError()
 
 

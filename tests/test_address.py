@@ -1,5 +1,5 @@
 from typing import Optional
-from ipaddress import IPv4Network
+from ipaddress import IPv4Network, IPv6Network
 from toolsaf.common.address import (
     Addresses, DNSName, EndpointAddress, EntityTag, HWAddress, HWAddresses, PseudoAddress,
     IPAddress, IPAddresses, Network, Protocol, AddressSequence, AddressSegment, AnyAddress
@@ -120,6 +120,32 @@ def test_ip_network_matching():
     assert nw.is_local(IPAddress.new("22.2.3.4"))
     assert nw.is_local(IPAddress.new("22.33.3.4"))
     assert nw.is_local(IPAddress.new("22.33.33.4"))
+
+
+def test_ipv6_network_matching():
+    nw = Network("net", ip_network=IPv6Network("2001:db8::/32"))
+    assert nw.is_local(IPAddress.new("2001:db8::1"))
+    assert not nw.is_local(IPAddress.new("2001:db9::1"))
+
+    # Link-local and Unique Local Addresses are always local, regardless of configured masks
+    assert nw.is_local(IPAddress.new("fe80::1"))
+    assert nw.is_local(IPAddress.new("fd12:3456:789a::1"))
+
+    # A network without any configured mask still treats link-local/ULA as local
+    empty = Network("empty")
+    assert empty.is_local(IPAddress.new("fe80::1"))
+    assert empty.is_local(IPAddress.new("fc00::1"))
+    assert not empty.is_local(IPAddress.new("2001:db8::1"))
+
+
+def test_dual_stack_network_matching():
+    nw = Network("net", ip_network=IPv4Network("10.0.0.0/16"))
+    nw.ip_network.append(IPv6Network("2001:db8::/32"))
+
+    assert nw.is_local(IPAddress.new("10.0.1.2"))
+    assert nw.is_local(IPAddress.new("2001:db8::1"))
+    assert not nw.is_local(IPAddress.new("10.1.0.0"))
+    assert not nw.is_local(IPAddress.new("2001:db9::1"))
 
 
 def _segment(address: AnyAddress, segment_type: Optional[str]=None) -> AddressSegment:

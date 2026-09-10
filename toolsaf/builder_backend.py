@@ -48,9 +48,11 @@ Backend = Union[
     'SoftwareBackend', 'NetworkBackend', 'CookieBackend'
 ]
 
-# The loopback network is well-known, name and IP mask always imply each other
+# The loopback network is well-known, name and IP masks always imply each other
 LOOPBACK_NETWORK_NAME = "loopback"
 LOOPBACK_IP_MASK = ipaddress.ip_network("127.0.0.0/8")
+LOOPBACK_IP_MASK_V6 = ipaddress.ip_network("::1/128")
+LOOPBACK_IP_MASKS = {LOOPBACK_IP_MASK, LOOPBACK_IP_MASK_V6}
 
 
 def parse_ip_mask(mask: str) -> ipaddress.IPv4Network | ipaddress.IPv6Network:
@@ -622,18 +624,23 @@ class NetworkBackend(NetworkBuilder):
         self.parent = parent
         self.name = name
 
-    def mask(self, mask: str) -> Self:
+    def mask(self, mask: str, append: bool=False) -> Self:
         ip_network = parse_ip_mask(mask)
         loopback_name = self.network.name == LOOPBACK_NETWORK_NAME
         if ip_network.is_loopback or loopback_name:
-            # The loopback network is well-known, its name and IP mask must match each other
-            if ip_network != LOOPBACK_IP_MASK:
+            # The loopback network is well-known, its name and IP masks must match each other.
+            # Both the IPv4 (127.0.0.0/8) and IPv6 (::1/128) loopback masks are allowed, together or alone
+            if ip_network not in LOOPBACK_IP_MASKS:
                 raise ConfigurationException(
-                    f"Loopback network must have IP mask {LOOPBACK_IP_MASK}, got '{mask}'")
+                    f"Loopback network must have IP mask {LOOPBACK_IP_MASK} or {LOOPBACK_IP_MASK_V6}, "
+                    f"got '{mask}'")
             if not loopback_name:
                 raise ConfigurationException(
                     f"Loopback network must be named '{LOOPBACK_NETWORK_NAME}', not '{self.network.name}'")
-        self.network.ip_network = ip_network
+        if not append:
+            # Replace any existing mask of the same IP version, keep the other version's mask intact
+            self.network.ip_network = [n for n in self.network.ip_network if n.version != ip_network.version]
+        self.network.ip_network.append(ip_network)
         return self
 
     def __repr__(self) -> str:
