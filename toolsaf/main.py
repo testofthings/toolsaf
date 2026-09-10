@@ -123,13 +123,13 @@ class ServiceGroupBuilder:
 
 class MulticastConfigurer:
     """Multicast configurer"""
-    def __init__(self, source: 'HostBuilder', address: str, protocol: 'ProtocolConfigurer') -> None:
+    def __init__(self, source: 'HostBuilder', addresses: List[str], protocol: 'ProtocolConfigurer') -> None:
         self.source = source
-        self.address = address
+        self.addresses = addresses
         self.protocol = protocol
 
     def __repr__(self) -> str:
-        return f"{self.protocol} {self.address}"
+        return f"{self.protocol} {', '.join(self.addresses)}"
 
 
 class HostBuilder(NodeBuilder):
@@ -153,8 +153,10 @@ class HostBuilder(NodeBuilder):
         """Sends IP multicasts"""
         raise NotImplementedError()
 
-    def broadcast(self, protocol: 'ProtocolConfigurer') -> MulticastConfigurer:
-        """Sends IP broadcasts"""
+    def broadcast(self, protocol: 'ProtocolConfigurer', ipv6_all_nodes: bool=False, ipv6_all_routers: bool=False,
+                  ipv6_mldv2: bool=False) -> MulticastConfigurer:
+        """Sends IP broadcasts. The ipv6_* flags add the corresponding well-known IPv6 multicast
+        address (there is no IPv6 broadcast) alongside the IPv4 broadcast / HW broadcast address"""
         raise NotImplementedError()
 
     def __lshift__(self, multicast: MulticastConfigurer) -> 'ConnectionBuilder':
@@ -271,7 +273,7 @@ class ProtocolConfigurer:
         self.name = name
         self.networks: List[NetworkBuilder] = []
         self.address: Optional[AnyAddress] = None
-        self.multicast_target: Optional[str] = None
+        self.multicast_target: List[str] = []
         self.protocol_port_range: Optional[PortRange] = None
 
     def in_network(self, *network: NetworkBuilder) -> Self:
@@ -288,9 +290,9 @@ class ProtocolConfigurer:
         """This service is listening to broadcast address"""
         return self.multicast(str(IPAddresses.BROADCAST))
 
-    def multicast(self, address: str) -> Self:
-        """This service is listening to multicast/broadcast address"""
-        self.multicast_target = address
+    def multicast(self, *address: str) -> Self:
+        """This service is listening to multicast/broadcast address(es)"""
+        self.multicast_target = list(address)
         return self
 
     def ports(self, *number: int) -> Self:

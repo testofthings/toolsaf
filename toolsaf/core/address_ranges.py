@@ -78,48 +78,52 @@ class AddressRange:
 
 class MulticastTarget:
     """Multicast target definition"""
-    def __init__(self, fixed_address: Optional[AnyAddress] = None,
+    def __init__(self, fixed_addresses: Optional[List[AnyAddress]] = None,
                  address_range: Optional[AddressRange] = None) -> None:
-        assert (fixed_address is None) != (address_range is None), "Either fixed_address or range must be provided"
-        self.fixed_address = fixed_address
+        assert (not fixed_addresses) != (address_range is None), \
+            "Either fixed_addresses or range must be provided"
+        self.fixed_addresses = fixed_addresses or []
         self.address_range = address_range
 
     def is_match(self, address: AnyAddress) -> bool:
         """Check if address matches here"""
-        if self.fixed_address is not None:
-            return self.fixed_address == address
+        if self.fixed_addresses:
+            return address in self.fixed_addresses
         if self.address_range is not None:
             return self.address_range.is_match(address)
         return False
 
     def get_parseable_value(self) -> str:
         """Get parseable value"""
-        if self.fixed_address:
-            return self.fixed_address.get_parseable_value()
+        if self.fixed_addresses:
+            return ",".join(a.get_parseable_value() for a in self.fixed_addresses)
         if self.address_range:
             return repr(self.address_range)
         return ""
 
     @classmethod
+    def from_specs(cls, specs: List[str]) -> 'MulticastTarget':
+        """Build from one or more address specs, each either fixed or a wildcard range"""
+        if len(specs) == 1 and ("*" in specs[0] or "-" in specs[0]):
+            return cls(address_range=AddressRange.parse_range(specs[0]))
+        return cls(fixed_addresses=[Addresses.parse_address(s) for s in specs])
+
+    @classmethod
     def parse_address_range(cls, address_range: str) -> 'MulticastTarget':
-        """Parse multicast target from address range"""
-        if "*" in address_range or "-" in address_range:
-            addr_range = AddressRange.parse_range(address_range)
-            return cls(address_range=addr_range)
-        fixed = Addresses.parse_address(address_range)
-        return cls(fixed_address=fixed)
+        """Parse multicast target from a comma-separated list of address specs (wire format)"""
+        return cls.from_specs(address_range.split(","))
 
     def __hash__(self) -> int:
-        return hash((self.fixed_address, self.address_range))
+        return hash((tuple(self.fixed_addresses), self.address_range))
 
     def __eq__(self, value: object) -> bool:
         if not isinstance(value, MulticastTarget):
             return False
-        return (self.fixed_address == value.fixed_address and
+        return (self.fixed_addresses == value.fixed_addresses and
                 self.address_range == value.address_range)
 
     def __repr__(self) -> str:
-        return f"Multicast: {self.fixed_address or self.address_range}"
+        return f"Multicast: {', '.join(str(a) for a in self.fixed_addresses) or self.address_range}"
 
     @classmethod
     def __get_pydantic_core_schema__(

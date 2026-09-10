@@ -71,6 +71,24 @@ def test_parse_address():
     assert isinstance(a, IPAddress)
     assert f"{a}" == "1.2.3.4"
 
+    # IPv6 addresses often start with a hex letter (a-f), not a digit - must still parse as IPAddress,
+    # not be mistaken for an EntityTag
+    a = Addresses.parse_address("ff02::1")
+    assert isinstance(a, IPAddress)
+    assert f"{a}" == "ff02::1"
+
+    a = Addresses.parse_address("fe80::1")
+    assert isinstance(a, IPAddress)
+    assert f"{a}" == "fe80::1"
+
+    a = Addresses.parse_address("2001:db8::1")
+    assert isinstance(a, IPAddress)
+    assert f"{a}" == "2001:db8::1"
+
+    a = Addresses.parse_address("MyDevice")
+    assert isinstance(a, EntityTag)
+    assert f"{a}" == "MyDevice"
+
     a = Addresses.parse_address("www.example.com|name")
     assert isinstance(a, DNSName)
     assert f"{a}" == "www.example.com"

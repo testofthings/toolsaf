@@ -238,9 +238,10 @@ class Addresses:
         match (t, v):
             case (t, "") if t:
                 v = t # No type given
-                if v[0].isdigit():
+                try:
                     return IPAddress.new(v)
-                return EntityTag(v)
+                except ValueError:
+                    return EntityTag(v)
             case ("tag", v):
                 return EntityTag(v)
             case ("ip", v):
@@ -431,6 +432,13 @@ class IPAddresses:
     NULL = IPAddress.new("0.0.0.0")
 
     BROADCAST = IPAddress.new("255.255.255.255")
+
+    # IPv6 has no broadcast, these well-known multicast addresses (RFC 4291, RFC 3810) serve similar roles
+    IPV6_ALL_NODES = IPAddress.new("ff02::1")
+
+    IPV6_ALL_ROUTERS = IPAddress.new("ff02::2")
+
+    IPV6_MLDV2 = IPAddress.new("ff02::16")
 
 
 class DNSName(AnyAddress):
