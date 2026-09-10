@@ -131,6 +131,17 @@ def test_hw_address_generation():
     hw = HWAddress.from_ip(ip)
     assert hw == HWAddress('40:00:c0:a8:00:02')
 
+    # IPv6 uses a 1-byte prefix (vs. IPv4's 2-byte one) to keep 5 address bytes instead of 4,
+    # reducing (not eliminating) collisions between different IPv6 addresses
+    hw6 = HWAddress.from_ip(IPAddress.new("2001:db8::100"))
+    assert hw6 == HWAddress('42:00:00:00:01:00')
+
+    # addresses differing only within the kept 5 bytes are distinguished
+    assert HWAddress.from_ip(IPAddress.new("2001:db8::100")) != HWAddress.from_ip(IPAddress.new("2001:db8::200"))
+
+    # addresses differing only in the discarded high-order bytes (site prefix) still collide
+    assert HWAddress.from_ip(IPAddress.new("2001:db8::1")) == HWAddress.from_ip(IPAddress.new("2001:db9::1"))
+
 
 def test_ip_network_matching():
     nw = Network("net", ip_network=IPv4Network("22.33.0.0/16"))

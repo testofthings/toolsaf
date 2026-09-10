@@ -310,8 +310,15 @@ class HWAddress(AnyAddress):
 
     @classmethod
     def from_ip(cls, address: 'IPAddress') -> 'HWAddress':
-        """Create testing HW address for IP address"""
-        a = "40:00:" + ":".join(f"{b:02x}" for b in address.data.packed[-4:])
+        """Create testing HW address for IP address.
+        IPv6 addresses are 16 bytes, too long to fit in a 6-byte HW address without collisions.
+        Using a 1-byte prefix, instead of IPv4's 2-byte one, keeps 5 address bytes instead of 4,
+        cutting the odds of two different addresses colliding onto the same synthetic HW address"""
+        if isinstance(address.data, IPv6Address):
+            prefix, data = "42", address.data.packed[-5:]
+        else:
+            prefix, data = "40:00", address.data.packed[-4:]
+        a = prefix + ":" + ":".join(f"{b:02x}" for b in data)
         return HWAddress(a)
 
     def is_null(self) -> bool:
