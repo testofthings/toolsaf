@@ -385,7 +385,7 @@ class IPAddress(AnyAddress):
         return cls.new(ad), default_port if p == "" else int(p)
 
     def is_null(self) -> bool:
-        return self.data == IPAddresses.NULL.data
+        return self.data in (IPAddresses.NULL.data, IPAddresses.NULL_V6.data)
 
     def is_multicast(self) -> bool:
         return self.data.is_multicast or self.data == IPAddresses.BROADCAST.data
@@ -430,6 +430,9 @@ class IPAddresses:
     """IP address constants"""
 
     NULL = IPAddress.new("0.0.0.0")
+
+    # The IPv6 unspecified address, the v6 counterpart of 0.0.0.0
+    NULL_V6 = IPAddress.new("::")
 
     BROADCAST = IPAddress.new("255.255.255.255")
 

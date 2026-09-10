@@ -89,6 +89,29 @@ def test_multicast_target_multiple_fixed_addresses():
     assert ranged.is_match(IPAddress.new("1.2.255.255"))
 
 
+def test_multicast_ipv6_cidr_range():
+    mc = MulticastTarget.from_specs(["ff02::/16"])
+    assert mc.network_range is not None
+    assert mc.fixed_addresses == []
+    assert mc.address_range is None
+    assert mc.is_match(IPAddress.new("ff02::1"))
+    assert mc.is_match(IPAddress.new("ff02::fb"))
+    assert not mc.is_match(IPAddress.new("ff05::1"))  # different scope, not in ff02::/16
+    assert not mc.is_match(IPAddress.new("192.168.0.1"))
+
+    assert mc.get_parseable_value() == "ff02::/16"
+    parsed = MulticastTarget.parse_address_range(mc.get_parseable_value())
+    assert parsed == mc
+
+
+def test_multicast_ipv4_cidr_range():
+    # CIDR notation works for IPv4 too, as an alternative to the octet-wildcard syntax
+    mc = MulticastTarget.from_specs(["226.0.0.0/8"])
+    assert mc.network_range is not None
+    assert mc.is_match(IPAddress.new("226.1.2.3"))
+    assert not mc.is_match(IPAddress.new("227.1.2.3"))
+
+
 def test_multicast_parsing_errors():
     with pytest.raises(ValueError, match="Expected 4-part address, got '255.255.255'"):
         AddressRange.parse_range("255.255.255")

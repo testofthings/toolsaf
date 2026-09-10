@@ -35,6 +35,11 @@ def test_ip_address():
 
     assert IPAddress.new("192.168.1.1").is_global() is False
 
+    # IPv6 unspecified address is also null, e.g. DHCPv6 Solicit / Duplicate Address Detection source
+    assert IPAddress.new("::") == IPAddresses.NULL_V6
+    assert IPAddresses.NULL_V6.is_null() is True
+    assert IPAddress.new("::1").is_null() is False  # loopback, not unspecified
+
 
 def test_dns_name():
     ad = DNSName("www.example.com")
@@ -154,6 +159,9 @@ def test_ipv6_network_matching():
     assert empty.is_local(IPAddress.new("fe80::1"))
     assert empty.is_local(IPAddress.new("fc00::1"))
     assert not empty.is_local(IPAddress.new("2001:db8::1"))
+
+    # The unspecified address :: is null, always local, same as 0.0.0.0
+    assert empty.is_local(IPAddress.new("::"))
 
 
 def test_dual_stack_network_matching():
