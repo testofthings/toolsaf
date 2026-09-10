@@ -6,7 +6,6 @@ from ipaddress import IPv4Address, IPv6Address
 import pathlib
 from typing import List, Optional, Dict, Tuple, Any
 
-from framing.backends import RawFrame
 from framing.frame_types import dns_frames
 from framing.frame_types.ethernet_frames import EthernetII
 from framing.frame_types.ipv4_frames import IPv4
