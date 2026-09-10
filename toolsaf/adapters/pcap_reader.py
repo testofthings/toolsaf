@@ -223,18 +223,19 @@ class PCAPReader(SystemWideTool):
             )
             events.append(n)
 
+        proc_rd = {
+            dns_frames.RDATA.A: lambda r:
+                learn_name(name, r.as_ip_address()),  # pylint: disable=cell-var-from-loop
+            dns_frames.RDATA.AAAA: lambda r:
+                learn_name(name, r.as_ip_address()),  # pylint: disable=cell-var-from-loop
+        }
+
         rd_frames = []
         rd_frames.extend(dns_frames.DNSMessage.Answer.iterate(frame))
         rd_frames.extend(dns_frames.DNSMessage.Authority.iterate(frame))
         rd_frames.extend(dns_frames.DNSMessage.Additional.iterate(frame))
         for rd in rd_frames:
             name = dns_frames.DNSName.string(rd, dns_frames.DNSResource.NAME)
-            proc_rd = {
-                dns_frames.RDATA.A: lambda r:
-                    learn_name(name, r.as_ip_address()),  # pylint: disable=cell-var-from-loop
-                dns_frames.RDATA.AAAA: lambda r:
-                    learn_name(name, r.as_ip_address()),  # pylint: disable=cell-var-from-loop
-            }
             dns_frames.DNSResource.RDATA.process_frame(rd, proc_rd)
 
         for e in events:
