@@ -48,6 +48,19 @@ Backend = Union[
     'SoftwareBackend', 'NetworkBackend', 'CookieBackend'
 ]
 
+# The loopback network is well-known, name and IP mask always imply each other
+LOOPBACK_NETWORK_NAME = "loopback"
+LOOPBACK_IP_MASK = ipaddress.ip_network("127.0.0.0/8")
+
+
+def parse_ip_mask(mask: str) -> ipaddress.IPv4Network | ipaddress.IPv6Network:
+    """Parse the IP mask of a network. Can raise ConfigurationException"""
+    try:
+        return ipaddress.ip_network(mask.strip())
+    except ValueError as e:
+        raise ConfigurationException(f"Bad network IP mask '{mask}'") from e
+
+
 class SystemBackend(SystemBuilder):
     """System model builder"""
 
@@ -72,13 +85,14 @@ class SystemBackend(SystemBuilder):
         return sb
 
     def network(self, subnet: str="", ip_mask: Optional[str] = None) -> 'NetworkBuilder':
-        if subnet:
-            nb = NetworkBackend(self, subnet)
-        else:
-            nb = NetworkBackend(self)
-            self.changed(nb.network) # Track only local network for now
+        if ip_mask and parse_ip_mask(ip_mask).is_loopback:
+            subnet = subnet or LOOPBACK_NETWORK_NAME
+        nb = NetworkBackend(self, subnet) if subnet else NetworkBackend(self)
+        if not ip_mask and nb.network.name == LOOPBACK_NETWORK_NAME:
+            ip_mask = str(LOOPBACK_IP_MASK)
         if ip_mask:
             nb.mask(ip_mask)
+        self.changed(nb.network)
         return nb
 
     def device(self, name: str="") -> 'HostBackend':
@@ -332,6 +346,7 @@ class NodeBackend(NodeBuilder):
         if any(a.get_ip_address() for a in self.entity.addresses):
             raise ConfigurationException(f"Cannot set network after IP addresses for {self.entity.name}")
         self.entity.networks = [n.network for n in network]
+        self.system.changed(self.entity)
         return self
 
     def software(self, name: Optional[str] = None) -> 'SoftwareBackend':
@@ -608,7 +623,17 @@ class NetworkBackend(NetworkBuilder):
         self.name = name
 
     def mask(self, mask: str) -> Self:
-        self.network.ip_network = ipaddress.ip_network(mask)
+        ip_network = parse_ip_mask(mask)
+        loopback_name = self.network.name == LOOPBACK_NETWORK_NAME
+        if ip_network.is_loopback or loopback_name:
+            # The loopback network is well-known, its name and IP mask must match each other
+            if ip_network != LOOPBACK_IP_MASK:
+                raise ConfigurationException(
+                    f"Loopback network must have IP mask {LOOPBACK_IP_MASK}, got '{mask}'")
+            if not loopback_name:
+                raise ConfigurationException(
+                    f"Loopback network must be named '{LOOPBACK_NETWORK_NAME}', not '{self.network.name}'")
+        self.network.ip_network = ip_network
         return self
 
     def __repr__(self) -> str:
@@ -890,6 +915,7 @@ class DHCPBackend(ProtocolBackend):
     def _create_service(self, parent: HostBackend) -> ServiceBackend:
         host_s = ServiceBackend(parent, DHCPService(parent.entity))
         host_s.entity.match_priority = 10
+        host_s.entity.networks = self.networks
         assert self.external_activity, "external activity was None"
         host_s.entity.external_activity = self.external_activity
 
@@ -910,6 +936,7 @@ class DNSBackend(ProtocolBackend):
         dns_s.captive_portal = self.captive_portal
         s = ServiceBackend(parent, dns_s)
         s.entity.match_priority = 10
+        s.entity.networks = self.networks
         assert self.external_activity, "external activity was None"
         s.entity.external_activity = self.external_activity
         return s
@@ -961,6 +988,7 @@ class ICMPBackend(ProtocolBackend):
     def _create_service(self, parent: HostBackend) -> ServiceBackend:
         s = super()._create_service(parent)
         s.entity.name = "ICMP"  # a bit of hack...
+        s.entity.networks = self.networks
         s.entity.host_type = HostType.ADMINISTRATIVE
         s.entity.con_type = ConnectionType.ADMINISTRATIVE
         # ICMP can be a service for other hosts

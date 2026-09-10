@@ -501,7 +501,7 @@ class IoTSystem(NetworkNode):
         self.concept_name = "system"
         self.status = Status.EXPECTED
         # network mask(s)
-        self.networks = [Network("local", ip_network=ipaddress.ip_network("192.168.0.0/16"))]  # reasonable default
+        self.networks = [Network("default", ip_network=ipaddress.ip_network("192.168.0.0/16"))]  # reasonable default
         # online resources
         self.online_resources: List[OnlineResource]=[]
         # consumer for specific message types
