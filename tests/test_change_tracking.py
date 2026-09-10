@@ -125,6 +125,7 @@ def test_modify_system_network():
 
     serialized = sb.serialize_statement_changes()
     assert len(serialized) == 1
+    # mask() replaces the default network's IPv4 mask (192.168.0.0/16) with the new one
     assert serialized[0] == {
         "type": "network",
         "name": "default",

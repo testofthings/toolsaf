@@ -74,3 +74,15 @@ def test_process_file():
 
         conn = _connections(backend_2.entity)
         assert (app.entity, backend_2.entity, "TCP:8883") in conn
+
+
+def test_process_ipv6_file():
+    setup = Setup()
+    reader = PCAPReader(setup.get_system())
+
+    source = EvidenceSource("pcap", "test")
+    with pathlib.Path("tests/samples/pcap/ipv6-tcp.pcap").open("rb") as f:
+        reader.process_file(f, "", setup.get_inspector(), source)
+
+    conns = setup.system.system.get_connections(relevant_only=False)
+    assert conns

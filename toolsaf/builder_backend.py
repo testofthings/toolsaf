@@ -10,7 +10,7 @@ from pathlib import Path
 
 from typing import Any, Callable, Dict, List, Optional, Self, Tuple, Union, cast, Set
 
-from toolsaf.core.address_ranges import NULL_PORT_RANGE, AddressRange, MulticastTarget, PortRange
+from toolsaf.core.address_ranges import NULL_PORT_RANGE, MulticastTarget, PortRange
 from toolsaf.common.address import (AddressAtNetwork, Addresses, AnyAddress, DNSName, EndpointAddress, EntityTag,
                                   HWAddress, HWAddresses, IPAddress, IPAddresses, Network, Protocol, PseudoAddress)
 from toolsaf.common.traffic import EvidenceSource
@@ -48,9 +48,11 @@ Backend = Union[
     'SoftwareBackend', 'NetworkBackend', 'CookieBackend'
 ]
 
-# The loopback network is well-known, name and IP mask always imply each other
+# The loopback network is well-known, name and IP masks always imply each other
 LOOPBACK_NETWORK_NAME = "loopback"
 LOOPBACK_IP_MASK = ipaddress.ip_network("127.0.0.0/8")
+LOOPBACK_IP_MASK_V6 = ipaddress.ip_network("::1/128")
+LOOPBACK_IP_MASKS = {LOOPBACK_IP_MASK, LOOPBACK_IP_MASK_V6}
 
 
 def parse_ip_mask(mask: str) -> ipaddress.IPv4Network | ipaddress.IPv6Network:
@@ -520,18 +522,25 @@ class HostBackend(NodeBackend, HostBuilder):
         return self
 
     def multicast(self, address: str, protocol: 'ProtocolConfigurer') -> MulticastConfigurer:
-        return MulticastConfigurer(self, address, protocol)
+        return MulticastConfigurer(self, [address], protocol)
 
-    def broadcast(self, protocol: 'ProtocolConfigurer') -> MulticastConfigurer:
-        add = f"{IPAddresses.BROADCAST}" if isinstance(protocol, (UDP, UDPBackend)) \
-            else f"{HWAddresses.BROADCAST}"
-        return MulticastConfigurer(self, add, protocol)
+    def broadcast(self, protocol: 'ProtocolConfigurer', ipv6_all_nodes: bool=False, ipv6_all_routers: bool=False,
+                  ipv6_mldv2: bool=False) -> MulticastConfigurer:
+        addresses = [f"{IPAddresses.BROADCAST}"] if isinstance(protocol, (UDP, UDPBackend)) \
+            else [f"{HWAddresses.BROADCAST}"]
+        if ipv6_all_nodes:
+            addresses.append(f"{IPAddresses.IPV6_ALL_NODES}")
+        if ipv6_all_routers:
+            addresses.append(f"{IPAddresses.IPV6_ALL_ROUTERS}")
+        if ipv6_mldv2:
+            addresses.append(f"{IPAddresses.IPV6_MLDV2}")
+        return MulticastConfigurer(self, addresses, protocol)
 
     def os(self) -> OSBuilder:
         return OSBackend(self)
 
     def __lshift__(self, multicast: MulticastConfigurer) -> ConnectionBuilder:
-        target = self / multicast.protocol.multicast(multicast.address)
+        target = self / multicast.protocol.multicast(*multicast.addresses)
         c = multicast.source >> target
         self.system.changed(c.connection) # type: ignore[attr-defined]
         return c
@@ -622,18 +631,23 @@ class NetworkBackend(NetworkBuilder):
         self.parent = parent
         self.name = name
 
-    def mask(self, mask: str) -> Self:
+    def mask(self, mask: str, append: bool=False) -> Self:
         ip_network = parse_ip_mask(mask)
         loopback_name = self.network.name == LOOPBACK_NETWORK_NAME
         if ip_network.is_loopback or loopback_name:
-            # The loopback network is well-known, its name and IP mask must match each other
-            if ip_network != LOOPBACK_IP_MASK:
+            # The loopback network is well-known, its name and IP masks must match each other.
+            # Both the IPv4 (127.0.0.0/8) and IPv6 (::1/128) loopback masks are allowed, together or alone
+            if ip_network not in LOOPBACK_IP_MASKS:
                 raise ConfigurationException(
-                    f"Loopback network must have IP mask {LOOPBACK_IP_MASK}, got '{mask}'")
+                    f"Loopback network must have IP mask {LOOPBACK_IP_MASK} or {LOOPBACK_IP_MASK_V6}, "
+                    f"got '{mask}'")
             if not loopback_name:
                 raise ConfigurationException(
                     f"Loopback network must be named '{LOOPBACK_NETWORK_NAME}', not '{self.network.name}'")
-        self.network.ip_network = ip_network
+        if not append:
+            # Replace any existing mask of the same IP version, keep the other version's mask intact
+            self.network.ip_network = [n for n in self.network.ip_network if n.version != ip_network.version]
+        self.network.ip_network.append(ip_network)
         return self
 
     def __repr__(self) -> str:
@@ -767,7 +781,7 @@ class ProtocolBackend:
         self.specific_address: AnyAddress = Addresses.ANY
         self.external_activity: Optional[ExternalActivity] = None
         self.critical_parameter: List[SensitiveData] = []
-        self.multicast_target: Optional[str] = None
+        self.multicast_target: List[str] = []
         self.port_range: Optional[PortRange] = None
 
     def as_multicast_(self, target: ServiceBackend) -> 'ServiceBackend':
@@ -776,7 +790,7 @@ class ProtocolBackend:
 
     def get_service_(self, parent: HostBackend) -> ServiceBackend:
         """Create or get service builder"""
-        key = self.multicast_target or "", self.port_range or NULL_PORT_RANGE, \
+        key = ",".join(self.multicast_target), self.port_range or NULL_PORT_RANGE, \
             self.transport, (self.service_port if self.port_to_name else -1)
         old = parent.service_builders.get(key)
         if old:
@@ -1010,9 +1024,14 @@ class IPBackend(ProtocolBackend):
 
     def as_multicast_(self, target: ServiceBackend) -> 'ServiceBackend':
         target_spec = self.configurer.multicast_target
-        assert target_spec is not None, "multicast_target was None"
-        multicast = MulticastTarget(address_range=AddressRange.parse_range(target_spec))
-        target.entity.name += f" {multicast.address_range}"
+        assert target_spec, "multicast_target was empty"
+        multicast = MulticastTarget.from_specs(target_spec)
+        if len(target_spec) > 1:
+            if self.configurer.name == "IP":
+                raise ConfigurationException(
+                    "Multiple multicast targets require an explicit name, e.g. IP(name='...', ...)")
+        else:
+            target.entity.name += f" {multicast.get_parseable_value()}"
         target.entity.multicast_target = multicast
         return target
 
@@ -1077,9 +1096,14 @@ class UDPBackend(ProtocolBackend):
 
     def as_multicast_(self, target: ServiceBackend) -> 'ServiceBackend':
         target_spec = self.configurer.multicast_target
-        assert target_spec is not None, "multicast_target was None"
-        multicast = MulticastTarget(address_range=AddressRange.parse_range(target_spec))
-        target.entity.name += f" {multicast.address_range}"
+        assert target_spec, "multicast_target was empty"
+        multicast = MulticastTarget.from_specs(target_spec)
+        if len(target_spec) > 1:
+            if self.configurer.name == "UDP":
+                raise ConfigurationException(
+                    "Multiple multicast targets require an explicit name, e.g. UDP(name='...', ...)")
+        else:
+            target.entity.name += f" {multicast.get_parseable_value()}"
         target.entity.multicast_target = multicast
         return target
 
@@ -1094,8 +1118,8 @@ class BLEAdvertisementBackend(ProtocolBackend):
 
     def as_multicast_(self, target: ServiceBackend) -> 'ServiceBackend':
         target_spec = self.configurer.multicast_target
-        assert target_spec is not None, "multicast_target was None"
-        multicast = MulticastTarget(fixed_address=Addresses.BLE_Ad)
+        assert target_spec, "multicast_target was empty"
+        multicast = MulticastTarget(fixed_addresses=[Addresses.BLE_Ad])
         target.entity.multicast_target = multicast
         return target
 
@@ -1109,8 +1133,8 @@ class ProprietaryProtocolBackend(ProtocolBackend):
 
     def as_multicast_(self, target: ServiceBackend) -> 'ServiceBackend':
         target_spec = self.configurer.multicast_target
-        assert target_spec is not None, "multicast_target was None"
-        multicast = MulticastTarget(fixed_address=PseudoAddress(target_spec))
+        assert target_spec, "multicast_target was empty"
+        multicast = MulticastTarget(fixed_addresses=[PseudoAddress(a) for a in target_spec])
         target.entity.multicast_target = multicast
         return target
 

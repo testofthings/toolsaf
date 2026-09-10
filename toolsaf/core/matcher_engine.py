@@ -252,7 +252,7 @@ class AddressClue:
         self.multicast_source: Dict[Network, MulticastTarget] = {}
 
     def update(self, state: MatchingState, address: AddressAtNetwork, protocol: Protocol, port: int,
-               multicast: bool = False, wildcard: bool = False) -> None:
+               wildcard: bool = False) -> None:
         """Update state observing this host"""
         is_service = isinstance(self.entity, Service)
         ep_key = (protocol, port)
@@ -307,9 +307,9 @@ class AddressClue:
         # check services
         service_clue = self.services_by.get(ep_key)
         if service_clue:
-            service_clue.update(state, address, protocol, port, multicast, wildcard=wildcard)
+            service_clue.update(state, address, protocol, port, wildcard=wildcard)
         for service_clue in self.services_range:
-            service_clue.update(state, address, protocol, port, multicast, wildcard=wildcard)
+            service_clue.update(state, address, protocol, port, wildcard=wildcard)
 
     def __repr__(self) -> str:
         r = [f"{self.entity}"]
@@ -367,8 +367,7 @@ class FlowMatcher:
                 use_hw = not use_ip
                 if use_ip:
                     # match by IP address
-                    self.map_address(self.sources, AddressAtNetwork(flow.source[1], net), flow.protocol, flow.source[2],
-                                     multicast=is_multicast)
+                    self.map_address(self.sources, AddressAtNetwork(flow.source[1], net), flow.protocol, flow.source[2])
                 if use_hw:
                     # match by HW address
                     self.map_address(self.sources, AddressAtNetwork(flow.source[0], net), flow.protocol, flow.source[2])
@@ -379,8 +378,7 @@ class FlowMatcher:
                     engine.system.is_external(flow.target[1])) or is_multicast
                 use_hw = not use_ip
                 if use_ip:
-                    self.map_address(self.targets, AddressAtNetwork(flow.target[1], net), flow.protocol, flow.target[2],
-                                     multicast=is_multicast)
+                    self.map_address(self.targets, AddressAtNetwork(flow.target[1], net), flow.protocol, flow.target[2])
                 if use_hw:
                     self.map_address(self.targets, AddressAtNetwork(flow.target[0], net), flow.protocol, flow.target[2])
             case _:
@@ -396,8 +394,7 @@ class FlowMatcher:
         self.reverse: bool = False
         self.end_addresses: Optional[Tuple[Optional[AnyAddress], Optional[AnyAddress]]] = None
 
-    def map_address(self, state: MatchingState, address: AddressAtNetwork, protocol: Protocol, port: int,
-                    multicast: bool = False) -> None:
+    def map_address(self, state: MatchingState, address: AddressAtNetwork, protocol: Protocol, port: int) -> None:
         """Map address to state"""
         # 1. Map by address
         clues = self.engine.addresses.get(address)
@@ -405,7 +402,7 @@ class FlowMatcher:
             clue.update(state, address, protocol, port)
         # 2. Map the wildcard hosts
         for clue in self.engine.wildcard_hosts:
-            clue.update(state, address, protocol, port, multicast=multicast, wildcard=True)
+            clue.update(state, address, protocol, port, wildcard=True)
 
     def get_connection(self) -> Connection | Tuple[Optional[Addressable], Optional[Addressable]]:
         """Get deduced connection for the flow, return endpoints if no connection matched"""
