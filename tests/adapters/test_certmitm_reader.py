@@ -96,8 +96,8 @@ def test_process_file():
        'certmitm:test-b: MITM vulnerability 1.2.3.4 -> 11.11.11.11:444 (Certmitm: test-b)',
        'IP 00:00:00:00:00:00 5.6.7.8:0 >> 00:00:00:00:00:00 12.12.12.12:443 TCP',
        'certmitm:test-c: MITM vulnerability 5.6.7.8 -> 12.12.12.12:443 (Certmitm: test-c)',
-       'check:protocol:tls:best-practices: MITM attack successfull',
-       'check:protocol:tls:best-practices: MITM attack successfull',
-       'check:protocol:tls:best-practices: MITM attack successfull',
+       'check:protocol:tls:best-practices: MITM attack successful',
+       'check:protocol:tls:best-practices: MITM attack successful',
+       'check:protocol:tls:best-practices: MITM attack successful',
        'check:protocol:tls:best-practices: MITM attack not successful',
     ]
