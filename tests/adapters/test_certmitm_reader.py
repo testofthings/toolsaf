@@ -1,16 +1,47 @@
 import io
+import json
 import zipfile
 
 from toolsaf.adapters.certmitm_reader import CertMITMReader
 from toolsaf.common.traffic import EvidenceSource
+from toolsaf.core.event_logger import EventLogger
 from toolsaf.main import TLS, MQTT, SSH
 from toolsaf.common.property import PropertyKey
 from toolsaf.common.verdict import Verdict
 from tests.test_model import Setup
 
 
-json_str =  '{"client": "1.2.3.4","destination": {"ip": "10.10.10.10","port": 443, "name": "BE1.com"}}\n{"client": "1.2.3.4","destination": { "ip": "11.11.11.11","port": 444, "name": "BE2.com"}}'.encode("utf-8")
-json_str2 = '{"client": "5.6.7.8","destination": {"ip": "12.12.12.12","port": 443, "name": "BE3.com"}}'.encode("utf-8")
+json_str = (json.dumps(
+    {
+        "client": "1.2.3.4",
+        "destination": {
+            "ip": "10.10.10.10","port": 443,
+            "name": "BE1.com"
+        },
+        "testcase": "test-a"
+    }
+    ) + "\n" + json.dumps(
+    {
+        "client": "1.2.3.4",
+        "destination": {
+            "ip": "11.11.11.11",
+            "port": 444,
+            "name": "BE2.com"
+        },
+        "testcase": "test-b"
+    }
+    )).encode("utf-8")
+
+json_str2 = json.dumps(
+    {
+        "client": "5.6.7.8",
+        "destination": {
+            "ip": "12.12.12.12",
+            "port": 443,
+            "name": "BE3.com"
+        },
+        "testcase": "test-c"
+    }).encode("utf-8")
 
 def test_process_file():
     zip_buffer = io.BytesIO()
@@ -54,20 +85,19 @@ def test_process_file():
 
     reader = CertMITMReader(setup.get_system())
     source = EvidenceSource(name="")
-    reader.process_file(zip_buffer, "", setup.get_inspector(), source)
+    logger = EventLogger(setup.get_inspector())
+    reader.process_file(zip_buffer, "", logger, source)
 
-    connections = system.system.get_connections()
-    assert len(connections) == 8
-
-    key = PropertyKey("certmitm")
-    should_pass = {("D1", "BE3"), ("D1", "BE4"), ("D1", "BE6")}
-    no_verdict = {("D1", "BE5"), ("D1", "BE7")}
-    for conn in connections:
-        pair = (conn.source.name, conn.target.parent.name)
-        if pair in no_verdict:
-            assert key not in conn.properties
-        elif pair in should_pass:
-            assert conn.properties[key].verdict == Verdict.PASS
-        else:
-            assert conn.properties[key].verdict == Verdict.FAIL
-
+    events = [e.event.get_value_string() for e in logger.logs]
+    assert set(events) == set([
+       'IP 00:00:00:00:00:00 1.2.3.4:0 >> 00:00:00:00:00:00 10.10.10.10:443 TCP',
+       'certmitm:test-a: MITM vulnerability 1.2.3.4 -> 10.10.10.10:443 (Certmitm: test-a)',
+       'IP 00:00:00:00:00:00 5.6.7.8:0 >> 00:00:00:00:00:00 12.12.12.12:443 TCP',
+       'certmitm:test-c: MITM vulnerability 5.6.7.8 -> 12.12.12.12:443 (Certmitm: test-c)',
+       'IP 00:00:00:00:00:00 1.2.3.4:0 >> 00:00:00:00:00:00 11.11.11.11:444 TCP',
+       'certmitm:test-b: MITM vulnerability 1.2.3.4 -> 11.11.11.11:444 (Certmitm: test-b)',
+       'check:protocol:tls:best-practices: MITM attack successfull',
+       'check:protocol:tls:best-practices: MITM attack successfull',
+       'check:protocol:tls:best-practices: MITM attack successfull',
+       'check:protocol:tls:best-practices: MITM attack not successful',
+    ])
