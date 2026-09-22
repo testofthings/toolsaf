@@ -3,12 +3,11 @@
 import json
 from zipfile import ZipFile
 from io import BufferedReader
-from typing import List, Set, Tuple, Dict, Any, cast
+from typing import Dict, List, Set, Tuple, Any, cast
 
 from toolsaf.adapters.tools import SystemWideTool
 from toolsaf.core.event_interface import EventInterface, PropertyEvent
 from toolsaf.core.model import Addressable, IoTSystem, Host, Service
-from toolsaf.common.basics import ConnectionType
 from toolsaf.common.address import HWAddresses, DNSName, AnyAddress, Protocol
 from toolsaf.common.traffic import EvidenceSource, Evidence, IPFlow
 from toolsaf.common.property import Properties, PropertyKey
@@ -26,7 +25,8 @@ class CertMITMReader(SystemWideTool):
                      source: EvidenceSource) -> bool:
         """Read log file"""
         evidence = Evidence(source)
-        connections: Set[Tuple[str, str, str, str]] = set()
+        # dict used as an insertion-ordered set to keep connections in the order they were read
+        connections: Dict[Tuple[str, str, str, str], Any] = {}
         seen_addresses: Set[AnyAddress] = set()
 
         # certmitm stores found issues in JSON format to errors.txt
@@ -36,13 +36,13 @@ class CertMITMReader(SystemWideTool):
                     with zip_file.open(file.filename) as error_file:
                         for conn_str in error_file.read().decode("utf-8").rstrip().split("\n"):
                             conn_json = cast(Dict[str, Any], json.loads(conn_str))
-                            connections.add(
+                            connections[
                                 (conn_json['client'],
                                  conn_json['destination']['ip'],
                                  conn_json['destination']['port'],
                                  conn_json['testcase'],
                                 )
-                            )
+                            ] = conn_json
 
         failures: Dict[Addressable, List[PropertyKey]] = {}
         for connection in connections:
