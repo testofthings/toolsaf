@@ -63,7 +63,7 @@ class CertMITMReader(SystemWideTool):
         best_practices_key = Properties.PROTOCOL.append_key("tls").append_key("best-practices")
         for service, events in failures.items():
             # TLS best pratice property set event per failing service
-            bp = best_practices_key.value_set(set(events), "MITM attack successfull")
+            bp = best_practices_key.value_set(set(events), "MITM attack successful")
             interface.property_update(PropertyEvent(evidence, service, bp))
 
 
@@ -88,7 +88,7 @@ class CertMITMReader(SystemWideTool):
                             if service in failures:
                                 continue  # this has failed
                             ev = PropertyEvent(
-                                evidence, endpoint_connection,
+                                evidence, service,
                                 best_practices_key.verdict(Verdict.PASS, "MITM attack not successful"))
                             interface.property_update(ev)
 
