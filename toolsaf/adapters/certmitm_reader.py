@@ -18,7 +18,7 @@ class CertMITMReader(SystemWideTool):
     """Read MITM logs created by certmitm"""
     def __init__(self, system: IoTSystem) -> None:
         super().__init__("certmitm", system)
-        self.tool.name = "certmitm tool"
+        self.tool.name = "Certmitm tool"
         self.data_file_suffix = ".zip"
 
     def process_file(self, data: BufferedReader, file_name: str, interface: EventInterface,
