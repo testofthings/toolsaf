@@ -11,14 +11,23 @@ def test_self_changed():
     assert len(sb._changes) == 0
 
     sb.self_changed()
-    assert len(sb._changes) == 1
+    assert len(sb._changes) == 2
+    assert sb.system.networks[0] in sb._changes
     assert sb.system in sb._changes
 
     serialized = sb.serialize_statement_changes()
-    assert len(serialized) == 1
-    assert serialized[0]["type"] == "system"
-    assert serialized[0]["name"] == "Test System"
-    assert serialized[0]["address"] == ""
+    assert len(serialized) == 2
+    for entry in serialized:
+        match entry:
+            case {"type": "system"}:
+                assert entry["name"] == "Test System"
+                assert entry["address"] == ""
+            case {"type": "network"}:
+                assert entry["name"] == "default"
+                assert entry["address"] == "network=default"
+                assert entry["ip_mask"] == "192.168.0.0/16"
+            case _:
+                pytest.fail("Unexpected entry in serialized changes")
 
 
 def test_add_hosts():

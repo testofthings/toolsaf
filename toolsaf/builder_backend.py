@@ -240,7 +240,11 @@ class SystemBackend(SystemBuilder):
         self._changes.add(entity)
 
     def self_changed(self) -> None:
-        """Add the system itself to changed set, use when initially creating the system"""
+        """
+        Add the system itself, and its default network, to changed set.
+        Use when initially creating the system
+        """
+        self._changes.add(self.system.networks[0])
         self._changes.add(self.system)
 
     def serialize_statement_changes(self) -> List[Dict[str, Any]]:
