@@ -2,6 +2,7 @@
 from typing import Dict, List, Optional, Type, Union
 from toolsaf.adapters.android_manifest_scan import AndroidManifestScan
 from toolsaf.adapters.censys_scan import CensysScan
+from toolsaf.adapters.generic_tool import GenericTool
 from toolsaf.adapters.har_scan import HARScan
 from toolsaf.adapters.certmitm_reader import CertMITMReader
 from toolsaf.adapters.nmap_scan import NMAPScan
@@ -73,6 +74,7 @@ class ToolFinderImplementation:
 
         self.apk = ToolDepiction("apk", AndroidManifestScan, extension="xml")
         self.censys = ToolDepiction("censys", CensysScan)
+        self.generic = ToolDepiction("generic", GenericTool, extension="json")
         self.har = ToolDepiction("har", HARScan, extension="json")
         self.http = ToolDepiction("http", WebChecker, extension="http")
         self.certmitm = ToolDepiction("certmitm", CertMITMReader, extension="zip")
