@@ -1,4 +1,5 @@
 from toolsaf.common.address import EndpointAddress, EntityTag, Protocol, DNSName, IPAddress, HWAddress, AddressSequence, Addresses
+from toolsaf.core.event_logger import EventLogger
 from toolsaf.core.inspector import Inspector
 from toolsaf.core.model import Host, IoTSystem
 from toolsaf.common.verdict import Verdict
@@ -21,9 +22,13 @@ class Setup:
         """Get system"""
         return self.system.system
 
-    def get_inspector(self):
+    def get_inspector(self) -> Inspector:
         """Get inspector"""
         return Inspector(self.get_system())
+
+    def get_logger(self) -> EventLogger:
+        """Get event logger"""
+        return EventLogger(self.get_inspector())
 
     def get_hosts(self):
         """Get hosts"""
