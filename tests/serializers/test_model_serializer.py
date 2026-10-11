@@ -332,6 +332,7 @@ def test_network_dto():
     serializer = SystemSerializer()
     records = serializer.serialize(setup.system.system)
     s_network = records[0] # Networks are serialized first
+    # mask() replaces the default network's IPv4 mask (192.168.0.0/16) with the new one
     assert s_network == {
         "type": "network",
         "name": "default",
@@ -365,7 +366,7 @@ def test_network_dto_without_ip_mask():
     new_network = serializer.model_map["network=VPN"]
     assert isinstance(new_network, Network)
     assert new_network.name == network.name
-    assert new_network.ip_network is None
+    assert new_network.ip_network == []
     assert serializer.model_map["Device_1"].networks == [new_network]
 
 
@@ -505,7 +506,7 @@ def test_deserialize_legacy_networks():
 
     assert isinstance(network, Network)
     assert network.name == "default"
-    assert network.ip_network == ipaddress.ip_network("10.10.0.0/24")
+    assert network.ip_network == [ipaddress.ip_network("10.10.0.0/24")]
     # Legacy network is the network of the IoTSystem
     assert system.networks == [network]
     assert system.get_default_network() is network
@@ -551,7 +552,7 @@ def test_deserialize_list_legacy_networks():
     network = serializer.model_map["network=default"]
 
     assert isinstance(network, Network)
-    assert network.ip_network == ipaddress.ip_network("10.10.0.0/24")
+    assert network.ip_network == [ipaddress.ip_network("10.10.0.0/24")]
     assert system.networks == [network]
     assert serializer.model_map["Device_1"].networks == []
 

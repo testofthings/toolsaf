@@ -1,3 +1,5 @@
+import pytest
+
 from toolsaf.common.basics import ExternalActivity, Status
 from toolsaf.builder_backend import ConnectionBackend, SystemBackend
 from toolsaf.core.model import Service
@@ -5,7 +7,7 @@ from toolsaf.core.services import NameEvent
 import test_model
 from toolsaf.common.address import DNSName, EndpointAddress, EntityTag, HWAddress, Protocol, IPAddress, PseudoAddress
 from toolsaf.core.inspector import Inspector
-from toolsaf.main import DHCP, DNS, UDP, TCP, Proprietary
+from toolsaf.main import DHCP, DNS, UDP, TCP, Proprietary, ConfigurationException
 from toolsaf.common.traffic import NO_EVIDENCE, IPFlow, Evidence, EvidenceSource, ServiceScan, HostScan
 from toolsaf.common.verdict import Verdict
 
@@ -173,6 +175,62 @@ def test_multicast():
     assert cs2.target.status_verdict() == (Status.UNEXPECTED, Verdict.FAIL)
 
 
+def test_ipv6_multicast_fixed_addresses():
+    sb = SystemBackend()
+    dev1 = sb.device().hw("a:0:0:0:0:1")
+    any_host = sb.any()
+    dev1 >> any_host / UDP(port=333, name="Multi-broadcast").multicast("255.255.255.255", "ff02::1", "ff02::2")
+    i = Inspector(sb.system)
+
+    cs1 = i.connection(IPFlow.UDP(
+        "a:0:0:0:0:1", "192.168.0.1", 1100) >> ("ff:ff:ff:ff:ff:ff", "255.255.255.255", 333))
+    assert cs1.status_verdict() == (Status.EXPECTED, Verdict.PASS)
+
+    cs2 = i.connection(IPFlow.UDP(
+        "a:0:0:0:0:1", "192.168.0.1", 1101) >> ("33:33:00:00:00:01", "ff02::1", 333))
+    assert cs2.status_verdict() == (Status.EXPECTED, Verdict.PASS)
+
+    cs3 = i.connection(IPFlow.UDP(
+        "a:0:0:0:0:1", "192.168.0.1", 1102) >> ("33:33:00:00:00:02", "ff02::2", 333))
+    assert cs3.status_verdict() == (Status.EXPECTED, Verdict.PASS)
+
+    # ff02::16 was not configured as a multicast target for this service -> unexpected
+    cs4 = i.connection(IPFlow.UDP(
+        "a:0:0:0:0:1", "192.168.0.1", 1103) >> ("33:33:00:00:00:16", "ff02::16", 333))
+    assert cs4.status_verdict() == (Status.UNEXPECTED, Verdict.FAIL)
+
+
+def test_broadcast_ipv6_flags():
+    sb = SystemBackend()
+    dev1 = sb.device().hw("a:0:0:0:0:1")
+    # multiple multicast targets (IPv4 broadcast + two IPv6 flags) require an explicit name
+    broadcast = dev1.broadcast(UDP(port=333, name="Broadcast"), ipv6_all_nodes=True, ipv6_mldv2=True)
+    listener = sb.device().ip("2001:db8::10") << broadcast
+
+    target = listener.connection.target
+    assert isinstance(target, Service)
+    assert target.name == "Broadcast:333"  # no address-list suffix appended when explicitly named
+    assert target.multicast_target is not None
+    addrs = target.multicast_target.fixed_addresses
+    assert IPAddress.new("255.255.255.255") in addrs  # IPv4 broadcast, the default
+    assert IPAddress.new("ff02::1") in addrs           # ipv6_all_nodes
+    assert IPAddress.new("ff02::16") in addrs          # ipv6_mldv2
+    assert IPAddress.new("ff02::2") not in addrs       # ipv6_all_routers was not requested
+
+
+def test_broadcast_ipv6_flags_require_explicit_name():
+    sb = SystemBackend()
+    dev1 = sb.device().hw("a:0:0:0:0:1")
+    # more than one multicast target without an explicit name -> rejected, avoids an unwieldy auto-generated name
+    broadcast = dev1.broadcast(UDP(port=333), ipv6_all_nodes=True)
+    with pytest.raises(ConfigurationException, match="Multiple multicast targets require an explicit name"):
+        sb.device().ip("2001:db8::10") << broadcast
+
+    # a single multicast target (the IPv4 default only) is fine without a name
+    single = dev1.broadcast(UDP(port=444))
+    sb.device().ip("192.168.2.20") << single
+
+
 def test_multicast_many_listeners():
     sb = SystemBackend()
     dev1 = sb.device().hw("a:0:0:0:0:1")
@@ -236,7 +294,7 @@ def test_multicast_proprietary():
     assert isinstance(conn_target, Service)
     assert conn_target.addresses == \
         {EndpointAddress.any(Protocol.OTHER, 9000)}
-    assert conn_target.multicast_target and conn_target.multicast_target.fixed_address == PseudoAddress("ADDRESS")
+    assert conn_target.multicast_target and conn_target.multicast_target.fixed_addresses == [PseudoAddress("ADDRESS")]
 
 
 

@@ -548,7 +548,8 @@ class IoTSystem(NetworkNode):
                 # reverse DNS from IP addresss to name
                 nn = name.name[:-5]
                 if nn.endswith(".in-addr") and len(nn) > 8:
-                    address = IPAddress.new(nn[:-8])
+                    # PTR octets are in reverse order, e.g. 4.3.2.1.in-addr.arpa is 1.2.3.4
+                    address = IPAddress.new(".".join(reversed(nn[:-8].split("."))))
                 elif nn.endswith(".ip6") and len(nn) > 4:
                     nn = nn[:-4].replace(".", "")[::-1]
                     nn = ":".join(re.findall("....", nn))

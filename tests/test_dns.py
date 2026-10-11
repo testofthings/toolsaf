@@ -1,3 +1,4 @@
+import ipaddress
 import pytest
 import pathlib
 
@@ -43,6 +44,39 @@ def test_add_dns_names():
 
     with pytest.raises(ValueError, match=r"Invalid DNS label in name: '-incorrect_domain\.com'"):
         sb.device().dns("-incorrect_domain.com")
+
+
+def test_reverse_dns_in_addr_arpa():
+    sb = SystemBackend()
+    # PTR octets are in reverse order: 4.3.2.1.in-addr.arpa names 1.2.3.4
+    host, changed = sb.system.learn_named_address(DNSName("4.3.2.1.in-addr.arpa"), None)
+    assert not changed  # resolving a PTR name to an existing/new host is not reported as a change
+    assert host is not None
+    assert IPAddress.new("1.2.3.4") in host.addresses
+
+
+def test_reverse_dns_ip6_arpa():
+    sb = SystemBackend()
+    ptr = "1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa"
+    host, changed = sb.system.learn_named_address(DNSName(ptr), None)
+    assert not changed
+    assert host is not None
+    assert IPAddress.new("2001:db8::1") in host.addresses
+
+    # edge cases: unspecified, link-local, and multicast addresses round-trip too
+    for addr in ["::1", "fe80::1", "ff02::1"]:
+        h, _ = sb.system.learn_named_address(DNSName(ipaddress.ip_address(addr).reverse_pointer), None)
+        assert h is not None
+        assert IPAddress.new(addr) in h.addresses
+
+
+def test_reverse_dns_other_arpa_name_left_as_name():
+    sb = SystemBackend()
+    # .arpa names that aren't in-addr/ip6 PTR records are learned as plain names, not addresses
+    host, changed = sb.system.learn_named_address(DNSName("_dns.resolver.arpa"), None)
+    assert changed
+    assert host is not None
+    assert DNSName("_dns.resolver.arpa") in host.addresses
 
 
 def test_dns_pcap():
@@ -487,10 +521,12 @@ def test_dns_large_pcap2():
     s = sb.system
     PCAPReader.inspect(pathlib.Path("tests/samples/pcap/dns-large-set2.pcap"), m)
     hosts = sorted(s.get_hosts(), key=lambda h: -len(h.addresses))
-    assert len(hosts) == 18
+    # 17, not 18: before the in-addr.arpa reverse-octet fix, 10.10.0.2 was split into two hosts
+    # (the real one, plus a phantom "2.0.10.10" from the mis-parsed PTR record)
+    assert len(hosts) == 17
     hs = set([h.name for h in hosts])
     assert "10.10.0.1" in hs
-    assert "1.0.17.172" in hs
+    assert "172.17.0.1" in hs  # previously wrongly named "1.0.17.172" (reversed PTR octets)
     assert "fe80::b52e:fb6c:dd94:7767" in hs
     assert "play.google.com" in hs
 

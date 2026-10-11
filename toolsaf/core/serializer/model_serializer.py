@@ -11,7 +11,7 @@ from pydantic import (
 
 from toolsaf.common.entity import Entity
 from toolsaf.common.basics import Status, ExternalActivity, HostType, ConnectionType
-from toolsaf.common.address import Protocol, DNSName, Network, AnyAddress
+from toolsaf.common.address import Protocol, DNSName, Network, AnyAddress, IPxNetwork
 from toolsaf.common.property import PropertyKey
 from toolsaf.common.android import MobilePermissions
 from toolsaf.core.model import (
@@ -277,13 +277,23 @@ class SystemSerializer:
             "status": obj.status.value
         })
 
+    @classmethod
+    def _serialize_ip_masks(cls, masks: List[IPxNetwork]) -> Optional[Union[str, List[str]]]:
+        """Serialize network IP masks - a single mask as a plain string (legacy-compatible), else a list"""
+        if not masks:
+            return None
+        if len(masks) == 1:
+            return masks[0].exploded
+        return [m.exploded for m in masks]
+
     def _serialize_network(self, obj: Network, data: Dict[str, Any]) -> None:
         """Serialize network"""
         data.update({
             "type": "network",
             "name": obj.name,
             "address": get_network_address(obj.name),
-            "ip_mask": obj.ip_network.exploded if obj.ip_network else None
+            # A single mask stays a plain string for backward compatibility, multiple become a list
+            "ip_mask": self._serialize_ip_masks(obj.ip_network)
         })
 
     def _serialize_networks(self, node: NetworkNode) -> List[Dict[str, Any]]:
@@ -303,7 +313,7 @@ class SystemSerializer:
             address = get_network_address(network.name)
             if (old := into.get(address)) is None:
                 into[address] = network
-            elif old.ip_network != network.ip_network:
+            elif set(old.ip_network) != set(network.ip_network):
                 raise ValueError(
                     f"Two networks named '{network.name}', ip masks {old.ip_network} and {network.ip_network}")
         for child in node.children:
@@ -569,8 +579,18 @@ class NetworkDTO(BaseDTO):
     type: Literal["network"] = "network"
     name: NameType
     address: NetworkAddressType
-    ip_mask: Optional[IPvAnyNetwork] = None # No mask means that the network covers all addresses
+    # No mask means that the network covers all addresses. A single mask is stored as a plain string for
+    # backward compatibility with older statement files, multiple masks (e.g. IPv4 + IPv6) as a list
+    ip_mask: Optional[Union[IPvAnyNetwork, List[IPvAnyNetwork]]] = None
     parent_address: Optional[SystemAddressType] = None
+
+    def ip_masks(self) -> List[IPxNetwork]:
+        """Get the ip_mask field normalized to a list, regardless of stored shape"""
+        if self.ip_mask is None:
+            return []
+        if isinstance(self.ip_mask, list):
+            return list(self.ip_mask)
+        return [self.ip_mask]
 
     @model_validator(mode="before")
     @classmethod
@@ -608,7 +628,8 @@ class NetworkDTO(BaseDTO):
 
     def to_model(self, model_map: Dict[str, Any]) -> Network:
         """Create a Network from this DTO. Network nodes refer to it by name"""
-        network = Network(name=self.name, ip_network=self.ip_mask)
+        network = Network(name=self.name)
+        network.ip_network = self.ip_masks()
         model_map[self.address] = network
         if self.parent_address is not None:
             # Legacy format, the network belongs to the IoTSystem

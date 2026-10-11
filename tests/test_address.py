@@ -1,5 +1,5 @@
 from typing import Optional
-from ipaddress import IPv4Network
+from ipaddress import IPv4Network, IPv6Network
 from toolsaf.common.address import (
     Addresses, DNSName, EndpointAddress, EntityTag, HWAddress, HWAddresses, PseudoAddress,
     IPAddress, IPAddresses, Network, Protocol, AddressSequence, AddressSegment, AnyAddress
@@ -34,6 +34,11 @@ def test_ip_address():
     assert IPAddresses.NULL.is_global() is False
 
     assert IPAddress.new("192.168.1.1").is_global() is False
+
+    # IPv6 unspecified address is also null, e.g. DHCPv6 Solicit / Duplicate Address Detection source
+    assert IPAddress.new("::") == IPAddresses.NULL_V6
+    assert IPAddresses.NULL_V6.is_null() is True
+    assert IPAddress.new("::1").is_null() is False  # loopback, not unspecified
 
 
 def test_dns_name():
@@ -70,6 +75,24 @@ def test_parse_address():
     a = Addresses.parse_address("1.2.3.4")
     assert isinstance(a, IPAddress)
     assert f"{a}" == "1.2.3.4"
+
+    # IPv6 addresses often start with a hex letter (a-f), not a digit - must still parse as IPAddress,
+    # not be mistaken for an EntityTag
+    a = Addresses.parse_address("ff02::1")
+    assert isinstance(a, IPAddress)
+    assert f"{a}" == "ff02::1"
+
+    a = Addresses.parse_address("fe80::1")
+    assert isinstance(a, IPAddress)
+    assert f"{a}" == "fe80::1"
+
+    a = Addresses.parse_address("2001:db8::1")
+    assert isinstance(a, IPAddress)
+    assert f"{a}" == "2001:db8::1"
+
+    a = Addresses.parse_address("MyDevice")
+    assert isinstance(a, EntityTag)
+    assert f"{a}" == "MyDevice"
 
     a = Addresses.parse_address("www.example.com|name")
     assert isinstance(a, DNSName)
@@ -108,6 +131,17 @@ def test_hw_address_generation():
     hw = HWAddress.from_ip(ip)
     assert hw == HWAddress('40:00:c0:a8:00:02')
 
+    # IPv6 uses a 1-byte prefix (vs. IPv4's 2-byte one) to keep 5 address bytes instead of 4,
+    # reducing (not eliminating) collisions between different IPv6 addresses
+    hw6 = HWAddress.from_ip(IPAddress.new("2001:db8::100"))
+    assert hw6 == HWAddress('42:00:00:00:01:00')
+
+    # addresses differing only within the kept 5 bytes are distinguished
+    assert HWAddress.from_ip(IPAddress.new("2001:db8::100")) != HWAddress.from_ip(IPAddress.new("2001:db8::200"))
+
+    # addresses differing only in the discarded high-order bytes (site prefix) still collide
+    assert HWAddress.from_ip(IPAddress.new("2001:db8::1")) == HWAddress.from_ip(IPAddress.new("2001:db9::1"))
+
 
 def test_ip_network_matching():
     nw = Network("net", ip_network=IPv4Network("22.33.0.0/16"))
@@ -120,6 +154,35 @@ def test_ip_network_matching():
     assert nw.is_local(IPAddress.new("22.2.3.4"))
     assert nw.is_local(IPAddress.new("22.33.3.4"))
     assert nw.is_local(IPAddress.new("22.33.33.4"))
+
+
+def test_ipv6_network_matching():
+    nw = Network("net", ip_network=IPv6Network("2001:db8::/32"))
+    assert nw.is_local(IPAddress.new("2001:db8::1"))
+    assert not nw.is_local(IPAddress.new("2001:db9::1"))
+
+    # Link-local and Unique Local Addresses are always local, regardless of configured masks
+    assert nw.is_local(IPAddress.new("fe80::1"))
+    assert nw.is_local(IPAddress.new("fd12:3456:789a::1"))
+
+    # A network without any configured mask still treats link-local/ULA as local
+    empty = Network("empty")
+    assert empty.is_local(IPAddress.new("fe80::1"))
+    assert empty.is_local(IPAddress.new("fc00::1"))
+    assert not empty.is_local(IPAddress.new("2001:db8::1"))
+
+    # The unspecified address :: is null, always local, same as 0.0.0.0
+    assert empty.is_local(IPAddress.new("::"))
+
+
+def test_dual_stack_network_matching():
+    nw = Network("net", ip_network=IPv4Network("10.0.0.0/16"))
+    nw.ip_network.append(IPv6Network("2001:db8::/32"))
+
+    assert nw.is_local(IPAddress.new("10.0.1.2"))
+    assert nw.is_local(IPAddress.new("2001:db8::1"))
+    assert not nw.is_local(IPAddress.new("10.1.0.0"))
+    assert not nw.is_local(IPAddress.new("2001:db9::1"))
 
 
 def _segment(address: AnyAddress, segment_type: Optional[str]=None) -> AddressSegment:

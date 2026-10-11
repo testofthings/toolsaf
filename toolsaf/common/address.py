@@ -214,14 +214,6 @@ class Addresses:
         return add or IPAddresses.NULL
 
     @classmethod
-    def get_multicast(cls, addresses: Iterable[AnyAddress]) -> Optional[AnyAddress]:
-        """Find multicast address"""
-        for a in addresses:
-            if a.is_multicast():
-                return a
-        return None
-
-    @classmethod
     def get_tag(cls, addresses: Iterable[AnyAddress]) -> Optional[EntityTag]:
         """Get tag from addresses"""
         for a in addresses:
@@ -246,9 +238,10 @@ class Addresses:
         match (t, v):
             case (t, "") if t:
                 v = t # No type given
-                if v[0].isdigit():
+                try:
                     return IPAddress.new(v)
-                return EntityTag(v)
+                except ValueError:
+                    return EntityTag(v)
             case ("tag", v):
                 return EntityTag(v)
             case ("ip", v):
@@ -317,8 +310,15 @@ class HWAddress(AnyAddress):
 
     @classmethod
     def from_ip(cls, address: 'IPAddress') -> 'HWAddress':
-        """Create testing HW address for IP address"""
-        a = "40:00:" + ":".join(f"{b:02x}" for b in address.data.packed[-4:])
+        """Create testing HW address for IP address.
+        IPv6 addresses are 16 bytes, too long to fit in a 6-byte HW address without collisions.
+        Using a 1-byte prefix, instead of IPv4's 2-byte one, keeps 5 address bytes instead of 4,
+        cutting the odds of two different addresses colliding onto the same synthetic HW address"""
+        if isinstance(address.data, IPv6Address):
+            prefix, data = "42", address.data.packed[-5:]
+        else:
+            prefix, data = "40:00", address.data.packed[-4:]
+        a = prefix + ":" + ":".join(f"{b:02x}" for b in data)
         return HWAddress(a)
 
     def is_null(self) -> bool:
@@ -392,7 +392,7 @@ class IPAddress(AnyAddress):
         return cls.new(ad), default_port if p == "" else int(p)
 
     def is_null(self) -> bool:
-        return self.data == IPAddresses.NULL.data
+        return self.data in (IPAddresses.NULL.data, IPAddresses.NULL_V6.data)
 
     def is_multicast(self) -> bool:
         return self.data.is_multicast or self.data == IPAddresses.BROADCAST.data
@@ -438,7 +438,17 @@ class IPAddresses:
 
     NULL = IPAddress.new("0.0.0.0")
 
+    # The IPv6 unspecified address, the v6 counterpart of 0.0.0.0
+    NULL_V6 = IPAddress.new("::")
+
     BROADCAST = IPAddress.new("255.255.255.255")
+
+    # IPv6 has no broadcast, these well-known multicast addresses (RFC 4291, RFC 3810) serve similar roles
+    IPV6_ALL_NODES = IPAddress.new("ff02::1")
+
+    IPV6_ALL_ROUTERS = IPAddress.new("ff02::2")
+
+    IPV6_MLDV2 = IPAddress.new("ff02::16")
 
 
 class DNSName(AnyAddress):
@@ -625,21 +635,34 @@ class EndpointAddress(AnyAddress):
         )
 
 
+# IPv4 or v6 network
+IPxNetwork = IPv4Network | IPv6Network
+
+# IPv6 link-local (RFC 4291) and Unique Local Address (RFC 4193) ranges - always local, regardless
+# of configured network masks, same spirit as multicast/null addresses
+IPV6_LINK_LOCAL = IPv6Network("fe80::/10")
+IPV6_UNIQUE_LOCAL = IPv6Network("fc00::/7")
+
+
 class Network:
     """Network"""
-    def __init__(self, name: str, ip_network: Optional[IPv4Network | IPv6Network] = None) -> None:
+    def __init__(self, name: str, ip_network: Optional[IPxNetwork] = None) -> None:
         self.name = name
         # NOTE: Equality etc. is only evaluated by name
-        self.ip_network = ip_network
+        self.ip_network: List[IPxNetwork] = [ip_network] if ip_network else []
 
     def is_local(self, address: 'AnyAddress') -> bool:
         """Is local address for this network?"""
         h = address.get_host()
         if h.is_multicast() or h.is_null() or not isinstance(h, IPAddress):
             return True
-        if self.ip_network and h.data in self.ip_network:
+        if isinstance(h.data, IPv6Address) and (
+            h.data in IPV6_LINK_LOCAL or h.data in IPV6_UNIQUE_LOCAL
+        ):
             return True
-        # FIXME: Broadcast for IPv6 not implemented  pylint: disable=fixme
+        for ipn in self.ip_network:
+            if h.data in ipn:
+                return True
         return False
 
     def __eq__(self, other: object ) -> bool:

@@ -1,11 +1,12 @@
 """Address range matching"""
 
+import ipaddress
 from ipaddress import IPv4Address
 from typing import List, Optional, Tuple, Any
 from pydantic import GetCoreSchemaHandler
 from pydantic_core import core_schema
 
-from toolsaf.common.address import Addresses, AnyAddress, IPAddress
+from toolsaf.common.address import Addresses, AnyAddress, IPAddress, IPxNetwork
 
 
 class AddressRange:
@@ -78,48 +79,63 @@ class AddressRange:
 
 class MulticastTarget:
     """Multicast target definition"""
-    def __init__(self, fixed_address: Optional[AnyAddress] = None,
-                 address_range: Optional[AddressRange] = None) -> None:
-        assert (fixed_address is None) != (address_range is None), "Either fixed_address or range must be provided"
-        self.fixed_address = fixed_address
+    def __init__(self, fixed_addresses: Optional[List[AnyAddress]] = None,
+                 address_range: Optional[AddressRange] = None,
+                 network_range: Optional[IPxNetwork] = None) -> None:
+        provided = [bool(fixed_addresses), address_range is not None, network_range is not None]
+        assert sum(provided) == 1, \
+            "Exactly one of fixed_addresses, address_range, or network_range must be provided"
+        self.fixed_addresses = fixed_addresses or []
         self.address_range = address_range
+        self.network_range = network_range
 
     def is_match(self, address: AnyAddress) -> bool:
         """Check if address matches here"""
-        if self.fixed_address is not None:
-            return self.fixed_address == address
+        if self.fixed_addresses:
+            return address in self.fixed_addresses
         if self.address_range is not None:
             return self.address_range.is_match(address)
+        if self.network_range is not None:
+            return isinstance(address, IPAddress) and address.data in self.network_range
         return False
 
     def get_parseable_value(self) -> str:
         """Get parseable value"""
-        if self.fixed_address:
-            return self.fixed_address.get_parseable_value()
+        if self.fixed_addresses:
+            return ",".join(a.get_parseable_value() for a in self.fixed_addresses)
         if self.address_range:
             return repr(self.address_range)
+        if self.network_range:
+            return str(self.network_range)
         return ""
 
     @classmethod
+    def from_specs(cls, specs: List[str]) -> 'MulticastTarget':
+        """Build from one or more address specs, each fixed, a CIDR network, or a wildcard range"""
+        if len(specs) == 1 and "/" in specs[0]:
+            return cls(network_range=ipaddress.ip_network(specs[0]))
+        if len(specs) == 1 and ("*" in specs[0] or "-" in specs[0]):
+            return cls(address_range=AddressRange.parse_range(specs[0]))
+        return cls(fixed_addresses=[Addresses.parse_address(s) for s in specs])
+
+    @classmethod
     def parse_address_range(cls, address_range: str) -> 'MulticastTarget':
-        """Parse multicast target from address range"""
-        if "*" in address_range or "-" in address_range:
-            addr_range = AddressRange.parse_range(address_range)
-            return cls(address_range=addr_range)
-        fixed = Addresses.parse_address(address_range)
-        return cls(fixed_address=fixed)
+        """Parse multicast target from a comma-separated list of address specs (wire format)"""
+        return cls.from_specs(address_range.split(","))
 
     def __hash__(self) -> int:
-        return hash((self.fixed_address, self.address_range))
+        return hash((tuple(self.fixed_addresses), self.address_range, self.network_range))
 
     def __eq__(self, value: object) -> bool:
         if not isinstance(value, MulticastTarget):
             return False
-        return (self.fixed_address == value.fixed_address and
-                self.address_range == value.address_range)
+        return (self.fixed_addresses == value.fixed_addresses and
+                self.address_range == value.address_range and
+                self.network_range == value.network_range)
 
     def __repr__(self) -> str:
-        return f"Multicast: {self.fixed_address or self.address_range}"
+        addresses = ', '.join(str(a) for a in self.fixed_addresses)
+        return f"Multicast: {addresses or self.address_range or self.network_range}"
 
     @classmethod
     def __get_pydantic_core_schema__(
