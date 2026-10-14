@@ -205,8 +205,10 @@ class SystemBackend(SystemBuilder):
         return be
 
     def _free_host_name(self, name_base: str) -> str:
+        renamed = self.system.get_entity(name_base)  # if exists, renamed to '<name_base> 1'
         n = self.system.free_child_name(name_base)
-        if n != name_base:
+        if renamed:
+            self.changed(renamed)
             # dirty hack, check all names match keys
             self.hosts_by_name = {
                 h.entity.name: h for h in self.hosts_by_name.values()}
@@ -323,6 +325,7 @@ class NodeBackend(NodeBuilder):
 
     def name(self, name: str) -> Self:
         self.entity.name = name
+        self.system.changed(self.entity)
         if DNSName.looks_like(name):
             self.dns(name)
         return self
