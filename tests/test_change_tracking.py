@@ -462,3 +462,34 @@ def test_add_online_resource():
     assert sb.system in sb._changes
 
     # TODO: Add serialization test when online resource serialization is supported
+
+
+def test_automatic_numbering_renames_host():
+    sb = SystemBackend()
+    first = sb.device()
+    sb._changes = set()
+
+    second = sb.device()  # first host renamed 'Device' -> 'Device 1'
+    assert first.entity.name == "Device 1"
+    assert sb._changes == {first.entity, second.entity}
+
+    serialized = sb.serialize_statement_changes()
+    assert {(e["name"], e["address"]) for e in serialized} == {("Device 1", "Device"), ("Device 2", "Device_2")}
+
+    sb.device()  # no renaming this time
+    assert sb._changes == {sb.hosts_by_name["Device 3"].entity}
+
+
+def test_set_name():
+    sb = SystemBackend()
+    host = sb.device("Test Device")
+    service = host / HTTP
+    sb._changes = set()
+
+    host.name("Renamed Device")
+    service.name("Web UI")
+    assert sb._changes == {host.entity, service.entity}
+
+    serialized = sb.serialize_statement_changes()
+    assert {(e["name"], e["address"]) for e in serialized} == {
+        ("Renamed Device", "Test_Device"), ("Web UI", "Test_Device/tcp:80")}
