@@ -50,13 +50,30 @@ See [end of this page](#advanced-metafile-definitions) for advanced options requ
 
 ## Data file names
 
-Black Duck, HAR, and SPDX find the entity of a data file by the file name, e.g. `Mobile App SW.json`.
-The file can be named by the entity name or by its tag.
-The tag is the last part of the system address of the entity, e.g. `Mobile_App_SW` in `Mobile_App&software=Mobile_App_SW`.
-The tag is set when the entity is created, from its original name, and it does not change when the entity is renamed.
-In the tag, spaces and other special characters are replaced by underscores, e.g. `Mobile_App_SW.json`,
-and an underscore is prepended if the name does not start with a letter.
-Data files named by the tag keep working after the entity is renamed, unlike the files named by the original name.
+Many tools find the entity of a data file by the file name. Depending on the tool, the file is named by:
+
+* **Host address** (Android Manifest, Censys, Ssh-audit, Testssl.sh):
+  Any address of the host: its tag, DNS name, or IP address, e.g. `Mobile_App.xml` or `example.com.json`.
+  For a service, the protocol and port are added, e.g. `example.com.tcp.443.json`.
+* **Entity name or tag** (Black Duck, HAR, SPDX):
+  The name of the host or software, e.g. `Mobile App SW.json`, or its tag, e.g. `Mobile_App_SW.json`.
+
+The tag of a host or software is set when it is created, from its original name,
+with spaces and other special characters replaced by underscores,
+and an underscore prepended if the name does not start with a letter.
+The tag does not change when the entity is renamed, so data files named by the tag keep working.
+Data files named by the original name stop working when the entity is renamed.
+
+The tag of a host is shown in the output as the first address:
+
+```
+[Expected]          Lamp
+                    │  Addresses: Device_1, 192.168.0.5
+```
+
+The tags of software are not shown. The default software name is the host name followed by ` SW`,
+e.g. `Device 1 SW` with tag `Device_1_SW`.
+
 There must be only one data file for an entity in a batch directory.
 
 ## List of supported tools
@@ -108,7 +125,7 @@ unzip <your_file>.xapk -d xapk_extracted
 ```
 Then, locate the base `.apk` file within the `xapk_extracted` directory (it is typically the largest file). From there, you can use the `apktool` method explained above.
 
-**Note:** The extracted `AndroidManifest.xml` must be renamed to match the tag of the app defined in your security statement, i.e. its original name with any spaces replaced with underscores (see [data file names](#data-file-names)).
+**Note:** The extracted `AndroidManifest.xml` must be renamed to match the tag of the app defined in your security statement, e.g. `Mobile_App.xml` (see [data file names](#data-file-names)).
 
 Toolsaf divides Android permissions into [different categories](../toolsaf/adapters/data/android_permissions.json) that are used in the DSL.
 
@@ -129,7 +146,7 @@ Example metafile `00meta.json`:
 
 > 🌐 [Censys](https://search.censys.io)
 
-Data files are json-files fetched by Censys search API and named as `<address>.json` where `<address>` is the address of the scanned remote host.
+Data files are json-files fetched by Censys search API and named as `<address>.json` where `<address>` is the address of the scanned remote host (see [data file names](#data-file-names)).
 Example metafile `00meta.json`:
 
 ```json
@@ -249,7 +266,7 @@ SPDX file import is tested with files downloaded from Black Duck service. You ca
 
 > 🌐 [Ssh-audit](https://github.com/jtesta/ssh-audit)
 
-Data is output from `Ssh-audit` tool named as `<address>.<port>.json` where `<address>` is the host address and `<port>` is the TCP port number.
+Data is output from `Ssh-audit` tool named as `<address>.tcp.<port>.json` where `<address>` is the host address and `<port>` is the TCP port number (see [data file names](#data-file-names)).
 Example metafile `00meta.json`:
 ```json
 {
@@ -267,7 +284,7 @@ As an example, the output file name could be `example.com.tcp.22.json`.
 
 > 🌐 [Testssl.sh](https://testssl.sh)
 
-Data is output from `Testssl.sh` tool named as `<address>.<port>.json` where `<address>` is the host address and `<port>` is the TCP port number.
+Data is output from `Testssl.sh` tool named as `<address>.tcp.<port>.json` where `<address>` is the host address and `<port>` is the TCP port number (see [data file names](#data-file-names)).
 Example metafile `00meta.json`:
 ```json
 {

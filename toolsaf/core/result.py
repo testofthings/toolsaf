@@ -140,9 +140,9 @@ class Report:
 
     def _get_addresses(self, host: Host) -> str:
         """Get addresses for given host"""
-        addresses = [f"{address}" for address in sorted(host.addresses)]
-        addresses = [address for address in addresses if address != host.name]
-        return ", ".join(addresses)
+        # Tag first, then by address type: DNS names, IP addresses, HW addresses...
+        ads = sorted(host.addresses, key=lambda a: (not a.is_tag(), -a.priority(), f"{a}"))
+        return ", ".join(dict.fromkeys(f"{a}" for a in ads))  # different addresses may look the same
 
     def _get_text(self, key: PropertyKey, value: Any) -> str:
         """Get text to print"""
