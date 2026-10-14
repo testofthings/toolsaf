@@ -125,3 +125,16 @@ def test_host_tag_conflict_after_numbering():
     sb.device()
     with pytest.raises(ConfigurationException, match="conflicts with system address 'Device' of host 'Device 1'"):
         sb.device("Device")
+
+
+def test_free_name_after_rename():
+    sb = SystemBackend()
+    first = sb.device()
+    first.name("Test")  # tag Device remains
+    second = sb.device()
+    third = sb.device()
+    assert [(h.name, str(h.get_system_address())) for h in sb.system.get_hosts()] == [
+        ("Test", "Device"), ("Device 1", "Device_1"), ("Device 2", "Device_2")]
+    assert first.entity is not second.entity
+    assert sb.device("Device 1") is second and sb.device("Device 2") is third
+    sb.system.check_unique_system_addresses()
