@@ -325,3 +325,16 @@ def test_system_endpoint_address_no_protocol():
     # parsed into one entity tag
     ep2 = Addresses.parse_system_address(ep_str)
     assert [s.address for s in ep2.segments] == [EndpointAddress(EntityTag("Device"), Protocol.ETHERNET)]
+
+
+def test_get_prioritized():
+    ip1, ip2 = IPAddress.new("192.168.0.10"), IPAddress.new("192.168.0.9")
+    dns1, dns2 = DNSName("a.example.com"), DNSName("b.example.com")
+    # ties resolved by the parseable value, regardless of the order
+    assert Addresses.get_prioritized([ip1, ip2]) == ip1
+    assert Addresses.get_prioritized([ip2, ip1]) == ip1
+    assert Addresses.get_prioritized([dns2, dns1]) == dns1
+    # higher priority wins
+    assert Addresses.get_prioritized([ip1, dns2, ip2]) == dns2
+    assert Addresses.get_prioritized([ip1, EntityTag("Device"), dns1]) == EntityTag("Device")
+    assert Addresses.get_prioritized([]) == IPAddresses.NULL

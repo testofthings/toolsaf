@@ -206,12 +206,8 @@ class Addresses:
 
     @classmethod
     def get_prioritized(cls, addresses: Iterable[AnyAddress]) -> AnyAddress:
-        """Get address with highest priority"""
-        add = None
-        for a in addresses:
-            if add is None or add.priority() < a.priority():
-                add = a
-        return add or IPAddresses.NULL
+        """Get address with highest priority, the ties resolved by the parseable value to be deterministic"""
+        return min(addresses, key=lambda a: (-a.priority(), a.get_parseable_value()), default=IPAddresses.NULL)
 
     @classmethod
     def get_multicast(cls, addresses: Iterable[AnyAddress]) -> Optional[AnyAddress]:

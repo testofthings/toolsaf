@@ -70,3 +70,22 @@ def test_set_addresses_without_tag():
     with pytest.raises(ConfigurationException, match="Addresses change system address of 192.168.4.4"):
         host.set_addresses(["192.168.4.4", "host.example.com|name"])  # DNS name would take priority
     host.set_addresses(["192.168.4.4"])
+
+
+def test_set_addresses_without_tag_same_priority():
+    setup = Setup()
+    setup.system.system.get_endpoint(IPAddress.new("192.168.4.4"))
+    s = SystemSerializer()
+    s.deserialize_list(s.serialize(setup.system.system))
+    sb = SystemBackend.from_entity(s.model_map[""])
+    host = cast(HostBackend, sb.get_backend("192.168.4.4"))
+
+    # 192.168.4.10 < 192.168.4.4 as text, so it would become the system address
+    with pytest.raises(ConfigurationException, match="Addresses change system address of 192.168.4.4"):
+        host.set_addresses(["192.168.4.4", "192.168.4.10"])
+    host.set_addresses(["192.168.4.4", "192.168.4.5"])
+    assert host.entity.get_system_address().get_parseable_value() == "192.168.4.4"
+
+    s = SystemSerializer()
+    s.deserialize_list(s.serialize(sb.system))  # address check passes
+    assert "192.168.4.4" in s.model_map
