@@ -47,16 +47,21 @@ records = serializer.serialize(system)
 
 Internally, `serializer_map` maps objects to private methods such as `_serialize_host` or `_serialize_service`. These methods build the dict.
 
-Each record has a `type` field that identifies what it represents. Objects reference their parent by `system_address` which is a human-readable path, such as `"Device_1/tcp:80"`.
+Each record has a `type` field that identifies what it represents. Each record is identified by its `address`, the _system address_, which is a human-readable path, such as `"Device_1/tcp:80"`. Objects reference their parent by `parent_address`.
 
 ```json
-{"type": "system", "system_address": "", "name": "My System", ...}
-{"type": "host",   "system_address": "Device_1", "parent": "", "name": "Device 1", ...}
-{"type": "service","system_address": "Device_1/tcp:80", "parent": "Device_1", ...}
+{"type": "system", "address": "", "name": "My System", ...}
+{"type": "host",   "address": "Device_1", "parent_address": "", "name": "Device 1", ...}
+{"type": "service","address": "Device_1/tcp:80", "parent_address": "Device_1", ...}
 ```
 
+System addresses are built from _tags_ of hosts and components, and from protocols and ports of services. A tag is set from the original name and is not changed when the entity is renamed. Thus, the system address of an entity does not change when it is renamed.
+
+### Statement changes
+`SystemBackend.serialize_statement_changes()` returns the records changed since the previous call. The records of removed entities are just `{"address": "Device_1/tcp:80", "type": "removed"}`. Removals are first, the dependent entities before the ones they depend on. Then come the changed records, the parents before the children. Thus, the records can be applied in order.
+
 ### Reading
-When deserializing, Pydantic is first used to validate given data. `SystemSerializer` creates deserialized objects by calling the DTOs' `to_model` methods. Deserialized objects are linked to their parents based on system addresses.
+When deserializing, Pydantic is first used to validate given data. `SystemSerializer` creates deserialized objects by calling the DTOs' `to_model` methods. Deserialized objects are linked to their parents based on system addresses. The system address of each deserialized object is checked to match the `address` field.
 
 ```python
 serializer = SystemSerializer()
@@ -93,6 +98,8 @@ serializer = EventSerializer(system)
 for record in records:
     obj = serializer.deserialize(record)  # EvidenceSource or an event
 ```
+
+Property events of entities not in the system, e.g. removed ones, are skipped and `None` is returned.
 
 ## DTOs
 All serialized records have a corresponding Pydantic model called a DTO. Pydantic validates the raw dict against the DTO, which catches missing fields and type mismatches early. Each DTO then knows how to turn itself into the real model object via their `to_model` method.

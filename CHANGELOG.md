@@ -1,4 +1,21 @@
 # Changelog
+## Unreleased
+### Added
+- Entities can be renamed with `name()` without changing their system address.
+- Entities can be removed with `system.remove_entity(entity)` and `system.remove_network(network)`. See [Editing loaded statements](documentation/EditingStatements.md).
+- Host addresses can be replaced with `set_addresses()`.
+- Batch data files of HAR, SPDX, and Black Duck can be named by entity tag, which does not change when the entity is renamed.
+
+### Changed
+- Creating a host whose tag is used by another host is an error, e.g. `device("A B")` and `device("A_B")`.
+- All host addresses are shown in the output, tag first.
+- Statement change JSON is ordered, removals first, and then parents before children.
+- Events of removed entities are skipped when loading a statement.
+- Code updates and removal of obsolete code
+
+### Documentation
+- Added [Editing loaded statements](documentation/EditingStatements.md) and data file naming instructions in `Tools.md`. Fixed `Ssh-audit` and `Testssl.sh` file name templates.
+
 ## 0.8.1
 ### Fixed
 - Toolsaf was not able to properly parse .pcap files / packets that were missing ethernet frames, fixed.
