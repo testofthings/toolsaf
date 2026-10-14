@@ -138,3 +138,17 @@ def test_free_name_after_rename():
     assert first.entity is not second.entity
     assert sb.device("Device 1") is second and sb.device("Device 2") is third
     sb.system.check_unique_system_addresses()
+
+
+def test_default_software_after_rename():
+    sb = SystemBackend()
+    dev = sb.device("Dev")
+    sw = dev.software()
+    dev.name("Test")
+    assert dev.software() is sw  # not a new 'Test SW'
+    assert [c.name for c in dev.entity.components] == ["Dev SW"]
+
+    other = sb.device("Other")
+    fw = other.software("FW")
+    assert other.software() is fw  # no default name -> the existing software
+    assert other.software("FW 2") is not fw  # named software can be added
