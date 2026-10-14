@@ -177,7 +177,12 @@ class SystemBackend(SystemBuilder):
         """Get or create a host"""
         hb = self.hosts_by_name.get(name)
         if hb is None:
-            h = Host(self.system, name, tag=EntityTag.new(name))  # tag is not renamed, name can be
+            tag = EntityTag.new(name)
+            for other in self.system.get_hosts():
+                if tag in other.addresses:
+                    raise ConfigurationException(
+                        f"Host name '{name}' conflicts with system address '{tag}' of host '{other.name}'")
+            h = Host(self.system, name, tag=tag)  # tag is not renamed, name can be
             h.description = description
             h.match_priority = 10
             hb = HostBackend.new(h, self)

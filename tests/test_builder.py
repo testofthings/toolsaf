@@ -103,3 +103,25 @@ def test_bad_network_ip_mask():
             SystemBackend().network("Sub", ip_mask=mask)
 
     assert SystemBackend().network("Sub", ip_mask="").network.ip_network is None
+
+
+def test_host_tag_conflict():
+    sb = SystemBackend()
+    sb.device("A B")
+    changes = set(sb._changes)
+    with pytest.raises(ConfigurationException, match="Host name 'A_B' conflicts with system address 'A_B' of host 'A B'"):
+        sb.device("A_B")
+    assert sb._changes == changes  # failed call did not record changes
+    assert len(sb.system.get_hosts()) == 1
+    assert sb.device("A B") is sb.hosts_by_name["A B"]  # same name is fine, it is the same host
+
+
+def test_host_tag_conflict_after_numbering():
+    sb = SystemBackend()
+    sb.device()
+    sb.device()  # first host renamed 'Device 1', but its tag remains 'Device'
+    assert [(h.name, str(h.get_system_address())) for h in sb.system.get_hosts()] == [
+        ("Device 1", "Device"), ("Device 2", "Device_2")]
+    sb.device()
+    with pytest.raises(ConfigurationException, match="conflicts with system address 'Device' of host 'Device 1'"):
+        sb.device("Device")
