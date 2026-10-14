@@ -11,7 +11,7 @@ from pydantic import (
 
 from toolsaf.common.entity import Entity
 from toolsaf.common.basics import Status, ExternalActivity, HostType, ConnectionType
-from toolsaf.common.address import Protocol, DNSName, Network, AnyAddress
+from toolsaf.common.address import Addresses, Protocol, DNSName, Network, AnyAddress, EntityTag
 from toolsaf.common.property import PropertyKey
 from toolsaf.common.android import MobilePermissions
 from toolsaf.core.model import (
@@ -91,7 +91,9 @@ class SystemSerializer:
     def deserialize(self, data: Dict[str, Any]) -> Any:
         """Deserialize an object from JSON"""
         dto = NODE_ADAPTER.validate_python(data)
-        return dto.to_model(self.model_map)
+        model = dto.to_model(self.model_map)
+        self._check_address(model, dto.address)
+        return model
 
     def deserialize_list(self, data: List[Dict[str, Any]]) -> List[Any]:
         """Deserialize a list of objects from JSON. Lazily loads object dependencies"""
@@ -127,9 +129,19 @@ class SystemSerializer:
             self._deserialize(get_network_address(network_name))
 
         model = dto.to_model(self.model_map)
+        self._check_address(model, address)
         self.model_map[address] = model # Ensure everything ends up here
         self._resolving.remove(address)
         return model
+
+    @staticmethod
+    def _check_address(model: Any, address: str) -> None:
+        """Check that deserialized entity resolves to the system address it was serialized with"""
+        if not isinstance(model, Entity):
+            return  # networks have their own addressing
+        resolved = model.get_system_address().get_parseable_value()
+        if resolved != address:
+            raise ValueError(f"Deserialized entity address '{resolved}' does not match '{address}'")
 
     def _serialize_entity(self, obj: Entity, data: Dict[str, Any]) -> None:
         """Serialize common entity fields"""
@@ -481,6 +493,11 @@ class NodeComponentDTO(EntityDTO):
 
     def populate(self, model: NodeComponent, model_map: Dict[str, Any]) -> None:
         """Populate a node component model from this DTO"""
+        # Tag is taken from the system address, as the name may have been changed after tag was set
+        segment = Addresses.parse_system_address(self.address).segments[-1]
+        if not isinstance(segment.address, EntityTag) or segment.segment_type != model.concept_name:
+            raise ValueError(f"Bad {model.concept_name} address '{self.address}'")
+        model.tag = segment.address
         model_map[self.address] = model
         model.status = self.status
         model.entity.add_component(model)

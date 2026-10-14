@@ -439,6 +439,62 @@ def test_node_networks_missing_network_record():
         serializer.deserialize(s_host)
 
 
+def test_renamed_components_keep_address():
+    setup = Setup()
+    device = setup.system.device("Device 1")
+    software = device.software("FW").sw
+    cookies = device.entity.add_component(Cookies(entity=device.entity, name="Cookies"))
+    device.name("Lamp")
+    software.name = "Firmware"
+    cookies.name = "Session cookies"
+
+    serializer = SystemSerializer()
+    records = serializer.serialize(setup.system.system)
+    by_type = {r["type"]: r for r in records}
+    assert by_type["sw"]["name"] == "Firmware"
+    assert by_type["sw"]["address"] == "Device_1&software=FW"
+    assert by_type["cookies"]["name"] == "Session cookies"
+    assert by_type["cookies"]["address"] == "Device_1&cookies=Cookies"
+
+    for deserialized in (
+            [serializer.deserialize(record) for record in records],
+            serializer.deserialize_list(records)):
+        new_software = next(d for d in deserialized if isinstance(d, Software))
+        new_cookies = next(d for d in deserialized if isinstance(d, Cookies))
+        assert new_software.name == "Firmware"
+        assert new_software.get_system_address().get_parseable_value() == "Device_1&software=FW"
+        assert new_cookies.name == "Session cookies"
+        assert new_cookies.get_system_address().get_parseable_value() == "Device_1&cookies=Cookies"
+
+    # serializing again gives the same records
+    assert SystemSerializer().serialize(serializer.model_map[""]) == records
+
+
+def test_component_address_must_match_type():
+    setup = Setup()
+    setup.system.device("Device 1").software("FW")
+    serializer = SystemSerializer()
+    records = serializer.serialize(setup.system.system)
+    sw = next(r for r in records if r["type"] == "sw")
+    sw["address"] = "Device_1&cookies=FW"
+    with pytest.raises(ValueError, match="Bad software address"):
+        serializer.deserialize_list(records)
+
+
+def test_deserialized_address_must_match():
+    setup = Setup()
+    setup.system.device("Device 1")
+    serializer = SystemSerializer()
+    records = serializer.serialize(setup.system.system)
+    host = next(r for r in records if r["type"] == "host")
+    host["address"] = "Other"  # but tag in addresses is still Device_1
+    with pytest.raises(ValueError, match="does not match 'Other'"):
+        serializer.deserialize_list(records)
+    single = SystemSerializer()
+    with pytest.raises(ValueError, match="does not match 'Other'"):
+        _ = [single.deserialize(r) for r in records]
+
+
 def test_lazy_load_deserialization():
     setup = Setup()
     device1 = setup.system.device("Device 1")
