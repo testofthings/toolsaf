@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 from typing import List, Tuple, Dict
 from colored import Fore
 
+from toolsaf.common.address import Addresses, DNSName, EntityTag, HWAddress, IPAddress
 from toolsaf.common.verdict import Verdict
 from toolsaf.common.property import Properties, PropertyKey, PropertyVerdictValue
 from toolsaf.main import HTTP, TLS
@@ -144,9 +145,18 @@ def test_get_properties_to_print(properties: Dict, show: List[str], expected: Tu
 def test_get_addresses():
     report = Report(EventLogger(Setup().get_inspector()))
     entity = MagicMock()
-    entity.name = "test"
-    entity.addresses = ["a", "test", "b"]
-    assert report._get_addresses(entity) == "a, b"
+    entity.name = "test.example.com"
+    entity.addresses = [DNSName("a.example.com"), DNSName("test.example.com"), IPAddress.new("1.2.3.4")]
+    assert report._get_addresses(entity) == "a.example.com, test.example.com, 1.2.3.4"
+    entity.name = "Test"
+    entity.addresses = [
+        HWAddress.new("02:00:00:00:00:01"), IPAddress.new("1.2.3.4"), DNSName("test.example.com"),
+        EntityTag("Test"), Addresses.BLE_Ad, IPAddress.new("1.2.3.10")]
+    # Tag first, then by type, then alphabetically
+    assert report._get_addresses(entity) == \
+        "Test, BLE_Ad, test.example.com, 1.2.3.10, 1.2.3.4, 02:00:00:00:00:01"
+    entity.addresses = [EntityTag("router"), DNSName("router")]
+    assert report._get_addresses(entity) == "router"  # no duplicates
 
 
 def test_get_text():
@@ -277,7 +287,7 @@ def test_build_host_structure():
             },
         },
         "Device": {
-            "srcs": ["@1", "@2"], "address": "", "verdict": "Expected",
+            "srcs": ["@1", "@2"], "address": "Device", "verdict": "Expected",
             "HTTP:80": {"srcs": ["@1", "@2"], "address": "", "verdict": "Expected"},
         }
     }
