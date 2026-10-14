@@ -23,8 +23,8 @@ from toolsaf.core.ignore_rules import IgnoreRules, IgnoreRule
 from toolsaf.core.services import DHCPService, DNSService
 from toolsaf.core.components import Software, SoftwareComponent, Cookies, CookieData
 from toolsaf.core.serializer.types import (
-    LongNameType, NameType, DescriptionType, MatchPriorityType, NetworkAddressType, SystemAddressType,
-    UploadTagType, NETWORK_ADDRESS_PREFIX, validate_property_keys
+    LongNameType, NameType, ComponentNameType, DescriptionType, MatchPriorityType, NetworkAddressType,
+    SystemAddressType, UploadTagType, NETWORK_ADDRESS_PREFIX, validate_property_keys
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -541,9 +541,9 @@ class SoftwareDTO(NodeComponentDTO):
 
 class SoftwareComponentDTO(BaseDTO):
     """DTO for SoftwareComponent"""
-    key: NameType
-    name: NameType
-    version: str = Field("", max_length=50)
+    key: ComponentNameType
+    name: ComponentNameType
+    version: str = Field("", max_length=200)
 
 
 class CookieDTO(NodeComponentDTO):
