@@ -157,6 +157,12 @@ class HostBuilder(NodeBuilder):
         """Add IP address"""
         raise NotImplementedError()
 
+    def set_addresses(self, addresses: List[str]) -> Self:
+        """Set IP, HW, and DNS addresses, removing the others. Tag is always kept.
+        Addresses are given as in the serialized statement,
+        e.g. '10.0.0.1', 'example.com|name', '02:00:00:00:00:01|hw'"""
+        raise NotImplementedError()
+
     def serve(self, *protocols: ProtocolType) -> Self:
         """Serve the configured protocol or protocols"""
         raise NotImplementedError()

@@ -578,6 +578,44 @@ class HostBackend(NodeBackend, HostBuilder):
         self.new_address_(IPAddress.new(address))
         return self
 
+    def set_addresses(self, addresses: List[str]) -> Self:
+        entity = self.entity
+        tag = entity.get_tag()
+        new: Set[AnyAddress] = set()
+        for a in addresses:
+            try:
+                address = Addresses.parse_address(a)
+            except ValueError as e:
+                raise ConfigurationException(f"Bad address '{a}'") from e
+            if address.is_tag():
+                if address != tag:
+                    raise ConfigurationException(f"Cannot change tag of {entity.name} to {address}")
+                continue
+            new.add(address)
+        old = {a for a in entity.addresses if not a.is_tag()}
+        if tag is None and Addresses.get_prioritized(new) != Addresses.get_prioritized(old):
+            raise ConfigurationException(f"Addresses change system address of {entity.name}")
+        # check additions before changing anything
+        for address in new - old:
+            networks = entity.get_networks_for(address)
+            if not networks or (isinstance(address, DNSName) and len(networks) != 1):
+                raise ConfigurationException(f"Address {address} not in proper network for {entity.name}")
+            for nw in networks:
+                other = self.system.entity_by_address.get(AddressAtNetwork(address, nw))
+                if other and other is not self:
+                    raise ConfigurationException(f"Duplicate address {address}, reserved by: {other.entity.name}")
+        for address in old - new:
+            entity.addresses.remove(address)
+            self.system.entity_by_address = {
+                k: b for k, b in self.system.entity_by_address.items() if k.address != address or b is not self}
+        for address in new - old:
+            if isinstance(address, DNSName):
+                self.dns(address.name)
+            else:
+                self.new_address_(address)
+        self.system.changed(entity)
+        return self
+
     def serve(self, *protocols: ProtocolType) -> Self:
         for p in protocols:
             self / p  # pylint: disable=pointless-statement
