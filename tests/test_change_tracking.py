@@ -1,9 +1,13 @@
+from typing import cast
+
 import pytest
 
-from toolsaf.builder_backend import SystemBackend
+from toolsaf.builder_backend import SystemBackend, HostBackend, ServiceBackend, SoftwareBackend
+from toolsaf.common.address import IPAddress
+from toolsaf.core.serializer.model_serializer import SystemSerializer
 from toolsaf.main import TLS, HTTP, TCP, ARP, IP, UDP
 from toolsaf.common.android import LOCATION, NETWORK
-from toolsaf.common.basics import HostType
+from toolsaf.common.basics import ConnectionType, ExternalActivity, HostType, Status
 
 
 def test_self_changed():
@@ -515,3 +519,65 @@ def test_changes_ordered_parents_first():
         ("sw", "Device&software=FW"),
         ("connection", "source=Device&target=Backend/tcp:443"),
     ]
+
+
+def _changed(sb: SystemBackend) -> list:
+    return [(e["type"], e["address"]) for e in sb.serialize_statement_changes()]
+
+
+def test_set_node_values():
+    sb = SystemBackend()
+    device = sb.device("Device")
+    web = device / HTTP
+    c = device >> sb.backend("Cloud") / HTTP
+    sb.serialize_statement_changes()
+
+    device.describe("A device")
+    assert _changed(sb) == [("host", "Device")]
+    device.external_activity(ExternalActivity.OPEN)  # also for services
+    assert _changed(sb) == [("host", "Device"), ("service", "Device/tcp:80")]
+    web.type(ConnectionType.ENCRYPTED)
+    assert _changed(sb) == [("service", "Device/tcp:80")]
+    c.logical_only()
+    assert _changed(sb) == [("connection", "source=Device&target=Cloud/tcp:80")]
+    sb.tag("new-tag")
+    assert _changed(sb) == [("system", "")]
+
+
+def test_cookies():
+    sb = SystemBackend()
+    browser = sb.browser("Browser")
+    sb.serialize_statement_changes()
+    cookies = browser.cookies()
+    assert _changed(sb) == [("cookies", "Browser&cookies=Cookies")]
+    cookies.set({"session": ("example.com", "/", "Session")})
+    assert _changed(sb) == [("cookies", "Browser&cookies=Cookies")]
+    browser.cookies()  # existing cookies, no changes
+    assert _changed(sb) == []
+
+
+def _load(sb: SystemBackend) -> SystemBackend:
+    s = SystemSerializer()
+    s.deserialize_list(s.serialize(sb.system))
+    loaded = SystemBackend.from_entity(s.model_map[""])
+    assert _changed(loaded) == []  # no changes by loading
+    return loaded
+
+
+def test_changes_in_loaded():
+    sb = SystemBackend()
+    sb.tag("test-tag")
+    sb.backend("Cloud") / HTTP
+    sb.device("Device").software("FW")
+    sb.browser("Browser").cookies().set({"session": ("example.com", "/", "Session")})
+    sb.system.get_endpoint(IPAddress.new("192.168.4.4"))  # unexpected host
+    sb = _load(sb)
+
+    cast(SoftwareBackend, sb.get_backend("Device&software=FW")).sbom(["libc"])
+    assert _changed(sb) == [("sw", "Device&software=FW")]
+
+    # connection makes the unexpected source expected
+    unexpected = cast(HostBackend, sb.get_backend("192.168.4.4"))
+    unexpected >> cast(ServiceBackend, sb.get_backend("Cloud/tcp:80"))
+    assert unexpected.entity.status == Status.EXPECTED
+    assert _changed(sb) == [("host", "192.168.4.4"), ("connection", "source=192.168.4.4&target=Cloud/tcp:80")]
