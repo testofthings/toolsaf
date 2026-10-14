@@ -57,6 +57,7 @@ Many tools find the entity of a data file by the file name. Depending on the too
   For a service, the protocol and port are added, e.g. `example.com.tcp.443.json`.
 * **Entity name or tag** (Black Duck, HAR, SPDX):
   The name of the host or software, e.g. `Mobile App SW.json`, or its tag, e.g. `Mobile_App_SW.json`.
+  Software can also be named by its tag and the tag of its host, e.g. `Mobile_App_SW@Mobile_App.json`.
 
 The tag of a host or software is set when it is created, from its original name,
 with spaces and other special characters replaced by underscores,
@@ -75,6 +76,8 @@ The tags of software are not shown. The default software name is the host name f
 e.g. `Device 1 SW` with tag `Device_1_SW`.
 
 There must be only one data file for an entity in a batch directory.
+A file name matching many entities is an error, e.g. `FW.json` when two hosts have software `FW`.
+Then name the file by software and host tags, e.g. `FW@Device_1.json`.
 
 ## List of supported tools
 

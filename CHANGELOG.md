@@ -5,6 +5,7 @@
 - Entities can be removed with `system.remove_entity(entity)` and `system.remove_network(network)`. See [Editing loaded statements](documentation/EditingStatements.md).
 - Host addresses can be replaced with `set_addresses()`.
 - Batch data files of HAR, SPDX, and Black Duck can be named by entity tag, which does not change when the entity is renamed.
+- SPDX and Black Duck data files can be named by software and host tags, e.g. `FW@Device_1.json`. A data file name matching many entities is an error.
 
 ### Changed
 - Creating a host whose tag is used by another host is an error, e.g. `device("A B")` and `device("A_B")`.

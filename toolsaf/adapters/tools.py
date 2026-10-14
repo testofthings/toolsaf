@@ -4,9 +4,9 @@ from io import BufferedReader
 import json
 import logging
 from functools import wraps
-from typing import Optional, Dict, Set, Callable, Any, Generic, TypeVar
+from typing import Optional, Dict, List, Set, Callable, Any, Generic, TypeVar
 
-from toolsaf.common.address import Addresses, DNSName, EntityTag, IPAddress, AnyAddress
+from toolsaf.common.address import Addresses, DNSName, IPAddress, AnyAddress
 from toolsaf.core.event_interface import EventInterface
 from toolsaf.core.model import NetworkNode, Addressable, IoTSystem, NodeComponent
 from toolsaf.common.traffic import Evidence, EvidenceSource, Tool, IPFlow
@@ -135,38 +135,40 @@ E = TypeVar("E", NetworkNode, NodeComponent)
 
 
 class EntityFileMap(Generic[E]):
-    """Map data file names to entities by entity name or by entity tag.
+    """Map data file names to entities by entity name, tag, or tag at parent tag.
     The tag does not change when entity is renamed, so the data files named by the tag still match.
-    E.g. 'Device 1.json' and 'Device_1.json' match 'Device 1' with tag Device_1."""
+    E.g. 'Device 1 SW.json', 'Device_1_SW.json', and 'Device_1_SW@Device_1.json'."""
     def __init__(self, data_file_suffix: str) -> None:
         self.data_file_suffix = data_file_suffix
-        self.by_name: Dict[str, E] = {}
-        self.by_tag: Dict[str, Optional[E]] = {}  # None for tags of many entities
+        self.by_file: Dict[str, List[E]] = {}  # many entities, if ambiguous
+        self.names: Dict[E, List[str]] = {}  # file names of entities, the most specific last
         self.files: Dict[E, str] = {}  # files mapped so far
 
-    def add(self, entity: E, name: str, tag: Optional[EntityTag]) -> None:
-        """Add entity with name and tag, if any"""
-        self.by_name[f"{name}{self.data_file_suffix}"] = entity
-        if tag:
-            tag_file = f"{tag.tag}{self.data_file_suffix}"
-            self.by_tag[tag_file] = entity if self.by_tag.get(tag_file, entity) is entity else None
+    def add(self, entity: E, *names: str) -> None:
+        """Add entity with file name stems, the most specific last"""
+        files = self.names.setdefault(entity, [])
+        for name in names:
+            file_name = f"{name}{self.data_file_suffix}"
+            if file_name not in files:
+                files.append(file_name)
+                self.by_file.setdefault(file_name, []).append(entity)
 
     def map_file(self, file_name: str) -> Optional[E]:
-        """Map file name to entity, check that one entity does not have many files"""
-        entity = self.by_name.get(file_name)
-        if entity is None:
-            if file_name not in self.by_tag:
-                return None
-            entity = self.by_tag[file_name]
-            if entity is None:
-                raise ConfigurationException(f"Data file {file_name} matches many entities by tag")
+        """Map file name to entity, check that file name is not ambiguous and one entity does not have many files"""
+        entities = self.by_file.get(file_name, [])
+        if len(entities) > 1:
+            unique = " or ".join(self.names[e][-1] for e in entities)
+            raise ConfigurationException(f"Data file {file_name} matches many entities, name it e.g. {unique}")
+        if not entities:
+            return None
+        entity = entities[0]
         if (other := self.files.setdefault(entity, file_name)) != file_name:
             raise ConfigurationException(f"Data files {other} and {file_name} are both for {entity.long_name()}")
         return entity
 
     def get_file_names(self) -> Set[str]:
         """Get file names by entity names"""
-        return set(self.by_name.keys())
+        return {files[0] for files in self.names.values()}
 
 
 class NetworkNodeTool(ToolAdapter):
@@ -203,7 +205,8 @@ class NetworkNodeTool(ToolAdapter):
             for c in node.children:
                 if not tool.filter_node(c):
                     continue
-                self.file_name_map.add(c, c.name, Addresses.get_tag(c.addresses))
+                tag = Addresses.get_tag(c.addresses)
+                self.file_name_map.add(c, c.name, *([tag.tag] if tag else []))
                 check_component(c)
         check_component(self.system)
 
@@ -246,7 +249,10 @@ class NodeComponentTool(ToolAdapter):
             for c in node.components:
                 if not tool.filter_component(c):
                     continue
-                self.file_name_map.add(c, c.name, c.tag)
+                names = [c.name, c.tag.tag]
+                if isinstance(node, Addressable) and (parent_tag := Addresses.get_tag(node.addresses)):
+                    names.append(f"{c.tag.tag}@{parent_tag.tag}")  # unique, as host tags are unique
+                self.file_name_map.add(c, *names)
             for n in node.children:
                 check_component(n)
         check_component(self.system)
