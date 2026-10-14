@@ -142,6 +142,20 @@ def test_service_dto():
     assert new_service.parent == new_host
 
 
+def test_service_with_dns_name_address():
+    setup = Setup()
+    device = setup.system.device("Device 1")
+    web = (device / HTTP).name("web.example.com").entity
+    assert len(web.addresses) == 2  # endpoint and DNS name
+    # System address uses the endpoint, set iteration order must not matter
+    assert web.get_system_address().get_parseable_value() == "Device_1/tcp:80"
+
+    serializer = SystemSerializer()
+    records = serializer.serialize(setup.system.system)
+    serializer.deserialize_list(records)
+    assert serializer.model_map["Device_1/tcp:80"].name == "web.example.com"
+
+
 def test_dhcp_service_dto():
     setup = Setup()
     device = setup.system.device("Device 1")
