@@ -1,11 +1,11 @@
 """Services with dedicated logic"""
 
-from typing import List, Set, Optional
+from typing import List, Optional
 from datetime import datetime
 
 from toolsaf.common.address import AnyAddress, DNSName, EndpointAddress, EntityTag, Protocol
 from toolsaf.common.basics import ConnectionType, HostType
-from toolsaf.core.model import Service, Connection, Host, Addressable
+from toolsaf.core.model import Service, Connection, Addressable
 from toolsaf.common.traffic import IPFlow, Flow, Event, Evidence
 
 
@@ -16,7 +16,6 @@ class DHCPService(Service):
         # match any traffic with UDP port 67
         self.addresses.add(EndpointAddress.any(Protocol.UDP, 67))
         self.description = "DHCP service"
-        self.clients: Set[Host] = set()
         self.host_type = HostType.ADMINISTRATIVE
         self.con_type = ConnectionType.ADMINISTRATIVE
         # reply does not come from the broadcast address
