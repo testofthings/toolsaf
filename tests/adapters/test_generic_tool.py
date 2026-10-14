@@ -29,7 +29,7 @@ from tests.test_model import Setup
             "results": [
                 {"key": "sample:key"},
                 {"key": "sample:key", "verdict": "fail", "explanation": "Due"},
-                {"key": "sample:key2", "verdict": "Pass", "address": "Backend"},
+                {"claim": "sample:key2", "verdict": "Pass", "address": "Backend"},
             ]
         }, [
             ("sample:key", "Test_Device", Verdict.INCON, ""),
