@@ -199,8 +199,8 @@ class NetworkNode(Entity):
             old = used[name_base]
             old.name = n
             used[n] = old  # 2nd reference to the host
-        elif n not in used and EntityTag.new(n) not in used:
-            return name_base  # name is free
+        elif EntityTag.new(name_base) not in used and n not in used and EntityTag.new(n) not in used:
+            return name_base  # name is free, also its tag, which remains when renamed
         while n in used or EntityTag.new(n) in used:
             c += 1
             n = f"{name_base} {c}"
