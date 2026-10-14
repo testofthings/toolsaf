@@ -36,7 +36,7 @@ class GenericTool(SystemWideTool):
             source.timestamp = datetime.fromisoformat(timestamp_s)
 
         address_s = js_data.get("address")
-        base_address = Addresses.parse_address(address_s) if address_s else None
+        base_address = Addresses.parse_endpoint(address_s) if address_s else None
 
         js_results = js_data.get("results", [])
         if not isinstance(js_results, list):
@@ -54,7 +54,7 @@ class GenericTool(SystemWideTool):
             address_s = js_res.get("address")
             if not address_s and not base_address:
                 raise ValueError('Missing "address" in event JSON data')
-            address = Addresses.parse_address(address_s) if address_s else base_address
+            address = Addresses.parse_endpoint(address_s) if address_s else base_address
             assert address
 
             evidence = Evidence(source)
