@@ -411,7 +411,9 @@ class NodeBackend(NodeBuilder):
 
     def software(self, name: Optional[str] = None) -> 'SoftwareBackend':
         if name is None:
-            name = Software.default_name(self.entity)
+            # get existing software, if any
+            existing = Software.get_software(self.entity)
+            name = existing.name if existing else Software.default_name(self.entity)
         sb = self.sw.get(name)
         if sb is None:
             sb = SoftwareBackend.new(self, name)
