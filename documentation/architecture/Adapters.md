@@ -36,14 +36,14 @@ EndpointTool applies tool output to specific endpoints. Endpoints are specified 
 
 Tool output applied to network nodes.
 
-**Input file name:** Files must be named after hosts' tag addresses. For example, `Browser` + `data_file_suffix`.
+**Input file name:** Files must be named after hosts' names or tags. For example, `Browser 1` or `Browser_1` + `data_file_suffix`. See [data file names](../Tools.md#data-file-names).
 
 ---
 ### `NodeComponentTool`
 
 NodeComponentTool applies tool output to node components.
 
-**Input file name:** Sample data files need to be named after components. For example, if we want to apply tool output to Mobile_App's SW component, the file name must be Mobile App SW + `data_file_suffix` (no underscores).
+**Input file name:** Sample data files need to be named after components' names or tags. For example, if we want to apply tool output to Mobile App's SW component, the file name must be Mobile App SW or Mobile_App_SW + `data_file_suffix`. See [data file names](../Tools.md#data-file-names).
 
 ---
 ## Writing new tool adapters

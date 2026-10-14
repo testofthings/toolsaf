@@ -29,6 +29,10 @@ This file contains the implementation of network node _components_.
 
 Enables the creation of _IgnoreRules_ for masking false positive security tool findings in security statements.
 
+## File [`entity_removal.py`](../../toolsaf/core/entity_removal.py)
+
+`EntityRemoval` removes entities and networks from the model. Services and components of a removed host or service are removed, too. Removal fails while connections refer to the removed entities, or a network is used. Ignore rule locations of removed entities are removed.
+
 ## File [`event_interface.py`](../../toolsaf/core/event_interface.py) and related files
 
 The event interface is the base class for classes that receive and process _events_.
