@@ -43,8 +43,10 @@ class GenericTool(SystemWideTool):
             raise ValueError("Results must be a list")
         event_c = 0
         for i, js_res in enumerate(js_results):
-            # one or more JSON-encoded events
-            key_s = js_res.get("key")
+            # one or more JSON-encoded events, property key is given as
+            # - "key" as it is property key
+            # - "claim" identifier of platform claim, delivered through properties
+            key_s = js_res.get("key") or js_res.get("claim")
             if not key_s:
                 raise ValueError('Missing "key" in event JSON data')
             key = PropertyKey.parse(key_s)
