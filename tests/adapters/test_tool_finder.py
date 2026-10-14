@@ -2,6 +2,7 @@ import pytest
 import warnings
 warnings.filterwarnings("ignore", category=pytest.PytestCollectionWarning)
 
+from toolsaf.adapters.generic_tool import GenericTool
 from toolsaf.adapters.tool_finder import TOOL_FINDER
 from toolsaf.adapters.android_manifest_scan import AndroidManifestScan
 from toolsaf.adapters.censys_scan import CensysScan
@@ -28,6 +29,7 @@ from tests.test_model import Setup
     [
         ("apk", AndroidManifestScan),
         ("censys", CensysScan),
+        ("generic", GenericTool),
         ("har", HARScan),
         ("http", WebChecker),
         ("certmitm", CertMITMReader),
