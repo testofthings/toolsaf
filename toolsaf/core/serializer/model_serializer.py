@@ -78,18 +78,23 @@ class SystemSerializer:
     def serialize_set(self, obj_set: Set[Any]) -> List[Dict[str, Any]]:
         """Serialize a given set of objects, parents before children"""
         result = []
-        for obj in sorted(obj_set, key=self._order_key):
-            if not (serializer := self.serializer_map.get(type(obj))):
-                LOGGER.debug("No serializer found for object of type %s", type(obj))
-                continue
-            serialized: Dict[str, Any] = {}
-            serializer(obj, serialized)
-            result.append(serialized)
-        self._queue = [] # Clear just in case
+        for obj in sorted(obj_set, key=self.order_key):
+            if (serialized := self.serialize_object(obj)) is not None:
+                result.append(serialized)
         return result
 
+    def serialize_object(self, obj: Any) -> Optional[Dict[str, Any]]:
+        """Serialize a single object without its children, None if not serializable"""
+        if not (serializer := self.serializer_map.get(type(obj))):
+            LOGGER.debug("No serializer found for object of type %s", type(obj))
+            return None
+        serialized: Dict[str, Any] = {}
+        serializer(obj, serialized)
+        self._queue = [] # Clear just in case
+        return serialized
+
     @staticmethod
-    def _order_key(obj: Any) -> Tuple[int, int, str]:
+    def order_key(obj: Any) -> Tuple[int, int, str]:
         """Sort key to put parents before children: networks, system, hosts, services, components, connections"""
         if isinstance(obj, Network):
             return 0, 0, get_network_address(obj.name)

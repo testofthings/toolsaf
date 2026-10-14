@@ -111,7 +111,7 @@ def test_host_tag_conflict():
     changes = set(sb._changes)
     with pytest.raises(ConfigurationException, match="Host name 'A_B' conflicts with system address 'A_B' of host 'A B'"):
         sb.device("A_B")
-    assert sb._changes == changes  # failed call did not record changes
+    assert sb._changes.keys() == changes  # failed call did not record changes
     assert len(sb.system.get_hosts()) == 1
     assert sb.device("A B") is sb.hosts_by_name["A B"]  # same name is fine, it is the same host
 

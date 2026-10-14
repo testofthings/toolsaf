@@ -28,6 +28,7 @@ from toolsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP,
                         ConfigurationException, OSBuilder, Proprietary, ProtocolConfigurer, ProtocolType,
                         SensitiveDataBuilder, ServiceBuilder, ServiceGroupBuilder, ServiceOrGroup,
                         SoftwareBuilder, SystemBuilder, IgnoreRulesBuilder)
+from toolsaf.core.entity_removal import EntityRemoval
 from toolsaf.core.model import Addressable, Connection, Host, IoTSystem, SensitiveData, Service
 from toolsaf.common.property import Properties, PropertyKey
 from toolsaf.core.inspector import Inspector
@@ -72,7 +73,7 @@ class SystemBackend(SystemBuilder):
         self.diagram = DiagramVisualizer(self)
         self.protocols: Dict[Any, 'ProtocolBackend'] = {}
         self.ignore_backend = IgnoreRulesBackend()
-        self._changes: Set[Entity | Network] = set()
+        self._changes: Dict[Entity | Network, bool] = {}  # changed entities, True if removed
 
     @classmethod
     def from_entity(cls, system: IoTSystem) -> 'SystemBackend':
@@ -244,22 +245,56 @@ class SystemBackend(SystemBuilder):
 
     def changed(self, entity: Entity | Network) -> None:
         """Add entity to changed set"""
-        self._changes.add(entity)
+        self._changes[entity] = False
 
     def self_changed(self) -> None:
         """
         Add the system itself, and its default network, to changed set.
         Use when initially creating the system
         """
-        self._changes.add(self.system.networks[0])
-        self._changes.add(self.system)
+        self.changed(self.system.networks[0])
+        self.changed(self.system)
 
     def serialize_statement_changes(self) -> List[Dict[str, Any]]:
-        """Serialize changes done to the statement then reset change tracker"""
+        """Serialize changes done to the statement then reset change tracker.
+        Removals are first, the dependent entities before the ones they depend on.
+        Then changes, the parents before the children."""
+        def order(change: Tuple[Entity | Network, bool]) -> Tuple[int, int, int, str]:
+            rank, depth, address = SystemSerializer.order_key(change[0])
+            return (0, -rank, -depth, address) if change[1] else (1, rank, depth, address)
+
         serializer = SystemSerializer()
-        result = serializer.serialize_set(self._changes)
-        self._changes = set()
+        result: List[Dict[str, Any]] = []
+        for entity, removed in sorted(self._changes.items(), key=order):
+            if removed:
+                if type(entity) in serializer.serializer_map:
+                    result.append({"address": SystemSerializer.order_key(entity)[2], "type": "removed"})
+            elif (serialized := serializer.serialize_object(entity)) is not None:
+                result.append(serialized)
+        self._changes = {}
         return result
+
+    def remove_entity(self, entity: Entity) -> None:
+        removal = EntityRemoval(self.system)
+        removal.remove_entity(entity)
+        removed = set(removal.entities)
+        self.hosts_by_name = {n: b for n, b in self.hosts_by_name.items() if b.entity not in removed}
+        self.entity_by_address = {a: b for a, b in self.entity_by_address.items() if b.entity not in removed}
+        for backend in self.backends_by_entity.values():
+            if isinstance(backend, HostBackend):
+                backend.service_builders = {
+                    k: b for k, b in backend.service_builders.items() if b.entity not in removed}
+            if isinstance(backend, NodeBackend):
+                backend.sw = {k: b for k, b in backend.sw.items() if b.sw not in removed}
+        for e in removal.entities:
+            self._changes[e] = True
+            self.backends_by_entity.pop(e, None)
+        if removal.ignore_rules_changed:
+            self.changed(self.system)
+
+    def remove_network(self, network: Network) -> None:
+        EntityRemoval(self.system).remove_network(network)
+        self._changes[network] = True
 
     @staticmethod
     def read_serialized_statement(file_path: Path) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
@@ -778,7 +813,6 @@ class CookieBackend(CookieBuilder):
         for name, p in cookies.items():
             self.component.cookies[name] = CookieData(p[0], p[1], p[2])
         return self
-
 
 class ProtocolBackend:
     """Protocol configurer backend"""
@@ -1308,7 +1342,8 @@ class SystemBackendRunner(SystemBackend):
 
             event_serializer = EventSerializer(self.system)
             for record in event_data:
-                events.append(event_serializer.deserialize(record))
+                if (event := event_serializer.deserialize(record)) is not None:
+                    events.append(event)  # None for event of removed entity
 
         self.finish_()
 
