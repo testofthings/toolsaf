@@ -893,7 +893,6 @@ class ProtocolBackend:
         self.networks: List[Network] = []
         self.specific_address: AnyAddress = Addresses.ANY
         self.external_activity: Optional[ExternalActivity] = None
-        self.critical_parameter: List[SensitiveData] = []
         self.multicast_target: Optional[str] = None
         self.port_range: Optional[PortRange] = None
 
@@ -920,10 +919,6 @@ class ProtocolBackend:
             assert self.transport, "transport was None"
             ep_add = EndpointAddress(self.specific_address, self.transport, self.service_port)
             b.entity.addresses.add(ep_add)
-        if self.critical_parameter:
-            # critical protocol parameters
-            parent.use_data(SensitiveDataBackend(
-                parent.system, self.critical_parameter))
         return b
 
     @staticmethod
