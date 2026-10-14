@@ -171,6 +171,7 @@ class SystemBackend(SystemBuilder):
         Must be between 3 and 50 characters long. Can only contain alphanumeric characters and hyphens.
         """
         self.system.upload_tag = validate_upload_tag(tag)
+        self.changed(self.system)
 
     # Backend methods
 
@@ -392,10 +393,13 @@ class NodeBackend(NodeBuilder):
     def describe(self, text: str) -> Self:
         """Describe the system by a few sentences."""
         self.entity.description = text
+        self.system.changed(self.entity)
         return self
 
     def external_activity(self, value: ExternalActivity) -> Self:
         self.entity.set_external_activity(value)
+        for e in [self.entity, *self.entity.children]:  # children get the value, too
+            self.system.changed(e)
         return self
 
     def in_networks(self, *network: NetworkBuilder) -> Self:
@@ -482,6 +486,7 @@ class ServiceBackend(NodeBackend, ServiceBuilder):
 
     def type(self, value: ConnectionType) -> 'ServiceBackend':
         self.entity.con_type = value
+        self.system.changed(self.entity)
         return self
 
     def __truediv__(self, protocol: ProtocolType) -> 'ServiceGroupBackend':
@@ -504,7 +509,9 @@ class ServiceBackend(NodeBackend, ServiceBuilder):
         c.status = Status.EXPECTED
         c.con_type = self.entity.con_type
         for e in [s.entity, self.entity]:
-            e.status = Status.EXPECTED
+            if e.status != Status.EXPECTED:
+                e.status = Status.EXPECTED
+                self.system.changed(e)
         s.entity.get_parent_host().connections.append(c)
         self.entity.get_parent_host().connections.append(c)
         self.system.changed(c)
@@ -711,6 +718,7 @@ class ConnectionBackend(ConnectionBuilder):
 
     def logical_only(self) -> Self:
         self.connection.con_type = ConnectionType.LOGICAL
+        self.ends[0].system.changed(self.connection)
         return self
 
     def __repr__(self) -> str:
@@ -829,7 +837,7 @@ class SoftwareBackend(SoftwareBuilder):
         else:
             statement_file_path = Path(inspect.stack()[1].filename).parent
             self.__sbom_from_file(statement_file_path, file_path)
-
+        self.parent.system.changed(self.sw)
         return self
 
     # Backend methods
@@ -844,12 +852,16 @@ class CookieBackend(CookieBuilder):
 
     def __init__(self, builder: HostBackend) -> None:
         self.builder = builder
+        new = not any(isinstance(c, Cookies) for c in builder.entity.components)
         self.component = Cookies.cookies_for(builder.entity)
         self.builder.system.backends_by_entity[self.component] = self
+        if new:
+            self.builder.system.changed(self.component)
 
     def set(self, cookies: Dict[str, Tuple[str, str, str]]) -> Self:
         for name, p in cookies.items():
             self.component.cookies[name] = CookieData(p[0], p[1], p[2])
+        self.builder.system.changed(self.component)
         return self
 
 class ProtocolBackend:
