@@ -493,3 +493,25 @@ def test_set_name():
     serialized = sb.serialize_statement_changes()
     assert {(e["name"], e["address"]) for e in serialized} == {
         ("Renamed Device", "Test_Device"), ("Web UI", "Test_Device/tcp:80")}
+
+
+def test_changes_ordered_parents_first():
+    sb = SystemBackend()
+    sb.self_changed()
+    device = sb.device("Device")
+    backend = sb.backend("Backend").serve(TLS)
+    device >> backend / TLS
+    device.software("FW")
+    sb.network("VPN", ip_mask="10.0.0.0/8")
+
+    serialized = sb.serialize_statement_changes()
+    assert [(e["type"], e["address"]) for e in serialized] == [
+        ("network", "network=VPN"),
+        ("network", "network=default"),
+        ("system", ""),
+        ("host", "Backend"),
+        ("host", "Device"),
+        ("service", "Backend/tcp:443"),
+        ("sw", "Device&software=FW"),
+        ("connection", "source=Device&target=Backend/tcp:443"),
+    ]

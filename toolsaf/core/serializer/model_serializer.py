@@ -1,6 +1,6 @@
 """Model (de)serialization"""
 from typing import (
-    Callable, Dict, Any, Optional, List, Annotated, Union, Literal, Set
+    Callable, Dict, Any, Optional, List, Annotated, Union, Literal, Set, Tuple
 )
 import logging
 import ipaddress
@@ -76,9 +76,9 @@ class SystemSerializer:
         return result
 
     def serialize_set(self, obj_set: Set[Any]) -> List[Dict[str, Any]]:
-        """Serialize a given set of objects"""
+        """Serialize a given set of objects, parents before children"""
         result = []
-        for obj in obj_set:
+        for obj in sorted(obj_set, key=self._order_key):
             if not (serializer := self.serializer_map.get(type(obj))):
                 LOGGER.debug("No serializer found for object of type %s", type(obj))
                 continue
@@ -87,6 +87,26 @@ class SystemSerializer:
             result.append(serialized)
         self._queue = [] # Clear just in case
         return result
+
+    @staticmethod
+    def _order_key(obj: Any) -> Tuple[int, int, str]:
+        """Sort key to put parents before children: networks, system, hosts, services, components, connections"""
+        if isinstance(obj, Network):
+            return 0, 0, get_network_address(obj.name)
+        address = obj.get_system_address()
+        match obj:
+            case IoTSystem():
+                rank = 1
+            case Host():
+                rank = 2
+            case Service():
+                rank = 3
+            case NodeComponent():
+                rank = 4
+            case _:
+                rank = 5
+        # nested services and components after their parents
+        return rank, len(address.segments), address.get_parseable_value()
 
     def deserialize(self, data: Dict[str, Any]) -> Any:
         """Deserialize an object from JSON"""
