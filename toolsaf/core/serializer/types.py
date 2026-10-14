@@ -47,6 +47,7 @@ def validate_property_keys(properties: Iterable[str]) -> None:
 
 LongNameType = Annotated[str, Field(..., min_length=1, max_length=300)]
 NameType = Annotated[str, Field(..., min_length=1, max_length=100)]
+ComponentNameType = Annotated[str, Field(..., min_length=1, max_length=200)]  # SBOM names can be long
 DescriptionType = Annotated[str, Field("", min_length=0, max_length=4000)]
 MatchPriorityType = Annotated[int, Field(..., ge=0, le=10)]
 SystemAddressType = Annotated[str, AfterValidator(validate_address)]

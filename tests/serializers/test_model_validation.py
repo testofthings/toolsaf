@@ -259,15 +259,22 @@ def _valid_software_component():
 def test_software_component_dto_invalid_values():
     key_values = [
         ("key", ""),
-        ("key", "a"*101),
+        ("key", "a"*201),
         ("key", 123),
         ("name", ""),
-        ("name", "a"*101),
+        ("name", "a"*201),
         ("name", 123),
-        ("version", "a"*101),
+        ("version", "a"*201),
         ("version", 123),
     ]
     _validate(_valid_software_component(), key_values, SoftwareComponentDTO)
+
+
+def test_software_component_dto_long_values():
+    # SBOM names and versions can be long
+    for key, value in [("key", "a"*200), ("name", "a"*200), ("version", "a"*200),
+                       ("version", "googletts.google-speech-apk_20211021.01_p1.405680002")]:
+        SoftwareComponentDTO.model_validate(_valid_software_component() | {key: value})
 
 
 def _valid_software():
