@@ -59,7 +59,6 @@ class Inspector(EventInterface):
         self.logger.debug("inspect flow %s", flow)
         key = self.matcher.connection_w_ends(flow)
         conn, source_add, target_add, reply = key
-        assert conn.status != Status.PLACEHOLDER, f"Received placeholder connection: {conn}"
 
         flow.reply = reply  # bit ugly to fix, but now available for logger
 
@@ -116,13 +115,7 @@ class Inspector(EventInterface):
                     updated.add(c.target)
             return True
 
-
-        # if we have a connection, the endpoints cannot be placeholders
         source, target = conn.source, conn.target
-        if source.status == Status.PLACEHOLDER:
-            source.status = conn.status
-        if target.status == Status.PLACEHOLDER:
-            target.status = conn.status
 
         if new_conn:
             # new connection is observed
@@ -208,8 +201,8 @@ class Inspector(EventInterface):
 
     def property_update(self, update: PropertyEvent) -> Optional[Entity]:
         s = update.entity
-        if s.status in {Status.PLACEHOLDER, Status.UNEXPECTED}:
-            # no properties for placeholders or unexpected entities
+        if s.status == Status.UNEXPECTED:
+            # no properties for unexpected entities
             return s
         key, val = update.key_value
         if key.model and key not in s.properties:
@@ -227,8 +220,8 @@ class Inspector(EventInterface):
         s = self._get_seen_entity(add, update.evidence.source)
         if s is None:
             raise NotImplementedError(f"Processing properties for {add} not implemented")
-        if s.status in {Status.PLACEHOLDER, Status.UNEXPECTED}:
-            # no properties for placeholders or unexpected entities
+        if s.status == Status.UNEXPECTED:
+            # no properties for unexpected entities
             return s
         key, val = update.key_value
         if key.model and key not in s.properties:

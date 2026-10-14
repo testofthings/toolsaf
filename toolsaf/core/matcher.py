@@ -107,9 +107,6 @@ class MatchingContext:
             if not conn.target.is_service() and flow_matcher.reverse:
                 # Reply to unexpected connection
                 self.create_unknown_service(match)
-            if match.connection.status == Status.PLACEHOLDER:
-                # this is an UNEXPECTED connection found after reset
-                self.set_connection_status(match.connection, (conn.source, source_add), (conn.target, target_add))
             self.observed[flow] = match
         else:
             # no connection, must create new

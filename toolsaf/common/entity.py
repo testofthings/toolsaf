@@ -69,7 +69,7 @@ class Entity:
         return self.status == Status.EXPECTED
 
     def is_relevant(self) -> bool:
-        """Is this entity relevant, i.e. not placeholder or external?"""
+        """Is this entity relevant, i.e. not external?"""
         return True
 
     def is_admin(self) -> bool:
