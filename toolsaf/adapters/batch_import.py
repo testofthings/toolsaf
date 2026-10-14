@@ -180,7 +180,7 @@ class BatchImporter:
                 done = reader.process_file(f, fn.name, self.interface, ev)
             if done:
                 data.sources.append(ev)
-                unmapped.remove(fn.name)
+                unmapped.discard(fn.name)  # may be mapped by other means than file name
             else:
                 self.logger.info("unprocessed (%s) file %s", info.label, fn.as_posix())
         if unmapped:
