@@ -230,12 +230,22 @@ def test_name_change():
     assert sb.get_backend("Device_1&software=FW") is fw
     assert sb.get_backend("Cloud") is cloud
 
-    # Only renamed entities are changed
-    assert sb._changes.keys() == {device.entity, web.entity, fw.sw, cloud.entity}
+    # Renamed entities are changed, and the entities which long name includes the names
     changes = sb.serialize_statement_changes()
-    assert {(e["name"], e["address"]) for e in changes} == {
-        ("Lamp", "Device_1"), ("Web UI", "Device_1/tcp:80"),
-        ("Firmware", "Device_1&software=FW"), ("cloud.example.org", "Cloud")}
+    assert [(e["type"], e["address"], e["long_name"]) for e in changes] == [
+        ("host", "Cloud", "cloud.example.org"),
+        ("host", "Device_1", "Lamp"),
+        ("service", "Cloud/tcp:80", "cloud.example.org HTTP:80"),
+        ("service", "Device_1/tcp:443", "Lamp TLS:443"),
+        ("service", "Device_1/tcp:80", "Lamp Web UI"),
+        ("dns-service", "Device_1/udp:53", "Lamp DNS"),
+        ("dhcp-service", "Device_1/udp:67", "Lamp DHCP"),
+        ("sw", "Device_1&software=FW", "Firmware"),
+        ("connection", "source=Cloud&target=Services/udp:7001",
+         "cloud.example.org => Services UDP:7001...7002 255.255.255.255"),
+        ("connection", "source=Device_1&target=Cloud/tcp:80", "Lamp => cloud.example.org HTTP:80"),
+        ("connection", "source=Device_1&target=Services/udp:5353", "Lamp => Services mDNS"),
+    ]
 
     # Builder finds the renamed entities by the new names
     assert sb.device("Lamp") is device
@@ -278,7 +288,8 @@ def test_name_change_conflicts():
     cast(ServiceBackend, sb.get_backend("Device_1/tcp:80")).name("Web")
     # Renaming to the current name does nothing
     assert device.name("Device 1") is device
-    assert {e.name for e in sb._changes} == {"Web"}
+    assert {e.get_system_address().get_parseable_value() for e in sb._changes} == {
+        "Cloud/tcp:80", "Device_1/tcp:80", "source=Device_1&target=Cloud/tcp:80"}  # connection long name changed
     assert device.entity.name == "Device 1"
 
 
