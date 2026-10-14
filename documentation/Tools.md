@@ -48,6 +48,17 @@ sample-data
 
 See [end of this page](#advanced-metafile-definitions) for advanced options required with some data types.
 
+## Data file names
+
+Black Duck, HAR, and SPDX find the entity of a data file by the file name, e.g. `Mobile App SW.json`.
+The file can be named by the entity name or by its tag.
+The tag is the last part of the system address of the entity, e.g. `Mobile_App_SW` in `Mobile_App&software=Mobile_App_SW`.
+The tag is set when the entity is created, from its original name, and it does not change when the entity is renamed.
+In the tag, spaces and other special characters are replaced by underscores, e.g. `Mobile_App_SW.json`,
+and an underscore is prepended if the name does not start with a letter.
+Data files named by the tag keep working after the entity is renamed, unlike the files named by the original name.
+There must be only one data file for an entity in a batch directory.
+
 ## List of supported tools
 
 In the following list you can find the tools and formats Toolsaf supports. Short descriptions and commands for output capturing in proper formats are provided in their own sections.
@@ -97,7 +108,7 @@ unzip <your_file>.xapk -d xapk_extracted
 ```
 Then, locate the base `.apk` file within the `xapk_extracted` directory (it is typically the largest file). From there, you can use the `apktool` method explained above.
 
-**Note:** The extracted `AndroidManifest.xml` must be renamed to match the app name defined in your security statement. Any spaces in the name must be replaced with underscores.
+**Note:** The extracted `AndroidManifest.xml` must be renamed to match the tag of the app defined in your security statement, i.e. its original name with any spaces replaced with underscores (see [data file names](#data-file-names)).
 
 Toolsaf divides Android permissions into [different categories](../toolsaf/adapters/data/android_permissions.json) that are used in the DSL.
 
@@ -105,7 +116,7 @@ Toolsaf divides Android permissions into [different categories](../toolsaf/adapt
 
 > 🌐 [Black Duck SCA](https://www.blackduck.com/software-composition-analysis-tools/black-duck-sca.html)
 
-Data files are csv-files downloaded from Black Duck binary analyzer and named as `<component>.csv` where `<component>` is the name of the SW component.
+Data files are csv-files downloaded from Black Duck binary analyzer and named as `<component>.csv` where `<component>` is the name of the SW component (see [data file names](#data-file-names)).
 Example metafile `00meta.json`:
 
 ```json
@@ -153,7 +164,7 @@ To properly process certmitm results, IP addresses for the hosts present in the 
 
 > 🌐 [HAR-format](http://www.softwareishard.com/blog/har-12-spec/)
 
-Data files are HAR json-files saved by the browser and named as `<host>.json` where `<host>` is the name of the browsing host.
+Data files are HAR json-files saved by the browser and named as `<host>.json` where `<host>` is the name of the browsing host (see [data file names](#data-file-names)).
 Example metafile `00meta.json`:
 
 ```json
@@ -232,7 +243,7 @@ Example metafile `00meta.json`:
 
 SPDX file import is tested with files downloaded from Black Duck service. You can also use open-source SBOM generators to create `.json` format SPDX files.
 
-**Note:** SPDX file must be renamed to match the SW name defined in your security statement. For example, if you want to add a SBOM to `Mobile App` the file name must be `Mobile App SW.json` (no underscores).
+**Note:** SPDX file must be renamed to match the SW name defined in your security statement. For example, if you want to add a SBOM to `Mobile App` the file name must be `Mobile App SW.json` (see [data file names](#data-file-names)).
 
 ### Ssh-audit
 

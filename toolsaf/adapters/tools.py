@@ -4,13 +4,14 @@ from io import BufferedReader
 import json
 import logging
 from functools import wraps
-from typing import Optional, Dict, Set, Callable, Any
+from typing import Optional, Dict, Set, Callable, Any, Generic, TypeVar
 
-from toolsaf.common.address import DNSName, IPAddress, AnyAddress
+from toolsaf.common.address import Addresses, DNSName, EntityTag, IPAddress, AnyAddress
 from toolsaf.core.event_interface import EventInterface
 from toolsaf.core.model import NetworkNode, Addressable, IoTSystem, NodeComponent
 from toolsaf.common.traffic import Evidence, EvidenceSource, Tool, IPFlow
 from toolsaf.common.basics import Status
+from toolsaf.main import ConfigurationException
 
 
 class IncorrectBatchFileExcpetion(Exception):
@@ -47,11 +48,6 @@ class ToolAdapter:
         """Process a tool result file or stream"""
         # Read a data file
         raise NotImplementedError(f"In {self.__class__.__name__}")
-
-    def get_file_by_name(self, name: str) -> str:
-        """Get data file by name"""
-        assert self.data_file_suffix, "Data file suffix not set"
-        return f"{name}{self.data_file_suffix}"
 
     def get_file_by_endpoint(self, address: AnyAddress) -> Optional[str]:
         """Get data file by endpoint address"""
@@ -135,12 +131,50 @@ class EndpointTool(ToolAdapter):
         return set(self.file_name_map.keys())
 
 
+E = TypeVar("E", NetworkNode, NodeComponent)
+
+
+class EntityFileMap(Generic[E]):
+    """Map data file names to entities by entity name or by entity tag.
+    The tag does not change when entity is renamed, so the data files named by the tag still match.
+    E.g. 'Device 1.json' and 'Device_1.json' match 'Device 1' with tag Device_1."""
+    def __init__(self, data_file_suffix: str) -> None:
+        self.data_file_suffix = data_file_suffix
+        self.by_name: Dict[str, E] = {}
+        self.by_tag: Dict[str, Optional[E]] = {}  # None for tags of many entities
+        self.files: Dict[E, str] = {}  # files mapped so far
+
+    def add(self, entity: E, name: str, tag: Optional[EntityTag]) -> None:
+        """Add entity with name and tag, if any"""
+        self.by_name[f"{name}{self.data_file_suffix}"] = entity
+        if tag:
+            tag_file = f"{tag.tag}{self.data_file_suffix}"
+            self.by_tag[tag_file] = entity if self.by_tag.get(tag_file, entity) is entity else None
+
+    def map_file(self, file_name: str) -> Optional[E]:
+        """Map file name to entity, check that one entity does not have many files"""
+        entity = self.by_name.get(file_name)
+        if entity is None:
+            if file_name not in self.by_tag:
+                return None
+            entity = self.by_tag[file_name]
+            if entity is None:
+                raise ConfigurationException(f"Data file {file_name} matches many entities by tag")
+        if (other := self.files.setdefault(entity, file_name)) != file_name:
+            raise ConfigurationException(f"Data files {other} and {file_name} are both for {entity.long_name()}")
+        return entity
+
+    def get_file_names(self) -> Set[str]:
+        """Get file names by entity names"""
+        return set(self.by_name.keys())
+
+
 class NetworkNodeTool(ToolAdapter):
     """Tool applies to network nodes"""
     def __init__(self, tool_label: str, data_file_suffix: str, system: IoTSystem) -> None:
         super().__init__(tool_label, system)
         self.data_file_suffix = data_file_suffix
-        self.file_name_map: Dict[str, NetworkNode] = {}
+        self.file_name_map: EntityFileMap[NetworkNode] = EntityFileMap(data_file_suffix)
         self.create_file_name_map()
 
     def filter_node(self, _node: NetworkNode) -> bool:
@@ -154,7 +188,7 @@ class NetworkNodeTool(ToolAdapter):
 
     def process_file(self, data: BufferedReader, file_name: str, interface: EventInterface,
                      source: EvidenceSource) -> bool:
-        key = self.file_name_map.get(file_name)
+        key = self.file_name_map.map_file(file_name)
         if key:
             self.logger.info("processing (%s) %s", source.label, file_name)
             self.process_node(key, data, interface, source)
@@ -169,12 +203,12 @@ class NetworkNodeTool(ToolAdapter):
             for c in node.children:
                 if not tool.filter_node(c):
                     continue
-                self.file_name_map[tool.get_file_by_name(c.name)] = c
+                self.file_name_map.add(c, c.name, Addresses.get_tag(c.addresses))
                 check_component(c)
         check_component(self.system)
 
     def get_processed_files(self) -> Set[str]:
-        return set(self.file_name_map.keys())
+        return self.file_name_map.get_file_names()
 
 
 class NodeComponentTool(ToolAdapter):
@@ -182,7 +216,7 @@ class NodeComponentTool(ToolAdapter):
     def __init__(self, tool_label: str, data_file_suffix: str, system: IoTSystem) -> None:
         super().__init__(tool_label, system)
         self.data_file_suffix = data_file_suffix
-        self.file_name_map: Dict[str, NodeComponent] = {}
+        self.file_name_map: EntityFileMap[NodeComponent] = EntityFileMap(data_file_suffix)
         self._create_file_name_map()
 
     def filter_component(self, _component: NodeComponent) -> bool:
@@ -196,7 +230,7 @@ class NodeComponentTool(ToolAdapter):
 
     def process_file(self, data: BufferedReader, file_name: str, interface: EventInterface,
                      source: EvidenceSource) -> bool:
-        key = self.file_name_map.get(file_name)
+        key = self.file_name_map.map_file(file_name)
         if key:
             self.logger.info("processing (%s) %s", source.label, file_name)
             source.target = key.long_name()
@@ -212,13 +246,13 @@ class NodeComponentTool(ToolAdapter):
             for c in node.components:
                 if not tool.filter_component(c):
                     continue
-                self.file_name_map[tool.get_file_by_name(c.name)] = c
+                self.file_name_map.add(c, c.name, c.tag)
             for n in node.children:
                 check_component(n)
         check_component(self.system)
 
     def get_processed_files(self) -> Set[str]:
-        return set(self.file_name_map.keys())
+        return self.file_name_map.get_file_names()
 
 
 class SimpleFlowTool(SystemWideTool):
