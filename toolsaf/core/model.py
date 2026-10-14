@@ -32,9 +32,7 @@ class Connection(Entity):
         return self.target.is_admin()
 
     def is_relevant(self, ignore_ends: bool=False) -> bool:
-        """Is this connection relevant, i.e. not placeholder or external?"""
-        if self.status == Status.PLACEHOLDER:
-            return False  # placeholder is never relevant
+        """Is this connection relevant, i.e. not external?"""
         if self.status in {Status.EXPECTED, Status.UNEXPECTED}:
             return True
         if self.get_expected_verdict() == Verdict.FAIL:
@@ -120,11 +118,8 @@ class NetworkNode(Entity):
         """Iterate all entities"""
         yield self
         for child in self.children:
-            if child.status != Status.PLACEHOLDER:
-                yield from child.iterate_all()
-        for component in self.components:
-            if component.status != Status.PLACEHOLDER:
-                yield component
+            yield from child.iterate_all()
+        yield from self.components
 
     def long_name(self) -> str:
         """Get longer name, or at least the name"""
@@ -529,9 +524,7 @@ class IoTSystem(NetworkNode):
 
     def iterate_all(self) -> Iterator[Entity]:
         yield from super().iterate_all()
-        for c in self.get_connections():
-            if c.status != Status.PLACEHOLDER:
-                yield c
+        yield from self.get_connections()
 
     def is_external(self, address: AnyAddress) -> bool:
         """Is an external network address?"""

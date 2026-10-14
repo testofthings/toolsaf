@@ -31,7 +31,6 @@ class ExternalActivity(enum.IntEnum):
 
 class Status(enum.StrEnum):
     """Entity status"""
-    PLACEHOLDER = "Placeholder"    # Placeholder for unexpected or external entity
     EXPECTED = "Expected"          # Expected entity
     UNEXPECTED = "Unexpected"      # Unexpected entity
     EXTERNAL = "External"          # External entity
