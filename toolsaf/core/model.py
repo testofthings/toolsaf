@@ -484,9 +484,12 @@ class Service(Addressable):
         return self.parent.get_parent_host()
 
     def get_system_address(self) -> AddressSequence:
+        # Use the endpoint address, e.g. */tcp:80, service may also have other addresses, e.g. DNS name
+        endpoints = [a for a in self.addresses if a.get_protocol_port()]
+        assert len(endpoints) == 1, f"Service {self.name} must have exactly one endpoint address: {self.addresses}"
         ad = AddressSequence.service(
             parent=self.parent.get_system_address(),
-            service=list(self.addresses)[0]
+            service=endpoints[0]
         )
         return ad
 
