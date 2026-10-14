@@ -38,7 +38,7 @@ class Verdict(enum.Enum):
     @classmethod
     def parse(cls, value: Optional[str]) -> 'Verdict':
         """Parse string to verdict"""
-        if value is None:
+        if not value:
             return cls.INCON
         v = Verdict_by_value.get(value.lower())
         if v is None:

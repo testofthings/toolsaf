@@ -60,14 +60,7 @@ class GenericTool(SystemWideTool):
             evidence = Evidence(source)
             evidence.tail_ref = js_res.get("ref") or f"#{i}"
 
-            match js_res.get("verdict", "").lower():
-                case "pass":
-                    verdict = Verdict.PASS
-                case "fail":
-                    verdict = Verdict.FAIL
-                case _:
-                    verdict = Verdict.INCON
-
+            verdict = Verdict.parse(js_res.get("verdict", ""))
             exp = js_res.get("explanation", "")
 
             key_value = key.verdict(verdict, exp)
