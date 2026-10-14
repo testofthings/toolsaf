@@ -153,11 +153,11 @@ def test_edit_deserialized_and_serialize():
 
     dev.ip("1.2.3.4")
     assert len(sb._changes) == 1
-    assert sb._changes.pop() is dev.entity
+    assert sb._changes.popitem()[0] is dev.entity
 
     cloud.serve(MQTT)
     assert len(sb._changes) == 1
-    assert isinstance(sb._changes.pop(), Service)
+    assert isinstance(sb._changes.popitem()[0], Service)
 
     cloud >> dev / TCP(port=8888)
     assert len(sb._changes) == 2
@@ -231,7 +231,7 @@ def test_name_change():
     assert sb.get_backend("Cloud") is cloud
 
     # Only renamed entities are changed
-    assert sb._changes == {device.entity, web.entity, fw.sw, cloud.entity}
+    assert sb._changes.keys() == {device.entity, web.entity, fw.sw, cloud.entity}
     changes = sb.serialize_statement_changes()
     assert {(e["name"], e["address"]) for e in changes} == {
         ("Lamp", "Device_1"), ("Web UI", "Device_1/tcp:80"),
@@ -260,7 +260,7 @@ def test_name_change():
 def test_name_change_conflicts():
     sb = _loaded()
     device = cast(HostBackend, sb.get_backend("Device_1"))
-    sb._changes = set()
+    sb._changes = {}
 
     with pytest.raises(ConfigurationException, match="Name Cloud already used"):
         device.name("Cloud")
@@ -269,7 +269,7 @@ def test_name_change_conflicts():
     with pytest.raises(ConfigurationException, match="Name cannot be empty"):
         device.name("")
     device.software("Other")
-    sb._changes = set()
+    sb._changes = {}
     with pytest.raises(ConfigurationException, match="Software Other already defined"):
         cast(SoftwareBackend, sb.get_backend("Device_1&software=FW")).name("Other")
 
@@ -299,7 +299,7 @@ def test_name_change_unexpected_host():
 def test_name_change_dns():
     sb = _loaded()
     device = cast(HostBackend, sb.get_backend("Device_1"))
-    sb._changes = set()
+    sb._changes = {}
 
     # Not a valid DNS name, fails before changing anything
     with pytest.raises(ValueError, match="Invalid DNS label"):

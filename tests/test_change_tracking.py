@@ -67,7 +67,7 @@ def test_add_hosts():
 def test_add_host_with_serve_and_dns():
     sb = SystemBackend()
     host = sb.device("Test Device")
-    sb._changes = set()
+    sb._changes = {}
 
     host.serve(TLS, HTTP).dns("example.com", "example.org")
     assert len(sb._changes) == 3
@@ -99,7 +99,7 @@ def test_add_connection():
     sb = SystemBackend()
     dev1 = sb.device("Test Device 1")
     dev2 = sb.device("Test Device 2")
-    sb._changes = set()
+    sb._changes = {}
 
     con = dev1 >> dev2 / TCP(123)
     assert len(sb._changes) == 2
@@ -163,10 +163,10 @@ def test_set_node_networks():
     sb = SystemBackend()
     subnet = sb.network("Subnet", ip_mask="10.42.0.0/16")
     device = sb.device("Test Device")
-    sb._changes = set()
+    sb._changes = {}
 
     device.in_networks(subnet)
-    assert sb._changes == {device.entity}
+    assert sb._changes.keys() == {device.entity}
 
     serialized = sb.serialize_statement_changes()
     assert len(serialized) == 1
@@ -177,7 +177,7 @@ def test_set_node_networks():
 def test_add_mobile_permissions():
     sb = SystemBackend()
     mobile = sb.mobile("Test Mobile")
-    sb._changes = set()
+    sb._changes = {}
 
     mobile.set_permissions(NETWORK, LOCATION)
     assert len(sb._changes) == 1
@@ -195,7 +195,7 @@ def test_add_mobile_permissions():
 def test_add_arp_to_host():
     sb = SystemBackend()
     dev = sb.device("Test Device")
-    sb._changes = set()
+    sb._changes = {}
 
     arp = dev / ARP
     assert len(sb._changes) == 4
@@ -234,7 +234,7 @@ def test_add_connection_with_udp_port_range():
     sb = SystemBackend()
     dev1 = sb.device("Test Device 1")
     dev2 = sb.device("Test Device 2")
-    sb._changes = set()
+    sb._changes = {}
 
     con = dev1 >> dev2 / UDP().port_range(1000, 2000)
     assert len(sb._changes) == 2
@@ -265,7 +265,7 @@ def test_add_udp_broadcast():
     sb = SystemBackend()
     broadcast = sb.any("Broadcast")
     mob = sb.mobile("Test Mobile")
-    sb._changes = set()
+    sb._changes = {}
 
     con = mob >> broadcast / UDP(port=1234).broadcast()
     assert len(sb._changes) == 2
@@ -295,7 +295,7 @@ def test_add_ip_multicast():
     sb = SystemBackend()
     mob = sb.mobile("Test Mobile")
     any_host = sb.any("Any Host")
-    sb._changes = set()
+    sb._changes = {}
 
     igmp = any_host / IP(protocol=2).multicast("230.0.0.1")
     con = mob >> igmp
@@ -327,7 +327,7 @@ def test_add_udp_multicast():
     sb = SystemBackend()
     any_host = sb.any("Any Host")
     mob = sb.mobile("Test Mobile")
-    sb._changes = set()
+    sb._changes = {}
 
     mdns = (any_host / UDP(port=1234).multicast("224.0.0.251")).name("mDNS")
     con = mob >> mdns
@@ -358,7 +358,7 @@ def test_add_udp_multicast():
 def test_add_sbom():
     sb = SystemBackend()
     dev = sb.device("Test Device")
-    sb._changes = set()
+    sb._changes = {}
 
     dev.software().sbom(["sw1", "sw2"])
     assert len(sb._changes) == 1
@@ -383,7 +383,7 @@ def test_add_sbom():
 
 def test_add_ignore_rules():
     sb = SystemBackend()
-    sb._changes = set()
+    sb._changes = {}
     sb.ignore(file_type="testssl").properties(
         "testssl:cert_expirationStatus <hostCert#1>"
     ).because("Testing")
@@ -409,7 +409,7 @@ def test_add_ignore_rules():
 def test_add_ignore_name_request():
     sb = SystemBackend()
     dev = sb.device("Test Device")
-    sb._changes = set()
+    sb._changes = {}
 
     dev.ignore_name_requests("example.com", "example.org")
     assert len(sb._changes) == 1
@@ -426,7 +426,7 @@ def test_add_ignore_name_request():
 def test_add_ip_address():
     sb = SystemBackend()
     dev = sb.device("Test Device")
-    sb._changes = set()
+    sb._changes = {}
 
     dev.ip("10.42.1.1")
     assert len(sb._changes) == 1
@@ -442,7 +442,7 @@ def test_add_ip_address():
 def test_add_hw_address():
     sb = SystemBackend()
     dev = sb.device("Test Device")
-    sb._changes = set()
+    sb._changes = {}
 
     dev.hw("aa:bb:cc:dd:ee:ff")
     assert len(sb._changes) == 1
@@ -467,28 +467,28 @@ def test_add_online_resource():
 def test_automatic_numbering_renames_host():
     sb = SystemBackend()
     first = sb.device()
-    sb._changes = set()
+    sb._changes = {}
 
     second = sb.device()  # first host renamed 'Device' -> 'Device 1'
     assert first.entity.name == "Device 1"
-    assert sb._changes == {first.entity, second.entity}
+    assert sb._changes.keys() == {first.entity, second.entity}
 
     serialized = sb.serialize_statement_changes()
     assert {(e["name"], e["address"]) for e in serialized} == {("Device 1", "Device"), ("Device 2", "Device_2")}
 
     sb.device()  # no renaming this time
-    assert sb._changes == {sb.hosts_by_name["Device 3"].entity}
+    assert sb._changes.keys() == {sb.hosts_by_name["Device 3"].entity}
 
 
 def test_set_name():
     sb = SystemBackend()
     host = sb.device("Test Device")
     service = host / HTTP
-    sb._changes = set()
+    sb._changes = {}
 
     host.name("Renamed Device")
     service.name("Web UI")
-    assert sb._changes == {host.entity, service.entity}
+    assert sb._changes.keys() == {host.entity, service.entity}
 
     serialized = sb.serialize_statement_changes()
     assert {(e["name"], e["address"]) for e in serialized} == {

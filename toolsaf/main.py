@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Self, Tuple, Type, Union
 from toolsaf.common.address import AnyAddress, HWAddress, HWAddresses, IPAddress, IPAddresses, Network
 from toolsaf.common.basics import ConnectionType, HostType, ExternalActivity
 from toolsaf.common.android import MobilePermissions
+from toolsaf.common.entity import Entity
 from toolsaf.core.address_ranges import PortRange
 
 
@@ -68,6 +69,16 @@ class SystemBuilder:
     def tag(self, tag: str) -> None:
         """Set a unique tag, consisting of numbers and characters, for statement uploads.
             Has a minimum length of 3"""
+        raise NotImplementedError()
+
+    def remove_entity(self, entity: Entity) -> None:
+        """Remove host, service, connection, or component, e.g. software.
+        Services and components of a removed host or service are removed, too.
+        Connections to or from them must be removed first."""
+        raise NotImplementedError()
+
+    def remove_network(self, network: Network) -> None:
+        """Remove network, it must not be used by any entity"""
         raise NotImplementedError()
 
 

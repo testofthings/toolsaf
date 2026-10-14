@@ -1,5 +1,6 @@
 """Event (de)serialization"""
 import datetime
+import logging
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Annotated, Union, Literal, Tuple
 from pydantic import Field, TypeAdapter, field_validator
@@ -40,6 +41,8 @@ UnionEventDTO = Annotated[
 EVENT_ADAPTER: TypeAdapter[UnionEventDTO] = TypeAdapter(UnionEventDTO)
 
 
+LOGGER = logging.getLogger(__name__)
+
 class EventSerializer:
     """Serialize and deserialize EvidenceSources and events"""
     def __init__(self, system: IoTSystem) -> None:
@@ -70,7 +73,7 @@ class EventSerializer:
         return [source_dict, event_dict] if source_dict else [event_dict]
 
     def deserialize(self, data: Dict[str, Any]) -> Any:
-        """Deserialize EvidenceSource or Event from JSON"""
+        """Deserialize EvidenceSource or Event from JSON, None if event entity no longer exists"""
         dto = EVENT_ADAPTER.validate_python(data)
         return dto.to_model(self.source_map, self.system)
 
@@ -442,8 +445,8 @@ class PropertyEventDTO(BaseEventDTO):
     key: PropertyKey
     value: PropEventValueDTO
 
-    def to_model(self, source_map: Dict[str, EvidenceSource], system: IoTSystem) -> PropertyEvent:
-        """Create a PropertyEvent from this DTO"""
+    def to_model(self, source_map: Dict[str, EvidenceSource], system: IoTSystem) -> Optional[PropertyEvent]:
+        """Create a PropertyEvent from this DTO, None if the entity no longer exists"""
         if self.address == "":
             return PropertyEvent(
                 self.get_evidence(source_map),
@@ -451,7 +454,9 @@ class PropertyEventDTO(BaseEventDTO):
                 key_value=(self.key, self.value.to_model())
             )
         entity = system.find_endpoint(Addresses.parse_system_address(self.address))
-        assert entity is not None, f"Entity not found for address: {self.address}"
+        if entity is None:
+            LOGGER.info("Skipping property event of removed entity %s", self.address)
+            return None
         return PropertyEvent(
             self.get_evidence(source_map),
             entity=entity,
@@ -474,8 +479,11 @@ class NameEventDTO(BaseEventDTO):
         service: Optional[DNSService] = None
         if self.service:
             svc = system.find_endpoint(Addresses.parse_system_address(self.service))
-            assert isinstance(svc, DNSService)
-            service = svc
+            if svc is None:
+                LOGGER.info("Name event service %s is removed", self.service)
+            else:
+                assert isinstance(svc, DNSService)
+                service = svc
         tag = EntityTag.new(self.tag) if self.tag else None
         peers: List[Addressable] = []
         for peer_str in self.peers:
