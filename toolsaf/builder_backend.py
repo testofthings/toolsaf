@@ -323,10 +323,19 @@ class NodeBackend(NodeBuilder):
         self.parent: Optional[NodeBackend] = None
         self.sw: Dict[str, SoftwareBackend] = {}
 
-    def name(self, name: str) -> Self:
-        self.entity.name = name
-        self.system.changed(self.entity)
-        if DNSName.looks_like(name):
+    def name(self, name: str, check_dns: bool = True) -> Self:
+        if not name:
+            raise ConfigurationException("Name cannot be empty")
+        is_dns = check_dns and DNSName.looks_like(name)
+        if is_dns:
+            DNSName.validate(name)  # fail before anything is changed
+        if name != self.entity.name:
+            for sibling in self.entity.parent.children:
+                if sibling is not self.entity and sibling.name == name:
+                    raise ConfigurationException(f"Name {name} already used under {self.entity.parent.name}")
+            self.entity.name = name
+            self.system.changed(self.entity)
+        if is_dns:
             self.dns(name)
         return self
 
@@ -518,6 +527,14 @@ class HostBackend(NodeBackend, HostBuilder):
         """Create a host backend for a deserialized host"""
         return cls(entity, system)
 
+    def name(self, name: str, check_dns: bool = True) -> Self:
+        super().name(name, check_dns)
+        hosts = self.system.hosts_by_name
+        for key in [k for k, hb in hosts.items() if hb is self]:
+            del hosts[key]
+        hosts[name] = self
+        return self
+
     def hw(self, address: str) -> Self:
         self.new_address_(HWAddress.new(address))
         return self
@@ -676,6 +693,20 @@ class SoftwareBackend(SoftwareBuilder):
         sb = cls(parent, software)
         parent.sw[software.name] = sb
         return sb
+
+    def name(self, name: str) -> Self:
+        if not name:
+            raise ConfigurationException("Name cannot be empty")
+        if name == self.sw.name:
+            return self
+        if Software.get_software(self.parent.entity, name):
+            raise ConfigurationException(f"Software {name} already defined for {self.parent.entity.name}")
+        self.sw.name = name
+        for key in [k for k, sb in self.parent.sw.items() if sb is self]:
+            del self.parent.sw[key]
+        self.parent.sw[name] = self
+        self.parent.system.changed(self.sw)
+        return self
 
     def updates_from(self, source: Union[ConnectionBuilder, ServiceBuilder, HostBuilder]) -> Self:
         host = self.parent.entity

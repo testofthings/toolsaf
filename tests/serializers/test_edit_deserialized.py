@@ -1,8 +1,11 @@
 import ipaddress
 from typing import cast
+
+import pytest
 from tests.test_model import Setup
-from toolsaf.main import TLS, HTTP, DHCP, DNS, UDP, NTP, MQTT, TCP, SSH
+from toolsaf.main import TLS, HTTP, DHCP, DNS, UDP, NTP, MQTT, TCP, SSH, ConfigurationException
 from toolsaf.common.address import Protocol, IPAddress, AddressAtNetwork, DNSName
+from toolsaf.common.basics import Status
 from toolsaf.core.serializer.model_serializer import SystemSerializer
 from toolsaf.core.address_ranges import NULL_PORT_RANGE, PortRange
 from toolsaf.core.model import Service, Connection
@@ -198,3 +201,117 @@ def test_networks_of_loaded_statement():
     assert AddressAtNetwork(IPAddress.new("10.0.0.5"), host.entity.networks[0]) in sb.entity_by_address
     assert AddressAtNetwork(IPAddress.new("10.0.0.5"), host.entity.networks[1]) not in sb.entity_by_address
     assert len(sb._changes) == 0
+
+
+def _system_addresses(sb: SystemBackend) -> dict:
+    return {e: e.get_system_address().get_parseable_value() for e in sb.backends_by_entity}
+
+
+def test_name_change():
+    sb = _loaded()
+    addresses = _system_addresses(sb)
+    device = cast(HostBackend, sb.get_backend("Device_1"))
+    web = cast(ServiceBackend, sb.get_backend("Device_1/tcp:80"))
+    fw = cast(SoftwareBackend, sb.get_backend("Device_1&software=FW"))
+    cloud = cast(HostBackend, sb.get_backend("Cloud"))
+
+    device.name("Lamp")
+    web.name("Web UI")
+    fw.name("Firmware")
+    cloud.name("cloud.example.org", check_dns=False)  # looks like DNS name, but it is just a name
+
+    assert (device.entity.name, web.entity.name, fw.sw.name, cloud.entity.name) == \
+        ("Lamp", "Web UI", "Firmware", "cloud.example.org")
+    assert DNSName("cloud.example.org") not in cloud.entity.addresses
+    # No system address changes, incl. connections
+    assert _system_addresses(sb) == addresses
+    assert sb.get_backend("Device_1") is device
+    assert sb.get_backend("Device_1/tcp:80") is web
+    assert sb.get_backend("Device_1&software=FW") is fw
+    assert sb.get_backend("Cloud") is cloud
+
+    # Only renamed entities are changed
+    assert sb._changes == {device.entity, web.entity, fw.sw, cloud.entity}
+    changes = sb.serialize_statement_changes()
+    assert {(e["name"], e["address"]) for e in changes} == {
+        ("Lamp", "Device_1"), ("Web UI", "Device_1/tcp:80"),
+        ("Firmware", "Device_1&software=FW"), ("cloud.example.org", "Cloud")}
+
+    # Builder finds the renamed entities by the new names
+    assert sb.device("Lamp") is device
+    assert sb.device("Lamp").software("Firmware") is fw
+    assert sb.backend("cloud.example.org") is cloud
+    assert "Device 1" not in sb.hosts_by_name
+    with pytest.raises(ConfigurationException, match="conflicts with system address 'Device_1' of host 'Lamp'"):
+        sb.device("Device 1")
+    sb.finish_()
+
+    # Names and addresses survive serialization
+    s = SystemSerializer()
+    s.deserialize_list(s.serialize(sb.system))
+    reloaded = SystemBackend.from_entity(s.model_map[""])
+    reloaded_names = {e.get_system_address().get_parseable_value(): getattr(e, "name", None)
+                      for e in reloaded.backends_by_entity}
+    for entity, address in addresses.items():  # finish_ added default software for Cloud, ignore it
+        assert reloaded_names[address] == getattr(entity, "name", None)
+    assert reloaded.get_backend("Device_1&software=FW") is reloaded.device("Lamp").software("Firmware")
+
+
+def test_name_change_conflicts():
+    sb = _loaded()
+    device = cast(HostBackend, sb.get_backend("Device_1"))
+    sb._changes = set()
+
+    with pytest.raises(ConfigurationException, match="Name Cloud already used"):
+        device.name("Cloud")
+    with pytest.raises(ConfigurationException, match="Name TLS:443 already used"):
+        cast(ServiceBackend, sb.get_backend("Device_1/tcp:80")).name("TLS:443")
+    with pytest.raises(ConfigurationException, match="Name cannot be empty"):
+        device.name("")
+    device.software("Other")
+    sb._changes = set()
+    with pytest.raises(ConfigurationException, match="Software Other already defined"):
+        cast(SoftwareBackend, sb.get_backend("Device_1&software=FW")).name("Other")
+
+    # Same name for services of different hosts is fine
+    cast(ServiceBackend, sb.get_backend("Cloud/tcp:80")).name("Web")
+    cast(ServiceBackend, sb.get_backend("Device_1/tcp:80")).name("Web")
+    # Renaming to the current name does nothing
+    assert device.name("Device 1") is device
+    assert {e.name for e in sb._changes} == {"Web"}
+    assert device.entity.name == "Device 1"
+
+
+def test_name_change_unexpected_host():
+    setup = Setup()
+    setup.system.system.get_endpoint(IPAddress.new("192.168.4.4"))  # unexpected host, no tag
+    s = SystemSerializer()
+    s.deserialize_list(s.serialize(setup.system.system))
+    sb = SystemBackend.from_entity(s.model_map[""])
+
+    host = cast(HostBackend, sb.get_backend("192.168.4.4"))
+    assert host.entity.status == Status.UNEXPECTED
+    host.name("Mystery host")
+    assert host.entity.name == "Mystery host"
+    assert host.entity.get_system_address().get_parseable_value() == "192.168.4.4"
+
+
+def test_name_change_dns():
+    sb = _loaded()
+    device = cast(HostBackend, sb.get_backend("Device_1"))
+    sb._changes = set()
+
+    # Not a valid DNS name, fails before changing anything
+    with pytest.raises(ValueError, match="Invalid DNS label"):
+        device.name("Hub v2.1")
+    assert device.entity.name == "Device 1"
+    assert not sb._changes
+
+    device.name("Hub v2.1", check_dns=False)
+    assert device.entity.name == "Hub v2.1"
+    assert not any(isinstance(a, DNSName) for a in device.entity.addresses)
+
+    device.name("hub.example.com")
+    assert device.entity.name == "hub.example.com"
+    assert DNSName("hub.example.com") in device.entity.addresses
+    assert device.entity.get_system_address().get_parseable_value() == "Device_1"

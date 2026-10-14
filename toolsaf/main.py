@@ -76,8 +76,9 @@ class NodeBuilder:
     def __init__(self, system: SystemBuilder) -> None:
         self.system = system
 
-    def name(self, name: str) -> Self:
-        """Define entity name, names with dot (.) are assumed to be DNS domain names"""
+    def name(self, name: str, check_dns: bool = True) -> Self:
+        """Define or change entity name, system address is not changed.
+        If check_dns is True, names looking like DNS domain names (with dot) are also added as DNS names"""
         raise NotImplementedError()
 
     def dns(self, *names: str) -> Self:
@@ -219,6 +220,10 @@ class NetworkBuilder:
 
 class SoftwareBuilder:
     """Software builder"""
+    def name(self, name: str) -> Self:
+        """Change software name, system address is not changed"""
+        raise NotImplementedError()
+
     def updates_from(self, source: Union[ConnectionBuilder, ServiceBuilder, HostBuilder]) -> Self:
         """Update mechanism"""
         raise NotImplementedError()
