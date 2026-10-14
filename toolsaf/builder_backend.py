@@ -29,7 +29,7 @@ from toolsaf.main import (ARP, DHCP, DNS, EAPOL, ICMP, NTP, SSH, HTTP, TCP, UDP,
                         SensitiveDataBuilder, ServiceBuilder, ServiceGroupBuilder, ServiceOrGroup,
                         SoftwareBuilder, SystemBuilder, IgnoreRulesBuilder)
 from toolsaf.core.entity_removal import EntityRemoval
-from toolsaf.core.model import Addressable, Connection, Host, IoTSystem, SensitiveData, Service
+from toolsaf.core.model import Addressable, Connection, Host, IoTSystem, NetworkNode, SensitiveData, Service
 from toolsaf.common.property import Properties, PropertyKey
 from toolsaf.core.inspector import Inspector
 from toolsaf.core.result import Report
@@ -210,7 +210,7 @@ class SystemBackend(SystemBuilder):
         renamed = self.system.get_entity(name_base)  # if exists, renamed to '<name_base> 1'
         n = self.system.free_child_name(name_base)
         if renamed:
-            self.changed(renamed)
+            self.renamed_(renamed)
             # dirty hack, check all names match keys
             self.hosts_by_name = {
                 h.entity.name: h for h in self.hosts_by_name.values()}
@@ -247,6 +247,15 @@ class SystemBackend(SystemBuilder):
     def changed(self, entity: Entity | Network) -> None:
         """Add entity to changed set"""
         self._changes[entity] = False
+
+    def renamed_(self, entity: NetworkNode) -> None:
+        """Add renamed entity to changed set, and entities which long name includes the name"""
+        nodes = [entity, *entity.children]  # long name of service includes the parent name
+        for e in nodes:
+            self.changed(e)
+        for c in self.system.get_connections(relevant_only=False):
+            if c.source in nodes or c.target in nodes:  # long name includes names of the ends
+                self.changed(c)
 
     def self_changed(self) -> None:
         """
@@ -370,7 +379,7 @@ class NodeBackend(NodeBuilder):
                 if sibling is not self.entity and sibling.name == name:
                     raise ConfigurationException(f"Name {name} already used under {self.entity.parent.name}")
             self.entity.name = name
-            self.system.changed(self.entity)
+            self.system.renamed_(self.entity)
         if is_dns:
             self.dns(name)
         return self

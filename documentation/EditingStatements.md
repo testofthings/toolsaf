@@ -27,6 +27,7 @@ if entity is None:
 ## Renaming
 `name()` changes the name of a host, service, or software, but not its system address.
 A name with a dot is also added as DNS name, unless `check_dns=False` is given.
+The statement changes include also the services and connections which `long_name` includes the changed name.
 ```python
 device.name("Lamp")
 device.name("Lamp v2.1", check_dns=False)

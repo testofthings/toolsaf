@@ -581,3 +581,19 @@ def test_changes_in_loaded():
     unexpected >> cast(ServiceBackend, sb.get_backend("Cloud/tcp:80"))
     assert unexpected.entity.status == Status.EXPECTED
     assert _changed(sb) == [("host", "192.168.4.4"), ("connection", "source=192.168.4.4&target=Cloud/tcp:80")]
+
+
+def test_automatic_numbering_renames_dependents():
+    sb = SystemBackend()
+    first = sb.device()
+    first >> sb.backend("Cloud") / HTTP
+    first / TLS
+    sb.serialize_statement_changes()
+
+    sb.device()  # 'Device' -> 'Device 1', long names of services and connections change
+    assert [(e["type"], e["address"], e["long_name"]) for e in sb.serialize_statement_changes()] == [
+        ("host", "Device", "Device 1"),
+        ("host", "Device_2", "Device 2"),
+        ("service", "Device/tcp:443", "Device 1 TLS:443"),
+        ("connection", "source=Device&target=Cloud/tcp:80", "Device 1 => Cloud HTTP:80"),
+    ]
