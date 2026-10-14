@@ -75,14 +75,6 @@ class SystemSerializer:
                 stack.extend(reversed(self._queue)) # Depth first
         return result
 
-    def serialize_set(self, obj_set: Set[Any]) -> List[Dict[str, Any]]:
-        """Serialize a given set of objects, parents before children"""
-        result = []
-        for obj in sorted(obj_set, key=self.order_key):
-            if (serialized := self.serialize_object(obj)) is not None:
-                result.append(serialized)
-        return result
-
     def serialize_object(self, obj: Any) -> Optional[Dict[str, Any]]:
         """Serialize a single object without its children, None if not serializable"""
         if not (serializer := self.serializer_map.get(type(obj))):
