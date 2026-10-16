@@ -495,18 +495,43 @@ def test_component_address_must_match_type():
         serializer.deserialize_list(records)
 
 
-def test_deserialized_address_must_match():
+def test_deserialized_address_mismatch_warns(caplog: pytest.LogCaptureFixture):
     setup = Setup()
     setup.system.device("Device 1")
     serializer = SystemSerializer()
     records = serializer.serialize(setup.system.system)
     host = next(r for r in records if r["type"] == "host")
     host["address"] = "Other"  # but tag in addresses is still Device_1
-    with pytest.raises(ValueError, match="does not match 'Other'"):
-        serializer.deserialize_list(records)
+    serializer.deserialize_list(records)
+    assert "does not match 'Other'" in caplog.text
+    caplog.clear()
     single = SystemSerializer()
-    with pytest.raises(ValueError, match="does not match 'Other'"):
-        _ = [single.deserialize(r) for r in records]
+    _ = [single.deserialize(r) for r in records]
+    assert "does not match 'Other'" in caplog.text
+
+
+def test_deserialize_old_tied_dns_address(caplog: pytest.LogCaptureFixture):
+    # JSON before deterministic prioritization may use any of the equally prioritized addresses
+    setup = Setup()
+    system = setup.get_system()
+    host = system.get_endpoint(DNSName("www.google.cn"))
+    host.addresses.add(DNSName("www.gstatic.com"))
+    assert host.get_system_address().get_parseable_value() == "www.google.cn|name"
+    records = SystemSerializer().serialize(system)
+    for r in records:
+        for key in ("address", "parent_address"):
+            if key in r:
+                r[key] = r[key].replace("www.google.cn|name", "www.gstatic.com|name")
+
+    serializer = SystemSerializer()
+    serializer.deserialize_list(records)
+    assert "does not match 'www.gstatic.com|name'" in caplog.text
+    new_host = serializer.model_map["www.gstatic.com|name"]
+    assert isinstance(new_host, Host)
+    assert new_host.parent is serializer.model_map[""]
+    new_system = serializer.model_map[""]
+    assert new_system.find_entity(DNSName("www.gstatic.com")) is new_host
+    assert new_system.find_entity(DNSName("www.google.cn")) is new_host
 
 
 def test_lazy_load_deserialization():
