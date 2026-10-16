@@ -158,7 +158,9 @@ class SystemSerializer:
             return  # networks have their own addressing
         resolved = model.get_system_address().get_parseable_value()
         if resolved != address:
-            raise ValueError(f"Deserialized entity address '{resolved}' does not match '{address}'")
+            # Only warn, as JSON written before deterministic address prioritization may have
+            # picked another one of equally prioritized addresses, e.g. one of two DNS names
+            LOGGER.warning("Deserialized entity address '%s' does not match '%s'", resolved, address)
 
     def _serialize_entity(self, obj: Entity, data: Dict[str, Any]) -> None:
         """Serialize common entity fields"""
