@@ -1,21 +1,35 @@
 # Changelog
-## Unreleased
+## 0.9.0
 ### Added
 - Entities can be renamed with `name()` without changing their system address.
-- Entities can be removed with `system.remove_entity(entity)` and `system.remove_network(network)`. See [Editing loaded statements](documentation/EditingStatements.md).
+- Entities can be removed with `system.remove_entity(entity)` and `system.remove_network(network)`.
 - Host addresses can be replaced with `set_addresses()`.
-- Batch data files of HAR, SPDX, and Black Duck can be named by entity tag, which does not change when the entity is renamed.
-- SPDX and Black Duck data files can be named by software and host tags, e.g. `FW@Device_1.json`. A data file name matching many entities is an error.
+- Batch data files of HAR, SPDX, and Black Duck can be named by the entity tag, which does not change when the entity is renamed.
+- SPDX and Black Duck data files can be named by software and host tags, e.g. `FW@Device_1.json`. A data file name matching multiple entities is an error.
+- Added a new `generic` tool adapter for reading verdicts and properties of entities from a generic JSON format.
+- Non-default networks are now (de)serialized.
 
 ### Changed
-- Creating a host whose tag is used by another host is an error, e.g. `device("A B")` and `device("A_B")`.
-- All host addresses are shown in the output, tag first.
-- Statement change JSON is ordered, removals first, and then parents before children.
+- The default network name is now `default` instead of `local`. Legacy network addresses with or without the `network=` prefix are still accepted.
+- Creating two networks with the same name produces an error.
+- Creating a host whose tag is used by another host produces an error, e.g. `device("A B")` and `device("A_B")`.
+- All host addresses are shown in the output, tag first. Address prioritization is now consistent and deterministic.
+- `CertMITMReader` assigns MITM failures to the target TLS service instead of the connection, and sets the TLS best practices property of the service.
+- Verdicts and properties of entities are no longer (de)serialized with the statement.
+- Change serialization order is now removals first, then parents before children.
 - Events of removed entities are skipped when loading a statement.
-- Code updates and removal of obsolete code
+- Software component names can be up to 200 characters long.
+- Network masks are validated, and loopback always has the well-known mask.
+
+### Fixed
+- Fixed traffic matching corner cases: flows with the same source and target are now ignored, multicasts and broadcasts are detected by their Ethernet address, and unexpected services in expected hosts are matched properly.
+- System addresses of entities were not always unique, e.g. when a free entity name was picked without considering tags. System addresses are now checked for uniqueness.
+- Ignore rules were not applied in some cases, fixed.
+- Custom services did not honor the given networks, fixed.
+- Some edits to loaded statements were not marked as changes, fixed.
 
 ### Documentation
-- Added [Editing loaded statements](documentation/EditingStatements.md) and data file naming instructions in `Tools.md`. Fixed `Ssh-audit` and `Testssl.sh` file name templates.
+- Added [Editing loaded statements](documentation/EditingStatements.md) and data file naming instructions to `Tools.md`. Fixed `Ssh-audit` and `Testssl.sh` file name templates.
 
 ## 0.8.1
 ### Fixed
