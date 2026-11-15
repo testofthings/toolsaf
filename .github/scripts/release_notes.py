@@ -1,26 +1,26 @@
-"""Release notes from the "Release notes" section of pull request descriptions
+"""Release notes from PR descriptions
 
 Usage:
-  release_notes.py check                  Check the PR description in PR_BODY has release notes
+  release_notes.py check                  Check that PR_BODY has release notes
   release_notes.py collect <from> <to>    Print release notes of the PRs merged between two git refs
 """
 
-import json
+from typing import Any, Dict, List, Optional
 import os
 import re
-import subprocess
 import sys
-from typing import Any, Dict, List, Optional
+import json
+import subprocess
 
 SECTION_TITLE = "Release notes"
 SECTION = re.compile(r"^##\s+release notes\s*$", re.IGNORECASE)
-# The section ends at the next level 1 or 2 heading, or a thematic break like a "---" line before bot-generated sections
+# Ends at the next #, ## or ---
 SECTION_END = re.compile(r"^(#{1,2}\s|\s{0,3}(-{3,}|\*{3,}|_{3,})\s*$)")
 COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 
 
 def extract(body: Optional[str]) -> str:
-    """Extract the release notes section from a PR description, empty if missing"""
+    """Get the release notes section from a PR description or an empty string if missing"""
     notes: List[str] = []
     found = False
     for line in COMMENT.sub("", body or "").splitlines():
@@ -38,8 +38,10 @@ def check() -> int:
     if extract(os.environ.get("PR_BODY")):
         print(f"Found '{SECTION_TITLE}' section")
         return 0
-    print(f"::error::Add a '## {SECTION_TITLE}' section to the PR description. "
-          "It is published as the release notes of the release this PR creates.")
+    print(
+        f"::error::Add a '## {SECTION_TITLE}' section to the PR description. "
+        "It will be published as the release notes of the release this PR creates."
+    )
     return 1
 
 
@@ -52,9 +54,12 @@ def merged_pulls(repository: str, sha: str) -> List[Dict[str, Any]]:
     """Return the PRs merged to the default branch that contain the commit"""
     output = subprocess.run(
         ["gh", "api", f"repos/{repository}/commits/{sha}/pulls"],
-        check=True, capture_output=True, text=True).stdout
-    return [pull for pull in json.loads(output)
-            if pull["merged_at"] and pull["base"]["ref"] == pull["base"]["repo"]["default_branch"]]
+        check=True, capture_output=True, text=True
+    ).stdout
+    return [
+        pull for pull in json.loads(output)
+        if pull["merged_at"] and pull["base"]["ref"] == pull["base"]["repo"]["default_branch"]
+    ]
 
 
 def collect(start: str, end: str) -> int:
