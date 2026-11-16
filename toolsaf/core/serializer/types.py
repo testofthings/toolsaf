@@ -7,14 +7,15 @@ from toolsaf.common.property import PropertyKey
 
 
 NETWORK_ADDRESS_PREFIX = "network="
+ALLOWED_UPLOAD_TAG_SYMBOLS = ("-", "~")
 
 
 def validate_upload_tag(tag: str) -> str:
     """Validate an upload tag. Can raise ValueError"""
     if not 3 <= len(tag) <= 50:
         raise ValueError("Upload tag must be between 3 and 50 characters")
-    if not all(c.isalnum() or c == "-" for c in tag):
-        raise ValueError("Tag can only include alphanumeric characters and hyphens")
+    if not all(c.isalnum() or c in ALLOWED_UPLOAD_TAG_SYMBOLS for c in tag):
+        raise ValueError("Tag can only include alphanumeric characters, - and ~")
     return tag
 
 

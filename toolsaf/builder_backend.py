@@ -167,8 +167,8 @@ class SystemBackend(SystemBuilder):
 
     def tag(self, tag: str) -> None:
         """
-        Set a unique tag for the security statement.
-        Must be between 3 and 50 characters long. Can only contain alphanumeric characters and hyphens.
+        Set a unique tag for the security statement. Must be between 3 and 50 characters long.
+        Can only contain alphanumeric characters, - and ~
         """
         self.system.upload_tag = validate_upload_tag(tag)
         self.changed(self.system)
