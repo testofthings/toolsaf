@@ -1,11 +1,11 @@
 [build-system]
-requires        = ["setuptools"]
+requires        = ["setuptools", "setuptools-scm>=8"]
 build-backend   = "setuptools.build_meta"
 
 # Project metadata
 [project]
 name            = "toolsaf"
-version         = "0.9.0"
+dynamic         = ["version"]
 requires-python = ">=3.12"
 description     = "Tool-Driven Security Assessment Framework"
 readme          = "Info.md"
@@ -61,6 +61,10 @@ find = { where = ["."], include = [
 
 [tool.setuptools]
 include-package-data = true
+
+# Version comes from the release tag. The release workflow tags each push to main, see VERSION.
+[tool.setuptools_scm]
+fallback_version = "0.0.0"
 
 # Pytest config
 [tool.pytest.ini_options]

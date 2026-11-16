@@ -1,4 +1,6 @@
 # Changelog
+Releases after 0.9.0 are documented in [GitHub Releases](https://github.com/testofthings/toolsaf/releases).
+
 ## 0.9.0
 ### Added
 - Entities can be renamed with `name()` without changing their system address.

@@ -1,0 +1,4 @@
+# setuptools-scm adds every git-tracked file to the sdist, keep only the package and its metadata
+global-exclude *
+graft toolsaf
+include Info.md LICENSE README.md pyproject.toml
