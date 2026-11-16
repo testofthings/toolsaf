@@ -115,10 +115,17 @@ def test_iot_system_dto_invalid_values():
         ("upload_tag", "a"*51),
         ("upload_tag", "invalid tag"),
         ("upload_tag", "invalid/tag"),
+        ("upload_tag", "invalid_tag"),
+        ("upload_tag", "invalid.tag"),
         ("upload_tag", 123),
         ("ignore_rules", "abc")
     ]
     _validate(_valid_iot_system(), key_values, IoTSystemDTO)
+
+
+@pytest.mark.parametrize("tag", ["abc", "a"*50, "valid-tag", "valid~tag", "-~-", "Tag-1~2"])
+def test_iot_system_dto_valid_upload_tags(tag):
+    assert IoTSystemDTO(**{**_valid_iot_system(), "upload_tag": tag}).upload_tag == tag
 
 
 def _valid_addressable():
