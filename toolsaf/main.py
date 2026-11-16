@@ -67,8 +67,10 @@ class SystemBuilder:
         raise NotImplementedError()
 
     def tag(self, tag: str) -> None:
-        """Set a unique tag, consisting of numbers and characters, for statement uploads.
-            Has a minimum length of 3"""
+        """
+        Set a unique tag for statement uploads. Must be between 3 and 50 characters long.
+        Can only contain alphanumeric characters, - and ~
+        """
         raise NotImplementedError()
 
     def remove_entity(self, entity: Entity) -> None:
