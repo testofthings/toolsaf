@@ -1353,6 +1353,10 @@ class SystemBackendRunner(SystemBackend):
                             help="Upload statement.")
         parser.add_argument("--key-path", type=Path,
                             help="Custom path to API key file")
+        parser.add_argument("--api-key", type=str,
+                            help="API key. Overrides the API key file")
+        parser.add_argument("--api-url", type=str,
+                            help="API URL. Overrides the API URL file")
         parser.add_argument("--insecure", action="store_true",
                             help="Allow insecure server connections")
         parser.add_argument(
@@ -1460,7 +1464,7 @@ class SystemBackendRunner(SystemBackend):
 
         if args.upload:
             uploader = Uploader(self.system, allow_insecure=args.insecure)
-            uploader.do_upload_pre_procedures(args.key_path)
+            uploader.do_upload_pre_procedures(args.key_path, args.api_url, args.api_key)
             uploader.upload_statement()
 
             system_serializer = SystemSerializer()

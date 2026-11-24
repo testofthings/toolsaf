@@ -34,6 +34,37 @@ def test_do_upload_pre_procedures():
     uploader._read_api_key.assert_called_once()
 
 
+def test_do_upload_pre_procedures_with_api_url_and_key():
+    uploader = Uploader(SYSTEM)
+    uploader._add_toolsaf_directory_to_home = MagicMock()
+    uploader._read_api_url = MagicMock()
+    uploader._read_api_key = MagicMock()
+
+    uploader.do_upload_pre_procedures(None, api_url="https://api.test.com", api_key="test")
+
+    assert uploader._api_url == "https://api.test.com"
+    assert uploader._api_key == "test"
+    uploader._add_toolsaf_directory_to_home.assert_not_called()
+    uploader._read_api_url.assert_not_called()
+    uploader._read_api_key.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "api_url, api_key",
+    [("", "test"), ("https://api.test.com", "")]
+)
+def test_do_upload_pre_procedures_with_empty_api_url_or_key(api_url, api_key):
+    uploader = Uploader(SYSTEM)
+    uploader._add_toolsaf_directory_to_home = MagicMock()
+    uploader._read_api_url = MagicMock()
+    uploader._read_api_key = MagicMock()
+
+    with pytest.raises(ConfigurationException):
+        uploader.do_upload_pre_procedures(None, api_url=api_url, api_key=api_key)
+    uploader._read_api_url.assert_not_called()
+    uploader._read_api_key.assert_not_called()
+
+
 @pytest.mark.parametrize(
     "dir_exists",
     [True, False]
