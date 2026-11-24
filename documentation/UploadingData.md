@@ -43,6 +43,12 @@ To use a custom path for your API key, use the `--key-path` argument:
 python product/statement.py -u --key-path ../my-api-key
 ```
 
+### API URL and Key as Arguments
+Instead of the files, the API URL and key can be given with the `--api-url` and `--api-key` arguments, for example in automated systems:
+```shell
+python product/statement.py -u --api-url https://<api-url>:<api-port> --api-key <api-key> -r ../sample-data
+```
+
 ### Allow Insecure Connections
 For **debugging purposes**, you can allow insecure API connections using the `--insecure` flag.
 ```shell

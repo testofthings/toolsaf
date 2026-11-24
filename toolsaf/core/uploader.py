@@ -23,12 +23,23 @@ class Uploader:
         self._api_url = ""
         self._key_file_path: Path
 
-    def do_upload_pre_procedures(self, key_file_argument: Optional[str]) -> None:
-        """Get everything ready for uploading"""
-        self._add_toolsaf_directory_to_home()
-        self._key_file_path = self._get_key_file_path_based_on_argument(key_file_argument)
-        self._read_api_url()
-        self._read_api_key()
+    def do_upload_pre_procedures(self, key_file_argument: Optional[str], api_url: Optional[str] = None,
+                                 api_key: Optional[str] = None) -> None:
+        """Get everything ready for uploading, API URL and key given as arguments override the files"""
+        if api_url is not None:
+            if not api_url:
+                raise ConfigurationException("API URL argument is empty")
+            self._api_url = api_url
+        else:
+            self._add_toolsaf_directory_to_home()
+            self._read_api_url()
+        if api_key is not None:
+            if not api_key:
+                raise ConfigurationException("API key argument is empty")
+            self._api_key = api_key
+        else:
+            self._key_file_path = self._get_key_file_path_based_on_argument(key_file_argument)
+            self._read_api_key()
 
     def _create_directory(self, path: Path) -> None:
         """Creates directory based on given Path; if the directory does not already exist"""
