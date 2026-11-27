@@ -49,6 +49,15 @@ Instead of the files, the API URL and key can be given with the `--api-url` and 
 python product/statement.py -u --api-url https://<api-url>:<api-port> --api-key <api-key> -r ../sample-data
 ```
 
+### Uploading with the Container Image
+The [container image](../README.md#container-image) has no `~/.toolsaf` directory, so give the API URL and key as arguments:
+```shell
+docker run --rm -v "$PWD:/work" --user "$(id -u):$(id -g)" \
+  europe-north2-docker.pkg.dev/tot-application/public/toolsaf:<version> \
+  python product/statement.py -u --api-url https://<api-url>:<api-port> --api-key "$TOOLSAF_API_KEY" -r sample-data
+```
+A statement saved as JSON is uploaded with `python -m toolsaf.main -R statement.json -u` and the same arguments.
+
 ### Allow Insecure Connections
 For **debugging purposes**, you can allow insecure API connections using the `--insecure` flag.
 ```shell

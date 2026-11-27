@@ -1,0 +1,40 @@
+name: Container image check on pull requests
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - .github/workflows/image_check.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build image
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Build wheel
+        run: |
+          python -m pip install build
+          python -m build --wheel
+
+      - name: Build image
+        run: docker build --platform linux/amd64 --tag toolsaf:check .
+
+      - name: Smoke test
+        run: |
+          docker run --rm toolsaf:check python -m toolsaf.main --help
+          docker run --rm -v "$PWD/samples:/work:ro" toolsaf:check python device-backend/statement.py
