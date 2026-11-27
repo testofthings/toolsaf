@@ -70,6 +70,24 @@ If you want to visualize your security statements you also need to install [Grap
 In the above, we used _venv_ virtual environments, but as security statements are essentially
 Python-code, any other environment should work fine.
 
+### Container Image
+
+Toolsaf is also published as a linux/amd64 container image for each [release](https://github.com/testofthings/toolsaf/releases), tagged with the release version. There is no `latest` tag.
+
+```shell
+docker pull europe-north2-docker.pkg.dev/tot-application/public/toolsaf:<version>
+```
+
+The image has no entrypoint, give the Python command to run. Mount the folder that contains both the statement and the tool data as the working folder `/work`, as paths outside it are not visible to Toolsaf. `--user` makes files written by Toolsaf, such as `-W` output, owned by you on the host.
+
+```shell
+docker run --rm -v "$PWD:/work" --user "$(id -u):$(id -g)" \
+  europe-north2-docker.pkg.dev/tot-application/public/toolsaf:<version> \
+  python product/statement.py -r sample-data
+```
+
+The image does not include Graphviz, so `--create-diagram` and `--show-diagram` do not work in it.
+
 ## Working with Security Statements
 
 To recap, a security statement is Python DSL code in its own directory, which uses the Toolsaf Python module.

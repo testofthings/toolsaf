@@ -16,6 +16,10 @@ concurrency:
 
 permissions: {}
 
+# Repository variables: IMAGE_REGISTRY is the registry path without the image name, WIF_PROVIDER the full provider name
+env:
+  IMAGE: ${{ vars.IMAGE_REGISTRY }}/toolsaf
+
 jobs:
   checks:
     name: Code checks
@@ -165,9 +169,63 @@ jobs:
         with:
           skip-existing: true
 
+  image:
+    name: Publish container image
+    needs: [prepare, tag]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      # Workload Identity Federation
+      id-token: write
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist/
+
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+
+      - name: Configure Docker credentials
+        run: gcloud auth configure-docker "${IMAGE%%/*}" --quiet
+
+      # Tags are immutable, so "Re-run failed jobs" skips an image that was already pushed
+      - name: Check for an already pushed image
+        id: pushed
+        run: |
+          if docker buildx imagetools inspect "$IMAGE:$VERSION" > /dev/null 2>&1; then
+            echo "::notice::$IMAGE:$VERSION is already pushed"
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build image
+        if: steps.pushed.outputs.pushed != 'true'
+        run: |
+          docker build --platform linux/amd64 \
+            --label "org.opencontainers.image.version=$VERSION" \
+            --tag "$IMAGE:$VERSION" .
+
+      - name: Smoke test
+        if: steps.pushed.outputs.pushed != 'true'
+        run: |
+          docker run --rm "$IMAGE:$VERSION" python -m toolsaf.main --help
+          docker run --rm -v "$PWD/samples:/work:ro" "$IMAGE:$VERSION" python device-backend/statement.py
+
+      - name: Push image
+        if: steps.pushed.outputs.pushed != 'true'
+        run: docker push "$IMAGE:$VERSION"
+
   github-release:
     name: GitHub release
-    needs: [prepare, publish]
+    needs: [prepare, publish, image]
     runs-on: ubuntu-slim
     timeout-minutes: 5
     permissions:
@@ -182,6 +240,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.prepare.outputs.version }}
         run: |
+          printf '%s\n' "" "**Container image**:" "\`\`\`shell" "docker pull $IMAGE:$VERSION" "\`\`\`" >> artifacts/release-notes/release-notes.md
           gh release create "$VERSION" artifacts/dist/* \
             --repo "$GITHUB_REPOSITORY" \
             --verify-tag \
